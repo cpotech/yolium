@@ -25,6 +25,8 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: 'Ctrl+Shift+[', description: 'Previous tab' },
       { keys: 'Ctrl+PageDown', description: 'Next tab (alt)' },
       { keys: 'Ctrl+PageUp', description: 'Previous tab (alt)' },
+      { keys: 'Ctrl+Shift+H', description: 'Split horizontal' },
+      { keys: 'Ctrl+Shift+V', description: 'Split vertical' },
     ],
   },
   {

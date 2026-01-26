@@ -74,6 +74,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('tab:close-all', handler);
     return () => ipcRenderer.removeListener('tab:close-all', handler);
   },
+  onTabSplitHorizontal: (callback: () => void): CleanupFn => {
+    const handler = () => callback();
+    ipcRenderer.on('tab:splitHorizontal', handler);
+    return () => ipcRenderer.removeListener('tab:splitHorizontal', handler);
+  },
+  onTabSplitVertical: (callback: () => void): CleanupFn => {
+    const handler = () => callback();
+    ipcRenderer.on('tab:splitVertical', handler);
+    return () => ipcRenderer.removeListener('tab:splitVertical', handler);
+  },
 
   // Shortcuts dialog event (main -> renderer)
   onShortcutsShow: (callback: () => void): CleanupFn => {
@@ -185,6 +195,8 @@ declare global {
       onTabCloseSpecific: (callback: (tabId: string) => void) => CleanupFn;
       onTabCloseOthers: (callback: (keepTabId: string) => void) => CleanupFn;
       onTabCloseAll: (callback: () => void) => CleanupFn;
+      onTabSplitHorizontal: (callback: () => void) => CleanupFn;
+      onTabSplitVertical: (callback: () => void) => CleanupFn;
       onShortcutsShow: (callback: () => void) => CleanupFn;
       showTabContextMenu: (tabId: string, x: number, y: number) => Promise<void>;
       showConfirmClose: (message: string) => Promise<boolean>;

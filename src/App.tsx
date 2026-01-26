@@ -23,6 +23,11 @@ function App(): React.ReactElement {
     updateGitBranch,
     closeAllTabs,
     closeOtherTabs,
+    splitDirection,
+    splitTabId,
+    splitTab,
+    splitHorizontal,
+    splitVertical,
   } = useTabState();
 
   // State for Docker readiness (null = checking, true = ready, false = needs setup)
@@ -411,6 +416,8 @@ function App(): React.ReactElement {
     const cleanupCloseAll = window.electronAPI.onTabCloseAll(handleCloseAllTabs);
     const cleanupShortcuts = window.electronAPI.onShortcutsShow(handleShowShortcuts);
     const cleanupQuit = window.electronAPI.onQuitRequest(handleQuitRequest);
+    const cleanupSplitH = window.electronAPI.onTabSplitHorizontal(splitHorizontal);
+    const cleanupSplitV = window.electronAPI.onTabSplitVertical(splitVertical);
 
     return () => {
       cleanupNew();
@@ -422,8 +429,10 @@ function App(): React.ReactElement {
       cleanupCloseAll();
       cleanupShortcuts();
       cleanupQuit();
+      cleanupSplitH();
+      cleanupSplitV();
     };
-  }, [handleNewYolium, handleCloseActiveTab, handleNextTab, handlePrevTab, handleCloseTab, handleCloseOtherTabs, handleCloseAllTabs, handleShowShortcuts, handleQuitRequest]);
+  }, [handleNewYolium, handleCloseActiveTab, handleNextTab, handlePrevTab, handleCloseTab, handleCloseOtherTabs, handleCloseAllTabs, handleShowShortcuts, handleQuitRequest, splitHorizontal, splitVertical]);
 
   // Listen for container exit events to update state
   useEffect(() => {
@@ -623,9 +632,62 @@ function App(): React.ReactElement {
               </button>
             </div>
           </>
+        ) : splitDirection && splitTab && activeTabId && splitTabId !== activeTabId ? (
+          <>
+            {/* Split view mode - show two terminals */}
+            <div className={`flex-1 min-h-0 flex ${splitDirection === 'horizontal' ? 'flex-row' : 'flex-col'}`}>
+              {/* First pane - the split tab */}
+              <div className={`relative ${splitDirection === 'horizontal' ? 'w-1/2 border-r border-gray-700' : 'h-1/2 border-b border-gray-700'}`}>
+                <Terminal
+                  sessionId={splitTab.sessionId}
+                  isVisible={true}
+                  isContainer={true}
+                  onCwdChange={(cwd) => handleCwdChange(splitTab.id, cwd)}
+                  onExit={(exitCode) => {
+                    const newState = exitCode === 0 ? 'stopped' : 'crashed';
+                    updateContainerState(splitTab.id, newState);
+                  }}
+                  className="absolute inset-0 bg-[#0a0a0a]"
+                />
+              </div>
+              {/* Second pane - the active tab */}
+              <div className={`relative ${splitDirection === 'horizontal' ? 'w-1/2' : 'h-1/2'}`}>
+                {tabs.filter(tab => tab.id === activeTabId).map(tab => (
+                  <Terminal
+                    key={tab.id}
+                    sessionId={tab.sessionId}
+                    isVisible={true}
+                    isContainer={true}
+                    onCwdChange={(cwd) => handleCwdChange(tab.id, cwd)}
+                    onExit={(exitCode) => {
+                      const newState = exitCode === 0 ? 'stopped' : 'crashed';
+                      updateContainerState(tab.id, newState);
+                    }}
+                    className="absolute inset-0 bg-[#0a0a0a]"
+                  />
+                ))}
+              </div>
+            </div>
+            {/* Status bar for active tab in split mode */}
+            {tabs.filter(tab => tab.id === activeTabId).map(tab => (
+              <StatusBar
+                key={tab.id}
+                folderPath={tab.cwd}
+                containerState={tab.containerState}
+                onStop={() => handleStopYolium(tab.id)}
+                onShowShortcuts={handleShowShortcuts}
+                onOpenSettings={handleOpenGitConfig}
+                imageName={imageRemoved ? undefined : 'yolium:latest'}
+                onRebuild={handleRebuildImage}
+                isRebuilding={isRebuilding}
+                gitBranch={tab.gitBranch}
+                worktreeName={tab.worktreeName}
+              />
+            ))}
+          </>
         ) : (
           <>
-            {/* Render all terminals with StatusBar, show only active one */}
+            {/* Normal mode - render all terminals with StatusBar, show only active one */}
             {tabs.map(tab => (
               <div
                 key={tab.id}

@@ -1,6 +1,9 @@
 // Container lifecycle state
 export type ContainerState = 'starting' | 'running' | 'stopped' | 'crashed';
 
+// Split direction for tab splits
+export type SplitDirection = 'horizontal' | 'vertical' | null;
+
 // Tab represents a single terminal tab
 export interface Tab {
   id: string;                    // Unique tab identifier
@@ -16,6 +19,8 @@ export interface Tab {
 export interface TabState {
   tabs: Tab[];
   activeTabId: string | null;
+  splitDirection: SplitDirection;
+  splitTabId: string | null;  // The tab ID shown in the split pane
 }
 
 // Actions for tab state management
@@ -29,4 +34,7 @@ export type TabAction =
   | { type: 'REORDER_TABS'; payload: { fromIndex: number; toIndex: number } }
   | { type: 'RESTORE_SESSION'; payload: TabState }
   | { type: 'CLOSE_ALL_TABS' }
-  | { type: 'CLOSE_OTHER_TABS'; payload: string };  // payload is tab id to keep
+  | { type: 'CLOSE_OTHER_TABS'; payload: string }  // payload is tab id to keep
+  | { type: 'SPLIT_HORIZONTAL' }
+  | { type: 'SPLIT_VERTICAL' }
+  | { type: 'UNSPLIT' };

@@ -93,6 +93,17 @@ function createAppMenu(window: BrowserWindow): void {
         },
         { type: 'separator' },
         {
+          label: 'Split Horizontal',
+          accelerator: 'CmdOrCtrl+Shift+H',
+          click: () => window.webContents.send('tab:splitHorizontal'),
+        },
+        {
+          label: 'Split Vertical',
+          accelerator: 'CmdOrCtrl+Shift+V',
+          click: () => window.webContents.send('tab:splitVertical'),
+        },
+        { type: 'separator' },
+        {
           label: 'Next Tab (Alt)',
           accelerator: 'CmdOrCtrl+PageDown',
           click: () => window.webContents.send('tab:next'),

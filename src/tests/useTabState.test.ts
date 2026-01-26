@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { Tab, TabState, TabAction, ContainerState } from '../types/tabs'
+import type { Tab, TabState, TabAction, ContainerState, SplitDirection } from '../types/tabs'
 
 // Extract the reducer logic for testing
 // (In production, you'd export this from useTabState.ts)
@@ -7,6 +7,7 @@ function tabReducer(state: TabState, action: TabAction): TabState {
   switch (action.type) {
     case 'ADD_TAB':
       return {
+        ...state,
         tabs: [...state.tabs, action.payload],
         activeTabId: action.payload.id,
       }
@@ -18,7 +19,14 @@ function tabReducer(state: TabState, action: TabAction): TabState {
       if (state.activeTabId === action.payload) {
         newActiveId = newTabs[closedIndex]?.id || newTabs[closedIndex - 1]?.id || null
       }
-      return { tabs: newTabs, activeTabId: newActiveId }
+      // Clear split if the closed tab was part of the split
+      const shouldClearSplit = state.splitTabId === action.payload || state.activeTabId === action.payload
+      return {
+        tabs: newTabs,
+        activeTabId: newActiveId,
+        splitDirection: shouldClearSplit ? null : state.splitDirection,
+        splitTabId: shouldClearSplit ? null : state.splitTabId,
+      }
     }
 
     case 'SET_ACTIVE':
@@ -53,13 +61,15 @@ function tabReducer(state: TabState, action: TabAction): TabState {
       return action.payload
 
     case 'CLOSE_ALL_TABS':
-      return { tabs: [], activeTabId: null }
+      return { tabs: [], activeTabId: null, splitDirection: null, splitTabId: null }
 
     case 'CLOSE_OTHER_TABS': {
       const keepTab = state.tabs.find(t => t.id === action.payload)
       return {
         tabs: keepTab ? [keepTab] : [],
         activeTabId: action.payload,
+        splitDirection: null,
+        splitTabId: null,
       }
     }
 
@@ -70,6 +80,33 @@ function tabReducer(state: TabState, action: TabAction): TabState {
         tabs: state.tabs.map(t => t.id === id ? { ...t, gitBranch, worktreeName } : t),
       }
     }
+
+    case 'SPLIT_HORIZONTAL': {
+      // Need at least 2 tabs and an active tab to split
+      if (!state.activeTabId || state.tabs.length < 2) {
+        return state
+      }
+      // Toggle off if already horizontal split
+      if (state.splitDirection === 'horizontal') {
+        return { ...state, splitDirection: null, splitTabId: null }
+      }
+      return { ...state, splitDirection: 'horizontal', splitTabId: state.activeTabId }
+    }
+
+    case 'SPLIT_VERTICAL': {
+      // Need at least 2 tabs and an active tab to split
+      if (!state.activeTabId || state.tabs.length < 2) {
+        return state
+      }
+      // Toggle off if already vertical split
+      if (state.splitDirection === 'vertical') {
+        return { ...state, splitDirection: null, splitTabId: null }
+      }
+      return { ...state, splitDirection: 'vertical', splitTabId: state.activeTabId }
+    }
+
+    case 'UNSPLIT':
+      return { ...state, splitDirection: null, splitTabId: null }
 
     default:
       return state
@@ -89,7 +126,7 @@ function createTab(overrides: Partial<Tab> = {}): Tab {
 }
 
 describe('tabReducer', () => {
-  const emptyState: TabState = { tabs: [], activeTabId: null }
+  const emptyState: TabState = { tabs: [], activeTabId: null, splitDirection: null, splitTabId: null }
 
   describe('ADD_TAB', () => {
     it('adds a tab to empty state', () => {
@@ -105,6 +142,8 @@ describe('tabReducer', () => {
       const state: TabState = {
         tabs: [createTab({ id: 'tab-1' })],
         activeTabId: 'tab-1',
+        splitDirection: null,
+        splitTabId: null,
       }
       const newTab = createTab({ id: 'tab-2' })
       const result = tabReducer(state, { type: 'ADD_TAB', payload: newTab })
@@ -119,6 +158,8 @@ describe('tabReducer', () => {
       const state: TabState = {
         tabs: [createTab({ id: 'tab-1' }), createTab({ id: 'tab-2' })],
         activeTabId: 'tab-1',
+        splitDirection: null,
+        splitTabId: null,
       }
       const result = tabReducer(state, { type: 'CLOSE_TAB', payload: 'tab-1' })
 
@@ -130,6 +171,8 @@ describe('tabReducer', () => {
       const state: TabState = {
         tabs: [createTab({ id: 'tab-1' }), createTab({ id: 'tab-2' })],
         activeTabId: 'tab-2',
+        splitDirection: null,
+        splitTabId: null,
       }
       const result = tabReducer(state, { type: 'CLOSE_TAB', payload: 'tab-2' })
 
@@ -141,6 +184,8 @@ describe('tabReducer', () => {
       const state: TabState = {
         tabs: [createTab({ id: 'tab-1' })],
         activeTabId: 'tab-1',
+        splitDirection: null,
+        splitTabId: null,
       }
       const result = tabReducer(state, { type: 'CLOSE_TAB', payload: 'tab-1' })
 
@@ -152,6 +197,8 @@ describe('tabReducer', () => {
       const state: TabState = {
         tabs: [createTab({ id: 'tab-1' }), createTab({ id: 'tab-2' })],
         activeTabId: 'tab-1',
+        splitDirection: null,
+        splitTabId: null,
       }
       const result = tabReducer(state, { type: 'CLOSE_TAB', payload: 'tab-2' })
 
@@ -164,6 +211,8 @@ describe('tabReducer', () => {
       const state: TabState = {
         tabs: [createTab({ id: 'tab-1' }), createTab({ id: 'tab-2' })],
         activeTabId: 'tab-1',
+        splitDirection: null,
+        splitTabId: null,
       }
       const result = tabReducer(state, { type: 'SET_ACTIVE', payload: 'tab-2' })
 
@@ -176,6 +225,8 @@ describe('tabReducer', () => {
       const state: TabState = {
         tabs: [createTab({ id: 'tab-1', cwd: '/old/path', label: 'path' })],
         activeTabId: 'tab-1',
+        splitDirection: null,
+        splitTabId: null,
       }
       const result = tabReducer(state, {
         type: 'UPDATE_CWD',
@@ -192,6 +243,8 @@ describe('tabReducer', () => {
       const state: TabState = {
         tabs: [createTab({ id: 'tab-1', containerState: 'starting' })],
         activeTabId: 'tab-1',
+        splitDirection: null,
+        splitTabId: null,
       }
       const result = tabReducer(state, {
         type: 'UPDATE_CONTAINER_STATE',
@@ -211,6 +264,8 @@ describe('tabReducer', () => {
           createTab({ id: 'tab-3' }),
         ],
         activeTabId: 'tab-1',
+        splitDirection: null,
+        splitTabId: null,
       }
       const result = tabReducer(state, {
         type: 'REORDER_TABS',
@@ -228,6 +283,8 @@ describe('tabReducer', () => {
       const newState: TabState = {
         tabs: [createTab({ id: 'restored-1' })],
         activeTabId: 'restored-1',
+        splitDirection: null,
+        splitTabId: null,
       }
       const result = tabReducer(emptyState, {
         type: 'RESTORE_SESSION',
@@ -243,6 +300,8 @@ describe('tabReducer', () => {
       const state: TabState = {
         tabs: [createTab({ id: 'tab-1' }), createTab({ id: 'tab-2' })],
         activeTabId: 'tab-1',
+        splitDirection: null,
+        splitTabId: null,
       }
       const result = tabReducer(state, { type: 'CLOSE_ALL_TABS' })
 
@@ -260,6 +319,8 @@ describe('tabReducer', () => {
           createTab({ id: 'tab-3' }),
         ],
         activeTabId: 'tab-1',
+        splitDirection: null,
+        splitTabId: null,
       }
       const result = tabReducer(state, {
         type: 'CLOSE_OTHER_TABS',
@@ -277,6 +338,8 @@ describe('tabReducer', () => {
       const state: TabState = {
         tabs: [createTab({ id: 'tab-1' })],
         activeTabId: 'tab-1',
+        splitDirection: null,
+        splitTabId: null,
       }
       const result = tabReducer(state, {
         type: 'UPDATE_GIT_BRANCH',
@@ -285,6 +348,157 @@ describe('tabReducer', () => {
 
       expect(result.tabs[0].gitBranch).toBe('main')
       expect(result.tabs[0].worktreeName).toBe('yolium-123')
+    })
+  })
+
+  describe('SPLIT_HORIZONTAL', () => {
+    it('sets split direction to horizontal with active tab', () => {
+      const state: TabState = {
+        tabs: [createTab({ id: 'tab-1' }), createTab({ id: 'tab-2' })],
+        activeTabId: 'tab-1',
+        splitDirection: null,
+        splitTabId: null,
+      }
+      const result = tabReducer(state, { type: 'SPLIT_HORIZONTAL' })
+
+      expect(result.splitDirection).toBe('horizontal')
+      expect(result.splitTabId).toBe('tab-1')
+    })
+
+    it('does nothing when no active tab', () => {
+      const state: TabState = {
+        tabs: [],
+        activeTabId: null,
+        splitDirection: null,
+        splitTabId: null,
+      }
+      const result = tabReducer(state, { type: 'SPLIT_HORIZONTAL' })
+
+      expect(result.splitDirection).toBeNull()
+      expect(result.splitTabId).toBeNull()
+    })
+
+    it('does nothing when only one tab exists', () => {
+      const state: TabState = {
+        tabs: [createTab({ id: 'tab-1' })],
+        activeTabId: 'tab-1',
+        splitDirection: null,
+        splitTabId: null,
+      }
+      const result = tabReducer(state, { type: 'SPLIT_HORIZONTAL' })
+
+      expect(result.splitDirection).toBeNull()
+      expect(result.splitTabId).toBeNull()
+    })
+
+    it('toggles off split when already horizontal split', () => {
+      const state: TabState = {
+        tabs: [createTab({ id: 'tab-1' }), createTab({ id: 'tab-2' })],
+        activeTabId: 'tab-2',
+        splitDirection: 'horizontal',
+        splitTabId: 'tab-1',
+      }
+      const result = tabReducer(state, { type: 'SPLIT_HORIZONTAL' })
+
+      expect(result.splitDirection).toBeNull()
+      expect(result.splitTabId).toBeNull()
+    })
+  })
+
+  describe('SPLIT_VERTICAL', () => {
+    it('sets split direction to vertical with active tab', () => {
+      const state: TabState = {
+        tabs: [createTab({ id: 'tab-1' }), createTab({ id: 'tab-2' })],
+        activeTabId: 'tab-1',
+        splitDirection: null,
+        splitTabId: null,
+      }
+      const result = tabReducer(state, { type: 'SPLIT_VERTICAL' })
+
+      expect(result.splitDirection).toBe('vertical')
+      expect(result.splitTabId).toBe('tab-1')
+    })
+
+    it('does nothing when no active tab', () => {
+      const state: TabState = {
+        tabs: [],
+        activeTabId: null,
+        splitDirection: null,
+        splitTabId: null,
+      }
+      const result = tabReducer(state, { type: 'SPLIT_VERTICAL' })
+
+      expect(result.splitDirection).toBeNull()
+      expect(result.splitTabId).toBeNull()
+    })
+
+    it('does nothing when only one tab exists', () => {
+      const state: TabState = {
+        tabs: [createTab({ id: 'tab-1' })],
+        activeTabId: 'tab-1',
+        splitDirection: null,
+        splitTabId: null,
+      }
+      const result = tabReducer(state, { type: 'SPLIT_VERTICAL' })
+
+      expect(result.splitDirection).toBeNull()
+      expect(result.splitTabId).toBeNull()
+    })
+
+    it('toggles off split when already vertical split', () => {
+      const state: TabState = {
+        tabs: [createTab({ id: 'tab-1' }), createTab({ id: 'tab-2' })],
+        activeTabId: 'tab-2',
+        splitDirection: 'vertical',
+        splitTabId: 'tab-1',
+      }
+      const result = tabReducer(state, { type: 'SPLIT_VERTICAL' })
+
+      expect(result.splitDirection).toBeNull()
+      expect(result.splitTabId).toBeNull()
+    })
+  })
+
+  describe('UNSPLIT', () => {
+    it('clears split state', () => {
+      const state: TabState = {
+        tabs: [createTab({ id: 'tab-1' }), createTab({ id: 'tab-2' })],
+        activeTabId: 'tab-2',
+        splitDirection: 'horizontal',
+        splitTabId: 'tab-1',
+      }
+      const result = tabReducer(state, { type: 'UNSPLIT' })
+
+      expect(result.splitDirection).toBeNull()
+      expect(result.splitTabId).toBeNull()
+    })
+  })
+
+  describe('split behavior with CLOSE_TAB', () => {
+    it('clears split when split tab is closed', () => {
+      const state: TabState = {
+        tabs: [createTab({ id: 'tab-1' }), createTab({ id: 'tab-2' })],
+        activeTabId: 'tab-2',
+        splitDirection: 'horizontal',
+        splitTabId: 'tab-1',
+      }
+      const result = tabReducer(state, { type: 'CLOSE_TAB', payload: 'tab-1' })
+
+      expect(result.splitDirection).toBeNull()
+      expect(result.splitTabId).toBeNull()
+    })
+
+    it('clears split when active tab in split is closed', () => {
+      const state: TabState = {
+        tabs: [createTab({ id: 'tab-1' }), createTab({ id: 'tab-2' })],
+        activeTabId: 'tab-2',
+        splitDirection: 'horizontal',
+        splitTabId: 'tab-1',
+      }
+      const result = tabReducer(state, { type: 'CLOSE_TAB', payload: 'tab-2' })
+
+      expect(result.splitDirection).toBeNull()
+      expect(result.splitTabId).toBeNull()
     })
   })
 })
