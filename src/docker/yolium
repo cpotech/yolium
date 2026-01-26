@@ -1,0 +1,634 @@
+#!/usr/bin/env bash
+# Yolium - Simplified Docker environment for Claude development
+# Automatically rebuilds when Dockerfile changes and uses ephemeral containers with persistent caches
+
+set -euo pipefail
+
+if ((BASH_VERSINFO[0] < 4)); then
+    echo "Error: Bash 4.0 or later required (found ${BASH_VERSION}). This project requires 4.0+ to simplify the code." >&2
+    if [[ $OSTYPE == darwin* ]]; then
+        echo "Due to GPL licensing, macOS ships with Bash 3.2, which is archaic." >&2
+        echo "Try: brew install bash, then ensure /opt/homebrew/bin is in your PATH" >&2
+    fi
+    exit 1
+fi
+
+# Configuration
+# Resolve symlinks to get the real script location (allows installation as symlink)
+readonly SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+readonly SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+readonly PROJECT_DIR="$(pwd)"
+readonly PROJECT_NAME="$(basename "$PROJECT_DIR")"
+readonly DOCKERFILE_PATH="${SCRIPT_DIR}/Dockerfile"
+readonly ENTRYPOINT_PATH="${SCRIPT_DIR}/entrypoint.sh"
+readonly IMAGE_NAME="yolium:latest"
+readonly CONTAINER_PREFIX="yolium"
+
+# Colors for output
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly BLUE='\033[0;34m'
+readonly CYAN='\033[0;36m'
+readonly NC='\033[0m' # No Color
+
+# Helper functions
+log_info() { echo -e "${BLUE}ℹ${NC}  $1"; }
+log_success() { echo -e "${GREEN}✅${NC} $1"; }
+log_warning() { echo -e "${YELLOW}⚠${NC}  $1"; }
+log_error() { echo -e "${RED}❌${NC} $1" >&2; }
+log_build() { echo -e "${CYAN}🔨${NC} $1"; }
+
+# Check if Docker is installed and running
+check_docker() {
+    if ! command -v docker &> /dev/null; then
+        log_error "Docker is not installed. Please install Docker first."
+        exit 1
+    fi
+
+    if ! docker info &> /dev/null; then
+        log_error "Docker daemon is not running. Please start Docker."
+        exit 1
+    fi
+}
+
+# Calculate hash for a file
+calculate_hash() {
+    local file="$1"
+    if [[ -f "$file" ]]; then
+        sha256sum "$file" | cut -d' ' -f1
+    else
+        echo "none"
+    fi
+}
+
+# Get container name for current project
+get_container_name() {
+    local project_hash=$(echo -n "$PROJECT_DIR" | sha256sum | cut -c1-12)
+    echo "${CONTAINER_PREFIX}-${project_hash}"
+}
+
+
+# Check if image needs rebuild
+needs_rebuild() {
+    # Calculate current Dockerfile and entrypoint hashes
+    local dockerfile_hash=$(calculate_hash "$DOCKERFILE_PATH")
+    local entrypoint_hash=$(calculate_hash "$ENTRYPOINT_PATH")
+    local combined_hash="${dockerfile_hash}-${entrypoint_hash}"
+
+    # Check if image exists
+    if ! docker image inspect "$IMAGE_NAME" &> /dev/null; then
+        return 0  # Needs rebuild - image doesn't exist
+    fi
+
+    # Get stored hash from image
+    local stored_hash=$(docker inspect "$IMAGE_NAME" \
+        --format '{{ index .Config.Labels "yolium.hash" }}' 2>/dev/null || echo "none")
+
+    # Compare hashes
+    if [[ "$combined_hash" != "$stored_hash" ]]; then
+        return 0  # Needs rebuild
+    fi
+
+    return 1  # No rebuild needed
+}
+
+# Build Docker image
+build_image() {
+    local dockerfile_hash=$(calculate_hash "$DOCKERFILE_PATH")
+    local entrypoint_hash=$(calculate_hash "$ENTRYPOINT_PATH")
+    local combined_hash="${dockerfile_hash}-${entrypoint_hash}"
+
+    log_build "Building Yolium image (this may take a few minutes on first run)..."
+
+    # Get current user/group IDs
+    local user_id=$(id -u)
+    local group_id=$(id -g)
+
+    # Build with progress output
+    local build_timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    if DOCKER_BUILDKIT=1 docker build \
+        --build-arg USER_ID="${user_id}" \
+        --build-arg GROUP_ID="${group_id}" \
+        --build-arg USERNAME="agent" \
+        --build-arg BUILD_TIMESTAMP=${build_timestamp} \
+        --label "yolium.hash=${combined_hash}" \
+        --label "yolium.version=1.0.0" \
+        --label "yolium.built=${build_timestamp}" \
+        -t "$IMAGE_NAME" \
+        "$SCRIPT_DIR" ; then
+        log_success "Image built successfully!"
+        docker image prune -f --filter "label=yolium.version" &>/dev/null || true
+        return 0
+    else
+        log_error "Failed to build image"
+        return 1
+    fi
+}
+
+expand_tilde() {
+    local path="$1"
+    if [[ "$path" =~ ^~ ]]; then
+        echo "${path/#\~/$HOME}"
+    else
+        echo "$path"
+    fi
+}
+
+has_path_traversal() {
+    local path="$1"
+    [[ "$path" =~ \.\. ]]
+}
+
+is_absolute_path() {
+    local path="$1"
+    [[ "$path" =~ ^/ ]]
+}
+
+is_critical_system_dir() {
+    local path="$1"
+    [[ "$path" =~ ^/(bin|sbin|boot|lib|lib64)(/|$) ]]
+}
+
+is_system_dir() {
+    local path="$1"
+    [[ "$path" =~ ^/(etc|var|usr|sys|proc|dev)(/|$) ]]
+}
+
+is_duplicate_dir() {
+    local path="$1"
+    local -n check_dirs_ref=$2
+
+    for existing_dir in "${check_dirs_ref[@]}"; do
+        if [[ "$path" == "$existing_dir" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+validate_dir_path() {
+    local dir="$1"
+    local -n validated_dirs_ref=$2
+    local project_realpath="$3"
+
+    dir=$(expand_tilde "$dir")
+
+    if has_path_traversal "$dir"; then
+        log_error "Path traversal not allowed: $dir"
+        return 1
+    fi
+
+    if ! is_absolute_path "$dir"; then
+        log_error "Directory must be absolute path: $dir"
+        return 1
+    fi
+
+    if [[ ! -d "$dir" ]]; then
+        log_error "Directory not found: $dir"
+        return 1
+    fi
+
+    local dir_realpath
+    dir_realpath=$(realpath "$dir" 2>/dev/null) || {
+        log_error "Cannot resolve path: $dir"
+        return 1
+    }
+
+    if is_critical_system_dir "$dir_realpath"; then
+        log_error "Mounting critical system directory not allowed: $dir_realpath"
+        return 1
+    fi
+
+    if [[ "$dir_realpath" == "$project_realpath" ]]; then
+        log_warning "Skipping duplicate: $dir (already mounted as project directory)"
+        return 0  # Not an error, just skip
+    fi
+
+    if is_duplicate_dir "$dir_realpath" validated_dirs_ref; then
+        log_warning "Skipping duplicate directory: $dir"
+        return 0  # Not an error, just skip
+    fi
+
+    if is_system_dir "$dir_realpath"; then
+        log_warning "Mounting system directory: $dir_realpath (proceed with caution)"
+    fi
+
+    validated_dirs_ref+=("$dir_realpath")
+    return 0
+}
+
+# Mount additional dirs to Docker mount options
+mount_additional_dirs() {
+    local -n mount_opts_ref=$1
+    shift
+    local extra_dirs=("$@")
+
+    # Return early if no dirs to mount
+    if [[ ${#extra_dirs[@]} -eq 0 ]]; then
+        return 0
+    fi
+
+    for extra_dir in "${extra_dirs[@]}"; do
+        mount_opts_ref+=(-v "$extra_dir:$extra_dir:z")
+        log_info "Mounting additional directory: $extra_dir"
+    done
+}
+
+# Run container with --rm (ephemeral)
+run_container() {
+    local container_name="$1"
+    local -n extra_dirs_to_mount=$2
+    local tool="$3"
+    shift 3
+
+    # Check if first arg is "shell" mode
+    local shell_mode=false
+    local admin_mode=false
+    if [[ "${1:-}" == "shell" ]]; then
+        shell_mode=true
+        shift
+        # Check if next arg is --admin
+        if [[ "${1:-}" == "--admin" ]]; then
+            admin_mode=true
+            shift
+        fi
+    fi
+
+    local cmd_args=("$@")
+
+    if [[ "$admin_mode" == "true" ]]; then
+        log_success "Starting container for: $PROJECT_NAME (admin shell)"
+    else
+        log_success "Starting container for: $PROJECT_NAME"
+    fi
+
+    # Prepare mount options - mount project at its real host path
+    local mount_opts=(
+        -v "$PROJECT_DIR:$PROJECT_DIR:z"
+        --env "PROJECT_DIR=$PROJECT_DIR"
+    )
+
+    mount_additional_dirs mount_opts "${extra_dirs_to_mount[@]}"
+
+    # Pass extra directories as env var so entrypoint can display them
+    if [[ ${#extra_dirs_to_mount[@]} -gt 0 ]]; then
+        mount_opts+=(--env "EXTRA_DIRS=${extra_dirs_to_mount[*]}")
+    fi
+
+    # Mount .gitconfig to temp location for copying (if it exists)
+    if [[ -f "${HOME}/.gitconfig" ]]; then
+        mount_opts+=(-v "${HOME}/.gitconfig:/tmp/host_gitconfig:ro")
+    fi
+
+    # Mount dedicated Yolium SSH directory
+    local yolium_ssh="${HOME}/.yolium/ssh"
+    if [[ -d "${yolium_ssh}" ]]; then
+        mount_opts+=(-v "${yolium_ssh}:/home/agent/.ssh:rw")
+        log_info "Yolium SSH directory mounted (read-write)"
+    else
+        log_warning "SSH not configured. Run 'yolium ssh-init' to enable SSH operations."
+    fi
+
+    # Mount cache directories for package managers
+    local cache_dir="${HOME}/.cache/yolium/${container_name}"
+    mkdir -p "${cache_dir}/npm" "${cache_dir}/pip" "${cache_dir}/maven" "${cache_dir}/gradle"
+
+    mount_opts+=(
+        -v "${cache_dir}/npm:/home/agent/.npm"
+        -v "${cache_dir}/pip:/home/agent/.cache/pip"
+        -v "${cache_dir}/maven:/home/agent/.m2"
+        -v "${cache_dir}/gradle:/home/agent/.gradle"
+    )
+
+    # Mount per-project persistent data
+    local project_data_dir="${HOME}/.yolium/projects/${container_name}"
+    local history_dir="${project_data_dir}/history"
+    mkdir -p "${history_dir}"
+
+    # Mount history directory (not individual files to avoid file locking issues)
+    mount_opts+=(
+        -v "${history_dir}:/home/agent/.yolium_history"
+        --env "HISTFILE=/home/agent/.yolium_history/zsh_history"
+    )
+
+    if [[ "$tool" == "opencode" ]]; then
+        local opencode_config_dir="${HOME}/.config/opencode"
+        local opencode_auth_dir="${HOME}/.local/share/opencode"
+
+        mkdir -p "$opencode_config_dir"
+        mkdir -p "$opencode_auth_dir"
+
+        mount_opts+=(
+            -v "${opencode_config_dir}:/home/agent/.config/opencode"
+            -v "${opencode_auth_dir}:/home/agent/.local/share/opencode"
+        )
+
+        log_info "OpenCode configuration and auth mounted"
+    else
+        local claude_dir="${HOME}/.claude"
+
+        mkdir -p "$claude_dir"
+
+        mount_opts+=(
+            -v "${claude_dir}:/home/agent/.claude"
+            --env "CLAUDE_CONFIG_DIR=/home/agent/.claude"
+        )
+
+        log_info "Claude CLI configuration mounted"
+    fi
+
+    # Set tool environment variable
+    mount_opts+=(--env "TOOL=$tool")
+
+    # Mount host direnv approvals for translation if project has .envrc
+    if [[ -f "$PROJECT_DIR/.envrc" ]]; then
+        local host_direnv_allow="${HOME}/.local/share/direnv/allow"
+        if [[ -d "$host_direnv_allow" ]]; then
+            mount_opts+=(-v "${host_direnv_allow}:/tmp/host_direnv_allow:ro")
+            log_info "Host direnv approvals will be translated to container"
+        fi
+    fi
+
+    # Prepare the command to run
+    local container_cmd
+    if [[ "$shell_mode" == "true" ]]; then
+        if [[ "$admin_mode" == "true" ]]; then
+            container_cmd=(bash -c "echo '🔒 Admin shell - sudo access enabled' && exec ${cmd_args[*]:-/bin/zsh}")
+        else
+            container_cmd=("${cmd_args[@]:-/bin/zsh}")
+        fi
+    else
+        # Run tool through zsh to get proper environment
+        local tool_cmd
+        if [[ "$tool" == "opencode" ]]; then
+            tool_cmd="opencode"
+        else
+            tool_cmd="npx get-shit-done-cc --global && claude --dangerously-skip-permissions"
+        fi
+
+        if [[ ${#cmd_args[@]} -gt 0 ]]; then
+            tool_cmd="$tool_cmd ${cmd_args[*]}"
+        fi
+        container_cmd=(zsh -c "source ~/.zshrc && $tool_cmd")
+    fi
+
+    # Pass network restriction opt-out if set
+    if [[ -n "${YOLIUM_NETWORK_FULL:-}" ]]; then
+        mount_opts+=(--env "YOLIUM_NETWORK_FULL=$YOLIUM_NETWORK_FULL")
+        log_info "Network restrictions disabled (YOLIUM_NETWORK_FULL=true)"
+    fi
+
+    local env_file_args=()
+    local yolium_env="${HOME}/.yolium/.env"
+    if [[ -f "$yolium_env" ]]; then
+        env_file_args+=(--env-file "$yolium_env")
+        log_info "Global .env loaded from ~/.yolium/.env"
+    fi
+
+    if [[ -f "$PROJECT_DIR/.env" ]]; then
+        env_file_args+=(--env-file "$PROJECT_DIR/.env")
+        log_info "Project .env loaded from $PROJECT_DIR/.env"
+    fi
+
+    # Build port forwarding arguments
+    local port_args=()
+    for port in "${ports[@]}"; do
+        # Support both "3002" and "3002:8080" syntax
+        if [[ "$port" =~ ^[0-9]+$ ]]; then
+            # Simple port number - map to same port
+            port_args+=(-p "${port}:${port}")
+            log_info "Port forwarding: ${port} -> ${port}"
+        elif [[ "$port" =~ ^[0-9]+:[0-9]+$ ]]; then
+            # host:container syntax
+            port_args+=(-p "${port}")
+            log_info "Port forwarding: ${port}"
+        else
+            log_warning "Invalid port format: ${port} (use '3002' or '3002:8080')"
+        fi
+    done
+
+    # Run ephemeral container with --rm
+    docker run -it --rm \
+        --name "$container_name" \
+        --hostname "yolium-$PROJECT_NAME" \
+        --cap-add=NET_ADMIN \
+        "${port_args[@]}" \
+        "${mount_opts[@]}" \
+        "${env_file_args[@]}" \
+        -w "$PROJECT_DIR" \
+        --init \
+        "$IMAGE_NAME" \
+        "${container_cmd[@]}"
+}
+
+# Show help
+show_help() {
+    cat << EOF
+Yolium - Simplified Docker environment for Claude development
+
+Usage:
+    yolium [OPTIONS] [COMMAND]
+
+Options:
+    -h, --help              Show this help message
+    --tool TOOL             Choose tool: claude (default) or opencode
+    -p PORT                 Forward a port from host to container (can be used multiple times)
+    --rebuild               Force rebuild of the image
+    --add-dir DIR           Mount additional directory (can be used multiple times)
+
+Environment Variables:
+    YOLIUM_TOOL=opencode    Select tool via environment variable
+    YOLIUM_NETWORK_FULL=true    Disable network restrictions (allow all outbound)
+
+Commands:
+    shell [--admin]         Start interactive shell instead of Claude CLI
+    ssh-init                Initialize SSH directory for Yolium
+
+    If no command is provided, Claude CLI will be started automatically.
+    Use 'shell' command to get a shell instead of Claude CLI.
+    Use 'shell --admin' to get a shell with sudo privileges.
+    Other commands will be executed inside the container.
+
+Examples:
+    yolium                            # Start Claude CLI for current project
+    yolium --tool opencode            # Start OpenCode instead of Claude
+    yolium -p 3002                    # Forward port 3002
+    yolium -p 3002:8080               # Map host port 3002 to container port 8080
+    yolium shell                      # Start interactive shell instead of Claude
+    yolium shell --admin              # Start admin shell with sudo access
+    yolium --add-dir ~/1 --add-dir ~/2  # Add dirs with Claude CLI
+    yolium python script.py           # Run Python script in container
+    yolium --rebuild                  # Force rebuild image
+    yolium ssh-init                   # Set up SSH for Yolium
+    YOLIUM_TOOL=opencode yolium     # Use env var to select tool
+
+Containers are ephemeral and automatically removed when you exit.
+Package caches and shell history persist between sessions.
+
+All directories are mounted at their full host paths for symlink/path compatibility.
+EOF
+}
+
+# Set up dedicated SSH directory for Yolium
+ssh_setup() {
+    local yolium_ssh="${HOME}/.yolium/ssh"
+
+    log_info "Setting up Yolium SSH directory..."
+    mkdir -p "${yolium_ssh}"
+    chmod 700 "${yolium_ssh}"
+
+
+    # Copy known_hosts if it exists
+    if [[ -f "${HOME}/.ssh/known_hosts" ]]; then
+        cp "${HOME}/.ssh/known_hosts" "${yolium_ssh}/known_hosts"
+        chmod 600 "${yolium_ssh}/known_hosts"
+        log_success "Copied known_hosts from ~/.ssh"
+    fi
+
+    # Check if Yolium key already exists
+    if [[ -f "${yolium_ssh}/id_ed25519" ]]; then
+        log_info "Yolium SSH key already exists"
+    else
+        log_info "Generating dedicated SSH key for Yolium..."
+        ssh-keygen -t ed25519 -f "${yolium_ssh}/id_ed25519" -C "yolium@$(hostname)" -N ""
+        log_success "Generated new SSH key: ${yolium_ssh}/id_ed25519"
+        echo ""
+        log_info "Add this public key to your Git provider:"
+        echo ""
+        cat "${yolium_ssh}/id_ed25519.pub"
+        echo ""
+        log_info "Alternatively, replace the keys in ${yolium_ssh}/ with your desired keys"
+    fi
+
+    log_success "SSH setup complete! Directory: ${yolium_ssh}"
+    log_info "Yolium will use this directory for all SSH operations."
+}
+
+# Main execution
+main() {
+    # Parse arguments
+    local force_rebuild=false
+    local shell_mode=false
+    local admin_mode=false
+    local cmd_args=()
+    declare -a ports=()
+    local extra_dirs=()
+    local tool="${YOLIUM_TOOL:-claude}"
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            --rebuild)
+                force_rebuild=true
+                shift
+                ;;
+            -p)
+                shift
+                if [[ -z "${1:-}" ]]; then
+                    log_error "Port argument requires a value"
+                    exit 1
+                fi
+                ports+=("$1")
+                shift
+                ;;
+            --add-dir)
+                shift
+                if [[ -z "${1:-}" ]]; then
+                    log_error "--add-dir requires a directory path"
+                    exit 1
+                fi
+                extra_dirs+=("$1")
+                shift
+                ;;
+            --tool)
+                shift
+                if [[ -z "${1:-}" ]]; then
+                    log_error "--tool requires a value (claude or opencode)"
+                    exit 1
+                fi
+                tool="$1"
+                shift
+                ;;
+            shell)
+                shell_mode=true
+                shift
+                # Check if next arg is --admin
+                if [[ "${1:-}" == "--admin" ]]; then
+                    admin_mode=true
+                    shift
+                fi
+                # Remaining args become shell commands
+                cmd_args=("$@")
+                break
+                ;;
+            ssh-init)
+                ssh_setup
+                exit 0
+                ;;
+            *)
+                cmd_args+=("$1")
+                shift
+                ;;
+        esac
+    done
+
+    # Validate tool selection
+    if [[ "$tool" != "claude" && "$tool" != "opencode" ]]; then
+        log_error "Invalid tool: $tool (must be 'claude' or 'opencode')"
+        exit 1
+    fi
+
+    # Check Docker
+    check_docker
+
+    # Get container name for current project
+    local container_name=$(get_container_name)
+
+    # Validate dir paths (batch all errors so user sees all problems at once)
+    local project_realpath
+    project_realpath=$(realpath "$PROJECT_DIR")
+    local validated_dirs=()
+    local validation_failed=false
+    for dir in "${extra_dirs[@]}"; do
+        if ! validate_dir_path "$dir" validated_dirs "$project_realpath"; then
+            validation_failed=true
+        fi
+    done
+
+    if [[ "$validation_failed" == "true" ]]; then
+        exit 1
+    fi
+
+    # Check if rebuild is needed or forced
+    if [[ "$force_rebuild" == "true" ]] || needs_rebuild; then
+        if [[ "$force_rebuild" == "true" ]]; then
+            log_info "Forcing image rebuild..."
+        else
+            log_info "Dockerfile or entrypoint changed, rebuilding automatically..."
+        fi
+
+        if ! build_image; then
+            log_error "Build failed!"
+            exit 1
+        fi
+
+    fi
+
+    # Run or attach to container
+    if [[ "$shell_mode" == "true" ]]; then
+        if [[ "$admin_mode" == "true" ]]; then
+            run_container "$container_name" validated_dirs "$tool" "shell" "--admin" "${cmd_args[@]}"
+        else
+            run_container "$container_name" validated_dirs "$tool" "shell" "${cmd_args[@]}"
+        fi
+    else
+        run_container "$container_name" validated_dirs "$tool" "${cmd_args[@]}"
+    fi
+}
+
+# Run main function
+main "$@"

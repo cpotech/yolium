@@ -1,0 +1,54 @@
+name: Build
+
+on:
+  workflow_dispatch:  # Manual trigger only - automatic builds disabled to reduce costs
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows
+          # - os: macos-latest
+          #   name: macOS-ARM64
+          # - os: macos-15-intel
+          #   name: macOS-Intel
+          - os: ubuntu-latest
+            name: Linux
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Rebuild native modules for Electron
+        run: npx electron-rebuild --only node-pty
+
+      - name: Build
+        run: npm run make
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Yolium-${{ matrix.name }}
+          path: out/make/**/*
+          compression-level: 0

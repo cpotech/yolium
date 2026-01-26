@@ -1,0 +1,182 @@
+Yolium License Agreement
+
+Copyright (c) 2024-2025 Yolium
+
+================================================================================
+1. DEFINITIONS
+================================================================================
+
+"Software" means the Yolium source code, object code, documentation, and any
+associated materials made available under this license.
+
+"Generated Files" means any files, configurations, outputs, or artifacts
+created by the Software during normal use (e.g., user projects, terminal
+sessions, container configurations). Generated Files are owned by the user
+and are NOT subject to this license's restrictions.
+
+"Derivative Work" means any work that is based on, derived from, or
+incorporates the Software, including modifications, translations, adaptations,
+or extensions of the Software's functionality.
+
+"Monetization" means any activity intended to generate revenue, including but
+not limited to: reselling, sublicensing, offering as a paid service, or
+bundling with commercial products. Monetization does NOT include:
+  - Using the Software internally to build other products
+  - Using the Software as a development tool for commercial projects
+
+"Core Contributors" means the individuals listed in Section 5 who hold
+collective rights to the Software.
+
+================================================================================
+2. GRANT OF LICENSE
+================================================================================
+
+Subject to the terms of this Agreement, the Core Contributors grant you a
+non-exclusive, non-transferable license to:
+
+  a) Clone, install, and use the Software locally or within your organization
+  b) Modify the Software for internal use
+  c) Use the Software as a development tool to build any product (commercial
+     or non-commercial), provided the product does not contain or distribute
+     the Software itself
+
+This license is granted free of charge for non-commercial use. Commercial
+licenses for Monetization purposes require explicit written permission from
+all Core Contributors.
+
+================================================================================
+3. RESTRICTIONS
+================================================================================
+
+You may NOT, without explicit written permission from all Core Contributors:
+
+  a) Resell, redistribute, or sublicense the Software as a standalone product
+  b) Operate the Software as a hosted service for third parties
+  c) Create Derivative Works for commercial distribution or Monetization
+  d) Remove or alter any copyright notices, trademarks, or this license
+  e) Represent that you have any ownership rights in the Software
+
+================================================================================
+4. CONTRIBUTIONS AND RIGHTS ASSIGNMENT
+================================================================================
+
+By submitting code, documentation, or other materials ("Contributions") to
+this project, you agree to the following:
+
+  a) You assign to the Core Contributors all right, title, and interest in
+     and to your Contributions, including all intellectual property rights.
+     This assignment is irrevocable.
+
+  b) You grant the Core Contributors a perpetual, worldwide, royalty-free,
+     non-exclusive license to use, reproduce, modify, distribute, sublicense,
+     and otherwise exploit your Contributions for any purpose.
+
+  c) You waive any moral rights in your Contributions to the fullest extent
+     permitted by applicable law.
+
+  d) You represent and warrant that:
+     - You have the legal right to make such assignment
+     - Your Contributions are your original work
+     - Your Contributions do not infringe any third-party rights
+     - You are not bound by any agreement that would prevent this assignment
+
+================================================================================
+5. CORE CONTRIBUTORS
+================================================================================
+
+The following individuals are designated as Core Contributors and receive
+perpetual, worldwide, royalty-free licenses to use, modify, distribute, and
+monetize the Software and any Contributions:
+
+  - Yolium (original author)
+
+ADDING CORE CONTRIBUTORS: New Core Contributors may be added by unanimous
+written consent of all existing Core Contributors.
+
+REMOVAL OF CORE CONTRIBUTORS: A Core Contributor may be removed only if they:
+  (i)   Have been unreachable for at least one (1) month, AND
+  (ii)  Have shown no activity on the project during that period, AND
+  (iii) All remaining Core Contributors unanimously vote for removal.
+
+REINSTATEMENT: A removed Core Contributor may be reinstated by unanimous vote
+of all current Core Contributors.
+
+================================================================================
+6. TERMINATION
+================================================================================
+
+This license is effective until terminated. Your rights under this license
+will terminate automatically without notice if you fail to comply with any
+of its terms.
+
+Upon termination:
+  a) You must immediately cease all use of the Software
+  b) You must destroy all copies of the Software in your possession
+  c) Sections 1, 4, 6, 7, 8, 9, and 10 shall survive termination
+
+================================================================================
+7. HIGH RISK ACTIVITIES AND AI DISCLAIMER
+================================================================================
+
+THE SOFTWARE INTERACTS WITH ARTIFICIAL INTELLIGENCE SYSTEMS, DOCKER CONTAINERS,
+AND EXECUTES CODE IN TERMINAL ENVIRONMENTS. YOU ACKNOWLEDGE THAT:
+
+  a) AI systems may generate incorrect, insecure, incomplete, or destructive
+     code or commands
+  b) Container and terminal operations may affect your system, files, or data
+  c) The Software should not be used for mission-critical, life-safety, or
+     high-risk applications without appropriate safeguards
+
+YOU ASSUME ALL RISK ASSOCIATED WITH THE USE OF THIS SOFTWARE. THE CORE
+CONTRIBUTORS ARE NOT RESPONSIBLE FOR ANY ACTIONS TAKEN BY AI AGENTS, DATA
+LOSS, SYSTEM DAMAGE, SECURITY BREACHES, OR ANY OTHER UNINTENDED CONSEQUENCES
+ARISING FROM USE OF THIS SOFTWARE.
+
+================================================================================
+8. DISCLAIMER OF WARRANTY
+================================================================================
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NONINFRINGEMENT.
+
+THE CORE CONTRIBUTORS DO NOT WARRANT THAT THE SOFTWARE WILL MEET YOUR
+REQUIREMENTS, OPERATE WITHOUT INTERRUPTION, OR BE ERROR-FREE.
+
+================================================================================
+9. LIMITATION OF LIABILITY
+================================================================================
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE
+CORE CONTRIBUTORS BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL,
+CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS, REVENUE, DATA,
+OR USE, ARISING OUT OF OR RELATED TO THIS LICENSE OR THE SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+IN NO EVENT SHALL THE TOTAL LIABILITY OF THE CORE CONTRIBUTORS EXCEED THE
+AMOUNT PAID BY YOU FOR THE SOFTWARE (IF ANY).
+
+================================================================================
+10. GENERAL PROVISIONS
+================================================================================
+
+GOVERNING LAW: This license shall be governed by and construed in accordance
+with the laws of the State of California, USA, without regard to its conflict
+of law provisions.
+
+SEVERABILITY: If any provision of this license is held to be unenforceable,
+such provision shall be modified only to the extent necessary to make it
+enforceable, and the remaining provisions shall continue in full force.
+
+ENTIRE AGREEMENT: This license constitutes the entire agreement between you
+and the Core Contributors regarding the Software and supersedes all prior
+agreements and understandings.
+
+AMENDMENTS: Any modifications to this license require unanimous written
+consent from all Core Contributors.
+
+CONTACT: For licensing inquiries, permission requests, or to report
+violations, please open an issue on the project repository or contact the
+Core Contributors directly.
+
+================================================================================

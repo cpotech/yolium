@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+/* Ensure terminal fills container */
+.xterm {
+  height: 100%;
+  padding: 0;
+}
+
+.xterm-viewport {
+  overflow-y: auto !important;
+}
