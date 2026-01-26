@@ -9,6 +9,8 @@
   │                                                    │
   │        [■] ClaudeCode  [■] OpenCode  [■] Shell     │
   └────────────────────────────────────────────────────┘
+A desktop app for running autonomous AI agents in parallel—each safely containerized.
+Your solution is mounted in, everything else is locked out apart from persistent cache data.
 ```
 
 **A desktop app for running autonomous AI agents in parallel—each safely containerized.**
