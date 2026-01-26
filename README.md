@@ -119,7 +119,7 @@ Cache directories use readable names (e.g., `my-project-a1b2c3d4e5f6`) combining
 
 ## Installation
 
-**This project is in early development and actively evolving. Submitted issues and feedback is appreciated.**
+**This project is in early development and actively evolving. Submitting issues, feature requests and feedback is appreciated.**
 
 ### Prerequisites
 
