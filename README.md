@@ -15,7 +15,7 @@
 
 Your solution is mounted in, everything else is locked out apart from persistent cache data.
 
-[**Watch Demo Video**](https://github.com/yolium-ai/yolium/raw/main/assets/demo.mp4)
+https://github.com/user-attachments/assets/7ed994f8-2c7e-40f3-95ea-2d391eba5ffd
 
 ### Architecture
 
