@@ -13,7 +13,9 @@
 
 **A desktop app for running autonomous AI agents in parallel—each safely containerized.**
 
-Your project is mounted in, everything else is locked out apart from persistent cache data.
+Your solution is mounted in, everything else is locked out apart from persistent cache data.
+
+<video src="https://github.com/yolium-ai/yolium/blob/main/assets/demo.mp4" controls width="600"></video>
 
 ### Architecture
 
