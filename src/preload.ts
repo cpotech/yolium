@@ -110,6 +110,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Git worktree operations
   checkGitRepo: (folderPath: string) => ipcRenderer.invoke('git:is-repo', folderPath),
   getGitBranch: (folderPath: string) => ipcRenderer.invoke('git:get-branch', folderPath),
+  initGitRepo: (folderPath: string) => ipcRenderer.invoke('git:init', folderPath),
 
   // Docker operations
   isDockerAvailable: () => ipcRenderer.invoke('docker:available'),
@@ -210,6 +211,7 @@ declare global {
       // Git worktree operations
       checkGitRepo: (folderPath: string) => Promise<{ isRepo: boolean; hasCommits: boolean }>;
       getGitBranch: (folderPath: string) => Promise<string | null>;
+      initGitRepo: (folderPath: string) => Promise<{ success: boolean; initialized?: boolean; error?: string }>;
       // Docker operations
       isDockerAvailable: () => Promise<boolean>;
       ensureImage: (imageName?: string) => Promise<void>;

@@ -54,4 +54,19 @@ test.describe('App Launch', () => {
     // Shortcuts button should be visible in empty state
     await expect(window.locator(selectors.shortcutsButton)).toBeVisible();
   });
+
+  test('should open and close keyboard shortcuts dialog', async () => {
+    ctx = await launchApp();
+    const { window } = ctx;
+
+    // Click shortcuts button
+    await window.click(selectors.shortcutsButton);
+
+    // Dialog should open
+    await expect(window.locator(selectors.shortcutsDialog)).toBeVisible();
+
+    // Close button should work
+    await window.click(selectors.shortcutsCloseButton);
+    await expect(window.locator(selectors.shortcutsDialog)).not.toBeVisible();
+  });
 });

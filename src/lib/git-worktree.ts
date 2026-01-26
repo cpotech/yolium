@@ -31,6 +31,30 @@ function validateBranchName(branchName: string): void {
 }
 
 /**
+ * Initialize a git repository in a folder.
+ * @returns true if successful, false if already a repo
+ * @throws Error if initialization fails
+ */
+export function initGitRepo(folderPath: string): boolean {
+  // Check if already a repo
+  if (isGitRepo(folderPath)) {
+    return false;
+  }
+
+  try {
+    execSync('git init', {
+      cwd: folderPath,
+      stdio: 'pipe',
+    });
+    return true;
+  } catch (err) {
+    const error = err as { stderr?: Buffer; message?: string };
+    const stderr = error.stderr?.toString() || error.message || 'Unknown error';
+    throw new Error(`Failed to initialize git repository: ${stderr}`);
+  }
+}
+
+/**
  * Check if a folder is a git repository.
  */
 export function isGitRepo(folderPath: string): boolean {

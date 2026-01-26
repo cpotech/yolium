@@ -22,6 +22,7 @@ import {
   hasCommits,
   generateBranchName,
   getWorktreePath,
+  initGitRepo,
 } from '../lib/git-worktree'
 
 describe('git-worktree', () => {
@@ -101,6 +102,44 @@ describe('git-worktree', () => {
       expect(() => getWorktreePath('/path', 'feature/my-branch')).not.toThrow()
       expect(() => getWorktreePath('/path', 'fix_bug_123')).not.toThrow()
       expect(() => getWorktreePath('/path', 'v1.0.0')).not.toThrow()
+    })
+  })
+
+  describe('initGitRepo', () => {
+    it('initializes git in a non-repo folder', () => {
+      // First call to isGitRepo returns false (not a repo)
+      vi.mocked(execSync).mockImplementationOnce(() => {
+        throw new Error('not a git repo')
+      })
+      // Second call is git init which succeeds
+      vi.mocked(execSync).mockImplementationOnce(() => Buffer.from('Initialized empty Git repository'))
+
+      const result = initGitRepo('/some/folder')
+      expect(result).toBe(true)
+      expect(execSync).toHaveBeenCalledWith('git init', expect.objectContaining({ cwd: '/some/folder' }))
+    })
+
+    it('returns false if already a git repo', () => {
+      // isGitRepo returns true
+      vi.mocked(execSync).mockReturnValue(Buffer.from('true'))
+
+      const result = initGitRepo('/existing/repo')
+      expect(result).toBe(false)
+    })
+
+    it('throws error if git init fails', () => {
+      // First call to isGitRepo returns false
+      vi.mocked(execSync).mockImplementationOnce(() => {
+        throw new Error('not a git repo')
+      })
+      // Second call is git init which fails
+      const error = new Error('git init failed') as Error & { stderr: Buffer }
+      error.stderr = Buffer.from('permission denied')
+      vi.mocked(execSync).mockImplementationOnce(() => {
+        throw error
+      })
+
+      expect(() => initGitRepo('/some/folder')).toThrow('Failed to initialize git repository')
     })
   })
 })
