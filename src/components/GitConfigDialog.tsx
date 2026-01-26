@@ -152,6 +152,7 @@ export function GitConfigDialog({
       <form
         onSubmit={handleSubmit}
         className="bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-6 max-w-md w-full mx-4"
+        data-testid="git-config-dialog"
       >
         <h2 className="text-lg font-semibold text-white mb-2">Git Settings</h2>
         <p className="text-sm text-gray-400 mb-4">
@@ -170,6 +171,7 @@ export function GitConfigDialog({
               value={name}
               onChange={(e) => handleNameChange(e.target.value)}
               placeholder="Your Name"
+              data-testid="git-name-input"
               className={`w-full px-3 py-2 bg-gray-700 border rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                 nameError ? 'border-red-500' : 'border-gray-600'
               }`}
@@ -189,6 +191,7 @@ export function GitConfigDialog({
               value={email}
               onChange={(e) => handleEmailChange(e.target.value)}
               placeholder="your@email.com"
+              data-testid="git-email-input"
               className={`w-full px-3 py-2 bg-gray-700 border rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                 emailError ? 'border-red-500' : 'border-gray-600'
               }`}
@@ -232,6 +235,7 @@ export function GitConfigDialog({
                       value={githubPat}
                       onChange={(e) => handlePatChange(e.target.value)}
                       placeholder={initialConfig?.hasPat ? '(keep existing token)' : 'github_pat_XXXXX or ghp_XXXXX'}
+                      data-testid="git-pat-input"
                       className={`w-full px-3 py-2 pr-20 bg-gray-700 border rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm ${
                         patError ? 'border-red-500' : 'border-gray-600'
                       }`}
@@ -299,6 +303,7 @@ export function GitConfigDialog({
           <button
             type="button"
             onClick={onClose}
+            data-testid="git-config-cancel"
             className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
           >
             Cancel
@@ -306,6 +311,7 @@ export function GitConfigDialog({
           <button
             type="submit"
             disabled={!isValid}
+            data-testid="git-config-save"
             className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Save

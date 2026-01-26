@@ -95,7 +95,7 @@ export function KeyboardShortcutsDialog({
       onClick={handleBackdropClick}
       tabIndex={-1}
     >
-      <div className="bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+      <div className="bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto" data-testid="shortcuts-dialog">
         <h2 className="text-lg font-semibold text-white mb-4">Keyboard Shortcuts</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -122,6 +122,7 @@ export function KeyboardShortcutsDialog({
         <div className="mt-6 flex justify-end">
           <button
             onClick={onClose}
+            data-testid="shortcuts-close"
             className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-md transition-colors"
           >
             OK

@@ -295,6 +295,7 @@ export function Terminal({
     <div
       ref={containerRef}
       className={`h-full w-full ${className || ''}`}
+      data-testid="terminal"
       style={{
         padding: '8px',
         display: isVisible ? 'block' : 'none',
