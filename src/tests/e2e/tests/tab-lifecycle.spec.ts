@@ -163,6 +163,9 @@ test.describe('Tab Lifecycle', () => {
     await window.fill(selectors.pathInput, testRepoPath);
     await window.click(selectors.pathConfirmButton);
 
+    // Wait for agent dialog to be fully rendered before interacting
+    await expect(window.locator(selectors.agentDialog)).toBeVisible();
+
     // Select shell (fastest to start)
     await window.click(selectors.agentOption('shell'));
     await window.click(selectors.agentConfirmButton);
@@ -195,6 +198,7 @@ test.describe('Tab Lifecycle', () => {
     await window.click(selectors.newTabButton);
     await window.fill(selectors.pathInput, testRepoPath);
     await window.click(selectors.pathConfirmButton);
+    await expect(window.locator(selectors.agentDialog)).toBeVisible();
     await window.click(selectors.agentOption('shell'));
     await window.click(selectors.agentConfirmButton);
     await expect(window.locator(selectors.tab())).toBeVisible({ timeout: 90000 });
@@ -207,6 +211,7 @@ test.describe('Tab Lifecycle', () => {
     await window.click(selectors.newTabButton);
     await window.fill(selectors.pathInput, testRepoPath);
     await window.click(selectors.pathConfirmButton);
+    await expect(window.locator(selectors.agentDialog)).toBeVisible();
     await window.click(selectors.agentOption('shell'));
     await window.click(selectors.agentConfirmButton);
 
