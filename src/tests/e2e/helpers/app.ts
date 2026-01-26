@@ -21,7 +21,7 @@ export async function launchApp(options: {
 } = {}): Promise<AppContext> {
   const app = await electron.launch({
     args: [
-      path.join(__dirname, '../../.vite/build/main.js'),
+      path.join(__dirname, '../../../../.vite/build/main.js'),
       // Disable sandbox for CI/headless environments (Linux without chrome-sandbox setuid)
       '--no-sandbox',
     ],

@@ -6,7 +6,7 @@ import * as path from 'path';
  * Verifies the Electron app is built before tests run.
  */
 export default async function globalSetup(): Promise<void> {
-  const buildPath = path.join(__dirname, '../.vite/build/main.js');
+  const buildPath = path.join(__dirname, '../../../.vite/build/main.js');
 
   if (!fs.existsSync(buildPath)) {
     console.error('\n');
