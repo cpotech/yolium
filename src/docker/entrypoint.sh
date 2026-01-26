@@ -143,7 +143,59 @@ fi
 if [ -f "/home/agent/.git-credentials" ]; then
     git config --global credential.helper 'store --file /home/agent/.git-credentials'
     add_status "✅ GitHub HTTPS credentials configured"
+
+    # Authenticate gh CLI using stored credentials
+    if command -v gh >/dev/null 2>&1; then
+        # Extract token from git-credentials (supports github_pat_* and ghp_* formats)
+        GH_TOKEN=$(grep 'github.com' /home/agent/.git-credentials 2>/dev/null | sed 's/.*:\(github_pat_[^@]*\|ghp_[^@]*\)@.*/\1/')
+        if [ -n "$GH_TOKEN" ]; then
+            echo "$GH_TOKEN" | gh auth login --with-token 2>/dev/null && \
+                add_status "✅ GitHub CLI (gh) authenticated"
+        fi
+        unset GH_TOKEN
+    fi
 fi
+
+# Create CLAUDE.md with Yolium container environment info
+cat > /home/agent/CLAUDE.md << 'CLAUDEMD'
+# Yolium Container Environment
+
+You are running inside a Yolium container - an isolated Docker environment for AI coding agents.
+
+## Git Access
+
+If GitHub PAT was configured in Yolium settings:
+- Git HTTPS operations work automatically (push, pull, clone)
+- `gh` CLI is pre-authenticated - use it for GitHub operations (PRs, issues, etc.)
+- Credentials are at `/home/agent/.git-credentials`
+
+Check authentication status:
+```bash
+gh auth status
+```
+
+If `gh` is not authenticated but git credentials exist, authenticate manually:
+```bash
+grep 'github.com' /home/agent/.git-credentials | sed 's/.*:\(github_pat_[^@]*\|ghp_[^@]*\)@.*/\1/' | gh auth login --with-token
+```
+
+## Environment
+
+- **Project directory**: Mounted at the path shown in the Yolium banner
+- **Persistent caches**: npm, pip, maven, gradle caches persist across sessions
+- **Languages**: Python (uv), Node.js (nvm), Java (SDKMAN)
+- **Network**: Restricted to HTTPS, SSH, DNS only (unless YOLIUM_NETWORK_FULL=true)
+
+## Important Paths
+
+- `/home/agent/.claude` - Claude config (mounted from host)
+- `/home/agent/.git-credentials` - GitHub PAT (if configured)
+- `/home/agent/.yolium_history` - Shell history (persistent)
+
+## Testing Limitations
+
+**Do NOT run E2E tests inside this container.** E2E tests (`npm run test:e2e`) require Electron and a display server, which are not available in the container environment. Only run unit tests (`npm test`) here.
+CLAUDEMD
 
 if [ -n "$PROJECT_DIR" ] && { [ -f "$PROJECT_DIR/.mcp.json" ] || [ -f "$PROJECT_DIR/mcp.json" ]; }; then
     add_status "🔌 MCP configuration detected. To enable MCP servers, see Yolium documentation."
