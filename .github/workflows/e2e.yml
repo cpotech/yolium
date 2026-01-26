@@ -27,8 +27,16 @@ jobs:
       - name: Rebuild native modules for Electron
         run: npx electron-rebuild --only node-pty
 
-      - name: Build app
-        run: npm run package
+      - name: Build app for E2E tests
+        run: npm run build
+
+      - name: Verify build exists
+        run: |
+          if [ ! -f ".vite/build/main.js" ]; then
+            echo "ERROR: Build file not found at .vite/build/main.js"
+            exit 1
+          fi
+          echo "Build verified: .vite/build/main.js exists"
 
       - name: Start Docker
         run: |
@@ -75,8 +83,16 @@ jobs:
       - name: Rebuild native modules for Electron
         run: npx electron-rebuild --only node-pty
 
-      - name: Build app
-        run: npm run package
+      - name: Build app for E2E tests
+        run: npm run build
+
+      - name: Verify build exists
+        run: |
+          if [ ! -f ".vite/build/main.js" ]; then
+            echo "ERROR: Build file not found at .vite/build/main.js"
+            exit 1
+          fi
+          echo "Build verified: .vite/build/main.js exists"
 
       - name: Install Docker
         run: |
