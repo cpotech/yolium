@@ -565,7 +565,7 @@ export function PathInputDialog({
               Cancel
             </button>
             <button
-              data-testid="path-confirm"
+              data-testid="path-next"
               onClick={() => {
                 if (inputValue.trim()) {
                   let finalPath = inputValue;
@@ -578,7 +578,7 @@ export function PathInputDialog({
               disabled={!inputValue.trim()}
               className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:text-gray-400 text-white rounded-md transition-colors"
             >
-              Open
+              Next
             </button>
           </div>
         </div>

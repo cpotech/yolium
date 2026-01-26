@@ -115,11 +115,18 @@ function App(): React.ReactElement {
     setPendingFolderGitStatus(null);
   }, [pendingFolderPath, createYoliumWithAgent]);
 
-  // Handle dialog cancel
+  // Handle dialog cancel (Escape key - cancels entire flow)
   const handleAgentDialogCancel = useCallback(() => {
     setAgentDialogOpen(false);
     setPendingFolderPath(null);
     setPendingFolderGitStatus(null);
+  }, []);
+
+  // Handle Back button in agent dialog (returns to path dialog)
+  const handleAgentDialogBack = useCallback(() => {
+    setAgentDialogOpen(false);
+    // Reopen path dialog with the previously selected path
+    setPathDialogOpen(true);
   }, []);
 
   // Handle path confirmation from PathInputDialog
@@ -498,6 +505,7 @@ function App(): React.ReactElement {
         folderPath={pendingFolderPath || ''}
         gitStatus={pendingFolderGitStatus}
         onSelect={handleAgentSelect}
+        onBack={handleAgentDialogBack}
         onCancel={handleAgentDialogCancel}
       />
 

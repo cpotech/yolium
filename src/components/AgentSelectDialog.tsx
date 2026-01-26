@@ -7,6 +7,7 @@ interface AgentSelectDialogProps {
   folderPath: string;
   gitStatus: { isRepo: boolean; hasCommits: boolean } | null;
   onSelect: (agent: AgentType, gsdEnabled: boolean, worktreeEnabled: boolean, branchName: string | null) => void;
+  onBack: () => void;
   onCancel: () => void;
 }
 
@@ -15,6 +16,7 @@ export function AgentSelectDialog({
   folderPath,
   gitStatus,
   onSelect,
+  onBack,
   onCancel,
 }: AgentSelectDialogProps): React.ReactElement | null {
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -186,18 +188,18 @@ export function AgentSelectDialog({
 
         <div className="mt-4 flex justify-end gap-2">
           <button
-            data-testid="agent-cancel"
-            onClick={onCancel}
+            data-testid="agent-back"
+            onClick={onBack}
             className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
           >
-            Cancel
+            Back
           </button>
           <button
-            data-testid="agent-confirm"
+            data-testid="agent-start"
             onClick={handleConfirm}
             className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-500 transition-colors"
           >
-            OK
+            Start
           </button>
         </div>
       </div>
