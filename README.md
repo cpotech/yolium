@@ -115,9 +115,11 @@ Yolium tracks all project caches in a registry (`~/.yolium/project-registry.json
 
 Cache directories use readable names (e.g., `my-project-a1b2c3d4e5f6`) combining the folder name with a hash for easy identification.
 
-This project is in early development and actively evolving. Submit issues and feedback is appreciated.
+
 
 ## Installation
+
+**This project is in early development and actively evolving. Submit issues and feedback is appreciated.**
 
 ### Prerequisites
 
