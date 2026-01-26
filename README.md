@@ -186,7 +186,7 @@ src/
 
 This project is licensed under the Yolium License Agreement. See the [LICENSE](LICENSE) file for details.
 
-**Summary**: You may freely use Yolium locally or within your organization to build products. Reselling, hosting as a service, or commercial redistribution requires explicit permission from the core contributors.
+**Summary**: Free for local/organizational use as a development tool. Products you build must not redistribute Yolium. Reselling, hosting as a service, or commercial redistribution requires permission. Contributors assign IP rights to Core Contributors. AI-generated code risks are your responsibility—provided "AS IS" without warranty.
 
 ## Acknowledgments
 
