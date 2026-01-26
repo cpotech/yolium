@@ -12,8 +12,6 @@
 A desktop app for running autonomous AI agents in parallel—each safely containerized.
 Your solution is mounted in, everything else is locked out apart from persistent cache data.
 ```
-> **[Technical Documentation](TECHNICAL.md)** - Detailed architecture, mount paths, and development guide
-
 https://github.com/user-attachments/assets/7ed994f8-2c7e-40f3-95ea-2d391eba5ffd
 
 ## Architecture
@@ -36,6 +34,8 @@ https://github.com/user-attachments/assets/7ed994f8-2c7e-40f3-95ea-2d391eba5ffd
 - **Persistent Caches** - Package manager caches survive across sessions ([details](TECHNICAL.md#file-mounts--cache))
 - **Network Restrictions** - Only outbound HTTPS and SSH allowed
 - **Cross-Platform** - Windows, macOS, and Linux
+
+> **[Technical Documentation](TECHNICAL.md)** - Detailed architecture, mount paths, and development guide
 
 ## Installation
 
