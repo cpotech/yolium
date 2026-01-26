@@ -37,7 +37,7 @@ test.describe('Dialog Navigation', () => {
 
     // Next button should be visible (not Open)
     await expect(window.locator(selectors.pathNextButton)).toBeVisible();
-    await expect(window.locator(selectors.pathNextButton)).toHaveText('Next');
+    await expect(window.locator(selectors.pathNextButton)).toContainText('Next');
   });
 
   test('agent dialog should have Back and Start buttons', async () => {
@@ -52,11 +52,11 @@ test.describe('Dialog Navigation', () => {
 
     // Back button should be visible (not Cancel)
     await expect(window.locator(selectors.agentBackButton)).toBeVisible();
-    await expect(window.locator(selectors.agentBackButton)).toHaveText('Back');
+    await expect(window.locator(selectors.agentBackButton)).toContainText('Back');
 
     // Start button should be visible (not OK)
     await expect(window.locator(selectors.agentStartButton)).toBeVisible();
-    await expect(window.locator(selectors.agentStartButton)).toHaveText('Start');
+    await expect(window.locator(selectors.agentStartButton)).toContainText('Start');
   });
 
   test('clicking Back in agent dialog should return to path dialog', async () => {

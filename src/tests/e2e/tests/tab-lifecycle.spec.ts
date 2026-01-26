@@ -186,6 +186,31 @@ test.describe('Tab Lifecycle', () => {
     await expect(window.locator(selectors.statusContainerState)).toBeVisible();
   });
 
+  test('should close tab when clicking close button', async () => {
+    test.setTimeout(120000);
+
+    ctx = await launchApp();
+    const { window } = ctx;
+
+    // Create a tab
+    await window.click(selectors.newTabButton);
+    await window.fill(selectors.pathInput, testRepoPath);
+    await window.click(selectors.pathNextButton);
+    await expect(window.locator(selectors.agentDialog)).toBeVisible();
+    await window.click(selectors.agentOption('shell'));
+    await window.click(selectors.agentStartButton);
+    await expect(window.locator(selectors.tab())).toBeVisible({ timeout: 90000 });
+
+    // Close the tab
+    await window.click(selectors.tabCloseButton());
+
+    // Tab should be gone
+    await expect(window.locator(selectors.tab())).not.toBeVisible();
+
+    // Should show empty state again
+    await expect(window.locator(selectors.emptyState)).toBeVisible();
+  });
+
   test('should navigate between multiple tabs', async () => {
     // Note: Playwright cannot trigger Electron menu accelerators (keyboard shortcuts).
     // This test uses click-based navigation instead.
