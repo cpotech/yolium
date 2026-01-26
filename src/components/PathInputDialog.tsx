@@ -109,6 +109,8 @@ export function PathInputDialog({
       setCreateFolderError(null);
       // Navigate to the new folder
       setInputValue(result.path + '/');
+      // Return focus to main input
+      setTimeout(() => inputRef.current?.focus(), 50);
     } else {
       setCreateFolderError(result.error || 'Failed to create folder');
     }
@@ -538,34 +540,26 @@ export function PathInputDialog({
           )}
         </div>
 
-        {/* Footer with keyboard shortcuts */}
+        {/* Footer */}
         <div className="mt-4 pt-3 border-t border-gray-700 flex items-center justify-between">
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-            <span>
-              <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-gray-400">Tab</kbd> complete
-            </span>
-            <span>
-              <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-gray-400">Ctrl+N</kbd> new folder
-            </span>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+            <span><kbd className="px-1 py-0.5 bg-gray-700 rounded text-gray-400">Tab</kbd> complete</span>
+            <span><kbd className="px-1 py-0.5 bg-gray-700 rounded text-gray-400">^N</kbd> new folder</span>
             {favorites.length > 0 && (
-              <span>
-                <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-gray-400">Ctrl+#</kbd> favorite
-              </span>
+              <span><kbd className="px-1 py-0.5 bg-gray-700 rounded text-gray-400">^#</kbd> favorite</span>
             )}
-            <span>
-              <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-gray-400">Esc</kbd> cancel
-            </span>
           </div>
           <div className="flex gap-2">
             <button
               data-testid="path-cancel"
               onClick={onCancel}
-              className="px-3 py-1.5 text-sm text-gray-400 hover:text-white transition-colors"
+              className="px-3 py-1.5 text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-2"
             >
               Cancel
+              <kbd className="text-xs bg-gray-700 px-1.5 py-0.5 rounded text-gray-500">Esc</kbd>
             </button>
             <button
-              data-testid="path-confirm"
+              data-testid="path-next"
               onClick={() => {
                 if (inputValue.trim()) {
                   let finalPath = inputValue;
@@ -576,9 +570,10 @@ export function PathInputDialog({
                 }
               }}
               disabled={!inputValue.trim()}
-              className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:text-gray-400 text-white rounded-md transition-colors"
+              className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:text-gray-400 text-white rounded-md transition-colors flex items-center gap-2"
             >
-              Open
+              Next
+              <kbd className="text-xs bg-blue-700 px-1.5 py-0.5 rounded text-blue-300 disabled:bg-gray-500">↵</kbd>
             </button>
           </div>
         </div>

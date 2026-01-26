@@ -20,7 +20,8 @@ export const selectors = {
   // Path input dialog
   pathDialog: '[data-testid="path-dialog"]',
   pathInput: '[data-testid="path-input"]',
-  pathConfirmButton: '[data-testid="path-confirm"]',
+  pathConfirmButton: '[data-testid="path-confirm"]',  // Legacy alias
+  pathNextButton: '[data-testid="path-next"]',
   pathCancelButton: '[data-testid="path-cancel"]',
   pathAutocomplete: '[data-testid="path-autocomplete"]',
   pathAutocompleteItem: '[data-testid^="path-autocomplete-item-"]',
@@ -31,8 +32,10 @@ export const selectors = {
   gsdToggle: '[data-testid="gsd-toggle"]',
   worktreeToggle: '[data-testid="worktree-toggle"]',
   branchNameInput: '[data-testid="branch-name-input"]',
-  agentConfirmButton: '[data-testid="agent-confirm"]',
-  agentCancelButton: '[data-testid="agent-cancel"]',
+  agentConfirmButton: '[data-testid="agent-confirm"]',  // Legacy alias
+  agentStartButton: '[data-testid="agent-start"]',
+  agentCancelButton: '[data-testid="agent-cancel"]',  // Legacy alias
+  agentBackButton: '[data-testid="agent-back"]',
 
   // Docker setup dialog
   dockerSetupDialog: '[data-testid="docker-setup-dialog"]',
@@ -77,7 +80,8 @@ export const selectors = {
  */
 export async function getTextContent(page: import('@playwright/test').Page, selector: string): Promise<string> {
   const element = await page.waitForSelector(selector);
-  return element?.textContent() ?? '';
+  const text = await element?.textContent();
+  return text ?? '';
 }
 
 /**

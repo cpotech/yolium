@@ -75,7 +75,7 @@ test.describe('Tab Lifecycle', () => {
     await window.fill(selectors.pathInput, testRepoPath);
 
     // Confirm path
-    await window.click(selectors.pathConfirmButton);
+    await window.click(selectors.pathNextButton);
 
     // Path dialog should close
     await expect(window.locator(selectors.pathDialog)).not.toBeVisible();
@@ -91,7 +91,7 @@ test.describe('Tab Lifecycle', () => {
     // Navigate to agent dialog
     await window.click(selectors.newTabButton);
     await window.fill(selectors.pathInput, testRepoPath);
-    await window.click(selectors.pathConfirmButton);
+    await window.click(selectors.pathNextButton);
 
     // Check all agent options are visible
     await expect(window.locator(selectors.agentOption('claude'))).toBeVisible();
@@ -106,7 +106,7 @@ test.describe('Tab Lifecycle', () => {
     // Navigate to agent dialog
     await window.click(selectors.newTabButton);
     await window.fill(selectors.pathInput, testRepoPath);
-    await window.click(selectors.pathConfirmButton);
+    await window.click(selectors.pathNextButton);
     await expect(window.locator(selectors.agentDialog)).toBeVisible();
 
     // Select Claude - GSD should be available
@@ -128,7 +128,7 @@ test.describe('Tab Lifecycle', () => {
     // Navigate to agent dialog with a git repo
     await window.click(selectors.newTabButton);
     await window.fill(selectors.pathInput, testRepoPath);
-    await window.click(selectors.pathConfirmButton);
+    await window.click(selectors.pathNextButton);
 
     // Worktree toggle should be visible (repo has commits)
     await expect(window.locator(selectors.worktreeToggle)).toBeVisible();
@@ -141,7 +141,7 @@ test.describe('Tab Lifecycle', () => {
     // Navigate to agent dialog
     await window.click(selectors.newTabButton);
     await window.fill(selectors.pathInput, testRepoPath);
-    await window.click(selectors.pathConfirmButton);
+    await window.click(selectors.pathNextButton);
 
     // Enable worktree
     await window.click(selectors.worktreeToggle);
@@ -161,14 +161,14 @@ test.describe('Tab Lifecycle', () => {
     // Navigate through dialogs
     await window.click(selectors.newTabButton);
     await window.fill(selectors.pathInput, testRepoPath);
-    await window.click(selectors.pathConfirmButton);
+    await window.click(selectors.pathNextButton);
 
     // Wait for agent dialog to be fully rendered before interacting
     await expect(window.locator(selectors.agentDialog)).toBeVisible();
 
     // Select shell (fastest to start)
     await window.click(selectors.agentOption('shell'));
-    await window.click(selectors.agentConfirmButton);
+    await window.click(selectors.agentStartButton);
 
     // Should show build progress or tab
     // Wait for either build progress overlay or new tab
@@ -186,6 +186,31 @@ test.describe('Tab Lifecycle', () => {
     await expect(window.locator(selectors.statusContainerState)).toBeVisible();
   });
 
+  test('should close tab when clicking close button', async () => {
+    test.setTimeout(120000);
+
+    ctx = await launchApp();
+    const { window } = ctx;
+
+    // Create a tab
+    await window.click(selectors.newTabButton);
+    await window.fill(selectors.pathInput, testRepoPath);
+    await window.click(selectors.pathNextButton);
+    await expect(window.locator(selectors.agentDialog)).toBeVisible();
+    await window.click(selectors.agentOption('shell'));
+    await window.click(selectors.agentStartButton);
+    await expect(window.locator(selectors.tab())).toBeVisible({ timeout: 90000 });
+
+    // Close the tab
+    await window.click(selectors.tabCloseButton());
+
+    // Tab should be gone
+    await expect(window.locator(selectors.tab())).not.toBeVisible();
+
+    // Should show empty state again
+    await expect(window.locator(selectors.emptyState)).toBeVisible();
+  });
+
   test('should navigate between multiple tabs', async () => {
     // Note: Playwright cannot trigger Electron menu accelerators (keyboard shortcuts).
     // This test uses click-based navigation instead.
@@ -197,10 +222,10 @@ test.describe('Tab Lifecycle', () => {
     // Create first tab
     await window.click(selectors.newTabButton);
     await window.fill(selectors.pathInput, testRepoPath);
-    await window.click(selectors.pathConfirmButton);
+    await window.click(selectors.pathNextButton);
     await expect(window.locator(selectors.agentDialog)).toBeVisible();
     await window.click(selectors.agentOption('shell'));
-    await window.click(selectors.agentConfirmButton);
+    await window.click(selectors.agentStartButton);
     await expect(window.locator(selectors.tab())).toBeVisible({ timeout: 90000 });
 
     // First tab should be active
@@ -210,10 +235,10 @@ test.describe('Tab Lifecycle', () => {
     // Create second tab using the + button
     await window.click(selectors.newTabButton);
     await window.fill(selectors.pathInput, testRepoPath);
-    await window.click(selectors.pathConfirmButton);
+    await window.click(selectors.pathNextButton);
     await expect(window.locator(selectors.agentDialog)).toBeVisible();
     await window.click(selectors.agentOption('shell'));
-    await window.click(selectors.agentConfirmButton);
+    await window.click(selectors.agentStartButton);
 
     // Wait for second tab
     await expect(window.locator(selectors.tab())).toHaveCount(2, { timeout: 90000 });
