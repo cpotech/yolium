@@ -11,7 +11,7 @@
   └────────────────────────────────────────────────────┘
 ```
 
-**Run parallel AI agents in YOLO mode. Safely. Containerized.**
+**A desktop app for running autonomous AI agents in parallel—each safely containerized.**
 
 Your project is mounted in, everything else is locked out apart from persistent cache data.
 
