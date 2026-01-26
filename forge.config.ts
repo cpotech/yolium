@@ -92,8 +92,9 @@ const config: ForgeConfig = {
     },
     name: 'Yolium Desktop',
     executableName: 'yolium-desktop',
+    icon: 'assets/icon',
     // Copy docker directory to resources folder for production builds
-    extraResource: ['src/docker'],
+    extraResource: ['src/docker', 'assets/icon.png'],
   },
   rebuildConfig: {},
   hooks: {
