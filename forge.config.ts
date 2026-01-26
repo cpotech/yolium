@@ -7,6 +7,7 @@ import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
+import { PublisherGithub } from '@electron-forge/publisher-github';
 import path from 'path';
 import fs from 'fs';
 
@@ -173,6 +174,16 @@ const config: ForgeConfig = {
       [FuseV1Options.EnableNodeCliInspectArguments]: false,
       [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
       [FuseV1Options.OnlyLoadAppFromAsar]: false,
+    }),
+  ],
+  publishers: [
+    new PublisherGithub({
+      repository: {
+        owner: process.env.GITHUB_REPOSITORY_OWNER || '',
+        name: process.env.GITHUB_REPOSITORY_NAME || 'yolium',
+      },
+      prerelease: false,
+      draft: true, // Creates as draft so you can review before publishing
     }),
   ],
 };

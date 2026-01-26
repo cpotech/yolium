@@ -23,7 +23,6 @@
   },
   "license": "SEE LICENSE IN LICENSE",
   "devDependencies": {
-    "@playwright/test": "^1.50.0",
     "@electron-forge/cli": "^7.11.1",
     "@electron-forge/maker-deb": "^7.11.1",
     "@electron-forge/maker-rpm": "^7.11.1",
@@ -32,8 +31,10 @@
     "@electron-forge/plugin-auto-unpack-natives": "^7.11.1",
     "@electron-forge/plugin-fuses": "^7.11.1",
     "@electron-forge/plugin-vite": "^7.11.1",
+    "@electron-forge/publisher-github": "^7.11.1",
     "@electron/fuses": "^1.8.0",
     "@electron/rebuild": "^4.0.2",
+    "@playwright/test": "^1.50.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/dockerode": "^4.0.0",
     "@types/electron-squirrel-startup": "^1.0.2",
