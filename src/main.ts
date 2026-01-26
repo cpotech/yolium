@@ -27,7 +27,7 @@ import {
 } from './docker-setup';
 import log, { createLogger, getLogPath } from './lib/logger';
 import { loadGitConfig, saveGitConfig, GitConfig } from './lib/git-config';
-import { isGitRepo, hasCommits, getWorktreeBranch } from './lib/git-worktree';
+import { isGitRepo, hasCommits, getWorktreeBranch, initGitRepo } from './lib/git-worktree';
 
 const logger = createLogger('main');
 
@@ -61,7 +61,7 @@ function createAppMenu(window: BrowserWindow): void {
         { type: 'separator' },
         {
           label: 'Quit',
-          accelerator: 'CmdOrCtrl+Q',
+          accelerator: 'CmdOrCtrl+Alt+Shift+Q',
           click: () => window.webContents.send('app:quit-request'),
         },
       ],
@@ -431,6 +431,18 @@ ipcMain.handle('git:is-repo', (_event, folderPath: string) => {
 
 ipcMain.handle('git:get-branch', (_event, folderPath: string) => {
   return getWorktreeBranch(folderPath);
+});
+
+ipcMain.handle('git:init', (_event, folderPath: string) => {
+  logger.info('IPC: git:init', { folderPath });
+  try {
+    const initialized = initGitRepo(folderPath);
+    return { success: true, initialized };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    logger.error('Failed to init git repo:', { error: message });
+    return { success: false, error: message };
+  }
 });
 
 // Docker availability check

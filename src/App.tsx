@@ -507,6 +507,12 @@ function App(): React.ReactElement {
         onSelect={handleAgentSelect}
         onBack={handleAgentDialogBack}
         onCancel={handleAgentDialogCancel}
+        onGitInit={async () => {
+          if (pendingFolderPath) {
+            const gitStatus = await window.electronAPI.checkGitRepo(pendingFolderPath);
+            setPendingFolderGitStatus(gitStatus);
+          }
+        }}
       />
 
       {/* Keyboard shortcuts dialog */}

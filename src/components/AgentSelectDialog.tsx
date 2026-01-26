@@ -9,6 +9,7 @@ interface AgentSelectDialogProps {
   onSelect: (agent: AgentType, gsdEnabled: boolean, worktreeEnabled: boolean, branchName: string | null) => void;
   onBack: () => void;
   onCancel: () => void;
+  onGitInit?: () => void;
 }
 
 export function AgentSelectDialog({
@@ -18,6 +19,7 @@ export function AgentSelectDialog({
   onSelect,
   onBack,
   onCancel,
+  onGitInit,
 }: AgentSelectDialogProps): React.ReactElement | null {
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstButtonRef = useRef<HTMLButtonElement>(null);
@@ -25,6 +27,25 @@ export function AgentSelectDialog({
   const [gsdEnabled, setGsdEnabled] = useState(false);
   const [worktreeEnabled, setWorktreeEnabled] = useState(false);
   const [branchName, setBranchName] = useState('');
+  const [isInitializing, setIsInitializing] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
+
+  const handleInitGit = useCallback(async () => {
+    setIsInitializing(true);
+    setInitError(null);
+    try {
+      const result = await window.electronAPI.initGitRepo(folderPath);
+      if (result.success) {
+        onGitInit?.();
+      } else {
+        setInitError(result.error || 'Failed to initialize git');
+      }
+    } catch (err) {
+      setInitError(err instanceof Error ? err.message : 'Failed to initialize git');
+    } finally {
+      setIsInitializing(false);
+    }
+  }, [folderPath, onGitInit]);
 
   // Auto-focus first button when opened
   useEffect(() => {
@@ -51,9 +72,22 @@ export function AgentSelectDialog({
         setSelectedAgent('opencode');
       } else if (e.key === '3') {
         setSelectedAgent('shell');
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        onBack();
+      } else if (e.key === 'w' || e.key === 'W') {
+        // Toggle worktree if available
+        if (gitStatus?.isRepo && gitStatus?.hasCommits) {
+          setWorktreeEnabled(prev => !prev);
+        }
+      } else if (e.key === 'i' || e.key === 'I') {
+        // Init git if not a repo
+        if (gitStatus && !gitStatus.isRepo && !isInitializing) {
+          handleInitGit();
+        }
       }
     },
-    [onCancel, handleConfirm]
+    [onCancel, handleConfirm, onBack, gitStatus, isInitializing, handleInitGit]
   );
 
   if (!isOpen) return null;
@@ -168,8 +202,8 @@ export function AgentSelectDialog({
                   className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-800 disabled:opacity-50"
                 />
                 Use git worktree
+                {!isDisabled && <kbd className="text-xs bg-gray-700 px-1 py-0.5 rounded text-gray-500 ml-1">w</kbd>}
                 {gitStatus === null && <span className="text-xs text-gray-600">(checking...)</span>}
-                {gitStatus && !gitStatus.isRepo && <span className="text-xs text-gray-600">(not a git repo)</span>}
                 {gitStatus && gitStatus.isRepo && !gitStatus.hasCommits && <span className="text-xs text-gray-600">(no commits)</span>}
               </label>
             );
@@ -184,22 +218,41 @@ export function AgentSelectDialog({
               className="mt-2 ml-6 w-[calc(100%-1.5rem)] px-2 py-1 text-sm rounded bg-gray-700 border border-gray-600 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
           )}
+          {gitStatus && !gitStatus.isRepo && (
+            <div className="mt-3">
+              <button
+                data-testid="init-git-button"
+                onClick={handleInitGit}
+                disabled={isInitializing}
+                className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                {isInitializing ? 'Initializing...' : 'Initialize git repository'}
+                {!isInitializing && <kbd className="text-xs bg-gray-700 px-1 py-0.5 rounded text-gray-500">i</kbd>}
+              </button>
+              {initError && <div className="mt-1 text-xs text-red-400">{initError}</div>}
+            </div>
+          )}
         </div>
 
         <div className="mt-4 flex justify-end gap-2">
           <button
             data-testid="agent-back"
             onClick={onBack}
-            className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+            className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-2"
           >
             Back
+            <kbd className="text-xs bg-gray-700 px-1.5 py-0.5 rounded text-gray-500">⌫</kbd>
           </button>
           <button
             data-testid="agent-start"
             onClick={handleConfirm}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-500 transition-colors"
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-500 transition-colors flex items-center gap-2"
           >
             Start
+            <kbd className="text-xs bg-blue-700 px-1.5 py-0.5 rounded text-blue-300">↵</kbd>
           </button>
         </div>
       </div>
