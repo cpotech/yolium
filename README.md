@@ -6,22 +6,6 @@
 > Note: This project is in early development. Issues, feedback, and contributions are highly appreciated. :pray:
 
 <video src="https://github.com/user-attachments/assets/7ed994f8-2c7e-40f3-95ea-2d391eba5ffd" controls autoplay muted loop></video>
----
-
-Table of contents
-- [Why Yolium?](#why-yolium)
-- [Architecture](#architecture)
-- [Features](#features)
-- [Installation](#installation)
-  - [Prerequisites](#prerequisites)
-  - [Quick Start](#quick-start)
-- [Development](#development)
-- [Contributing](#contributing)
-- [License](#license)
-- [Acknowledgments](#acknowledgments)
-- [Support](#support)
-
----
 
 ## Why Yolium? :rocket:
 
@@ -69,7 +53,7 @@ This project is in early development. Use at your own risk and please open issue
 
 - Docker
   - Windows: Docker Desktop required — https://www.docker.com/products/docker-desktop/
-  - macOS: Docker Desktop or Colima (Colima currently untested) — https://github.com/abiosoft/colima
+  - macOS: Docker Desktop or Colima (Currently untested) — https://github.com/abiosoft/colima
   - Linux: Docker Engine (no Docker Desktop required) — https://docs.docker.com/engine/install/
 
 ### Quick Start :rocket:
