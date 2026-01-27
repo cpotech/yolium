@@ -63,7 +63,8 @@ export function AgentSelectDialog({
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onCancel();
+        e.preventDefault();
+        onBack();
       } else if (e.key === 'Enter') {
         handleConfirm();
       } else if (e.key === '1') {
@@ -72,14 +73,6 @@ export function AgentSelectDialog({
         setSelectedAgent('opencode');
       } else if (e.key === '3') {
         setSelectedAgent('shell');
-      } else if (e.key === 'Backspace') {
-        e.preventDefault();
-        onBack();
-      } else if (e.key === 'w' || e.key === 'W') {
-        // Toggle worktree if available
-        if (gitStatus?.isRepo && gitStatus?.hasCommits) {
-          setWorktreeEnabled(prev => !prev);
-        }
       } else if (e.key === 'i' || e.key === 'I') {
         // Init git if not a repo
         if (gitStatus && !gitStatus.isRepo && !isInitializing) {
@@ -87,7 +80,7 @@ export function AgentSelectDialog({
         }
       }
     },
-    [onCancel, handleConfirm, onBack, gitStatus, isInitializing, handleInitGit]
+    [onBack, handleConfirm, gitStatus, isInitializing, handleInitGit]
   );
 
   if (!isOpen) return null;
@@ -202,7 +195,6 @@ export function AgentSelectDialog({
                   className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-800 disabled:opacity-50"
                 />
                 Use git worktree
-                {!isDisabled && <kbd className="text-xs bg-gray-700 px-1 py-0.5 rounded text-gray-500 ml-1">w</kbd>}
                 {gitStatus === null && <span className="text-xs text-gray-600">(checking...)</span>}
                 {gitStatus && gitStatus.isRepo && !gitStatus.hasCommits && <span className="text-xs text-gray-600">(no commits)</span>}
               </label>
@@ -244,7 +236,7 @@ export function AgentSelectDialog({
             className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-2"
           >
             Back
-            <kbd className="text-xs bg-gray-700 px-1.5 py-0.5 rounded text-gray-500">⌫</kbd>
+            <kbd className="text-xs bg-gray-700 px-1.5 py-0.5 rounded text-gray-500">Esc</kbd>
           </button>
           <button
             data-testid="agent-start"

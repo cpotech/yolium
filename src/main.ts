@@ -60,9 +60,9 @@ function createAppMenu(window: BrowserWindow): void {
         },
         { type: 'separator' },
         {
-          label: 'Quit',
-          accelerator: 'CmdOrCtrl+Alt+Shift+Q',
-          click: () => window.webContents.send('app:quit-request'),
+          label: 'Git Settings',
+          accelerator: 'CmdOrCtrl+Shift+G',
+          click: () => window.webContents.send('git-settings:show'),
         },
       ],
     },
@@ -244,6 +244,19 @@ ipcMain.handle('dialog:confirm-close', async (_event, message: string) => {
     message,
   });
   return response === 0; // true if user clicked "Close"
+});
+
+// Generic OK/Cancel confirmation dialog
+ipcMain.handle('dialog:confirm-ok-cancel', async (_event, title: string, message: string) => {
+  const { response } = await dialog.showMessageBox({
+    type: 'question',
+    buttons: ['OK', 'Cancel'],
+    defaultId: 1,
+    cancelId: 1,
+    title,
+    message,
+  });
+  return response === 0; // true if user clicked "OK"
 });
 
 // Bulk close confirmation (for Close All, Close Others)

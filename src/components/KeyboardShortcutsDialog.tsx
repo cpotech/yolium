@@ -49,7 +49,7 @@ const shortcutGroups: ShortcutGroup[] = [
     title: 'Application',
     shortcuts: [
       { keys: 'Ctrl+?', description: 'Keyboard shortcuts' },
-      { keys: 'Ctrl+Alt+Shift+Q', description: 'Quit' },
+      { keys: 'Ctrl+Shift+G', description: 'Git settings' },
     ],
   },
 ];

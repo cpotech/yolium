@@ -1,7 +1,9 @@
 name: Build
 
 on:
-  workflow_dispatch:  # Manual trigger only - automatic builds disabled to reduce costs
+  push:
+    branches: [main]
+  workflow_dispatch:  # Also allow manual trigger
 
 jobs:
   build:
