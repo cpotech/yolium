@@ -1,15 +1,6 @@
-This project is in early development.
+# Yolium  
+:black_circle: ClaudeCode, :radio_button: OpenCode, :white_circle: Shell
 
-  ┌────────────────────────────────────────────────────┐
-  │ ██╗   ██╗ ██████╗ ██╗     ██╗██╗   ██╗███╗   ███╗  │
-  │ ╚██╗ ██╔╝██╔═══██╗██║     ██║██║   ██║████╗ ████║  │
-  │  ╚████╔╝ ██║   ██║██║     ██║██║   ██║██╔████╔██║  │
-  │   ╚██╔╝  ██║   ██║██║     ██║██║   ██║██║╚██╔╝██║  │
-  │    ██║   ╚██████╔╝███████╗██║╚██████╔╝██║ ╚═╝ ██║  │
-  │    ╚═╝    ╚═════╝ ╚══════╝╚═╝ ╚═════╝ ╚═╝     ╚═╝  │
-  │                                                    │
-  │        [:white_small_square:] ClaudeCode  [:white_small_square:] OpenCode  [:white_small_square:] Shell     │
-  └────────────────────────────────────────────────────┘
 
 :sparkles: A desktop app for running multiple autonomous AI agents in parallel — each safely containerized, with project-mounted workspaces and locked host access.
 
