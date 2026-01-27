@@ -233,18 +233,10 @@ function App(): React.ReactElement {
     setPathDialogOpen(true);
   }, []);
 
-  // Close a tab (with confirmation for running containers and worktree cleanup)
+  // Close a tab (with worktree cleanup if needed)
   const handleCloseTab = useCallback(async (tabId: string) => {
     const tab = tabs.find(t => t.id === tabId);
     if (!tab) return;
-
-    // For running containers, confirm before closing
-    if (tab.containerState === 'running' || tab.containerState === 'starting') {
-      const confirmed = await window.electronAPI.showConfirmClose(
-        `"${tab.label}" has a running yolium. Stop and close?`
-      );
-      if (!confirmed) return;
-    }
 
     // Check if this session has a worktree
     const worktreeInfo = await window.electronAPI.getWorktreeInfo(tab.sessionId);
