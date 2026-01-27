@@ -5,7 +5,7 @@
 
 > Note: This project is in early development. Issues, feedback, and contributions are highly appreciated. :pray:
 
-<video src="https://github.com/user-attachments/assets/7ed994f8-2c7e-40f3-95ea-2d391eba5ffd" controls autoplay muted loop></video>
+<video src="https://github.com/user-attachments/assets/7ed994f8-2c7e-40f3-95ea-2d391eba5ffd" width="50%" controls autoplay muted loop></video>
 
 ## Why Yolium? :rocket:
 
