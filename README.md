@@ -12,9 +12,7 @@
      │                                                                          │
      ╰──────────────────────────────────────────────────────────────────────────╯
 ```
-
-**⚠️ Early development** — feedback and issues welcome!
-https://github.com/user-attachments/assets/7ed994f8-2c7e-40f3-95ea-2d391eba5ffd
+<video src="https://github.com/user-attachments/assets/7ed994f8-2c7e-40f3-95ea-2d391eba5ffd" width="320" height="240" controls></video> 
 
 ## 🏗️ Architecture
 
