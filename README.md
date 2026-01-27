@@ -8,7 +8,7 @@
      │        ██║   ╚██████╔╝███████╗██║╚██████╔╝██║ ╚═╝ ██║    │ 🦊 OpenCode │ │
      │        ╚═╝    ╚═════╝ ╚══════╝╚═╝ ╚═════╝ ╚═╝     ╚═╝    │ 🐚 Shell    │ │
      │                                                          └─────────────┘ │
-     │    🐳 Parallel AI agents. Isolated containers. Your code, protected.     │
+     │    🐳 Run AI agents in parallel—each safely containerized.                │
      │                                                                          │
      ╰──────────────────────────────────────────────────────────────────────────╯
 ```
