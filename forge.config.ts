@@ -93,8 +93,10 @@ const config: ForgeConfig = {
     },
     name: 'Yolium Desktop',
     executableName: 'yolium-desktop',
-    // Copy docker directory to resources folder for production builds
-    extraResource: ['src/docker'],
+    // App icon (without extension - Electron picks .ico/.icns/.png based on platform)
+    icon: 'assets/icon/favicon',
+    // Copy docker and icon directories to resources folder for production builds
+    extraResource: ['src/docker', 'assets/icon'],
   },
   rebuildConfig: {},
   hooks: {
@@ -134,10 +136,20 @@ const config: ForgeConfig = {
     },
   },
   makers: [
-    new MakerSquirrel({}),
+    new MakerSquirrel({
+      setupIcon: 'assets/icon/favicon.ico',
+    }),
     new MakerZIP({}, ['darwin']),
-    new MakerRpm({}),
-    new MakerDeb({}),
+    new MakerRpm({
+      options: {
+        icon: 'assets/icon/web-app-manifest-512x512.png',
+      },
+    }),
+    new MakerDeb({
+      options: {
+        icon: 'assets/icon/web-app-manifest-512x512.png',
+      },
+    }),
   ],
   plugins: [
     new AutoUnpackNativesPlugin({}),
