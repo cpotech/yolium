@@ -1,11 +1,11 @@
 # Yolium  
 :black_circle: ClaudeCode, :radio_button: OpenCode, :white_circle: Shell
 
-
 :sparkles: A desktop app for running multiple autonomous AI agents in parallel — each safely containerized, with project-mounted workspaces and locked host access.
 
 > Note: This project is in early development. Issues, feedback, and contributions are highly appreciated. :pray:
 
+https://github.com/user-attachments/assets/7ed994f8-2c7e-40f3-95ea-2d391eba5ffd
 ---
 
 Table of contents
