@@ -82,6 +82,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('shortcuts:show', handler);
   },
 
+  // Git settings dialog event (main -> renderer)
+  onGitSettingsShow: (callback: () => void): CleanupFn => {
+    const handler = () => callback();
+    ipcRenderer.on('git-settings:show', handler);
+    return () => ipcRenderer.removeListener('git-settings:show', handler);
+  },
+
   // Tab context menu
   showTabContextMenu: (tabId: string, x: number, y: number) =>
     ipcRenderer.invoke('tab:context-menu', tabId, x, y),
@@ -89,6 +96,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Dialogs
   showConfirmClose: (message: string) =>
     ipcRenderer.invoke('dialog:confirm-close', message),
+  showConfirmOkCancel: (title: string, message: string) =>
+    ipcRenderer.invoke('dialog:confirm-ok-cancel', title, message),
   showConfirmCloseMultiple: (count: number) =>
     ipcRenderer.invoke('dialog:confirm-close-multiple', count),
   showWorktreeCleanupDialog: (branchName: string, hasUncommittedChanges: boolean) =>
@@ -187,8 +196,10 @@ declare global {
       onTabCloseOthers: (callback: (keepTabId: string) => void) => CleanupFn;
       onTabCloseAll: (callback: () => void) => CleanupFn;
       onShortcutsShow: (callback: () => void) => CleanupFn;
+      onGitSettingsShow: (callback: () => void) => CleanupFn;
       showTabContextMenu: (tabId: string, x: number, y: number) => Promise<void>;
       showConfirmClose: (message: string) => Promise<boolean>;
+      showConfirmOkCancel: (title: string, message: string) => Promise<boolean>;
       showConfirmCloseMultiple: (count: number) => Promise<boolean>;
       showWorktreeCleanupDialog: (branchName: string, hasUncommittedChanges: boolean) => Promise<{ response: number }>;
       // Folder selection

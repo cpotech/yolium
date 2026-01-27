@@ -81,7 +81,7 @@ test.describe('Dialog Navigation', () => {
     await expect(window.locator(selectors.pathInput)).toHaveValue(expectedPath);
   });
 
-  test('Escape in agent dialog should cancel entire flow', async () => {
+  test('Escape in agent dialog should go back to path dialog', async () => {
     ctx = await launchApp();
     const { window } = ctx;
 
@@ -91,15 +91,14 @@ test.describe('Dialog Navigation', () => {
     await window.click(selectors.pathNextButton);
     await expect(window.locator(selectors.agentDialog)).toBeVisible();
 
-    // Press Escape
+    // Press Escape - should go back to path dialog
     await window.keyboard.press('Escape');
 
-    // Both dialogs should close
+    // Agent dialog should close
     await expect(window.locator(selectors.agentDialog)).not.toBeVisible();
-    await expect(window.locator(selectors.pathDialog)).not.toBeVisible();
 
-    // Should show empty state
-    await expect(window.locator(selectors.emptyState)).toBeVisible();
+    // Path dialog should reopen (Escape now acts as Back)
+    await expect(window.locator(selectors.pathDialog)).toBeVisible();
   });
 
   test('Escape in path dialog should cancel entire flow', async () => {

@@ -185,24 +185,6 @@ function App(): React.ReactElement {
     setGitConfigDialogOpen(false);
   }, []);
 
-  // Handle quit request with confirmation
-  const handleQuitRequest = useCallback(async () => {
-    // Count tabs with running containers
-    const runningCount = tabs.filter(
-      t => t.containerState === 'running' || t.containerState === 'starting'
-    ).length;
-
-    if (runningCount > 0) {
-      const confirmed = await window.electronAPI.showConfirmClose(
-        `${runningCount} yolium${runningCount > 1 ? 's are' : ' is'} still running. Quit anyway?`
-      );
-      if (!confirmed) return;
-    }
-
-    // Force quit the app
-    window.electronAPI.forceQuit();
-  }, [tabs]);
-
   // Check Docker state on app launch
   useEffect(() => {
     window.electronAPI.detectDockerState().then((state) => {
@@ -352,8 +334,9 @@ function App(): React.ReactElement {
 
   // Stop yolium from StatusBar (per CONTEXT.md: "After stopping, tab closes automatically")
   const handleStopYolium = useCallback(async (tabId: string) => {
-    const confirmed = await window.electronAPI.showConfirmClose(
-      'Stop this yolium?'
+    const confirmed = await window.electronAPI.showConfirmOkCancel(
+      'Stop Container',
+      'Stop this yolium container?'
     );
     if (!confirmed) return;
 
@@ -363,8 +346,9 @@ function App(): React.ReactElement {
   // Rebuild Docker image
   const handleRebuildImage = useCallback(async () => {
     // Show confirmation dialog
-    const confirmed = await window.electronAPI.showConfirmClose(
-      'Delete Docker Image?\n\nThis will:\n\u2022 End all active terminals\n\u2022 Remove all yolium containers\n\u2022 Remove the Docker image\n\nThe image will be rebuilt automatically when you start a new terminal.\n\nContinue?'
+    const confirmed = await window.electronAPI.showConfirmOkCancel(
+      'Delete Docker Image',
+      'This will:\n\u2022 End all active terminals\n\u2022 Remove all yolium containers\n\u2022 Remove the Docker image\n\nThe image will be rebuilt automatically when you start a new terminal.\n\nContinue?'
     );
     if (!confirmed) return;
 
@@ -417,7 +401,7 @@ function App(): React.ReactElement {
     const cleanupCloseOthers = window.electronAPI.onTabCloseOthers(handleCloseOtherTabs);
     const cleanupCloseAll = window.electronAPI.onTabCloseAll(handleCloseAllTabs);
     const cleanupShortcuts = window.electronAPI.onShortcutsShow(handleShowShortcuts);
-    const cleanupQuit = window.electronAPI.onQuitRequest(handleQuitRequest);
+    const cleanupGitSettings = window.electronAPI.onGitSettingsShow(handleOpenGitConfig);
 
     return () => {
       cleanupNew();
@@ -428,9 +412,9 @@ function App(): React.ReactElement {
       cleanupCloseOthers();
       cleanupCloseAll();
       cleanupShortcuts();
-      cleanupQuit();
+      cleanupGitSettings();
     };
-  }, [handleNewYolium, handleCloseActiveTab, handleNextTab, handlePrevTab, handleCloseTab, handleCloseOtherTabs, handleCloseAllTabs, handleShowShortcuts, handleQuitRequest]);
+  }, [handleNewYolium, handleCloseActiveTab, handleNextTab, handlePrevTab, handleCloseTab, handleCloseOtherTabs, handleCloseAllTabs, handleShowShortcuts, handleOpenGitConfig]);
 
   // Listen for container exit events to update state
   useEffect(() => {
