@@ -135,10 +135,18 @@ function createAppMenu(window: BrowserWindow): void {
 }
 
 const createWindow = (): void => {
+  // Resolve icon path for both development and production
+  // Use PNG for Linux, ICO for Windows/macOS
+  const iconFile = process.platform === 'linux' ? 'web-app-manifest-512x512.png' : 'favicon.ico';
+  const iconPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'icon', iconFile)
+    : path.join(__dirname, '..', '..', 'assets', 'icon', iconFile);
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     autoHideMenuBar: true,
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,      // CRITICAL: Security
