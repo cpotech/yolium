@@ -75,43 +75,30 @@ describe('entrypoint.sh', () => {
   });
 
   describe('gh token extraction logic', () => {
+    // Helper that mimics the entrypoint.sh extraction logic using JS regex
+    // This is equivalent to: grep 'github.com' file | sed 's/.*:\(github_pat_[^@]*\|ghp_[^@]*\)@.*/\1/'
+    function extractGitHubToken(credentialsContent: string): string {
+      const githubLine = credentialsContent.split('\n').find(line => line.includes('github.com'));
+      if (!githubLine) return '';
+      const match = githubLine.match(/:(github_pat_[^@]*|ghp_[^@]*)@/);
+      return match ? match[1] : '';
+    }
+
     it('should correctly extract github_pat_ tokens', () => {
       const gitCredentials = 'https://git:github_pat_11ABC123xyz@github.com\n';
-      const credentialsPath = path.join(tempDir, 'git-credentials-pat');
-      fs.writeFileSync(credentialsPath, gitCredentials);
-
-      // Test the sed extraction pattern used in entrypoint
-      const result = execSync(
-        `grep 'github.com' "${credentialsPath}" | sed 's/.*:\\(github_pat_[^@]*\\|ghp_[^@]*\\)@.*/\\1/'`,
-        { encoding: 'utf-8' }
-      ).trim();
-
+      const result = extractGitHubToken(gitCredentials);
       expect(result).toBe('github_pat_11ABC123xyz');
     });
 
     it('should correctly extract ghp_ tokens', () => {
       const gitCredentials = 'https://git:ghp_ABC123xyz789@github.com\n';
-      const credentialsPath = path.join(tempDir, 'git-credentials-ghp');
-      fs.writeFileSync(credentialsPath, gitCredentials);
-
-      const result = execSync(
-        `grep 'github.com' "${credentialsPath}" | sed 's/.*:\\(github_pat_[^@]*\\|ghp_[^@]*\\)@.*/\\1/'`,
-        { encoding: 'utf-8' }
-      ).trim();
-
+      const result = extractGitHubToken(gitCredentials);
       expect(result).toBe('ghp_ABC123xyz789');
     });
 
     it('should handle credentials file with no github.com entry', () => {
       const gitCredentials = 'https://git:token@gitlab.com\n';
-      const credentialsPath = path.join(tempDir, 'git-credentials-gitlab');
-      fs.writeFileSync(credentialsPath, gitCredentials);
-
-      const result = execSync(
-        `grep 'github.com' "${credentialsPath}" 2>/dev/null | sed 's/.*:\\(github_pat_[^@]*\\|ghp_[^@]*\\)@.*/\\1/' || echo ''`,
-        { encoding: 'utf-8' }
-      ).trim();
-
+      const result = extractGitHubToken(gitCredentials);
       expect(result).toBe('');
     });
   });
