@@ -1,9 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as path from 'node:path'
+import * as os from 'node:os'
 import * as crypto from 'node:crypto'
 
 // Test pure utility functions from docker-manager
 // These are extracted/reimplemented here since they're not exported
+
+/**
+ * Normalize a host path for use in Docker bind mount strings.
+ * On Windows, converts backslashes to forward slashes (Docker requirement).
+ * On Linux/macOS, returns the path unchanged.
+ */
+function toDockerPath(hostPath: string, isWindows: boolean): string {
+  if (!isWindows) return hostPath
+  // Convert backslashes to forward slashes for Docker
+  return hostPath.replace(/\\/g, '/')
+}
 
 /**
  * Generate a 12-character SHA256 hash of the absolute project path.
@@ -113,6 +125,39 @@ describe('docker-manager utilities', () => {
       const name1 = getProjectDirName('/home/user/project')
       const name2 = getProjectDirName('/home/user/project')
       expect(name1).toBe(name2)
+    })
+  })
+
+  describe('toDockerPath', () => {
+    it('returns path unchanged on non-Windows', () => {
+      const linuxPath = '/home/user/project'
+      expect(toDockerPath(linuxPath, false)).toBe(linuxPath)
+    })
+
+    it('returns path unchanged for Unix paths on Windows', () => {
+      // Unix-style paths should still work (forward slashes are valid)
+      const unixPath = '/home/user/project'
+      expect(toDockerPath(unixPath, true)).toBe(unixPath)
+    })
+
+    it('converts Windows backslashes to forward slashes', () => {
+      const windowsPath = 'C:\\Users\\name\\project'
+      expect(toDockerPath(windowsPath, true)).toBe('C:/Users/name/project')
+    })
+
+    it('handles mixed slashes on Windows', () => {
+      const mixedPath = 'C:\\Users/name\\project'
+      expect(toDockerPath(mixedPath, true)).toBe('C:/Users/name/project')
+    })
+
+    it('handles nested Windows paths', () => {
+      const deepPath = 'C:\\Users\\name\\.cache\\yolium\\project\\npm'
+      expect(toDockerPath(deepPath, true)).toBe('C:/Users/name/.cache/yolium/project/npm')
+    })
+
+    it('handles paths with spaces on Windows', () => {
+      const pathWithSpaces = 'C:\\Users\\User Name\\My Project'
+      expect(toDockerPath(pathWithSpaces, true)).toBe('C:/Users/User Name/My Project')
     })
   })
 })
