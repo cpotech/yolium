@@ -74,7 +74,8 @@ describe('entrypoint.sh', () => {
     });
   });
 
-  describe('gh token extraction logic', () => {
+  // These tests use grep/sed which only exist on Unix - skip on Windows
+  describe.skipIf(process.platform === 'win32')('gh token extraction logic', () => {
     it('should correctly extract github_pat_ tokens', () => {
       const gitCredentials = 'https://git:github_pat_11ABC123xyz@github.com\n';
       const credentialsPath = path.join(tempDir, 'git-credentials-pat');
