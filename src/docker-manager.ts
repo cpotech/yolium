@@ -32,6 +32,21 @@ const CONTAINER_WORKSPACE = '/workspace';
 const isWindows = os.platform() === 'win32';
 
 /**
+ * Normalize a host path for use in Docker bind mount strings.
+ * On Windows, converts backslashes to forward slashes (Docker requirement).
+ * On Linux/macOS, returns the path unchanged.
+ *
+ * Docker bind mounts require forward slashes even on Windows:
+ * - Valid:   C:/Users/name/project:/workspace:rw
+ * - Invalid: C:\Users\name\project:/workspace:rw
+ */
+function toDockerPath(hostPath: string): string {
+  if (!isWindows) return hostPath;
+  // Convert backslashes to forward slashes for Docker
+  return hostPath.replace(/\\/g, '/');
+}
+
+/**
  * Get the container-side path for the project directory.
  * On Windows, returns /workspace (since Windows paths don't work in Linux containers).
  * On Linux/macOS, returns the same path for symlink compatibility.
@@ -303,21 +318,22 @@ function buildPersistentBindMounts(mountPath: string, cacheKeyPath?: string, ori
 
   const binds = [
     // Project directory (on Linux: same path for symlink compatibility, on Windows: /workspace)
-    `${mountPath}:${containerPath}:rw`,
+    // Use toDockerPath() to convert Windows backslashes to forward slashes
+    `${toDockerPath(mountPath)}:${containerPath}:rw`,
 
     // Package caches
-    `${paths.cache.npm}:/home/agent/.npm:rw`,
-    `${paths.cache.pip}:/home/agent/.cache/pip:rw`,
-    `${paths.cache.maven}:/home/agent/.m2:rw`,
-    `${paths.cache.gradle}:/home/agent/.gradle:rw`,
+    `${toDockerPath(paths.cache.npm)}:/home/agent/.npm:rw`,
+    `${toDockerPath(paths.cache.pip)}:/home/agent/.cache/pip:rw`,
+    `${toDockerPath(paths.cache.maven)}:/home/agent/.m2:rw`,
+    `${toDockerPath(paths.cache.gradle)}:/home/agent/.gradle:rw`,
 
     // Shell history
-    `${paths.history}:/home/agent/.yolium_history:rw`,
+    `${toDockerPath(paths.history)}:/home/agent/.yolium_history:rw`,
 
     // Tool configurations
-    `${paths.claude}:/home/agent/.claude:rw`,
-    `${paths.opencode.config}:/home/agent/.config/opencode:rw`,
-    `${paths.opencode.data}:/home/agent/.local/share/opencode:rw`,
+    `${toDockerPath(paths.claude)}:/home/agent/.claude:rw`,
+    `${toDockerPath(paths.opencode.config)}:/home/agent/.config/opencode:rw`,
+    `${toDockerPath(paths.opencode.data)}:/home/agent/.local/share/opencode:rw`,
   ];
 
   // For worktrees, mount the original repo's .git directory so git commands work
@@ -326,7 +342,9 @@ function buildPersistentBindMounts(mountPath: string, cacheKeyPath?: string, ori
     const mainGitDir = path.join(originalRepoPath, '.git');
     if (fs.existsSync(mainGitDir) && fs.statSync(mainGitDir).isDirectory()) {
       // Mount the main repo's .git at its original path (needed for worktree references)
-      binds.push(`${mainGitDir}:${mainGitDir}:rw`);
+      // On Windows, both host and container paths need forward slashes for bind mounts
+      const dockerGitDir = toDockerPath(mainGitDir);
+      binds.push(`${dockerGitDir}:${dockerGitDir}:rw`);
     }
   }
 
@@ -363,7 +381,7 @@ function getGitCredentialsBind(): string | null {
     return null;
   }
   logger.info('Git credentials file generated', { credPath });
-  return `${credPath}:/home/agent/.git-credentials:ro`;
+  return `${toDockerPath(credPath)}:/home/agent/.git-credentials:ro`;
 }
 
 /**
@@ -477,49 +495,77 @@ export async function createYolium(
     worktreePath,
   });
 
-  const container = await docker.createContainer({
-    Image: DEFAULT_IMAGE,
-    // Cmd is handled by entrypoint based on TOOL env var
-    Tty: true,
-    OpenStdin: true,
-    AttachStdin: true,
-    AttachStdout: true,
-    AttachStderr: true,
-    WorkingDir: containerProjectPath,
-    Env: [
-      `PROJECT_DIR=${containerProjectPath}`,
-      `TOOL=${agent}`,
-      `GSD_ENABLED=${gsdEnabled}`,
-      `HOST_HOME=${os.homedir()}`,
-      'CLAUDE_CONFIG_DIR=/home/agent/.claude',
-      'HISTFILE=/home/agent/.yolium_history/zsh_history',
-      ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
-      ...(process.env.YOLIUM_LOG_LEVEL ? [`YOLIUM_LOG_LEVEL=${process.env.YOLIUM_LOG_LEVEL}`] : []),
-      ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
-      ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
-    ],
-    HostConfig: {
-      CapAdd: ['NET_ADMIN'],
-      Binds: (() => {
-        // Use mountPath for project directory, but use original folderPath for cache isolation
-        // Pass folderPath as originalRepoPath so worktrees can access the main repo's .git
-        const binds = buildPersistentBindMounts(mountPath, folderPath, worktreePath ? folderPath : undefined);
-        const sshDir = getYoliumSshDir();
-        if (sshDir) {
-          binds.push(`${sshDir}:/home/agent/.ssh:rw`);
-        }
-        // Add git-credentials for HTTPS auth if PAT is configured
-        const gitCredBind = getGitCredentialsBind();
-        if (gitCredBind) {
-          binds.push(gitCredBind);
-        }
-        return binds;
-      })(),
-    },
-  });
+  // Build bind mounts (extract to log them for debugging)
+  // Use mountPath for project directory, but use original folderPath for cache isolation
+  // Pass folderPath as originalRepoPath so worktrees can access the main repo's .git
+  const binds = buildPersistentBindMounts(mountPath, folderPath, worktreePath ? folderPath : undefined);
+  const sshDir = getYoliumSshDir();
+  if (sshDir) {
+    binds.push(`${toDockerPath(sshDir)}:/home/agent/.ssh:rw`);
+  }
+  // Add git-credentials for HTTPS auth if PAT is configured
+  const gitCredBind = getGitCredentialsBind();
+  if (gitCredBind) {
+    binds.push(gitCredBind);
+  }
+
+  logger.debug('Container bind mounts', { sessionId, binds });
+
+  let container;
+  try {
+    container = await docker.createContainer({
+      Image: DEFAULT_IMAGE,
+      // Cmd is handled by entrypoint based on TOOL env var
+      Tty: true,
+      OpenStdin: true,
+      AttachStdin: true,
+      AttachStdout: true,
+      AttachStderr: true,
+      WorkingDir: containerProjectPath,
+      Env: [
+        `PROJECT_DIR=${containerProjectPath}`,
+        `TOOL=${agent}`,
+        `GSD_ENABLED=${gsdEnabled}`,
+        `HOST_HOME=${os.homedir()}`,
+        'CLAUDE_CONFIG_DIR=/home/agent/.claude',
+        'HISTFILE=/home/agent/.yolium_history/zsh_history',
+        ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
+        ...(process.env.YOLIUM_LOG_LEVEL ? [`YOLIUM_LOG_LEVEL=${process.env.YOLIUM_LOG_LEVEL}`] : []),
+        ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
+        ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
+      ],
+      HostConfig: {
+        CapAdd: ['NET_ADMIN'],
+        Binds: binds,
+      },
+    });
+  } catch (err) {
+    logger.error('Failed to create container', {
+      sessionId,
+      error: err instanceof Error ? err.message : String(err),
+      binds,
+    });
+    throw err;
+  }
 
   // Start the container
-  await container.start();
+  try {
+    await container.start();
+  } catch (err) {
+    logger.error('Failed to start container', {
+      sessionId,
+      containerId: container.id,
+      error: err instanceof Error ? err.message : String(err),
+      binds,
+    });
+    // Clean up the created but not started container
+    try {
+      await container.remove();
+    } catch {
+      // Ignore cleanup errors
+    }
+    throw err;
+  }
 
   // Attach to container with bidirectional stream (hijack required for stdin)
   const stream = await container.attach({
