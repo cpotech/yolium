@@ -6,10 +6,15 @@ changelog:
     labels:
       - skip-changelog
       - dependencies
+      - chore
     authors:
       - dependabot
       - dependabot[bot]
   categories:
+    - title: Breaking Changes
+      labels:
+        - breaking
+        - breaking-change
     - title: Features
       labels:
         - enhancement
@@ -19,6 +24,18 @@ changelog:
         - bug
         - bugfix
         - fix
-    - title: Other
+    - title: Performance
+      labels:
+        - performance
+        - perf
+    - title: Documentation
+      labels:
+        - documentation
+        - docs
+    - title: Testing
+      labels:
+        - test
+        - testing
+    - title: Other Changes
       labels:
         - "*"
