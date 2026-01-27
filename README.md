@@ -5,7 +5,7 @@
 
 > Note: This project is in early development. Issues, feedback, and contributions are highly appreciated. :pray:
 
-https://github.com/user-attachments/assets/7ed994f8-2c7e-40f3-95ea-2d391eba5ffd
+<video src="https://github.com/user-attachments/assets/7ed994f8-2c7e-40f3-95ea-2d391eba5ffd" controls autoplay muted loop></video>
 ---
 
 Table of contents
