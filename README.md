@@ -1,18 +1,13 @@
-⚠️ This project is in early development.
 ```
-  ┌────────────────────────────────────────────────────┐
-  │ ██╗   ██╗ ██████╗ ██╗     ██╗██╗   ██╗███╗   ███╗  │
-  │ ╚██╗ ██╔╝██╔═══██╗██║     ██║██║   ██║████╗ ████║  │
-  │  ╚████╔╝ ██║   ██║██║     ██║██║   ██║██╔████╔██║  │
-  │   ╚██╔╝  ██║   ██║██║     ██║██║   ██║██║╚██╔╝██║  │
-  │    ██║   ╚██████╔╝███████╗██║╚██████╔╝██║ ╚═╝ ██║  │
-  │    ╚═╝    ╚═════╝ ╚══════╝╚═╝ ╚═════╝ ╚═╝     ╚═╝  │
-  │                                                    │
-  │        [■] ClaudeCode  [■] OpenCode  [■] Shell     │
-  └────────────────────────────────────────────────────┘
-A desktop app for running autonomous AI agents in parallel—each safely containerized.
-Your solution is mounted in, everything else is locked out apart from persistent cache data.
+ ╭──────────────────────────────────────────────────────────────╮
+ │  ⬡ YOLIUM                                                    │
+ │  Run AI agents in parallel—each safely containerized.        │
+ │                                                              │
+ │  [■] Claude Code    [■] OpenCode    [■] Shell                │
+ ╰──────────────────────────────────────────────────────────────╯
 ```
+
+⚠️ **This project is in early development.**
 https://github.com/user-attachments/assets/7ed994f8-2c7e-40f3-95ea-2d391eba5ffd
 
 ## 🏗️ Architecture
