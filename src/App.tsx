@@ -429,8 +429,8 @@ function App(): React.ReactElement {
   // Show loading spinner while checking Docker status
   if (dockerReady === null) {
     return (
-      <div className="h-screen bg-gray-900 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+      <div className="h-screen bg-[var(--color-bg-primary)] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[var(--color-text-secondary)] animate-spin" />
       </div>
     );
   }
@@ -438,7 +438,7 @@ function App(): React.ReactElement {
   // Show Docker setup dialog if Docker is not ready
   if (!dockerReady) {
     return (
-      <div className="h-screen bg-gray-900">
+      <div className="h-screen bg-[var(--color-bg-primary)]">
         <DockerSetupDialog onComplete={handleDockerSetupComplete} />
       </div>
     );
@@ -446,7 +446,7 @@ function App(): React.ReactElement {
 
   // Normal app UI when Docker is ready
   return (
-    <div className="flex flex-col h-screen bg-gray-900">
+    <div className="flex flex-col h-screen bg-[var(--color-bg-primary)]">
       {/* Path input dialog */}
       <PathInputDialog
         isOpen={pathDialogOpen}
@@ -488,14 +488,14 @@ function App(): React.ReactElement {
       {/* Docker image build progress overlay */}
       {buildProgress && (
         <div data-testid="build-progress-overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 shadow-xl border border-gray-700">
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-6 max-w-2xl w-full mx-4 shadow-xl border border-[var(--color-border-primary)]">
             <div className="flex items-center gap-3 mb-4">
-              <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
+              <Loader2 className="w-6 h-6 text-[var(--color-accent-primary)] animate-spin" />
               <h2 className="text-lg font-semibold text-white">{isRebuilding ? 'Deleting Docker Image' : 'Building Docker Image'}</h2>
             </div>
             <div
               ref={progressRef}
-              className="bg-gray-900 rounded p-3 font-mono text-xs text-gray-300 max-h-64 overflow-y-auto"
+              className="bg-[var(--color-bg-primary)] rounded p-3 font-mono text-xs text-[var(--color-text-secondary)] max-h-64 overflow-y-auto"
             >
               {buildProgress.map((line, index) => (
                 <div key={index} className="whitespace-pre-wrap break-all leading-relaxed">
@@ -504,7 +504,7 @@ function App(): React.ReactElement {
               ))}
             </div>
             {!isRebuilding && (
-              <p className="mt-3 text-xs text-gray-500">
+              <p className="mt-3 text-xs text-[var(--color-text-muted)]">
                 This only happens once. Future launches will be instant.
               </p>
             )}
@@ -530,11 +530,11 @@ function App(): React.ReactElement {
               <EmptyState onNewTab={handleNewYolium} />
             </div>
             {/* Minimal status bar for empty state */}
-            <div className="flex items-center justify-end h-7 px-3 bg-gray-800 border-t border-gray-700 text-xs shrink-0 gap-2">
+            <div className="flex items-center justify-end h-7 px-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)] text-xs shrink-0 gap-2">
               {/* Docker image info and rebuild button (only shown when image exists) */}
               {!imageRemoved && (
                 <>
-                  <span className="flex items-center gap-1 text-gray-500">
+                  <span className="flex items-center gap-1 text-[var(--color-text-muted)]">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
                       <path d="m3.3 7 8.7 5 8.7-5" />
@@ -547,7 +547,7 @@ function App(): React.ReactElement {
                   <button
                     onClick={handleRebuildImage}
                     disabled={isRebuilding}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Delete Docker image"
                   >
                     {isRebuilding ? (
@@ -566,14 +566,14 @@ function App(): React.ReactElement {
                   </button>
 
                   {/* Separator */}
-                  <span className="text-gray-600">|</span>
+                  <span className="text-[var(--color-text-disabled)]">|</span>
                 </>
               )}
 
               {/* Git settings button */}
               <button
                 onClick={handleOpenGitConfig}
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-gray-500 hover:text-gray-300 hover:bg-gray-700 transition-colors"
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
                 title="Git Settings"
               >
                 <GitGraph size={12} />
@@ -582,7 +582,7 @@ function App(): React.ReactElement {
               <button
                 data-testid="shortcuts-button"
                 onClick={handleShowShortcuts}
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-gray-500 hover:text-gray-300 hover:bg-gray-700 transition-colors"
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
                 title="Keyboard shortcuts (Ctrl+?)"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

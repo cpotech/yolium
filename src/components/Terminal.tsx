@@ -3,6 +3,7 @@ import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { useTerminalCwd } from '../hooks/useTerminalCwd';
+import { useTheme } from '../theme';
 import '@xterm/xterm/css/xterm.css';
 
 interface TerminalProps {
@@ -26,6 +27,7 @@ export function Terminal({
   const terminalRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const mountedRef = useRef(true);
+  const { tokens } = useTheme();
 
   // CWD tracking via OSC 7
   const handleCwdChange = useCallback((cwd: string) => {
@@ -45,26 +47,26 @@ export function Terminal({
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
       fontSize: 14,
       theme: {
-        background: '#0a0a0a',
-        foreground: '#ffffff',
-        cursor: '#ffffff',
-        cursorAccent: '#0a0a0a',
-        black: '#000000',
-        red: '#e06c75',
-        green: '#98c379',
-        yellow: '#e5c07b',
-        blue: '#61afef',
-        magenta: '#c678dd',
-        cyan: '#56b6c2',
-        white: '#abb2bf',
-        brightBlack: '#5c6370',
-        brightRed: '#e06c75',
-        brightGreen: '#98c379',
-        brightYellow: '#e5c07b',
-        brightBlue: '#61afef',
-        brightMagenta: '#c678dd',
-        brightCyan: '#56b6c2',
-        brightWhite: '#ffffff',
+        background: tokens.terminal.background,
+        foreground: tokens.terminal.foreground,
+        cursor: tokens.terminal.cursor,
+        cursorAccent: tokens.terminal.background,
+        black: tokens.terminal.black,
+        red: tokens.terminal.red,
+        green: tokens.terminal.green,
+        yellow: tokens.terminal.yellow,
+        blue: tokens.terminal.blue,
+        magenta: tokens.terminal.magenta,
+        cyan: tokens.terminal.cyan,
+        white: tokens.terminal.white,
+        brightBlack: tokens.terminal.brightBlack,
+        brightRed: tokens.terminal.brightRed,
+        brightGreen: tokens.terminal.brightGreen,
+        brightYellow: tokens.terminal.brightYellow,
+        brightBlue: tokens.terminal.brightBlue,
+        brightMagenta: tokens.terminal.brightMagenta,
+        brightCyan: tokens.terminal.brightCyan,
+        brightWhite: tokens.terminal.brightWhite,
       },
       scrollback: 10000,
       // NOTE: allowProposedApi crashes in production due to Vite minification bug
@@ -290,6 +292,34 @@ export function Terminal({
       });
     }
   }, [isVisible, sessionId, isContainer]);
+
+  // Update terminal theme when theme tokens change
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.options.theme = {
+        background: tokens.terminal.background,
+        foreground: tokens.terminal.foreground,
+        cursor: tokens.terminal.cursor,
+        cursorAccent: tokens.terminal.background,
+        black: tokens.terminal.black,
+        red: tokens.terminal.red,
+        green: tokens.terminal.green,
+        yellow: tokens.terminal.yellow,
+        blue: tokens.terminal.blue,
+        magenta: tokens.terminal.magenta,
+        cyan: tokens.terminal.cyan,
+        white: tokens.terminal.white,
+        brightBlack: tokens.terminal.brightBlack,
+        brightRed: tokens.terminal.brightRed,
+        brightGreen: tokens.terminal.brightGreen,
+        brightYellow: tokens.terminal.brightYellow,
+        brightBlue: tokens.terminal.brightBlue,
+        brightMagenta: tokens.terminal.brightMagenta,
+        brightCyan: tokens.terminal.brightCyan,
+        brightWhite: tokens.terminal.brightWhite,
+      };
+    }
+  }, [tokens]);
 
   return (
     <div

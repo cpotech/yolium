@@ -54,6 +54,7 @@ export const selectors = {
   stopButton: '[data-testid="stop-button"]',
   settingsButton: '[data-testid="settings-button"]',
   shortcutsButton: '[data-testid="shortcuts-button"]',
+  themeToggle: '[data-testid="theme-toggle"]',
 
   // Git config dialog
   gitConfigDialog: '[data-testid="git-config-dialog"]',
