@@ -56,6 +56,30 @@ function getContainerProjectPath(hostPath: string): string {
 }
 
 /**
+ * Convert a Windows home path to a Linux-compatible absolute path for use
+ * inside the container. This allows symlink creation to work correctly.
+ *
+ * On Windows, converts C:\Users\name to /c/Users/name so it's an absolute
+ * path in the Linux container. Without this, ln -sf would create the symlink
+ * in the current directory instead of at the intended location.
+ *
+ * On Linux/macOS, returns the path unchanged.
+ *
+ * Example: C:\Users\name -> /c/Users/name
+ */
+function toContainerHomePath(hostHome: string): string {
+  if (!isWindows) return hostHome;
+  // Convert backslashes to forward slashes
+  const dockerPath = hostHome.replace(/\\/g, '/');
+  // Convert C:/Users/name to /c/Users/name (lowercase drive letter, absolute path)
+  if (/^[A-Za-z]:/.test(dockerPath)) {
+    const driveLetter = dockerPath[0].toLowerCase();
+    return `/${driveLetter}${dockerPath.slice(2)}`;
+  }
+  return dockerPath;
+}
+
+/**
  * Generate a 12-character SHA256 hash of the absolute project path.
  * Used to create unique, isolated directories per project.
  */
@@ -342,9 +366,10 @@ function buildPersistentBindMounts(mountPath: string, cacheKeyPath?: string, ori
     const mainGitDir = path.join(originalRepoPath, '.git');
     if (fs.existsSync(mainGitDir) && fs.statSync(mainGitDir).isDirectory()) {
       // Mount the main repo's .git at its original path (needed for worktree references)
-      // On Windows, both host and container paths need forward slashes for bind mounts
+      // On Windows: host path is C:/Users/..., container path is /c/Users/... (Linux-style)
       const dockerGitDir = toDockerPath(mainGitDir);
-      binds.push(`${dockerGitDir}:${dockerGitDir}:rw`);
+      const containerGitDir = toContainerHomePath(mainGitDir);
+      binds.push(`${dockerGitDir}:${containerGitDir}:rw`);
     }
   }
 
@@ -460,19 +485,23 @@ export async function createYolium(
 ): Promise<string> {
   const sessionId = `yolium-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
-  logger.info('Creating container', { sessionId, folderPath, agent, gsdEnabled, worktreeEnabled, branchName });
+  // Resolve to absolute path to ensure drive letter is present on Windows
+  // This fixes paths like "\Users\gaming\repos\test" -> "C:\Users\gaming\repos\test"
+  const resolvedFolderPath = path.resolve(folderPath);
+
+  logger.info('Creating container', { sessionId, folderPath: resolvedFolderPath, agent, gsdEnabled, worktreeEnabled, branchName });
 
   // Handle worktree creation if enabled
-  let mountPath = folderPath;
+  let mountPath = resolvedFolderPath;
   let worktreePath: string | undefined;
   let actualBranchName: string | undefined;
 
   if (worktreeEnabled) {
     actualBranchName = branchName || generateBranchName();
-    logger.info('Creating worktree', { sessionId, folderPath, branchName: actualBranchName });
+    logger.info('Creating worktree', { sessionId, folderPath: resolvedFolderPath, branchName: actualBranchName });
 
     try {
-      worktreePath = createWorktree(folderPath, actualBranchName);
+      worktreePath = createWorktree(resolvedFolderPath, actualBranchName);
       mountPath = worktreePath;
       logger.info('Worktree created', { sessionId, worktreePath });
     } catch (err) {
@@ -496,9 +525,9 @@ export async function createYolium(
   });
 
   // Build bind mounts (extract to log them for debugging)
-  // Use mountPath for project directory, but use original folderPath for cache isolation
-  // Pass folderPath as originalRepoPath so worktrees can access the main repo's .git
-  const binds = buildPersistentBindMounts(mountPath, folderPath, worktreePath ? folderPath : undefined);
+  // Use mountPath for project directory, but use original resolvedFolderPath for cache isolation
+  // Pass resolvedFolderPath as originalRepoPath so worktrees can access the main repo's .git
+  const binds = buildPersistentBindMounts(mountPath, resolvedFolderPath, worktreePath ? resolvedFolderPath : undefined);
   const sshDir = getYoliumSshDir();
   if (sshDir) {
     binds.push(`${toDockerPath(sshDir)}:/home/agent/.ssh:rw`);
@@ -526,13 +555,15 @@ export async function createYolium(
         `PROJECT_DIR=${containerProjectPath}`,
         `TOOL=${agent}`,
         `GSD_ENABLED=${gsdEnabled}`,
-        `HOST_HOME=${os.homedir()}`,
+        `HOST_HOME=${toContainerHomePath(os.homedir())}`,
         'CLAUDE_CONFIG_DIR=/home/agent/.claude',
         'HISTFILE=/home/agent/.yolium_history/zsh_history',
         ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
         ...(process.env.YOLIUM_LOG_LEVEL ? [`YOLIUM_LOG_LEVEL=${process.env.YOLIUM_LOG_LEVEL}`] : []),
         ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
         ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
+        // For worktrees: pass the original repo path so entrypoint can create symlink for git
+        ...(worktreePath ? [`WORKTREE_REPO_PATH=${toDockerPath(resolvedFolderPath)}`] : []),
       ],
       HostConfig: {
         CapAdd: ['NET_ADMIN'],
@@ -587,7 +618,7 @@ export async function createYolium(
     // Worktree info (only set if worktree is enabled)
     ...(worktreePath && {
       worktreePath,
-      originalPath: folderPath,
+      originalPath: resolvedFolderPath,
       branchName: actualBranchName,
     }),
   });

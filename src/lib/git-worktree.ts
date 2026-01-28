@@ -120,6 +120,16 @@ export function createWorktree(projectPath: string, branchName: string): string 
     throw new Error('Cannot create worktree: repository has no commits yet. Please make an initial commit first.');
   }
 
+  // Prune stale worktree references (directories deleted but still registered)
+  try {
+    execSync('git worktree prune', {
+      cwd: projectPath,
+      stdio: 'ignore',
+    });
+  } catch {
+    // Ignore prune errors - not critical
+  }
+
   const worktreePath = getWorktreePath(projectPath, branchName);
 
   // Ensure parent directory exists

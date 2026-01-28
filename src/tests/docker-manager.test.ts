@@ -50,6 +50,44 @@ function getProjectDirName(projectPath: string): string {
   return sanitizedName ? `${sanitizedName}-${hash}` : `project-${hash}`
 }
 
+/**
+ * Convert a Windows home path to a Linux-compatible absolute path for use
+ * inside the container. This allows symlink creation to work correctly.
+ *
+ * Example: C:\Users\name -> /c/Users/name (absolute path in Linux)
+ *
+ * On non-Windows, returns the path unchanged.
+ */
+function toContainerHomePath(hostHome: string, isWindows: boolean): string {
+  if (!isWindows) return hostHome
+  // Convert C:\Users\name to /c/Users/name (lowercase drive letter, absolute path)
+  const dockerPath = hostHome.replace(/\\/g, '/')
+  // Convert C:/Users/name to /c/Users/name
+  if (/^[A-Za-z]:/.test(dockerPath)) {
+    const driveLetter = dockerPath[0].toLowerCase()
+    return `/${driveLetter}${dockerPath.slice(2)}`
+  }
+  return dockerPath
+}
+
+/**
+ * Get the container-side path for the project directory.
+ * On Windows, returns /workspace (since Windows paths don't work in Linux containers).
+ * On Linux/macOS, returns the same path for symlink compatibility.
+ */
+function getContainerProjectPath(hostPath: string, isWindows: boolean): string {
+  return isWindows ? '/workspace' : hostPath
+}
+
+/**
+ * Build a bind mount string for the project directory.
+ */
+function buildProjectBindMount(hostPath: string, isWindows: boolean): string {
+  const dockerPath = toDockerPath(hostPath, isWindows)
+  const containerPath = getContainerProjectPath(hostPath, isWindows)
+  return `${dockerPath}:${containerPath}:rw`
+}
+
 describe('docker-manager utilities', () => {
   describe('hashProjectPath', () => {
     it('returns a 12-character hex string', () => {
@@ -158,6 +196,88 @@ describe('docker-manager utilities', () => {
     it('handles paths with spaces on Windows', () => {
       const pathWithSpaces = 'C:\\Users\\User Name\\My Project'
       expect(toDockerPath(pathWithSpaces, true)).toBe('C:/Users/User Name/My Project')
+    })
+  })
+
+  describe('toContainerHomePath', () => {
+    it('returns path unchanged on non-Windows', () => {
+      const linuxHome = '/home/user'
+      expect(toContainerHomePath(linuxHome, false)).toBe('/home/user')
+    })
+
+    it('converts Windows home to absolute Linux path', () => {
+      // C:\Users\name should become /c/Users/name (absolute path in Linux container)
+      const windowsHome = 'C:\\Users\\charles.porter'
+      expect(toContainerHomePath(windowsHome, true)).toBe('/c/Users/charles.porter')
+    })
+
+    it('handles lowercase drive letter', () => {
+      const windowsHome = 'c:\\Users\\name'
+      expect(toContainerHomePath(windowsHome, true)).toBe('/c/Users/name')
+    })
+
+    it('handles uppercase drive letter and converts to lowercase', () => {
+      const windowsHome = 'D:\\Users\\name'
+      expect(toContainerHomePath(windowsHome, true)).toBe('/d/Users/name')
+    })
+
+    it('handles paths with spaces', () => {
+      const windowsHome = 'C:\\Users\\User Name'
+      expect(toContainerHomePath(windowsHome, true)).toBe('/c/Users/User Name')
+    })
+
+    it('produces a path that starts with / (absolute path)', () => {
+      // This is critical: the path must start with / so ln -sf creates
+      // the symlink at an absolute location, not in the current directory
+      const windowsHome = 'C:\\Users\\charles.porter'
+      const result = toContainerHomePath(windowsHome, true)
+      expect(result.startsWith('/')).toBe(true)
+    })
+  })
+
+  describe('getContainerProjectPath', () => {
+    it('returns /workspace on Windows', () => {
+      const windowsPath = 'C:\\Users\\name\\project'
+      expect(getContainerProjectPath(windowsPath, true)).toBe('/workspace')
+    })
+
+    it('returns same path on Linux', () => {
+      const linuxPath = '/home/user/project'
+      expect(getContainerProjectPath(linuxPath, false)).toBe('/home/user/project')
+    })
+
+    it('returns same path on macOS', () => {
+      const macPath = '/Users/name/project'
+      expect(getContainerProjectPath(macPath, false)).toBe('/Users/name/project')
+    })
+  })
+
+  describe('buildProjectBindMount', () => {
+    it('builds correct bind mount for Windows', () => {
+      const windowsPath = 'C:\\Users\\name\\project'
+      const mount = buildProjectBindMount(windowsPath, true)
+      // Should be: C:/Users/name/project:/workspace:rw
+      expect(mount).toBe('C:/Users/name/project:/workspace:rw')
+    })
+
+    it('builds correct bind mount for Linux', () => {
+      const linuxPath = '/home/user/project'
+      const mount = buildProjectBindMount(linuxPath, false)
+      // Should be: /home/user/project:/home/user/project:rw
+      expect(mount).toBe('/home/user/project:/home/user/project:rw')
+    })
+
+    it('handles Windows paths with spaces', () => {
+      const windowsPath = 'C:\\Users\\User Name\\My Project'
+      const mount = buildProjectBindMount(windowsPath, true)
+      expect(mount).toBe('C:/Users/User Name/My Project:/workspace:rw')
+    })
+
+    it('Windows bind mount uses forward slashes for host path', () => {
+      const windowsPath = 'C:\\Users\\name\\project'
+      const mount = buildProjectBindMount(windowsPath, true)
+      // Host path should have forward slashes (Docker requirement)
+      expect(mount).not.toContain('\\')
     })
   })
 })

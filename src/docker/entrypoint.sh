@@ -78,6 +78,24 @@ if [ -n "$HOST_HOME" ] && [ "$HOST_HOME" != "$HOME" ] && [ ! -e "$HOST_HOME" ]; 
         add_status "✅ Host path compatibility symlink created"
 fi
 
+# For worktrees: fix the .git file to point to Linux-mounted path
+# The worktree's .git file references Windows path (e.g., gitdir: C:/Users/.../worktrees/name)
+# We mount .git at /c/Users/..., so update the .git file to use Linux path
+if [ -n "$WORKTREE_REPO_PATH" ] && [ -n "$PROJECT_DIR" ]; then
+    GITFILE="$PROJECT_DIR/.git"
+    if [ -f "$GITFILE" ]; then
+        # Read current content and convert Windows path to Linux-style
+        # C:/Users/... -> /c/Users/...
+        CURRENT=$(cat "$GITFILE")
+        FIXED=$(echo "$CURRENT" | sed 's|gitdir: \([A-Za-z]\):|gitdir: /\L\1|')
+        if [ "$CURRENT" != "$FIXED" ]; then
+            log "Fixing worktree .git file path: Windows -> Linux style"
+            echo "$FIXED" > "$GITFILE"
+            add_status "✅ Worktree git path fixed"
+        fi
+    fi
+fi
+
 export PATH="$HOME/.local/bin:$PATH"
 
 if [ -s "$HOME/.nvm/nvm.sh" ]; then
@@ -137,6 +155,11 @@ else
     defaultBranch = main
 EOF
     add_status "ℹ️  Using default git identity (agent@yolium). Configure via Settings gear."
+fi
+
+# Mark the project directory as safe for git (fixes ownership mismatch with mounted volumes)
+if [ -n "$PROJECT_DIR" ]; then
+    git config --global --add safe.directory "$PROJECT_DIR"
 fi
 
 # Configure git credential helper if git-credentials file is mounted

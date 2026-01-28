@@ -98,7 +98,11 @@ const config: ForgeConfig = {
     // Copy docker and icon directories to resources folder for production builds
     extraResource: ['src/docker', 'assets/icon'],
   },
-  rebuildConfig: {},
+  rebuildConfig: {
+    // Skip rebuilding node-pty as it has prebuilt binaries for Windows
+    // This avoids the winpty build failure (missing GetCommitHash.bat)
+    onlyModules: [],
+  },
   hooks: {
     // Copy native modules to the packaged app
     // Vite externals are not automatically included, so we must copy them manually
