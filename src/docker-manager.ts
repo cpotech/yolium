@@ -56,6 +56,30 @@ function getContainerProjectPath(hostPath: string): string {
 }
 
 /**
+ * Convert a Windows home path to a Linux-compatible absolute path for use
+ * inside the container. This allows symlink creation to work correctly.
+ *
+ * On Windows, converts C:\Users\name to /c/Users/name so it's an absolute
+ * path in the Linux container. Without this, ln -sf would create the symlink
+ * in the current directory instead of at the intended location.
+ *
+ * On Linux/macOS, returns the path unchanged.
+ *
+ * Example: C:\Users\name -> /c/Users/name
+ */
+function toContainerHomePath(hostHome: string): string {
+  if (!isWindows) return hostHome;
+  // Convert backslashes to forward slashes
+  const dockerPath = hostHome.replace(/\\/g, '/');
+  // Convert C:/Users/name to /c/Users/name (lowercase drive letter, absolute path)
+  if (/^[A-Za-z]:/.test(dockerPath)) {
+    const driveLetter = dockerPath[0].toLowerCase();
+    return `/${driveLetter}${dockerPath.slice(2)}`;
+  }
+  return dockerPath;
+}
+
+/**
  * Generate a 12-character SHA256 hash of the absolute project path.
  * Used to create unique, isolated directories per project.
  */
@@ -526,7 +550,7 @@ export async function createYolium(
         `PROJECT_DIR=${containerProjectPath}`,
         `TOOL=${agent}`,
         `GSD_ENABLED=${gsdEnabled}`,
-        `HOST_HOME=${os.homedir()}`,
+        `HOST_HOME=${toContainerHomePath(os.homedir())}`,
         'CLAUDE_CONFIG_DIR=/home/agent/.claude',
         'HISTFILE=/home/agent/.yolium_history/zsh_history',
         ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
