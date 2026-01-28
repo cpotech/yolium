@@ -4,10 +4,14 @@ on:
   push:
     tags:
       - 'v*' # Trigger on version tags (v1.0.0, v0.1.0, etc.)
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag to release (e.g. v0.1.5). Must match an existing git tag.'
+        required: true
 
 jobs:
-  release:
+  build:
     strategy:
       fail-fast: false
       matrix:
@@ -24,12 +28,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
 
-    permissions:
-      contents: write # Required for creating releases
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -49,9 +52,63 @@ jobs:
       - name: Rebuild native modules for Electron
         run: npx electron-rebuild --only node-pty
 
-      - name: Publish
-        run: npm run publish
+      - name: Run unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run make
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.name }}
+          path: out/make/**/*
+          compression-level: 0
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: write # Required for creating releases
+
+    steps:
+      - name: Determine version tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List release artifacts
+        run: find artifacts -type f | sort
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          find . -type f \( -name "*.exe" -o -name "*.deb" -o -name "*.rpm" -o -name "*.zip" -o -name "*.nupkg" -o -name "*.AppImage" -o -name "*.dmg" \) | while read -r file; do
+            sha256sum "$file"
+          done | sort -k2 > ../checksums-sha256.txt
+          cat ../checksums-sha256.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          draft: true
+          generate_release_notes: true
+          files: |
+            artifacts/release-Windows/**/*
+            artifacts/release-Linux/**/*
+            checksums-sha256.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
-          GITHUB_REPOSITORY_NAME: ${{ github.event.repository.name }}
