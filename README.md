@@ -1,8 +1,9 @@
 <video src="https://github.com/user-attachments/assets/737115e3-74e1-47d5-af85-1c33c8955113" width="320" height="240" controls></video> 
+>Don't worry—the flickering is just the screen capture. Yolium runs smooth.
 
 ## 🏗️ Architecture
 
-![Yolium Architecture](assets/architecture.svg)
+![Yolium Architecture](assets/architecture.svg) 
 
 - One image builds once → many containers spawn from it
 - Containers are ephemeral (`--rm`) - deleted when session ends
