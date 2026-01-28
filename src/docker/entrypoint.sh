@@ -139,6 +139,11 @@ EOF
     add_status "ℹ️  Using default git identity (agent@yolium). Configure via Settings gear."
 fi
 
+# Mark the project directory as safe for git (fixes ownership mismatch with mounted volumes)
+if [ -n "$PROJECT_DIR" ]; then
+    git config --global --add safe.directory "$PROJECT_DIR"
+fi
+
 # Configure git credential helper if git-credentials file is mounted
 if [ -f "/home/agent/.git-credentials" ]; then
     git config --global credential.helper 'store --file /home/agent/.git-credentials'

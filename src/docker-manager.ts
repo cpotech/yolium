@@ -484,19 +484,23 @@ export async function createYolium(
 ): Promise<string> {
   const sessionId = `yolium-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
-  logger.info('Creating container', { sessionId, folderPath, agent, gsdEnabled, worktreeEnabled, branchName });
+  // Resolve to absolute path to ensure drive letter is present on Windows
+  // This fixes paths like "\Users\gaming\repos\test" -> "C:\Users\gaming\repos\test"
+  const resolvedFolderPath = path.resolve(folderPath);
+
+  logger.info('Creating container', { sessionId, folderPath: resolvedFolderPath, agent, gsdEnabled, worktreeEnabled, branchName });
 
   // Handle worktree creation if enabled
-  let mountPath = folderPath;
+  let mountPath = resolvedFolderPath;
   let worktreePath: string | undefined;
   let actualBranchName: string | undefined;
 
   if (worktreeEnabled) {
     actualBranchName = branchName || generateBranchName();
-    logger.info('Creating worktree', { sessionId, folderPath, branchName: actualBranchName });
+    logger.info('Creating worktree', { sessionId, folderPath: resolvedFolderPath, branchName: actualBranchName });
 
     try {
-      worktreePath = createWorktree(folderPath, actualBranchName);
+      worktreePath = createWorktree(resolvedFolderPath, actualBranchName);
       mountPath = worktreePath;
       logger.info('Worktree created', { sessionId, worktreePath });
     } catch (err) {
@@ -520,9 +524,9 @@ export async function createYolium(
   });
 
   // Build bind mounts (extract to log them for debugging)
-  // Use mountPath for project directory, but use original folderPath for cache isolation
-  // Pass folderPath as originalRepoPath so worktrees can access the main repo's .git
-  const binds = buildPersistentBindMounts(mountPath, folderPath, worktreePath ? folderPath : undefined);
+  // Use mountPath for project directory, but use original resolvedFolderPath for cache isolation
+  // Pass resolvedFolderPath as originalRepoPath so worktrees can access the main repo's .git
+  const binds = buildPersistentBindMounts(mountPath, resolvedFolderPath, worktreePath ? resolvedFolderPath : undefined);
   const sshDir = getYoliumSshDir();
   if (sshDir) {
     binds.push(`${toDockerPath(sshDir)}:/home/agent/.ssh:rw`);
@@ -611,7 +615,7 @@ export async function createYolium(
     // Worktree info (only set if worktree is enabled)
     ...(worktreePath && {
       worktreePath,
-      originalPath: folderPath,
+      originalPath: resolvedFolderPath,
       branchName: actualBranchName,
     }),
   });
