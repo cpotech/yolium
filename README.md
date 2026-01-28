@@ -12,7 +12,7 @@
      │                                                                           │
      ╰───────────────────────────────────────────────────────────────────────────╯
 ```
-<video src="https://github.com/user-attachments/assets/7ed994f8-2c7e-40f3-95ea-2d391eba5ffd" width="320" height="240" controls></video> 
+<video src="https://github.com/user-attachments/assets/737115e3-74e1-47d5-af85-1c33c8955113" width="320" height="240" controls></video> 
 
 ## 🏗️ Architecture
 
