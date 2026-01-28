@@ -1,234 +1,283 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 950" font-family="'SF Mono', 'Fira Code', 'JetBrains Mono', monospace">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 950" font-family="'Segoe UI', 'SF Pro Display', -apple-system, sans-serif">
   <defs>
-    <!-- Gradients -->
-    <linearGradient id="hostGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#1a1a2e"/>
-      <stop offset="100%" style="stop-color:#16213e"/>
+    <!-- Gradients matching Yolium theme -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a1628"/>
+      <stop offset="100%" style="stop-color:#0d1f3c"/>
     </linearGradient>
-    <linearGradient id="containerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#0f3460"/>
-      <stop offset="100%" style="stop-color:#1a1a2e"/>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f2744"/>
+      <stop offset="100%" style="stop-color:#0a1c30"/>
     </linearGradient>
-    <linearGradient id="dockerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#2196f3"/>
-      <stop offset="100%" style="stop-color:#0d47a1"/>
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a3a5c"/>
+      <stop offset="100%" style="stop-color:#0f2744"/>
     </linearGradient>
-    <linearGradient id="mountGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#e94560"/>
-      <stop offset="100%" style="stop-color:#c73659"/>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00a8cc"/>
+      <stop offset="100%" style="stop-color:#0077b6"/>
     </linearGradient>
-    <linearGradient id="pathGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#1f4068"/>
-      <stop offset="100%" style="stop-color:#162447"/>
+    <linearGradient id="dangerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#dc3545"/>
+      <stop offset="100%" style="stop-color:#a71d2a"/>
     </linearGradient>
 
     <!-- Arrow Markers -->
-    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L0,6 L9,3 z" fill="#2196f3"/>
+    <marker id="arrowCyan" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#00a8cc"/>
     </marker>
-    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L0,6 L9,3 z" fill="#e94560"/>
+    <marker id="arrowOrange" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#ff6b35"/>
     </marker>
 
-    <!-- Drop Shadow -->
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.3"/>
-    </filter>
+    <!-- Glow effect -->
     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feGaussianBlur stdDeviation="3" result="blur"/>
       <feMerge>
-        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
+    </filter>
+    
+    <!-- Shadow -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.4"/>
     </filter>
   </defs>
 
   <!-- Background -->
-  <rect width="1200" height="950" fill="#0d0d1a"/>
+  <rect width="1200" height="950" fill="url(#bgGrad)"/>
 
-  <!-- Grid pattern -->
-  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1a1a3a" stroke-width="0.5"/>
+  <!-- Subtle grid pattern -->
+  <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+    <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#1a3a5c" stroke-width="0.5" opacity="0.3"/>
   </pattern>
-  <rect width="1200" height="950" fill="url(#grid)" opacity="0.5"/>
+  <rect width="1200" height="950" fill="url(#grid)"/>
 
-  <!-- Main Host Container -->
-  <rect x="40" y="40" width="1120" height="870" rx="16" fill="url(#hostGrad)" stroke="#3a3a5a" stroke-width="2" filter="url(#shadow)"/>
+  <!-- === HEADER WITH YOLIUM LOGO === -->
+  <g transform="translate(600, 50)">
+    <!-- Robot/arcade icon -->
+    <g transform="translate(-30, -25)">
+      <rect x="0" y="10" width="60" height="45" rx="6" fill="#0f2744" stroke="#1a3a5c" stroke-width="2"/>
+      <rect x="5" y="15" width="50" height="25" rx="3" fill="#0a1628" stroke="#1a3a5c" stroke-width="1"/>
+      <!-- Eyes -->
+      <rect x="12" y="22" width="12" height="10" rx="2" fill="#00a8cc" opacity="0.8"/>
+      <rect x="36" y="22" width="12" height="10" rx="2" fill="#00a8cc" opacity="0.8"/>
+      <!-- Red indicator light -->
+      <circle cx="30" cy="5" r="5" fill="#dc3545" filter="url(#glow)"/>
+      <!-- Antenna -->
+      <line x1="30" y1="0" x2="30" y2="-8" stroke="#1a3a5c" stroke-width="2"/>
+    </g>
+    
+    <!-- YOLIUM text -->
+    <text x="0" y="55" text-anchor="middle" fill="#ffffff" font-size="32" font-weight="600" letter-spacing="8">YOLIUM</text>
+    <text x="0" y="75" text-anchor="middle" fill="#00a8cc" font-size="11" letter-spacing="3">AI AGENTIC SYSTEMS</text>
+    <text x="0" y="92" text-anchor="middle" fill="#4a6a8a" font-size="9" letter-spacing="2">CONTAINER ISOLATION ARCHITECTURE</text>
+  </g>
+
+  <!-- === MAIN HOST CONTAINER === -->
+  <rect x="40" y="120" width="1120" height="790" rx="12" fill="url(#cardGrad)" stroke="#1a3a5c" stroke-width="2" filter="url(#shadow)"/>
 
   <!-- Host Header -->
-  <rect x="40" y="40" width="1120" height="50" rx="16" fill="#2a2a4a"/>
-  <rect x="40" y="74" width="1120" height="16" fill="#2a2a4a"/>
-  <text x="600" y="72" text-anchor="middle" fill="#fff" font-size="18" font-weight="bold" letter-spacing="2">HOST MACHINE</text>
+  <rect x="40" y="120" width="1120" height="45" rx="12" fill="url(#headerGrad)"/>
+  <rect x="40" y="153" width="1120" height="12" fill="url(#headerGrad)"/>
+  <text x="600" y="150" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="600" letter-spacing="2">HOST MACHINE</text>
 
-  <!-- Decorative window buttons -->
-  <circle cx="70" cy="65" r="6" fill="#ff5f56"/>
-  <circle cx="90" cy="65" r="6" fill="#ffbd2e"/>
-  <circle cx="110" cy="65" r="6" fill="#27ca40"/>
+  <!-- Window controls -->
+  <circle cx="70" cy="142" r="6" fill="#dc3545"/>
+  <circle cx="92" cy="142" r="6" fill="#ffc107"/>
+  <circle cx="114" cy="142" r="6" fill="#28a745"/>
 
-  <!-- Docker Build Flow -->
-  <rect x="80" y="110" width="1040" height="70" rx="8" fill="none" stroke="#3a3a5a" stroke-width="1" stroke-dasharray="4,4"/>
-  <text x="100" y="135" fill="#5a5a7a" font-size="10" font-weight="bold">BUILD PHASE</text>
+  <!-- === BUILD PHASE === -->
+  <rect x="80" y="185" width="1040" height="55" rx="8" fill="none" stroke="#1a3a5c" stroke-width="1" stroke-dasharray="6,4"/>
+  <text x="100" y="207" fill="#4a6a8a" font-size="10" font-weight="600" letter-spacing="1">BUILD PHASE</text>
 
-  <text x="100" y="160" fill="#8892b0" font-size="12">src/docker/Dockerfile</text>
-  <path d="M 270 155 L 330 155" stroke="#2196f3" stroke-width="2" marker-end="url(#arrowBlue)"/>
-  <text x="350" y="160" fill="#64ffda" font-size="12">docker build</text>
-  <path d="M 470 155 L 530 155" stroke="#2196f3" stroke-width="2" marker-end="url(#arrowBlue)"/>
+  <text x="100" y="228" fill="#8aa8c8" font-size="11">src/docker/Dockerfile</text>
+  <path d="M 275 223 L 335 223" stroke="#00a8cc" stroke-width="2" marker-end="url(#arrowCyan)"/>
+  <text x="355" y="228" fill="#00a8cc" font-size="11" font-weight="500">docker build</text>
+  <path d="M 475 223 L 535 223" stroke="#00a8cc" stroke-width="2" marker-end="url(#arrowCyan)"/>
 
-  <rect x="550" y="135" width="200" height="40" rx="6" fill="url(#dockerGrad)" filter="url(#shadow)"/>
-  <text x="650" y="161" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">yolium:latest</text>
-  <text x="880" y="160" fill="#8892b0" font-size="11">(built once, reused)</text>
+  <!-- Docker image box -->
+  <rect x="555" y="205" width="190" height="36" rx="6" fill="url(#accentGrad)" filter="url(#shadow)"/>
+  <text x="650" y="229" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="600">yolium:latest</text>
+  <text x="870" y="228" fill="#6a8aa8" font-size="10">(built once, reused)</text>
 
   <!-- Arrows from image to containers -->
-  <path d="M 650 175 L 650 200 L 220 200 L 220 230" stroke="#2196f3" stroke-width="2" fill="none" marker-end="url(#arrowBlue)"/>
-  <path d="M 650 175 L 650 200 L 600 200 L 600 230" stroke="#2196f3" stroke-width="2" fill="none" marker-end="url(#arrowBlue)"/>
-  <path d="M 650 175 L 650 200 L 980 200 L 980 230" stroke="#2196f3" stroke-width="2" fill="none" marker-end="url(#arrowBlue)"/>
+  <path d="M 650 241 L 650 265 L 220 265 L 220 295" stroke="#00a8cc" stroke-width="2" fill="none" marker-end="url(#arrowCyan)"/>
+  <path d="M 650 241 L 650 265 L 600 265 L 600 295" stroke="#00a8cc" stroke-width="2" fill="none" marker-end="url(#arrowCyan)"/>
+  <path d="M 650 241 L 650 265 L 980 265 L 980 295" stroke="#00a8cc" stroke-width="2" fill="none" marker-end="url(#arrowCyan)"/>
 
-  <!-- Container 1 -->
-  <rect x="80" y="240" width="280" height="130" rx="10" fill="url(#containerGrad)" stroke="#2196f3" stroke-width="2" filter="url(#shadow)"/>
-  <rect x="80" y="240" width="280" height="30" rx="10" fill="#2196f3" opacity="0.3"/>
-  <rect x="80" y="260" width="280" height="10" fill="#2196f3" opacity="0.3"/>
-  <text x="220" y="263" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">Container: my-app</text>
-  <text x="220" y="295" text-anchor="middle" fill="#8892b0" font-size="11">(ephemeral, --rm)</text>
-  <rect x="100" y="315" width="240" height="35" rx="4" fill="#1a1a2e" stroke="#64ffda" stroke-width="1"/>
-  <text x="220" y="338" text-anchor="middle" fill="#64ffda" font-size="12">Agent: Claude Code</text>
+  <!-- === CONTAINER 1: CLAUDE === -->
+  <rect x="80" y="305" width="280" height="125" rx="10" fill="url(#cardGrad)" stroke="#00a8cc" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="80" y="305" width="280" height="32" rx="10" fill="#00a8cc" opacity="0.15"/>
+  <rect x="80" y="327" width="280" height="10" fill="#00a8cc" opacity="0.15"/>
+  <text x="220" y="328" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="600">Container: my-app</text>
+  <text x="220" y="358" text-anchor="middle" fill="#6a8aa8" font-size="10">(ephemeral, --rm)</text>
+  
+  <rect x="100" y="380" width="240" height="35" rx="6" fill="#0a1628" stroke="#00a8cc" stroke-width="1"/>
+  <circle cx="120" cy="397" r="4" fill="#28a745"/>
+  <text x="220" y="402" text-anchor="middle" fill="#00a8cc" font-size="11" font-weight="500">Agent: Claude Code</text>
 
-  <!-- Container 2 -->
-  <rect x="460" y="240" width="280" height="130" rx="10" fill="url(#containerGrad)" stroke="#2196f3" stroke-width="2" filter="url(#shadow)"/>
-  <rect x="460" y="240" width="280" height="30" rx="10" fill="#2196f3" opacity="0.3"/>
-  <rect x="460" y="260" width="280" height="10" fill="#2196f3" opacity="0.3"/>
-  <text x="600" y="263" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">Container: api-svc</text>
-  <text x="600" y="295" text-anchor="middle" fill="#8892b0" font-size="11">(ephemeral, --rm)</text>
-  <rect x="480" y="315" width="240" height="35" rx="4" fill="#1a1a2e" stroke="#64ffda" stroke-width="1"/>
-  <text x="600" y="338" text-anchor="middle" fill="#64ffda" font-size="12">Agent: OpenCode</text>
+  <!-- === CONTAINER 2: OPENCODE === -->
+  <rect x="460" y="305" width="280" height="125" rx="10" fill="url(#cardGrad)" stroke="#00a8cc" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="460" y="305" width="280" height="32" rx="10" fill="#00a8cc" opacity="0.15"/>
+  <rect x="460" y="327" width="280" height="10" fill="#00a8cc" opacity="0.15"/>
+  <text x="600" y="328" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="600">Container: api-svc</text>
+  <text x="600" y="358" text-anchor="middle" fill="#6a8aa8" font-size="10">(ephemeral, --rm)</text>
+  
+  <rect x="480" y="380" width="240" height="35" rx="6" fill="#0a1628" stroke="#00a8cc" stroke-width="1"/>
+  <circle cx="500" cy="397" r="4" fill="#28a745"/>
+  <text x="600" y="402" text-anchor="middle" fill="#00a8cc" font-size="11" font-weight="500">Agent: OpenCode</text>
 
-  <!-- Container 3 -->
-  <rect x="840" y="240" width="280" height="130" rx="10" fill="url(#containerGrad)" stroke="#2196f3" stroke-width="2" filter="url(#shadow)"/>
-  <rect x="840" y="240" width="280" height="30" rx="10" fill="#2196f3" opacity="0.3"/>
-  <rect x="840" y="260" width="280" height="10" fill="#2196f3" opacity="0.3"/>
-  <text x="980" y="263" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">Container: cli</text>
-  <text x="980" y="295" text-anchor="middle" fill="#8892b0" font-size="11">(ephemeral, --rm)</text>
-  <rect x="860" y="315" width="240" height="35" rx="4" fill="#1a1a2e" stroke="#64ffda" stroke-width="1"/>
-  <text x="980" y="338" text-anchor="middle" fill="#64ffda" font-size="12">Agent: Shell</text>
+  <!-- === CONTAINER 3: SHELL === -->
+  <rect x="840" y="305" width="280" height="125" rx="10" fill="url(#cardGrad)" stroke="#00a8cc" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="840" y="305" width="280" height="32" rx="10" fill="#00a8cc" opacity="0.15"/>
+  <rect x="840" y="327" width="280" height="10" fill="#00a8cc" opacity="0.15"/>
+  <text x="980" y="328" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="600">Container: cli</text>
+  <text x="980" y="358" text-anchor="middle" fill="#6a8aa8" font-size="10">(ephemeral, --rm)</text>
+  
+  <rect x="860" y="380" width="240" height="35" rx="6" fill="#0a1628" stroke="#ffc107" stroke-width="1"/>
+  <circle cx="880" cy="397" r="4" fill="#28a745"/>
+  <text x="980" y="402" text-anchor="middle" fill="#ffc107" font-size="11" font-weight="500">Agent: Shell</text>
 
   <!-- Converging lines to bind mounts -->
-  <path d="M 220 370 L 220 400 L 600 400" stroke="#e94560" stroke-width="2" fill="none"/>
-  <path d="M 600 370 L 600 400" stroke="#e94560" stroke-width="2" fill="none"/>
-  <path d="M 980 370 L 980 400 L 600 400" stroke="#e94560" stroke-width="2" fill="none"/>
-  <path d="M 600 400 L 600 430" stroke="#e94560" stroke-width="2" fill="none" marker-end="url(#arrowRed)"/>
+  <path d="M 220 430 L 220 460 L 600 460" stroke="#ff6b35" stroke-width="2" fill="none"/>
+  <path d="M 600 430 L 600 460" stroke="#ff6b35" stroke-width="2" fill="none"/>
+  <path d="M 980 430 L 980 460 L 600 460" stroke="#ff6b35" stroke-width="2" fill="none"/>
+  <path d="M 600 460 L 600 490" stroke="#ff6b35" stroke-width="2" fill="none" marker-end="url(#arrowOrange)"/>
 
-  <!-- Bind Mounts Banner -->
-  <rect x="300" y="440" width="600" height="40" rx="8" fill="url(#mountGrad)" filter="url(#shadow)"/>
-  <text x="600" y="467" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold" letter-spacing="1">BIND MOUNTS (the ONLY host access)</text>
+  <!-- === BIND MOUNTS BANNER === -->
+  <rect x="280" y="500" width="640" height="40" rx="8" fill="#ff6b35" filter="url(#shadow)"/>
+  <text x="600" y="527" text-anchor="middle" fill="#ffffff" font-size="13" font-weight="600" letter-spacing="1">BIND MOUNTS (the ONLY host access)</text>
 
-  <!-- Mount Paths Section -->
-  <rect x="80" y="510" width="1040" height="380" rx="10" fill="url(#pathGrad)" stroke="#3a3a5a" stroke-width="1"/>
+  <!-- === MOUNT PATHS SECTION === -->
+  <rect x="80" y="560" width="1040" height="320" rx="10" fill="url(#cardGrad)" stroke="#1a3a5c" stroke-width="1"/>
 
-  <!-- Divider line between left and right columns -->
-  <line x1="580" y1="530" x2="580" y2="870" stroke="#3a3a5a" stroke-width="1" stroke-dasharray="4,4"/>
+  <!-- Divider line -->
+  <line x1="580" y1="580" x2="580" y2="860" stroke="#1a3a5c" stroke-width="1" stroke-dasharray="6,4"/>
 
   <!-- LEFT COLUMN -->
 
   <!-- Section: Your Project -->
-  <text x="100" y="545" fill="#e94560" font-size="14" font-weight="bold">YOUR PROJECT</text>
-  <text x="260" y="545" fill="#5a5a7a" font-size="11">(read/write)</text>
-
-  <g transform="translate(100, 560)">
-    <text y="15" fill="#8892b0" font-size="11">~/code/my-app</text>
-    <text x="280" y="15" fill="#64ffda" font-size="14">-></text>
-    <text x="310" y="15" fill="#fff" font-size="11">/home/agent/code/my-app</text>
+  <g transform="translate(100, 590)">
+    <circle cx="0" cy="0" r="4" fill="#ff6b35"/>
+    <text x="15" y="5" fill="#ff6b35" font-size="12" font-weight="600">YOUR PROJECT</text>
+    <text x="160" y="5" fill="#6a8aa8" font-size="10">(read/write)</text>
   </g>
-  <text x="120" y="600" fill="#5a5a7a" font-size="10">(or worktree: /tmp/yolium-worktrees/my-app-abc123)</text>
+
+  <g transform="translate(100, 615)">
+    <text y="0" fill="#8aa8c8" font-size="10">~/code/my-app</text>
+    <text x="200" y="0" fill="#00a8cc" font-size="12">→</text>
+    <text x="220" y="0" fill="#ffffff" font-size="10">/home/agent/code/my-app</text>
+  </g>
+  <text x="115" y="645" fill="#4a6a8a" font-size="9">(or worktree: /tmp/yolium-worktrees/my-app-abc123)</text>
 
   <!-- Section: Package Caches -->
-  <text x="100" y="640" fill="#2196f3" font-size="14" font-weight="bold">PACKAGE CACHES</text>
-  <text x="290" y="640" fill="#5a5a7a" font-size="11">(per-project, persistent)</text>
-
-  <g transform="translate(100, 660)">
-    <text y="0" fill="#8892b0" font-size="11">~/.cache/yolium/&lt;project&gt;/npm</text>
-    <text x="280" y="0" fill="#64ffda" font-size="14">-></text>
-    <text x="310" y="0" fill="#fff" font-size="11">/home/agent/.npm</text>
+  <g transform="translate(100, 675)">
+    <circle cx="0" cy="0" r="4" fill="#00a8cc"/>
+    <text x="15" y="5" fill="#00a8cc" font-size="12" font-weight="600">PACKAGE CACHES</text>
+    <text x="175" y="5" fill="#6a8aa8" font-size="10">(per-project, persistent)</text>
   </g>
 
-  <g transform="translate(100, 685)">
-    <text y="0" fill="#8892b0" font-size="11">~/.cache/yolium/&lt;project&gt;/pip</text>
-    <text x="280" y="0" fill="#64ffda" font-size="14">-></text>
-    <text x="310" y="0" fill="#fff" font-size="11">/home/agent/.cache/pip</text>
+  <g transform="translate(100, 700)">
+    <text y="0" fill="#8aa8c8" font-size="10">~/.cache/yolium/&lt;project&gt;/npm</text>
+    <text x="200" y="0" fill="#00a8cc" font-size="12">→</text>
+    <text x="220" y="0" fill="#ffffff" font-size="10">/home/agent/.npm</text>
   </g>
 
-  <g transform="translate(100, 710)">
-    <text y="0" fill="#8892b0" font-size="11">~/.cache/yolium/&lt;project&gt;/maven</text>
-    <text x="280" y="0" fill="#64ffda" font-size="14">-></text>
-    <text x="310" y="0" fill="#fff" font-size="11">/home/agent/.m2</text>
+  <g transform="translate(100, 722)">
+    <text y="0" fill="#8aa8c8" font-size="10">~/.cache/yolium/&lt;project&gt;/pip</text>
+    <text x="200" y="0" fill="#00a8cc" font-size="12">→</text>
+    <text x="220" y="0" fill="#ffffff" font-size="10">/home/agent/.cache/pip</text>
   </g>
 
-  <g transform="translate(100, 735)">
-    <text y="0" fill="#8892b0" font-size="11">~/.cache/yolium/&lt;project&gt;/gradle</text>
-    <text x="280" y="0" fill="#64ffda" font-size="14">-></text>
-    <text x="310" y="0" fill="#fff" font-size="11">/home/agent/.gradle</text>
+  <g transform="translate(100, 744)">
+    <text y="0" fill="#8aa8c8" font-size="10">~/.cache/yolium/&lt;project&gt;/maven</text>
+    <text x="200" y="0" fill="#00a8cc" font-size="12">→</text>
+    <text x="220" y="0" fill="#ffffff" font-size="10">/home/agent/.m2</text>
+  </g>
+
+  <g transform="translate(100, 766)">
+    <text y="0" fill="#8aa8c8" font-size="10">~/.cache/yolium/&lt;project&gt;/gradle</text>
+    <text x="200" y="0" fill="#00a8cc" font-size="12">→</text>
+    <text x="220" y="0" fill="#ffffff" font-size="10">/home/agent/.gradle</text>
   </g>
 
   <!-- Section: Shell History -->
-  <text x="100" y="775" fill="#ffc107" font-size="14" font-weight="bold">SHELL HISTORY</text>
-  <text x="270" y="775" fill="#5a5a7a" font-size="11">(per-project, persistent)</text>
+  <g transform="translate(100, 805)">
+    <circle cx="0" cy="0" r="4" fill="#ffc107"/>
+    <text x="15" y="5" fill="#ffc107" font-size="12" font-weight="600">SHELL HISTORY</text>
+    <text x="145" y="5" fill="#6a8aa8" font-size="10">(per-project, persistent)</text>
+  </g>
 
-  <g transform="translate(100, 795)">
-    <text y="0" fill="#8892b0" font-size="11">~/.yolium/projects/&lt;project&gt;/history</text>
-    <text x="280" y="0" fill="#64ffda" font-size="14">-></text>
-    <text x="310" y="0" fill="#fff" font-size="11">/home/agent/.yolium_history</text>
+  <g transform="translate(100, 830)">
+    <text y="0" fill="#8aa8c8" font-size="10">~/.yolium/projects/&lt;project&gt;/history</text>
+    <text x="200" y="0" fill="#00a8cc" font-size="12">→</text>
+    <text x="220" y="0" fill="#ffffff" font-size="10">/home/agent/.yolium_history</text>
   </g>
 
   <!-- RIGHT COLUMN -->
 
   <!-- Section: Agent Config -->
-  <text x="610" y="545" fill="#9c27b0" font-size="14" font-weight="bold">AGENT CONFIG</text>
-  <text x="760" y="545" fill="#5a5a7a" font-size="11">(shared across projects)</text>
-
-  <g transform="translate(610, 565)">
-    <text y="0" fill="#8892b0" font-size="11">~/.claude</text>
-    <text x="260" y="0" fill="#64ffda" font-size="14">-></text>
-    <text x="290" y="0" fill="#fff" font-size="11">/home/agent/.claude</text>
-  </g>
-
   <g transform="translate(610, 590)">
-    <text y="0" fill="#8892b0" font-size="11">~/.config/opencode</text>
-    <text x="260" y="0" fill="#64ffda" font-size="14">-></text>
-    <text x="290" y="0" fill="#fff" font-size="11">/home/agent/.config/opencode</text>
+    <circle cx="0" cy="0" r="4" fill="#9c27b0"/>
+    <text x="15" y="5" fill="#9c27b0" font-size="12" font-weight="600">AGENT CONFIG</text>
+    <text x="140" y="5" fill="#6a8aa8" font-size="10">(shared across projects)</text>
   </g>
 
   <g transform="translate(610, 615)">
-    <text y="0" fill="#8892b0" font-size="11">~/.local/share/opencode</text>
-    <text x="260" y="0" fill="#64ffda" font-size="14">-></text>
-    <text x="290" y="0" fill="#fff" font-size="11">/home/agent/.local/share/opencode</text>
+    <text y="0" fill="#8aa8c8" font-size="10">~/.claude</text>
+    <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
+    <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.claude</text>
+  </g>
+
+  <g transform="translate(610, 637)">
+    <text y="0" fill="#8aa8c8" font-size="10">~/.config/opencode</text>
+    <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
+    <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.config/opencode</text>
+  </g>
+
+  <g transform="translate(610, 659)">
+    <text y="0" fill="#8aa8c8" font-size="10">~/.local/share/opencode</text>
+    <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
+    <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.local/share/opencode</text>
   </g>
 
   <!-- Section: SSH Keys -->
-  <text x="610" y="665" fill="#4caf50" font-size="14" font-weight="bold">SSH KEYS</text>
-  <text x="720" y="665" fill="#5a5a7a" font-size="11">(optional, read-only)</text>
+  <g transform="translate(610, 700)">
+    <circle cx="0" cy="0" r="4" fill="#28a745"/>
+    <text x="15" y="5" fill="#28a745" font-size="12" font-weight="600">SSH KEYS</text>
+    <text x="100" y="5" fill="#6a8aa8" font-size="10">(optional, read-only)</text>
+  </g>
 
-  <g transform="translate(610, 685)">
-    <text y="0" fill="#8892b0" font-size="11">~/.yolium/ssh</text>
-    <text x="260" y="0" fill="#64ffda" font-size="14">-></text>
-    <text x="290" y="0" fill="#fff" font-size="11">/home/agent/.ssh</text>
+  <g transform="translate(610, 725)">
+    <text y="0" fill="#8aa8c8" font-size="10">~/.yolium/ssh</text>
+    <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
+    <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.ssh</text>
   </g>
 
   <!-- Section: Git Config -->
-  <text x="610" y="735" fill="#ff9800" font-size="14" font-weight="bold">GIT CONFIG</text>
-  <text x="730" y="735" fill="#5a5a7a" font-size="11">(optional, read-only)</text>
-
-  <g transform="translate(610, 755)">
-    <text y="0" fill="#8892b0" font-size="11">~/.gitconfig</text>
-    <text x="260" y="0" fill="#64ffda" font-size="14">-></text>
-    <text x="290" y="0" fill="#fff" font-size="11">/home/agent/.gitconfig</text>
+  <g transform="translate(610, 765)">
+    <circle cx="0" cy="0" r="4" fill="#ff9800"/>
+    <text x="15" y="5" fill="#ff9800" font-size="12" font-weight="600">GIT CONFIG</text>
+    <text x="115" y="5" fill="#6a8aa8" font-size="10">(optional, read-only)</text>
   </g>
 
-  <g transform="translate(610, 780)">
-    <text y="0" fill="#8892b0" font-size="11">~/.config/git</text>
-    <text x="260" y="0" fill="#64ffda" font-size="14">-></text>
-    <text x="290" y="0" fill="#fff" font-size="11">/home/agent/.config/git</text>
+  <g transform="translate(610, 790)">
+    <text y="0" fill="#8aa8c8" font-size="10">~/.gitconfig</text>
+    <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
+    <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.gitconfig</text>
   </g>
 
-  <!-- Warning Section -->
-  <rect x="80" y="865" width="1040" height="35" rx="6" fill="#2a0a0a" stroke="#f44336" stroke-width="1"/>
-  <text x="110" y="888" fill="#f44336" font-size="14" font-weight="bold">NOT ACCESSIBLE:</text>
-  <text x="280" y="888" fill="#ffcdd2" font-size="12">~/, /etc, /var, other projects, system files, network (optional isolation)</text>
+  <g transform="translate(610, 812)">
+    <text y="0" fill="#8aa8c8" font-size="10">~/.config/git</text>
+    <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
+    <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.config/git</text>
+  </g>
+
+  <!-- === WARNING SECTION === -->
+  <rect x="80" y="890" width="1040" height="35" rx="6" fill="#1a0a0a" stroke="#dc3545" stroke-width="1"/>
+  <circle cx="105" cy="907" r="4" fill="#dc3545"/>
+  <text x="125" y="912" fill="#dc3545" font-size="12" font-weight="600">NOT ACCESSIBLE:</text>
+  <text x="280" y="912" fill="#ffcdd2" font-size="11">~/, /etc, /var, other projects, system files, network (optional isolation)</text>
 </svg>
