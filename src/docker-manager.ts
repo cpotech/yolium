@@ -705,23 +705,51 @@ export async function stopYolium(sessionId: string): Promise<void> {
 
 /**
  * Close all container sessions and remove containers.
- * Called on app shutdown.
+ * Called on app shutdown. Properly waits for all cleanup to complete.
  */
-export function closeAllContainers(): void {
+export async function closeAllContainers(): Promise<void> {
   const sessionIds = Array.from(sessions.keys());
-  for (const sessionId of sessionIds) {
+
+  // Cleanup all sessions in parallel
+  await Promise.all(sessionIds.map(async (sessionId) => {
     const session = sessions.get(sessionId);
-    if (session) {
-      try {
-        const container = docker.getContainer(session.containerId);
-        // Synchronous-ish stop (fire and forget on shutdown)
-        container.stop({ t: 1 }).catch(() => {});
-        container.remove().catch(() => {});
-      } catch {
-        // Ignore errors during cleanup
+    if (!session) return;
+
+    try {
+      // Delete worktree first (while session info is still available)
+      if (session.worktreePath && session.originalPath) {
+        try {
+          deleteWorktree(session.originalPath, session.worktreePath);
+          logger.info('Worktree deleted on shutdown', { sessionId, worktreePath: session.worktreePath });
+        } catch (err) {
+          logger.error('Failed to delete worktree on shutdown', {
+            sessionId,
+            worktreePath: session.worktreePath,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
       }
+
+      // Stop and remove container
+      const container = docker.getContainer(session.containerId);
+      try {
+        await container.stop({ t: 2 });
+      } catch {
+        // Container may already be stopped
+      }
+      try {
+        await container.remove();
+      } catch {
+        // Container may already be removed
+      }
+    } catch (err) {
+      logger.error('Error during container cleanup', {
+        sessionId,
+        error: err instanceof Error ? err.message : String(err)
+      });
     }
-  }
+  }));
+
   sessions.clear();
 }
 

@@ -43,6 +43,23 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 
 let mainWindow: BrowserWindow | null = null;
 
+// Track if cleanup has been done to avoid duplicate cleanup
+let cleanupDone = false;
+
+/**
+ * Perform async cleanup of PTY sessions, containers, and worktrees.
+ * Returns a promise that resolves when cleanup is complete.
+ */
+async function performCleanup(): Promise<void> {
+  if (cleanupDone) return;
+  cleanupDone = true;
+
+  logger.info('Starting cleanup...');
+  closeAllPty();
+  await closeAllContainers();
+  logger.info('Cleanup complete');
+}
+
 function createAppMenu(window: BrowserWindow): void {
   const template: Electron.MenuItemConstructorOptions[] = [
     {
@@ -179,9 +196,8 @@ ipcMain.handle('app:get-version', () => {
 });
 
 // Force quit (called after user confirms)
-ipcMain.handle('app:force-quit', () => {
-  closeAllPty();
-  closeAllContainers();
+ipcMain.handle('app:force-quit', async () => {
+  await performCleanup();
   app.quit();
 });
 
@@ -585,18 +601,30 @@ app.on('ready', () => {
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
   logger.info('All windows closed');
-  closeAllPty();
-  closeAllContainers();
   if (process.platform !== 'darwin') {
-    logger.info('Quitting app');
-    app.quit();
+    // Perform cleanup and then quit
+    performCleanup().finally(() => {
+      logger.info('Quitting app');
+      app.quit();
+    });
+  } else {
+    // On macOS, just cleanup but don't quit
+    performCleanup();
   }
 });
 
-app.on('before-quit', () => {
-  logger.info('App quitting');
-  closeAllPty();
-  closeAllContainers();
+app.on('before-quit', (event) => {
+  // If cleanup hasn't been done yet, prevent quit and do cleanup first
+  if (!cleanupDone) {
+    event.preventDefault();
+    logger.info('App quit requested, performing cleanup first...');
+    performCleanup().finally(() => {
+      logger.info('Cleanup done, quitting...');
+      app.quit();
+    });
+  } else {
+    logger.info('App quitting (cleanup already done)');
+  }
 });
 
 app.on('activate', () => {

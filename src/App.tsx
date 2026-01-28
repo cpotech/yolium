@@ -233,36 +233,18 @@ function App(): React.ReactElement {
     setPathDialogOpen(true);
   }, []);
 
-  // Close a tab (with worktree cleanup if needed)
-  const handleCloseTab = useCallback(async (tabId: string) => {
+  // Close a tab - instant UI update, cleanup in background
+  const handleCloseTab = useCallback((tabId: string) => {
     const tab = tabs.find(t => t.id === tabId);
     if (!tab) return;
 
-    // Check if this session has a worktree
-    const worktreeInfo = await window.electronAPI.getWorktreeInfo(tab.sessionId);
-
-    if (worktreeInfo) {
-      // Show worktree cleanup dialog
-      const { response } = await window.electronAPI.showWorktreeCleanupDialog(
-        worktreeInfo.branchName,
-        worktreeInfo.hasUncommittedChanges
-      );
-
-      // response: 0 = Keep, 1 = Delete, 2 = Cancel
-      if (response === 2) {
-        return; // User cancelled, don't close
-      }
-
-      const shouldDeleteWorktree = response === 1;
-
-      // Stop the container with worktree cleanup option
-      await window.electronAPI.stopYolium(tab.sessionId, shouldDeleteWorktree);
-    } else {
-      // Stop the container normally
-      await window.electronAPI.stopYolium(tab.sessionId);
-    }
-
+    // Close tab immediately in UI for instant feedback
     closeTab(tabId);
+
+    // Cleanup container and worktree in background (always delete worktree)
+    window.electronAPI.stopYolium(tab.sessionId, true).catch((err) => {
+      console.error('Failed to cleanup container:', err);
+    });
   }, [tabs, closeTab]);
 
   // Close current active tab
@@ -288,40 +270,38 @@ function App(): React.ReactElement {
     setActiveTab(tabs[prevIndex].id);
   }, [tabs, activeTabId, setActiveTab]);
 
-  // Close all tabs (with confirmation)
-  const handleCloseAllTabs = useCallback(async () => {
-    // Count tabs with running containers
-    const runningCount = tabs.filter(
-      t => t.containerState === 'running' || t.containerState === 'starting'
-    ).length;
+  // Close all tabs - instant UI update, cleanup in background
+  const handleCloseAllTabs = useCallback(() => {
+    // Store session IDs before clearing tabs
+    const sessionIds = tabs.map(t => t.sessionId);
 
-    if (runningCount > 0) {
-      const confirmed = await window.electronAPI.showConfirmCloseMultiple(runningCount);
-      if (!confirmed) return;
-    }
-
-    // Stop all containers
-    await Promise.all(tabs.map(t => window.electronAPI.stopYolium(t.sessionId)));
+    // Close all tabs immediately in UI
     closeAllTabs();
+
+    // Cleanup containers and worktrees in background (always delete worktrees)
+    sessionIds.forEach(sessionId => {
+      window.electronAPI.stopYolium(sessionId, true).catch((err) => {
+        console.error('Failed to cleanup container:', err);
+      });
+    });
   }, [tabs, closeAllTabs]);
 
-  // Close other tabs (keep one)
-  const handleCloseOtherTabs = useCallback(async (keepTabId: string) => {
+  // Close other tabs (keep one) - instant UI update, cleanup in background
+  const handleCloseOtherTabs = useCallback((keepTabId: string) => {
     const otherTabs = tabs.filter(t => t.id !== keepTabId);
 
-    // Count tabs with running containers
-    const runningCount = otherTabs.filter(
-      t => t.containerState === 'running' || t.containerState === 'starting'
-    ).length;
+    // Store session IDs before clearing tabs
+    const sessionIds = otherTabs.map(t => t.sessionId);
 
-    if (runningCount > 0) {
-      const confirmed = await window.electronAPI.showConfirmCloseMultiple(runningCount);
-      if (!confirmed) return;
-    }
-
-    // Stop other containers
-    await Promise.all(otherTabs.map(t => window.electronAPI.stopYolium(t.sessionId)));
+    // Close other tabs immediately in UI
     closeOtherTabs(keepTabId);
+
+    // Cleanup containers and worktrees in background (always delete worktrees)
+    sessionIds.forEach(sessionId => {
+      window.electronAPI.stopYolium(sessionId, true).catch((err) => {
+        console.error('Failed to cleanup container:', err);
+      });
+    });
   }, [tabs, closeOtherTabs]);
 
   // Stop yolium from StatusBar (per CONTEXT.md: "After stopping, tab closes automatically")

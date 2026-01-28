@@ -67,6 +67,13 @@ async function buildMain() {
       // Don't copy public assets for main process
       copyPublicDir: false,
     },
+    // Define globals that electron-forge VitePlugin normally injects
+    define: {
+      // No dev server in production build
+      MAIN_WINDOW_VITE_DEV_SERVER_URL: 'undefined',
+      // Window name for renderer path resolution
+      MAIN_WINDOW_VITE_NAME: JSON.stringify('main_window'),
+    },
     // Disable SSR-specific transforms
     ssr: {
       target: 'node',
@@ -114,6 +121,8 @@ async function buildRenderer() {
   await build({
     configFile: resolve(projectRoot, 'vite.renderer.config.ts'),
     root: projectRoot,
+    // Use relative paths for file:// protocol in Electron
+    base: './',
     build: {
       outDir: resolve(projectRoot, '.vite/renderer/main_window'),
       emptyOutDir: true,
