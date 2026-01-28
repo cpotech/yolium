@@ -78,18 +78,21 @@ if [ -n "$HOST_HOME" ] && [ "$HOST_HOME" != "$HOME" ] && [ ! -e "$HOST_HOME" ]; 
         add_status "✅ Host path compatibility symlink created"
 fi
 
-# For worktrees: create symlink from Windows path to Linux-mounted path
-# The worktree's .git file references the Windows path (e.g., C:/Users/gaming/repos/yolium/.git)
-# We mount .git at /c/Users/gaming/repos/yolium/.git, so create symlink for compatibility
-if [ -n "$WORKTREE_REPO_PATH" ]; then
-    # WORKTREE_REPO_PATH is like "C:/Users/gaming/repos/yolium"
-    # Convert to Linux-style: /c/Users/gaming/repos/yolium
-    LINUX_REPO_PATH=$(echo "$WORKTREE_REPO_PATH" | sed 's|^\([A-Za-z]\):|/\L\1|')
-    if [ -d "$LINUX_REPO_PATH/.git" ] && [ ! -e "$WORKTREE_REPO_PATH" ]; then
-        log "Creating symlink for worktree git path: $WORKTREE_REPO_PATH -> $LINUX_REPO_PATH"
-        sudo mkdir -p "$(dirname "$WORKTREE_REPO_PATH")" 2>/dev/null
-        sudo ln -sf "$LINUX_REPO_PATH" "$WORKTREE_REPO_PATH" 2>/dev/null && \
-            add_status "✅ Worktree git path symlink created"
+# For worktrees: fix the .git file to point to Linux-mounted path
+# The worktree's .git file references Windows path (e.g., gitdir: C:/Users/.../worktrees/name)
+# We mount .git at /c/Users/..., so update the .git file to use Linux path
+if [ -n "$WORKTREE_REPO_PATH" ] && [ -n "$PROJECT_DIR" ]; then
+    GITFILE="$PROJECT_DIR/.git"
+    if [ -f "$GITFILE" ]; then
+        # Read current content and convert Windows path to Linux-style
+        # C:/Users/... -> /c/Users/...
+        CURRENT=$(cat "$GITFILE")
+        FIXED=$(echo "$CURRENT" | sed 's|gitdir: \([A-Za-z]\):|gitdir: /\L\1|')
+        if [ "$CURRENT" != "$FIXED" ]; then
+            log "Fixing worktree .git file path: Windows -> Linux style"
+            echo "$FIXED" > "$GITFILE"
+            add_status "✅ Worktree git path fixed"
+        fi
     fi
 fi
 
