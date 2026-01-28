@@ -29,6 +29,48 @@ Each session creates a branch → provisions a worktree → mounts it in the con
 
 ---
 
+## Cleanup Behavior
+
+### What Gets Cleaned Up
+
+When you close a tab, close the app, or use "Close All Tabs":
+
+| Resource | Action | Notes |
+|----------|--------|-------|
+| **Docker Container** | Stopped and removed | The container instance is fully cleaned up |
+| **Git Worktree** | Deleted | The worktree directory (`~/.yolium/worktrees/...`) is removed |
+
+### What Persists
+
+These resources remain across sessions:
+
+| Resource | Location | Purpose |
+|----------|----------|---------|
+| **Docker Image** | `yolium:latest` | Rebuilt only when explicitly requested |
+| **Project Caches** | `~/.cache/yolium/<project>/` | npm, pip, maven, gradle caches |
+| **Shell History** | `~/.yolium/projects/<project>/history` | Command history per project |
+| **Tool Configs** | `~/.claude`, `~/.config/opencode` | Claude Code and OpenCode settings |
+| **Original Project** | Your project directory | Never modified by cleanup |
+
+### Cleanup Timing
+
+- **Tab Close**: UI closes instantly; container/worktree cleanup happens in background
+- **Close All Tabs**: All tabs close instantly; cleanup runs in parallel for all sessions
+- **App Close**: Cleanup completes before the app fully quits
+- **App Crash**: Orphaned containers may remain (use Docker Desktop to clean up manually)
+
+### Technical Details
+
+The cleanup process:
+1. Deletes the git worktree first (while session info is still available)
+2. Stops the container with a 2-second grace period
+3. Removes the container
+4. Clears the session from memory
+
+All cleanup operations are fire-and-forget from the UI perspective to ensure instant responsiveness.
+
+---
+
 ## Container Environment
 
 Every container is a complete, reproducible development environment. No setup scripts, no missing dependencies, no "works on my machine" problems.
