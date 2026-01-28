@@ -1,5 +1,70 @@
 @import "tailwindcss";
 
+/* Theme CSS custom properties - default dark theme */
+:root {
+  /* Surface colors */
+  --color-bg-primary: #0f172a;
+  --color-bg-secondary: #1e293b;
+  --color-bg-tertiary: #334155;
+  --color-bg-hover: #475569;
+  --color-bg-terminal: #0a0a0a;
+  --color-bg-overlay: rgba(0, 0, 0, 0.7);
+
+  /* Text colors */
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #64748b;
+  --color-text-disabled: #475569;
+
+  /* Border colors */
+  --color-border-primary: #334155;
+  --color-border-secondary: #475569;
+  --color-border-focus: #3b82f6;
+
+  /* Accent colors */
+  --color-accent-primary: #3b82f6;
+  --color-accent-hover: #60a5fa;
+
+  /* Status colors */
+  --color-status-success: #4ade80;
+  --color-status-warning: #facc15;
+  --color-status-error: #f87171;
+  --color-status-stopped: #94a3b8;
+
+  /* Special colors */
+  --color-special-worktree: #c084fc;
+  --color-special-branch: #60a5fa;
+}
+
+/* Extend Tailwind with theme tokens using @theme */
+@theme {
+  --color-theme-bg-primary: var(--color-bg-primary);
+  --color-theme-bg-secondary: var(--color-bg-secondary);
+  --color-theme-bg-tertiary: var(--color-bg-tertiary);
+  --color-theme-bg-hover: var(--color-bg-hover);
+  --color-theme-bg-terminal: var(--color-bg-terminal);
+
+  --color-theme-text-primary: var(--color-text-primary);
+  --color-theme-text-secondary: var(--color-text-secondary);
+  --color-theme-text-muted: var(--color-text-muted);
+  --color-theme-text-disabled: var(--color-text-disabled);
+
+  --color-theme-border-primary: var(--color-border-primary);
+  --color-theme-border-secondary: var(--color-border-secondary);
+  --color-theme-border-focus: var(--color-border-focus);
+
+  --color-theme-accent-primary: var(--color-accent-primary);
+  --color-theme-accent-hover: var(--color-accent-hover);
+
+  --color-theme-status-success: var(--color-status-success);
+  --color-theme-status-warning: var(--color-status-warning);
+  --color-theme-status-error: var(--color-status-error);
+  --color-theme-status-stopped: var(--color-status-stopped);
+
+  --color-theme-special-worktree: var(--color-special-worktree);
+  --color-theme-special-branch: var(--color-special-branch);
+}
+
 /* Ensure terminal fills container */
 .xterm {
   height: 100%;
