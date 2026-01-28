@@ -78,6 +78,21 @@ if [ -n "$HOST_HOME" ] && [ "$HOST_HOME" != "$HOME" ] && [ ! -e "$HOST_HOME" ]; 
         add_status "✅ Host path compatibility symlink created"
 fi
 
+# For worktrees: create symlink from Windows path to Linux-mounted path
+# The worktree's .git file references the Windows path (e.g., C:/Users/gaming/repos/yolium/.git)
+# We mount .git at /c/Users/gaming/repos/yolium/.git, so create symlink for compatibility
+if [ -n "$WORKTREE_REPO_PATH" ]; then
+    # WORKTREE_REPO_PATH is like "C:/Users/gaming/repos/yolium"
+    # Convert to Linux-style: /c/Users/gaming/repos/yolium
+    LINUX_REPO_PATH=$(echo "$WORKTREE_REPO_PATH" | sed 's|^\([A-Za-z]\):|/\L\1|')
+    if [ -d "$LINUX_REPO_PATH/.git" ] && [ ! -e "$WORKTREE_REPO_PATH" ]; then
+        log "Creating symlink for worktree git path: $WORKTREE_REPO_PATH -> $LINUX_REPO_PATH"
+        sudo mkdir -p "$(dirname "$WORKTREE_REPO_PATH")" 2>/dev/null
+        sudo ln -sf "$LINUX_REPO_PATH" "$WORKTREE_REPO_PATH" 2>/dev/null && \
+            add_status "✅ Worktree git path symlink created"
+    fi
+fi
+
 export PATH="$HOME/.local/bin:$PATH"
 
 if [ -s "$HOME/.nvm/nvm.sh" ]; then

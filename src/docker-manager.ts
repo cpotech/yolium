@@ -366,9 +366,10 @@ function buildPersistentBindMounts(mountPath: string, cacheKeyPath?: string, ori
     const mainGitDir = path.join(originalRepoPath, '.git');
     if (fs.existsSync(mainGitDir) && fs.statSync(mainGitDir).isDirectory()) {
       // Mount the main repo's .git at its original path (needed for worktree references)
-      // On Windows, both host and container paths need forward slashes for bind mounts
+      // On Windows: host path is C:/Users/..., container path is /c/Users/... (Linux-style)
       const dockerGitDir = toDockerPath(mainGitDir);
-      binds.push(`${dockerGitDir}:${dockerGitDir}:rw`);
+      const containerGitDir = toContainerHomePath(mainGitDir);
+      binds.push(`${dockerGitDir}:${containerGitDir}:rw`);
     }
   }
 
@@ -561,6 +562,8 @@ export async function createYolium(
         ...(process.env.YOLIUM_LOG_LEVEL ? [`YOLIUM_LOG_LEVEL=${process.env.YOLIUM_LOG_LEVEL}`] : []),
         ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
         ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
+        // For worktrees: pass the original repo path so entrypoint can create symlink for git
+        ...(worktreePath ? [`WORKTREE_REPO_PATH=${toDockerPath(resolvedFolderPath)}`] : []),
       ],
       HostConfig: {
         CapAdd: ['NET_ADMIN'],
