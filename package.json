@@ -1,7 +1,7 @@
 {
   "name": "yolium-desktop",
   "productName": "Yolium Desktop",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Desktop app for managing yolium terminals",
   "main": ".vite/build/main.js",
   "private": true,
