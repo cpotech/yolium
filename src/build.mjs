@@ -119,7 +119,7 @@ async function buildPreload() {
 async function buildRenderer() {
   console.log('Building renderer...');
   await build({
-    configFile: resolve(projectRoot, 'vite.renderer.config.ts'),
+    configFile: resolve(projectRoot, 'config/vite.renderer.config.ts'),
     root: projectRoot,
     // Use relative paths for file:// protocol in Electron
     base: './',
