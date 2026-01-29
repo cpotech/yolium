@@ -1,0 +1,46 @@
+name: Tag Release
+
+# Automatically creates a version tag when package.json version changes on main.
+# This triggers the Release workflow which builds, tests, and publishes artifacts.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'package.json'
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # Required for creating tags
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Need previous commit to detect version change
+
+      - name: Check for version bump
+        id: version
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          PREVIOUS=$(git show HEAD~1:package.json | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).version")
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "previous=$PREVIOUS" >> "$GITHUB_OUTPUT"
+          if [ "$CURRENT" != "$PREVIOUS" ]; then
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
+            echo "Version bumped: $PREVIOUS -> $CURRENT"
+          else
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+            echo "No version change detected"
+          fi
+
+      - name: Create version tag
+        if: steps.version.outputs.bumped == 'true'
+        run: |
+          TAG="v${{ steps.version.outputs.current }}"
+          echo "Creating tag: $TAG"
+          git tag "$TAG"
+          git push origin "$TAG"
