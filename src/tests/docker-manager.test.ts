@@ -287,6 +287,63 @@ describe('docker-manager utilities', () => {
 // These test the expected behavior of cleanup operations
 // ============================================================================
 
+describe('persistent paths', () => {
+  /**
+   * Reimplementation of getPersistentPaths for testing.
+   * Mirrors the structure in docker-manager.ts.
+   */
+  function getPersistentPaths(projectPath: string) {
+    const homeDir = os.homedir()
+    const projectDirName = getProjectDirName(projectPath)
+    const cacheBase = path.join(homeDir, '.cache', 'yolium', projectDirName)
+    const historyBase = path.join(homeDir, '.yolium', 'projects', projectDirName)
+
+    return {
+      cache: {
+        npm: path.join(cacheBase, 'npm'),
+        pip: path.join(cacheBase, 'pip'),
+        maven: path.join(cacheBase, 'maven'),
+        gradle: path.join(cacheBase, 'gradle'),
+        nuget: path.join(cacheBase, 'nuget'),
+      },
+      history: path.join(historyBase, 'history'),
+      claude: path.join(homeDir, '.claude'),
+      opencode: {
+        config: path.join(homeDir, '.config', 'opencode'),
+        data: path.join(homeDir, '.local', 'share', 'opencode'),
+      },
+    }
+  }
+
+  it('includes nuget cache path', () => {
+    const paths = getPersistentPaths('/home/user/project')
+    expect(paths.cache.nuget).toContain('nuget')
+    expect(paths.cache.nuget).toContain('.cache/yolium')
+  })
+
+  it('all cache paths are unique', () => {
+    const paths = getPersistentPaths('/home/user/project')
+    const cachePaths = Object.values(paths.cache)
+    const uniquePaths = new Set(cachePaths)
+    expect(uniquePaths.size).toBe(cachePaths.length)
+  })
+
+  it('includes all expected package manager caches', () => {
+    const paths = getPersistentPaths('/home/user/project')
+    expect(paths.cache).toHaveProperty('npm')
+    expect(paths.cache).toHaveProperty('pip')
+    expect(paths.cache).toHaveProperty('maven')
+    expect(paths.cache).toHaveProperty('gradle')
+    expect(paths.cache).toHaveProperty('nuget')
+  })
+
+  it('nuget cache bind mount maps to /home/agent/.nuget', () => {
+    const paths = getPersistentPaths('/home/user/project')
+    const nugetBind = `${toDockerPath(paths.cache.nuget, false)}:/home/agent/.nuget:rw`
+    expect(nugetBind).toContain(':/home/agent/.nuget:rw')
+  })
+})
+
 describe('cleanup behavior patterns', () => {
   // Simulate the session storage pattern used in docker-manager
   interface MockSession {

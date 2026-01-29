@@ -111,10 +111,29 @@ if [ -f "$HOME/.sdkman/bin/sdkman-init.sh" ]; then
     log "SDKMAN sourced successfully"
 fi
 
+if [ -d "$HOME/.dotnet" ]; then
+    log "Configuring .NET SDK..."
+    export DOTNET_ROOT="$HOME/.dotnet"
+    export PATH="$DOTNET_ROOT:$DOTNET_ROOT/tools:$PATH"
+    export DOTNET_CLI_TELEMETRY_OPTOUT=1
+    log ".NET SDK configured"
+fi
+
 if [ -n "$PROJECT_DIR" ] && [ ! -d "$PROJECT_DIR/.venv" ] && [ -f "$PROJECT_DIR/requirements.txt" -o -f "$PROJECT_DIR/pyproject.toml" -o -f "$PROJECT_DIR/setup.py" ]; then
     cd "$PROJECT_DIR"
     uv venv .venv 2>/dev/null
     add_status "✅ Virtual environment created at .venv/"
+fi
+
+# Auto-restore .NET packages if a .NET project is detected
+if [ -n "$PROJECT_DIR" ] && [ -d "$HOME/.dotnet" ]; then
+    if ls "$PROJECT_DIR"/*.sln "$PROJECT_DIR"/*.csproj "$PROJECT_DIR"/*.fsproj 2>/dev/null | head -1 >/dev/null 2>&1; then
+        export DOTNET_ROOT="$HOME/.dotnet"
+        export PATH="$DOTNET_ROOT:$DOTNET_ROOT/tools:$PATH"
+        cd "$PROJECT_DIR"
+        dotnet restore --verbosity quiet 2>/dev/null && \
+            add_status "✅ .NET packages restored"
+    fi
 fi
 
 if [ -d "/home/agent/.ssh" ]; then
@@ -205,8 +224,8 @@ grep 'github.com' /home/agent/.git-credentials | sed 's/.*:\(github_pat_[^@]*\|g
 ## Environment
 
 - **Project directory**: Mounted at the path shown in the Yolium banner
-- **Persistent caches**: npm, pip, maven, gradle caches persist across sessions
-- **Languages**: Python (uv), Node.js (nvm), Java (SDKMAN)
+- **Persistent caches**: npm, pip, maven, gradle, nuget caches persist across sessions
+- **Languages**: Python (uv), Node.js (nvm), Java (SDKMAN), .NET (dotnet)
 - **Network**: Restricted to HTTPS, SSH, DNS only (unless YOLIUM_NETWORK_FULL=true)
 
 ## Important Paths
@@ -260,11 +279,13 @@ BANNER
     echo "   ~/.cache/pip         → pip cache"
     echo "   ~/.m2                → Maven cache"
     echo "   ~/.gradle            → Gradle cache"
+    echo "   ~/.nuget             → NuGet cache"
     echo "   ~/.yolium_history    → Shell command history"
     echo ""
     echo "🐍 Python: $(python3 --version 2>&1 | cut -d' ' -f2) (uv available)"
     echo "🟢 Node.js: $(node --version 2>/dev/null || echo 'not found')"
     echo "☕ Java: $(java -version 2>&1 | head -1 | cut -d'"' -f2 || echo 'not found')"
+    echo "🔷 .NET: $(dotnet --version 2>/dev/null || echo 'not found')"
     if [ "$TOOL" = "opencode" ]; then
         echo "🤖 OpenCode: $(opencode --version 2>/dev/null || echo 'not found - check installation')"
     else

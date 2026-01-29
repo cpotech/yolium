@@ -119,6 +119,16 @@ RUN curl -s "https://get.sdkman.io?rcupdate=false" | bash && \
         sdk install java 21.0.9-tem && \
         sdk install gradle"
 
+# Install .NET SDK (latest LTS) via official install script
+# Uses the dotnet-install.sh script which installs to ~/.dotnet
+RUN curl -fsSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel LTS && \
+    echo 'export DOTNET_ROOT="$HOME/.dotnet"' >> ~/.bashrc && \
+    echo 'export PATH="$DOTNET_ROOT:$DOTNET_ROOT/tools:$PATH"' >> ~/.bashrc && \
+    echo 'export DOTNET_ROOT="$HOME/.dotnet"' >> ~/.zshrc && \
+    echo 'export PATH="$DOTNET_ROOT:$DOTNET_ROOT/tools:$PATH"' >> ~/.zshrc && \
+    echo 'export DOTNET_CLI_TELEMETRY_OPTOUT=1' >> ~/.bashrc && \
+    echo 'export DOTNET_CLI_TELEMETRY_OPTOUT=1' >> ~/.zshrc
+
 # Setup Python tools
 RUN /home/${USERNAME}/.local/bin/uv tool install black && \
     /home/${USERNAME}/.local/bin/uv tool install ruff && \
