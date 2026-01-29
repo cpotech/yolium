@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
+import type { AgentType } from '../types/agent';
 
-export type AgentType = 'claude' | 'opencode' | 'shell';
+export type { AgentType } from '../types/agent';
 
 interface AgentSelectDialogProps {
   isOpen: boolean;

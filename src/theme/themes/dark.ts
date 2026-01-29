@@ -1,4 +1,4 @@
-import type { ThemeTokens } from '../tokens';
+import type { ThemeTokens } from '../../types/theme';
 
 export const darkTheme: ThemeTokens = {
   colors: {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { ThemeName, ThemeTokens } from '../theme/tokens';
+import type { ThemeName, ThemeTokens } from '../types/theme';
 import { darkTheme } from '../theme/themes/dark';
 import { lightTheme } from '../theme/themes/light';
 

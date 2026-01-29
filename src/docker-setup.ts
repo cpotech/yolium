@@ -5,26 +5,15 @@ import { promisify } from 'node:util';
 import { exec } from 'node:child_process';
 import sudoPrompt from 'sudo-prompt-alt';
 import { createLogger } from './lib/logger';
+import type { DockerState, SetupStage } from './types/docker';
+
+export type { DockerState, SetupStage } from './types/docker';
 
 const execAsync = promisify(exec);
 const logger = createLogger('docker-setup');
 
 // Initialize docker client (auto-detects socket path)
 const docker = new Docker();
-
-/**
- * Docker installation and running state.
- */
-export interface DockerState {
-  installed: boolean;
-  running: boolean;
-  desktopPath: string | null;
-}
-
-/**
- * Stages of the Docker setup process.
- */
-export type SetupStage = 'detecting' | 'starting' | 'ready' | 'failed';
 
 /**
  * Get the platform-specific Docker Desktop executable path.

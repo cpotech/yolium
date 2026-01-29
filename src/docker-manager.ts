@@ -8,21 +8,11 @@ import { createHash } from 'node:crypto';
 import { createLogger } from './lib/logger';
 import { createWorktree, deleteWorktree, generateBranchName, hasUncommittedChanges, getWorktreeBranch } from './lib/git-worktree';
 import { loadGitConfig, generateGitCredentials } from './lib/git-config';
+import type { ContainerSession, ProjectCacheInfo, CacheStats, CleanupResult } from './types/docker';
+
+export type { ContainerSession, ProjectCacheInfo, CacheStats, CleanupResult } from './types/docker';
 
 const logger = createLogger('docker-manager');
-
-export interface ContainerSession {
-  id: string;
-  containerId: string;
-  stream: NodeJS.ReadWriteStream;
-  webContentsId: number;
-  folderPath: string;
-  state: 'starting' | 'running' | 'stopped' | 'crashed';
-  // Worktree info (if worktree is enabled)
-  worktreePath?: string;
-  originalPath?: string;
-  branchName?: string;
-}
 
 const sessions = new Map<string, ContainerSession>();
 
@@ -869,17 +859,6 @@ export function deleteSessionWorktree(sessionId: string): void {
 // Cache Management and Cleanup Functions
 // ============================================================================
 
-export interface ProjectCacheInfo {
-  dirName: string;
-  path: string;
-  folderName: string;
-  lastAccessed: string;
-  createdAt: string;
-  exists: boolean;           // Whether the original project path still exists
-  cacheSizeBytes: number;    // Total size of cache directories
-  historySizeBytes: number;  // Size of history directory
-}
-
 /**
  * Calculate the total size of a directory recursively.
  */
@@ -929,16 +908,6 @@ export function listProjectCaches(): ProjectCacheInfo[] {
   return results.sort((a, b) =>
     new Date(b.lastAccessed).getTime() - new Date(a.lastAccessed).getTime()
   );
-}
-
-export interface CacheStats {
-  totalProjects: number;
-  existingProjects: number;
-  orphanedProjects: number;
-  totalCacheSizeBytes: number;
-  totalHistorySizeBytes: number;
-  oldestAccess: string | null;
-  newestAccess: string | null;
 }
 
 /**
@@ -991,12 +960,6 @@ export function deleteProjectCache(dirName: string): { deleted: boolean; error?:
     logger.error('Failed to delete project cache', { dirName, error });
     return { deleted: false, error };
   }
-}
-
-export interface CleanupResult {
-  deletedCount: number;
-  freedBytes: number;
-  errors: string[];
 }
 
 /**

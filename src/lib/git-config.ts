@@ -1,12 +1,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import type { GitConfig } from '../types/git';
 
-export interface GitConfig {
-  name: string;
-  email: string;
-  githubPat?: string;  // Optional GitHub Personal Access Token for HTTPS auth
-}
+export type { GitConfig } from '../types/git';
 
 /**
  * Get the path to the git config file.
