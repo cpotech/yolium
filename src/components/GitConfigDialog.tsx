@@ -1,14 +1,7 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
+import type { GitConfig, GitConfigWithPat } from '../types/git';
 
-export interface GitConfig {
-  name: string;
-  email: string;
-  githubPat?: string;
-}
-
-export interface GitConfigWithPat extends GitConfig {
-  hasPat?: boolean;  // Used by IPC to indicate PAT exists without exposing it
-}
+export type { GitConfig, GitConfigWithPat } from '../types/git';
 
 interface GitConfigDialogProps {
   isOpen: boolean;
