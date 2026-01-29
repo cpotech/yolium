@@ -1,8 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  globalSetup: './src/tests/e2e/global-setup.ts',
-  testDir: './src/tests/e2e',
+  globalSetup: '../src/tests/e2e/global-setup.ts',
+  testDir: '../src/tests/e2e',
   timeout: 60000,
   retries: process.env.CI ? 2 : 0,
   workers: 1, // Electron tests must run serially
@@ -18,5 +18,5 @@ export default defineConfig({
       testMatch: '**/*.spec.ts',
     },
   ],
-  outputDir: 'src/tests/e2e-results',
+  outputDir: '../src/tests/e2e-results',
 });

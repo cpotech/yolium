@@ -12,7 +12,7 @@ import path from 'path';
 import fs from 'fs';
 
 // Modules that are external to the Vite bundle and must be copied
-// These are externalized in vite.main.config.ts and need to be available at runtime
+// These are externalized in config/vite.main.config.ts and need to be available at runtime
 const externalModules = ['node-pty', 'dockerode', 'ssh2'];
 
 // Find a module's package.json, checking nested node_modules if not at root
@@ -107,7 +107,7 @@ const config: ForgeConfig = {
     // Copy native modules to the packaged app
     // Vite externals are not automatically included, so we must copy them manually
     packageAfterCopy: async (_config, buildPath) => {
-      const nodeModulesSrc = path.resolve(__dirname, 'node_modules');
+      const nodeModulesSrc = path.resolve(__dirname, '..', 'node_modules');
       const nodeModulesDest = path.join(buildPath, 'node_modules');
 
       if (!fs.existsSync(nodeModulesDest)) {
@@ -164,19 +164,19 @@ const config: ForgeConfig = {
         {
           // `entry` is just an alias for `build.lib.entry` in the corresponding file of `config`.
           entry: 'src/main.ts',
-          config: 'vite.main.config.ts',
+          config: 'config/vite.main.config.ts',
           target: 'main',
         },
         {
           entry: 'src/preload.ts',
-          config: 'vite.preload.config.ts',
+          config: 'config/vite.preload.config.ts',
           target: 'preload',
         },
       ],
       renderer: [
         {
           name: 'main_window',
-          config: 'vite.renderer.config.ts',
+          config: 'config/vite.renderer.config.ts',
         },
       ],
     }),

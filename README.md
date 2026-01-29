@@ -12,17 +12,17 @@
 
 ## ✨ Features
 
-- **🔀 Parallel Agents** - Each agent gets its own git worktree and branch. Zero conflicts, clean branches ready for PR. ([details](TECHNICAL.md#git-worktrees))
+- **🔀 Parallel Agents** - Each agent gets its own git worktree and branch. Zero conflicts, clean branches ready for PR. ([details](docs/TECHNICAL.md#git-worktrees))
 - **📑 Multi-Tab Terminal** - Run multiple concurrent sessions with a tabbed interface
 - **🐳 Docker Isolation** - Each session runs in its own container, isolated from your host
 - **🤖 AI Agent Selection** - Claude Code, OpenCode, or interactive Shell
 - **🔗 Git Integration** - Worktrees, configuration, and GitHub PAT support
-- **📦 Pre-configured Environment** - Python, Node.js, Java, and common dev tools ready to use ([details](TECHNICAL.md#container-environment))
-- **💾 Persistent Caches** - Package manager caches survive across sessions ([details](TECHNICAL.md#file-mounts--cache))
+- **📦 Pre-configured Environment** - Python, Node.js, Java, and common dev tools ready to use ([details](docs/TECHNICAL.md#container-environment))
+- **💾 Persistent Caches** - Package manager caches survive across sessions ([details](docs/TECHNICAL.md#file-mounts--cache))
 - **🔒 Network Restrictions** - Only outbound HTTPS and SSH allowed
 - **🖥️ Cross-Platform** - Windows, macOS, and Linux
 
-> **[📚 Technical Documentation](TECHNICAL.md)** - Detailed architecture, mount paths, and development guide
+> **[📚 Technical Documentation](docs/TECHNICAL.md)** - Detailed architecture, mount paths, and development guide
 
 ## 📥 Installation
 
@@ -46,7 +46,7 @@
 
 ## 🛠️ Development
 
-See [TECHNICAL.md](TECHNICAL.md#development) for full tech stack, build instructions, and project structure.
+See [docs/TECHNICAL.md](docs/TECHNICAL.md#development) for full tech stack, build instructions, and project structure.
 
 ```bash
 git clone https://github.com/yolium-ai/yolium.git
