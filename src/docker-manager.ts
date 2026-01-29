@@ -190,6 +190,7 @@ function getPersistentPaths(projectPath: string) {
       pip: path.join(cacheBase, 'pip'),
       maven: path.join(cacheBase, 'maven'),
       gradle: path.join(cacheBase, 'gradle'),
+      nuget: path.join(cacheBase, 'nuget'),
     },
     history: path.join(historyBase, 'history'),
     claude: path.join(homeDir, '.claude'),
@@ -214,6 +215,7 @@ function ensurePersistentDirs(paths: ReturnType<typeof getPersistentPaths>, proj
   fs.mkdirSync(paths.cache.pip, { recursive: true });
   fs.mkdirSync(paths.cache.maven, { recursive: true });
   fs.mkdirSync(paths.cache.gradle, { recursive: true });
+  fs.mkdirSync(paths.cache.nuget, { recursive: true });
 
   // Create history directory
   fs.mkdirSync(paths.history, { recursive: true });
@@ -340,6 +342,7 @@ function buildPersistentBindMounts(mountPath: string, cacheKeyPath?: string, ori
     `${toDockerPath(paths.cache.pip)}:/home/agent/.cache/pip:rw`,
     `${toDockerPath(paths.cache.maven)}:/home/agent/.m2:rw`,
     `${toDockerPath(paths.cache.gradle)}:/home/agent/.gradle:rw`,
+    `${toDockerPath(paths.cache.nuget)}:/home/agent/.nuget:rw`,
 
     // Shell history
     `${toDockerPath(paths.history)}:/home/agent/.yolium_history:rw`,
