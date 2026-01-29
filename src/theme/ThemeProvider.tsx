@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import type { ThemeName, ThemeTokens } from './tokens';
+import type { ThemeName, ThemeTokens } from '../types/theme';
 import { darkTheme } from './themes/dark';
 import { lightTheme } from './themes/light';
 

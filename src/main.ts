@@ -26,7 +26,8 @@ import {
   startDockerEngine,
 } from './docker-setup';
 import log, { createLogger, getLogPath } from './lib/logger';
-import { loadGitConfig, saveGitConfig, GitConfig } from './lib/git-config';
+import { loadGitConfig, saveGitConfig } from './lib/git-config';
+import type { GitConfig } from './types/git';
 import { isGitRepo, hasCommits, getWorktreeBranch, initGitRepo } from './lib/git-worktree';
 
 const logger = createLogger('main');
