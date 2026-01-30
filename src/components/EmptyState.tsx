@@ -72,9 +72,9 @@ export function EmptyState({ onNewTab }: EmptyStateProps): React.ReactElement {
         title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
       >
         {theme === 'dark' ? (
-          <Sun size={20} />
+          <Sun size={20} className="lucide-sun" />
         ) : (
-          <Moon size={20} />
+          <Moon size={20} className="lucide-moon" />
         )}
       </button>
 

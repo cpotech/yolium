@@ -75,12 +75,9 @@ test.describe('Dialog Shortcuts', () => {
       await window.click(selectors.pathNextButton);
       await expect(window.locator(selectors.agentDialog)).toBeVisible();
 
-      // Wait for git status to be checked
-      await window.waitForTimeout(500);
-
-      // Worktree toggle should not show 'w' keyboard hint (kbd element)
+      // Wait for git status to be checked (worktree toggle appears when repo is detected)
       const worktreeToggle = window.locator(selectors.worktreeToggle);
-      await expect(worktreeToggle).toBeVisible();
+      await expect(worktreeToggle).toBeVisible({ timeout: 5000 });
       // Should not contain a kbd element with 'w' shortcut
       const worktreeKbd = window.locator(`${selectors.worktreeToggle} kbd`);
       await expect(worktreeKbd).toHaveCount(0);
@@ -96,8 +93,8 @@ test.describe('Dialog Shortcuts', () => {
       await window.click(selectors.pathNextButton);
       await expect(window.locator(selectors.agentDialog)).toBeVisible();
 
-      // Wait for git status to be checked
-      await window.waitForTimeout(500);
+      // Wait for git status to be checked (worktree toggle appears when repo is detected)
+      await expect(window.locator(selectors.worktreeToggle)).toBeVisible({ timeout: 5000 });
 
       // Get initial worktree checkbox state
       const worktreeCheckbox = window.locator(`${selectors.worktreeToggle} input[type="checkbox"]`);

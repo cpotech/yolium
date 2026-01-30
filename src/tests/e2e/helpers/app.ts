@@ -58,8 +58,8 @@ export async function closeApp(ctx: AppContext): Promise<void> {
   // This prevents container state from leaking between tests
   try {
     await ctx.window.evaluate(async () => {
-      // @ts-expect-error - api is exposed via preload
-      await window.api.docker.removeAllContainers();
+      // @ts-expect-error - electronAPI is exposed via preload
+      await window.electronAPI.removeAllContainers();
     });
   } catch {
     // App may be in a broken state, fall back to docker CLI cleanup
