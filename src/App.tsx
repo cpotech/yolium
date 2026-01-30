@@ -212,6 +212,9 @@ function App(): React.ReactElement {
       const cleanupComplete = window.electronAPI.onCodeReviewComplete((_sessionId, exitCode) => {
         if (exitCode === 0) {
           setReviewStatus('completed');
+        } else if (exitCode === 2) {
+          setReviewStatus('failed');
+          setReviewError('No open PR found for this branch. Please create a PR first.');
         } else {
           setReviewStatus('failed');
           setReviewError(`Container exited with code ${exitCode}`);

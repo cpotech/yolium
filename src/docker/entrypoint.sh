@@ -330,6 +330,16 @@ elif [ "$TOOL" = "code-review" ]; then
     git config --global --add safe.directory "$PROJECT_DIR/repo"
 
     echo "Checked out branch: $REVIEW_BRANCH"
+
+    # Check if a PR exists for this branch
+    echo "Checking for open PR on branch $REVIEW_BRANCH..."
+    PR_NUMBER=$(gh pr list --head "$REVIEW_BRANCH" --state open --json number --jq '.[0].number' 2>/dev/null)
+    if [ -z "$PR_NUMBER" ]; then
+        echo "ERROR: No open PR found for branch '$REVIEW_BRANCH'. Please create a PR first."
+        exit 2
+    fi
+    echo "Found PR #$PR_NUMBER"
+
     echo "Starting code review with $REVIEW_AGENT..."
 
     # Build the review prompt
@@ -347,10 +357,8 @@ Review the changes for:
 - Missing error handling
 - Test coverage gaps
 
-After reviewing, find the PR number for this branch and post your review as a PR comment using:
-  gh pr comment <PR_NUMBER> --body '<your review>'
-
-If you cannot find a PR for this branch, write your review to a file called REVIEW.md instead.
+After reviewing, post your review as a PR comment using:
+  gh pr comment $PR_NUMBER --body '<your review>'
 
 Be thorough but constructive. Focus on substantive issues, not nitpicks."
 
