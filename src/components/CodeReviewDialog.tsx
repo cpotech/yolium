@@ -140,7 +140,7 @@ export function CodeReviewDialog({
 
         {/* Git credentials warning */}
         {!hasGitCredentials && (
-          <div className="flex items-start gap-2 p-3 mb-4 rounded-md bg-yellow-900/30 border border-yellow-700/50">
+          <div data-testid="review-credentials-warning" className="flex items-start gap-2 p-3 mb-4 rounded-md bg-yellow-900/30 border border-yellow-700/50">
             <AlertTriangle size={16} className="text-yellow-500 mt-0.5 shrink-0" />
             <div className="text-sm text-yellow-300">
               GitHub PAT not configured. Go to Git Settings and add a Personal Access Token to enable code review.
@@ -150,7 +150,7 @@ export function CodeReviewDialog({
 
         {/* Agent auth warning */}
         {agentAuthWarning && (
-          <div className="flex items-start gap-2 p-3 mb-4 rounded-md bg-yellow-900/30 border border-yellow-700/50">
+          <div data-testid="review-agent-warning" className="flex items-start gap-2 p-3 mb-4 rounded-md bg-yellow-900/30 border border-yellow-700/50">
             <AlertTriangle size={16} className="text-yellow-500 mt-0.5 shrink-0" />
             <div className="text-sm text-yellow-300">
               {agentAuthWarning}
@@ -165,6 +165,7 @@ export function CodeReviewDialog({
             <input
               ref={inputRef}
               type="text"
+              data-testid="review-repo-input"
               value={repoUrl}
               onChange={e => setRepoUrl(e.target.value)}
               placeholder="https://github.com/owner/repo"
@@ -172,6 +173,7 @@ export function CodeReviewDialog({
               className="flex-1 px-3 py-2 text-sm rounded bg-gray-700 border border-gray-600 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500 disabled:opacity-50"
             />
             <button
+              data-testid="review-fetch-button"
               onClick={handleFetchBranches}
               disabled={!repoUrl.trim() || loadingBranches || isReviewRunning || !hasGitCredentials}
               className="px-3 py-2 text-sm bg-gray-600 text-white rounded hover:bg-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -184,7 +186,7 @@ export function CodeReviewDialog({
             </button>
           </div>
           {branchError && (
-            <div className="mt-1 text-xs text-red-400">{branchError}</div>
+            <div data-testid="review-branch-error" className="mt-1 text-xs text-red-400">{branchError}</div>
           )}
         </div>
 
@@ -193,6 +195,7 @@ export function CodeReviewDialog({
           <label className="block text-sm text-gray-400 mb-1">Branch</label>
           {branches.length > 0 ? (
             <select
+              data-testid="review-branch-select"
               value={branch}
               onChange={e => setBranch(e.target.value)}
               disabled={isReviewRunning}
@@ -205,6 +208,7 @@ export function CodeReviewDialog({
           ) : (
             <input
               type="text"
+              data-testid="review-branch-input"
               value={branch}
               onChange={e => setBranch(e.target.value)}
               placeholder="Enter branch name or fetch branches above"
@@ -219,6 +223,7 @@ export function CodeReviewDialog({
           <label className="block text-sm text-gray-400 mb-1">Review Agent</label>
           <div className="flex gap-2">
             <button
+              data-testid="review-agent-claude"
               onClick={() => setSelectedAgent('claude')}
               disabled={isReviewRunning}
               className={`flex-1 px-3 py-2 text-sm rounded transition-colors ${
@@ -230,6 +235,7 @@ export function CodeReviewDialog({
               Claude Code
             </button>
             <button
+              data-testid="review-agent-opencode"
               onClick={() => setSelectedAgent('opencode')}
               disabled={isReviewRunning}
               className={`flex-1 px-3 py-2 text-sm rounded transition-colors ${
@@ -245,7 +251,7 @@ export function CodeReviewDialog({
 
         {/* Review status */}
         {reviewStatus && (
-          <div className={`mb-4 p-3 rounded-md text-sm ${
+          <div data-testid="review-status" className={`mb-4 p-3 rounded-md text-sm ${
             reviewStatus === 'completed' ? 'bg-green-900/30 border border-green-700/50 text-green-300' :
             reviewStatus === 'failed' ? 'bg-red-900/30 border border-red-700/50 text-red-300' :
             'bg-blue-900/30 border border-blue-700/50 text-blue-300'
@@ -270,6 +276,7 @@ export function CodeReviewDialog({
         {/* Actions */}
         <div className="flex justify-end gap-2">
           <button
+            data-testid="review-cancel-button"
             onClick={onClose}
             className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
           >
