@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState, useRef } from 'react';
-import { Loader2, GitGraph, GitPullRequest } from 'lucide-react';
+import { Loader2, GitGraph, GitPullRequest, Settings } from 'lucide-react';
 import { useTabState } from './hooks/useTabState';
 import { TabBar } from './components/TabBar';
 import { Terminal } from './components/Terminal';

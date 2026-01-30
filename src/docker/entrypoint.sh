@@ -132,7 +132,7 @@ if [ -n "$PROJECT_DIR" ] && [ -d "$HOME/.dotnet" ]; then
         export DOTNET_ROOT="$HOME/.dotnet"
         export PATH="$DOTNET_ROOT:$DOTNET_ROOT/tools:$PATH"
         cd "$PROJECT_DIR"
-        dotnet restore --verbosity quiet 2>/dev/null && \
+        dotnet restore --verbosity quiet >/dev/null 2>&1 && \
             add_status "✅ .NET packages restored"
     fi
 fi
