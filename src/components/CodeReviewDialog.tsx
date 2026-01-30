@@ -34,8 +34,8 @@ export function CodeReviewDialog({
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 50);
-      // Reset state
-      setRepoUrl('');
+      // Restore cached repo URL or reset
+      setRepoUrl(localStorage.getItem('yolium:lastReviewRepoUrl') ?? '');
       setBranch('');
       setBranches([]);
       setBranchError(null);
@@ -97,6 +97,7 @@ export function CodeReviewDialog({
   const handleSubmit = useCallback(() => {
     if (!repoUrl.trim() || !branch.trim()) return;
     if (agentAuthWarning) return;
+    localStorage.setItem('yolium:lastReviewRepoUrl', repoUrl.trim());
     onStartReview(repoUrl.trim(), branch.trim(), selectedAgent);
   }, [repoUrl, branch, selectedAgent, agentAuthWarning, onStartReview]);
 
