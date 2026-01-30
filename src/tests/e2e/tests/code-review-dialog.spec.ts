@@ -25,11 +25,13 @@ test.describe('Code Review Dialog', () => {
     agentAuthenticated?: boolean;
     branches?: string[];
     branchError?: string;
+    mockStartReview?: boolean;
   } = {}) {
     const {
       agentAuthenticated = true,
       branches,
       branchError,
+      mockStartReview = false,
     } = opts;
 
     ctx = await launchApp();
@@ -58,7 +60,15 @@ test.describe('Code Review Dialog', () => {
           return { branches: mockOpts.branches || [] };
         });
       }
-    }, { agentAuthenticated, branches, branchError });
+
+      if (mockOpts.mockStartReview) {
+        ipcMain.removeHandler('docker:ensure-image');
+        ipcMain.handle('docker:ensure-image', () => Promise.resolve());
+
+        ipcMain.removeHandler('code-review:start');
+        ipcMain.handle('code-review:start', () => 'mock-session-id');
+      }
+    }, { agentAuthenticated, branches, branchError, mockStartReview });
 
     // Reload renderer so the App re-mounts and calls mocked loadGitConfig
     const { window } = ctx;
@@ -69,6 +79,18 @@ test.describe('Code Review Dialog', () => {
     );
 
     return ctx;
+  }
+
+  /**
+   * Send a mock code-review:complete event from main process to renderer.
+   */
+  async function sendReviewComplete(exitCode: number) {
+    await ctx.app.evaluate(({ BrowserWindow }, code) => {
+      const win = BrowserWindow.getAllWindows()[0];
+      if (win) {
+        win.webContents.send('code-review:complete', 'mock-session-id', code);
+      }
+    }, exitCode);
   }
 
   /**
@@ -236,5 +258,71 @@ test.describe('Code Review Dialog', () => {
     // Branches should populate
     await expect(window.locator(selectors.reviewBranchSelect)).toBeVisible();
     await expect(window.locator(selectors.reviewBranchSelect)).toHaveValue('main');
+  });
+
+  test('should show agent auth warning when agent is not authenticated', async () => {
+    await launchWithCredentials({ agentAuthenticated: false, branches: ['main'] });
+    const { window } = ctx;
+
+    await openDialog();
+
+    // Agent auth warning should be visible
+    await expect(window.locator(selectors.reviewAgentWarning)).toBeVisible();
+
+    // Start Review should be disabled even with URL and branch filled
+    await window.fill(selectors.reviewRepoInput, 'https://github.com/test/repo');
+    await window.click(selectors.reviewFetchButton);
+    await expect(window.locator(selectors.reviewBranchSelect)).toBeVisible();
+    await expect(window.locator(selectors.reviewStartButton)).toBeDisabled();
+  });
+
+  test('should show completed status after successful review', async () => {
+    await launchWithCredentials({ branches: ['main'], mockStartReview: true });
+    const { window } = ctx;
+
+    await openDialog();
+
+    // Fill in URL and fetch branches
+    await window.fill(selectors.reviewRepoInput, 'https://github.com/test/repo');
+    await window.click(selectors.reviewFetchButton);
+    await expect(window.locator(selectors.reviewBranchSelect)).toBeVisible();
+
+    // Click Start Review
+    await window.click(selectors.reviewStartButton);
+
+    // Status should transition to running
+    await expect(window.locator(selectors.reviewStatus)).toBeVisible();
+    await expect(window.locator(selectors.reviewStatus)).toContainText('Review in progress');
+
+    // Simulate successful completion (exit code 0)
+    await sendReviewComplete(0);
+
+    // Status should show completed
+    await expect(window.locator(selectors.reviewStatus)).toContainText('Review completed');
+  });
+
+  test('should show failed status after review failure', async () => {
+    await launchWithCredentials({ branches: ['main'], mockStartReview: true });
+    const { window } = ctx;
+
+    await openDialog();
+
+    // Fill in URL and fetch branches
+    await window.fill(selectors.reviewRepoInput, 'https://github.com/test/repo');
+    await window.click(selectors.reviewFetchButton);
+    await expect(window.locator(selectors.reviewBranchSelect)).toBeVisible();
+
+    // Click Start Review
+    await window.click(selectors.reviewStartButton);
+
+    // Status should transition to running
+    await expect(window.locator(selectors.reviewStatus)).toBeVisible();
+
+    // Simulate failure (exit code 1)
+    await sendReviewComplete(1);
+
+    // Status should show failed
+    await expect(window.locator(selectors.reviewStatus)).toContainText('Review failed');
+    await expect(window.locator(selectors.reviewStatus)).toContainText('Container exited with code 1');
   });
 });
