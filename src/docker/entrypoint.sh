@@ -369,8 +369,7 @@ Be thorough but constructive. Focus on substantive issues, not nitpicks."
         exit $?
     elif [ "$REVIEW_AGENT" = "opencode" ]; then
         log "Running OpenCode for code review"
-        # OpenCode uses a different invocation for non-interactive mode
-        echo "$REVIEW_PROMPT" | opencode
+        opencode run "$REVIEW_PROMPT"
         exit $?
     else
         echo "ERROR: Unknown review agent: $REVIEW_AGENT"
