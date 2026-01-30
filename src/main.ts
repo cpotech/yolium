@@ -19,6 +19,9 @@ import {
   deleteProjectCache,
   cleanupOrphanedCaches,
   cleanupStaleCaches,
+  listRemoteBranches,
+  checkAgentAuth,
+  createCodeReviewContainer,
 } from './docker-manager';
 import {
   detectDockerState,
@@ -583,6 +586,22 @@ ipcMain.handle('cache:cleanup-orphaned', () => {
 ipcMain.handle('cache:cleanup-stale', (_event, maxAgeDays: number = 90) => {
   logger.info('IPC: cache:cleanup-stale', { maxAgeDays });
   return cleanupStaleCaches(maxAgeDays);
+});
+
+// Code review operations
+ipcMain.handle('code-review:list-branches', (_event, repoUrl: string) => {
+  logger.info('IPC: code-review:list-branches', { repoUrl });
+  return listRemoteBranches(repoUrl);
+});
+
+ipcMain.handle('code-review:check-agent-auth', (_event, agent: string) => {
+  logger.debug('IPC: code-review:check-agent-auth', { agent });
+  return checkAgentAuth(agent);
+});
+
+ipcMain.handle('code-review:start', (event, repoUrl: string, branch: string, agent: string, gitConfig?: { name: string; email: string }) => {
+  logger.info('IPC: code-review:start', { repoUrl, branch, agent });
+  return createCodeReviewContainer(event.sender.id, repoUrl, branch, agent, gitConfig);
 });
 
 // This method will be called when Electron has finished

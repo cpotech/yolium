@@ -170,6 +170,26 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('container:exit', handler);
     return () => ipcRenderer.removeListener('container:exit', handler);
   },
+
+  // Code review operations
+  listRemoteBranches: (repoUrl: string) =>
+    ipcRenderer.invoke('code-review:list-branches', repoUrl),
+  checkAgentAuth: (agent: string) =>
+    ipcRenderer.invoke('code-review:check-agent-auth', agent),
+  startCodeReview: (repoUrl: string, branch: string, agent: string, gitConfig?: { name: string; email: string }) =>
+    ipcRenderer.invoke('code-review:start', repoUrl, branch, agent, gitConfig),
+  onCodeReviewOutput: (callback: (sessionId: string, data: string) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, data: string) =>
+      callback(sessionId, data);
+    ipcRenderer.on('code-review:output', handler);
+    return () => ipcRenderer.removeListener('code-review:output', handler);
+  },
+  onCodeReviewComplete: (callback: (sessionId: string, exitCode: number) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, exitCode: number) =>
+      callback(sessionId, exitCode);
+    ipcRenderer.on('code-review:complete', handler);
+    return () => ipcRenderer.removeListener('code-review:complete', handler);
+  },
 });
 
 // Type declaration for TypeScript
@@ -270,6 +290,12 @@ declare global {
       } | null>;
       onContainerData: (callback: (sessionId: string, data: string) => void) => CleanupFn;
       onContainerExit: (callback: (sessionId: string, exitCode: number) => void) => CleanupFn;
+      // Code review operations
+      listRemoteBranches: (repoUrl: string) => Promise<{ branches: string[]; error?: string }>;
+      checkAgentAuth: (agent: string) => Promise<{ authenticated: boolean }>;
+      startCodeReview: (repoUrl: string, branch: string, agent: string, gitConfig?: { name: string; email: string }) => Promise<string>;
+      onCodeReviewOutput: (callback: (sessionId: string, data: string) => void) => CleanupFn;
+      onCodeReviewComplete: (callback: (sessionId: string, exitCode: number) => void) => CleanupFn;
     };
   }
 }

@@ -318,7 +318,7 @@ describe('persistent paths', () => {
   it('includes nuget cache path', () => {
     const paths = getPersistentPaths('/home/user/project')
     expect(paths.cache.nuget).toContain('nuget')
-    expect(paths.cache.nuget).toContain('.cache/yolium')
+    expect(paths.cache.nuget).toContain(path.join('.cache', 'yolium'))
   })
 
   it('all cache paths are unique', () => {
