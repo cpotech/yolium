@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState, useRef } from 'react';
-import { Loader2, GitGraph } from 'lucide-react';
+import { Loader2, GitGraph, GitPullRequest } from 'lucide-react';
 import { useTabState } from './hooks/useTabState';
 import { TabBar } from './components/TabBar';
 import { Terminal } from './components/Terminal';
@@ -625,6 +625,17 @@ function App(): React.ReactElement {
                   <span className="text-[var(--color-text-disabled)]">|</span>
                 </>
               )}
+
+              {/* PR Review button */}
+              <button
+                data-testid="code-review-button"
+                onClick={handleOpenCodeReview}
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                title="PR Code Review"
+              >
+                <GitPullRequest size={12} />
+                <span>PR Review</span>
+              </button>
 
               {/* Git settings button */}
               <button

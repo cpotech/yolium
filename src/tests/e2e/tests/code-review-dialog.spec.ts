@@ -11,6 +11,12 @@ test.describe('Code Review Dialog', () => {
 
   test.afterEach(async () => {
     if (ctx) {
+      // Clear cached review URL to prevent leaking between tests
+      try {
+        await ctx.window.evaluate(() => localStorage.removeItem('yolium:lastReviewRepoUrl'));
+      } catch {
+        // Page may already be closed
+      }
       await closeApp(ctx);
     }
   });
@@ -22,12 +28,14 @@ test.describe('Code Review Dialog', () => {
    * then reloads the renderer so the App picks up mocked values on mount.
    */
   async function launchWithCredentials(opts: {
+    hasPat?: boolean;
     agentAuthenticated?: boolean;
     branches?: string[];
     branchError?: string;
     mockStartReview?: boolean;
   } = {}) {
     const {
+      hasPat = true,
       agentAuthenticated = true,
       branches,
       branchError,
@@ -43,7 +51,7 @@ test.describe('Code Review Dialog', () => {
       ipcMain.handle('git-config:load', () => ({
         name: 'Test User',
         email: 'test@example.com',
-        hasPat: true,
+        hasPat: mockOpts.hasPat,
       }));
 
       ipcMain.removeHandler('code-review:check-agent-auth');
@@ -68,7 +76,7 @@ test.describe('Code Review Dialog', () => {
         ipcMain.removeHandler('code-review:start');
         ipcMain.handle('code-review:start', () => 'mock-session-id');
       }
-    }, { agentAuthenticated, branches, branchError, mockStartReview });
+    }, { hasPat, agentAuthenticated, branches, branchError, mockStartReview });
 
     // Reload renderer so the App re-mounts and calls mocked loadGitConfig
     const { window } = ctx;
@@ -154,12 +162,11 @@ test.describe('Code Review Dialog', () => {
   });
 
   test('should show credentials warning when PAT not configured', async () => {
-    // Launch without mocks — test env has no PAT configured by default
-    ctx = await launchApp();
+    // Launch with mocked git config that has no PAT
+    await launchWithCredentials({ hasPat: false });
     const { window } = ctx;
 
-    await window.click(selectors.codeReviewButton);
-    await expect(window.locator(selectors.codeReviewDialog)).toBeVisible();
+    await openDialog();
 
     // Credentials warning should be visible
     await expect(window.locator(selectors.reviewCredentialsWarning)).toBeVisible();

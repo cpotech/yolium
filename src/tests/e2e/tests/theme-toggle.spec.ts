@@ -21,8 +21,8 @@ test.describe('Theme Toggle', () => {
     ctx = await launchApp();
     const { window } = ctx;
 
-    // Theme toggle should be visible
-    await expect(window.locator(selectors.themeToggle)).toBeVisible();
+    // Theme toggle should be visible (use first() to handle duplicate testids in EmptyState and StatusBar)
+    await expect(window.locator(selectors.themeToggle).first()).toBeVisible();
   });
 
   test('should default to dark theme', async () => {
@@ -38,8 +38,8 @@ test.describe('Theme Toggle', () => {
     ctx = await launchApp();
     const { window } = ctx;
 
-    // Click theme toggle
-    await window.click(selectors.themeToggle);
+    // Click theme toggle (use first() to handle duplicate testids)
+    await window.locator(selectors.themeToggle).first().click();
 
     // HTML should now have data-theme="light"
     const html = window.locator('html');
@@ -50,10 +50,11 @@ test.describe('Theme Toggle', () => {
     ctx = await launchApp();
     const { window } = ctx;
 
-    // Click toggle twice (wait for React re-render between clicks)
-    await window.click(selectors.themeToggle);
+    // Click toggle twice (use first() to handle duplicate testids)
+    const toggle = window.locator(selectors.themeToggle).first();
+    await toggle.click();
     await expect(window.locator('html')).toHaveAttribute('data-theme', 'light');
-    await window.click(selectors.themeToggle);
+    await toggle.click();
 
     // Should be back to dark
     const html = window.locator('html');
@@ -65,7 +66,7 @@ test.describe('Theme Toggle', () => {
     const { window } = ctx;
 
     // In dark mode, should show sun icon (to switch to light)
-    const sunIcon = window.locator(`${selectors.themeToggle} svg.lucide-sun`);
+    const sunIcon = window.locator(`${selectors.themeToggle} svg.lucide-sun`).first();
     await expect(sunIcon).toBeVisible();
   });
 
@@ -73,11 +74,11 @@ test.describe('Theme Toggle', () => {
     ctx = await launchApp();
     const { window } = ctx;
 
-    // Switch to light mode
-    await window.click(selectors.themeToggle);
+    // Switch to light mode (use first() to handle duplicate testids)
+    await window.locator(selectors.themeToggle).first().click();
 
     // Should show moon icon (to switch to dark)
-    const moonIcon = window.locator(`${selectors.themeToggle} svg.lucide-moon`);
+    const moonIcon = window.locator(`${selectors.themeToggle} svg.lucide-moon`).first();
     await expect(moonIcon).toBeVisible();
   });
 });

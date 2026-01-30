@@ -43,6 +43,19 @@ export function CodeReviewDialog({
     }
   }, [isOpen]);
 
+  // Document-level Escape listener (works regardless of focus state)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   // Check agent auth warning when agent changes
   useEffect(() => {
     if (!isOpen) return;
@@ -103,10 +116,7 @@ export function CodeReviewDialog({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      } else if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === 'Enter' && !e.shiftKey) {
         // If we're in the URL field and have no branches yet, fetch branches
         if (document.activeElement === inputRef.current && branches.length === 0 && repoUrl.trim()) {
           e.preventDefault();
@@ -117,7 +127,7 @@ export function CodeReviewDialog({
         }
       }
     },
-    [onClose, handleFetchBranches, handleSubmit, branches.length, repoUrl, branch]
+    [handleFetchBranches, handleSubmit, branches.length, repoUrl, branch]
   );
 
   if (!isOpen) return null;
