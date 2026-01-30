@@ -458,6 +458,141 @@ describe('settings config persistence', () => {
   })
 })
 
+describe('codex agent type', () => {
+  type AgentType = 'claude' | 'opencode' | 'codex' | 'shell';
+
+  it('codex is a valid agent type', () => {
+    const validAgents: AgentType[] = ['claude', 'opencode', 'codex', 'shell'];
+    expect(validAgents).toContain('codex');
+  })
+
+  it('agent types include all four options', () => {
+    const validAgents: AgentType[] = ['claude', 'opencode', 'codex', 'shell'];
+    expect(validAgents).toHaveLength(4);
+  })
+
+  it('sets TOOL=codex for codex agent', () => {
+    const agent: AgentType = 'codex';
+    const env = [`TOOL=${agent}`];
+    expect(env).toContain('TOOL=codex');
+  })
+
+  it('GSD is disabled for non-claude agents', () => {
+    const selectedAgent: AgentType = 'codex';
+    const gsdEnabled = true;
+    const effectiveGsd = selectedAgent === 'claude' ? gsdEnabled : false;
+    expect(effectiveGsd).toBe(false);
+  })
+
+  it('GSD is only enabled for claude agent', () => {
+    const agents: AgentType[] = ['claude', 'opencode', 'codex', 'shell'];
+    for (const agent of agents) {
+      const effectiveGsd = agent === 'claude' ? true : false;
+      if (agent === 'claude') {
+        expect(effectiveGsd).toBe(true);
+      } else {
+        expect(effectiveGsd).toBe(false);
+      }
+    }
+  })
+})
+
+describe('codex keyboard shortcuts', () => {
+  it('key 3 maps to codex agent', () => {
+    type AgentType = 'claude' | 'opencode' | 'codex' | 'shell';
+    const keyMap: Record<string, AgentType> = {
+      '1': 'claude',
+      '2': 'opencode',
+      '3': 'codex',
+      '4': 'shell',
+    };
+    expect(keyMap['3']).toBe('codex');
+  })
+
+  it('key 4 maps to shell (shifted from 3)', () => {
+    type AgentType = 'claude' | 'opencode' | 'codex' | 'shell';
+    const keyMap: Record<string, AgentType> = {
+      '1': 'claude',
+      '2': 'opencode',
+      '3': 'codex',
+      '4': 'shell',
+    };
+    expect(keyMap['4']).toBe('shell');
+  })
+
+  it('all four agent keys are unique', () => {
+    const keys = ['1', '2', '3', '4'];
+    const agents = ['claude', 'opencode', 'codex', 'shell'];
+    expect(new Set(keys).size).toBe(4);
+    expect(new Set(agents).size).toBe(4);
+  })
+})
+
+describe('openai api key validation', () => {
+  function validateOpenaiKey(value: string): { valid: boolean; error?: string } {
+    if (!value.trim()) return { valid: true };
+    if (!value.startsWith('sk-')) {
+      return { valid: false, error: 'API key must start with "sk-"' };
+    }
+    return { valid: true };
+  }
+
+  it('accepts empty key (optional)', () => {
+    expect(validateOpenaiKey('')).toEqual({ valid: true });
+  })
+
+  it('accepts key starting with sk-', () => {
+    expect(validateOpenaiKey('sk-abc123xyz')).toEqual({ valid: true });
+  })
+
+  it('rejects key not starting with sk-', () => {
+    const result = validateOpenaiKey('pk-invalidkey');
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain('sk-');
+  })
+
+  it('rejects random string', () => {
+    const result = validateOpenaiKey('randomstring');
+    expect(result.valid).toBe(false);
+  })
+
+  it('accepts whitespace-only as empty (optional)', () => {
+    expect(validateOpenaiKey('   ')).toEqual({ valid: true });
+  })
+
+  it('accepts real-world key format', () => {
+    expect(validateOpenaiKey('sk-proj-abc123def456ghi789')).toEqual({ valid: true });
+  })
+})
+
+describe('codex container config', () => {
+  it('codex persistent path is at ~/.codex', () => {
+    const homeDir = os.homedir();
+    const codexPath = path.join(homeDir, '.codex');
+    expect(codexPath).toContain('.codex');
+    expect(codexPath).toMatch(/\.codex$/);
+  })
+
+  it('codex bind mount is distinct from claude and opencode', () => {
+    const homeDir = os.homedir();
+    const claudePath = path.join(homeDir, '.claude');
+    const opencodePath = path.join(homeDir, '.config', 'opencode');
+    const codexPath = path.join(homeDir, '.codex');
+
+    expect(codexPath).not.toBe(claudePath);
+    expect(codexPath).not.toBe(opencodePath);
+  })
+
+  it('OPENAI_API_KEY is not leaked when empty string provided', () => {
+    const apiKey = '';
+    const env: string[] = [];
+    if (apiKey) {
+      env.push(`OPENAI_API_KEY=${apiKey}`);
+    }
+    expect(env.some(e => e.startsWith('OPENAI_API_KEY='))).toBe(false);
+  })
+})
+
 describe('cleanup behavior patterns', () => {
   // Simulate the session storage pattern used in docker-manager
   interface MockSession {

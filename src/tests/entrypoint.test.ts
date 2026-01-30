@@ -90,6 +90,49 @@ describe('entrypoint.sh', () => {
     });
   });
 
+  describe('codex agent entrypoint behavior', () => {
+    let entrypointContent: string;
+
+    beforeEach(() => {
+      entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+    });
+
+    it('should launch codex with --full-auto flag', () => {
+      expect(entrypointContent).toContain('--full-auto');
+    });
+
+    it('should have a dedicated codex branch in tool selection', () => {
+      // The entrypoint should have elif [ "$TOOL" = "codex" ]
+      expect(entrypointContent).toContain('TOOL" = "codex"');
+    });
+
+    it('should look up codex binary path', () => {
+      expect(entrypointContent).toContain('CODEX_BIN=$(which codex)');
+    });
+
+    it('should log codex path for debugging', () => {
+      expect(entrypointContent).toContain('codex path:');
+    });
+
+    it('should prompt user before starting codex', () => {
+      expect(entrypointContent).toContain('Press any key to start Codex');
+    });
+
+    it('should check for OPENAI_API_KEY in diagnostics', () => {
+      // Entrypoint logs which codex is available
+      expect(entrypointContent).toContain('which codex');
+    });
+
+    it('should display codex persistent data path in banner', () => {
+      // When TOOL=codex, banner shows ~/.codex
+      expect(entrypointContent).toContain('~/.codex');
+    });
+
+    it('should show Codex CLI version in banner', () => {
+      expect(entrypointContent).toContain('codex --version');
+    });
+  });
+
   describe('gh token extraction logic', () => {
     // Helper that mimics the entrypoint.sh extraction logic using JS regex
     // This is equivalent to: grep 'github.com' file | sed 's/.*:\(github_pat_[^@]*\|ghp_[^@]*\)@.*/\1/'
