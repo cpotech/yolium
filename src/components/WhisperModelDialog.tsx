@@ -1,0 +1,220 @@
+import React, { useCallback, useRef, useEffect, useState } from 'react';
+import { Download, Trash2, Check, Loader2, HardDrive } from 'lucide-react';
+import type { WhisperModelSize } from '../types/whisper';
+import { WHISPER_MODELS } from '../types/whisper';
+
+interface WhisperModelDialogProps {
+  isOpen: boolean;
+  selectedModel: WhisperModelSize;
+  downloadProgress: number | null;
+  onSelectModel: (model: WhisperModelSize) => void;
+  onDownloadModel: (model: WhisperModelSize) => void;
+  onDeleteModel: (model: WhisperModelSize) => void;
+  onClose: () => void;
+}
+
+interface ModelInfo {
+  size: WhisperModelSize;
+  name: string;
+  fileName: string;
+  sizeBytes: number;
+  downloaded: boolean;
+  description: string;
+}
+
+function formatSize(bytes: number): string {
+  if (bytes >= 1_000_000_000) {
+    return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
+  }
+  return `${(bytes / 1_000_000).toFixed(0)} MB`;
+}
+
+export function WhisperModelDialog({
+  isOpen,
+  selectedModel,
+  downloadProgress,
+  onSelectModel,
+  onDownloadModel,
+  onDeleteModel,
+  onClose,
+}: WhisperModelDialogProps): React.ReactElement | null {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load model status on open
+  useEffect(() => {
+    if (!isOpen) return;
+    setLoading(true);
+    window.electronAPI.whisperListModels().then((modelList) => {
+      const infos: ModelInfo[] = modelList.map((m) => ({
+        size: m.size as WhisperModelSize,
+        name: m.name,
+        fileName: m.fileName,
+        sizeBytes: m.sizeBytes,
+        downloaded: m.downloaded,
+        description: WHISPER_MODELS[m.size as WhisperModelSize]?.description || '',
+      }));
+      setModels(infos);
+      setLoading(false);
+    });
+  }, [isOpen]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    },
+    [onClose]
+  );
+
+  // Auto-focus dialog when opened
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => dialogRef.current?.focus(), 50);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      onKeyDown={handleKeyDown}
+      tabIndex={-1}
+    >
+      <div
+        data-testid="whisper-model-dialog"
+        className="bg-[var(--color-bg-primary)] rounded-lg shadow-xl border border-[var(--color-border-primary)] p-6 max-w-lg w-full mx-4"
+      >
+        <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-2">
+          Speech-to-Text Models
+        </h2>
+        <p className="text-sm text-[var(--color-text-secondary)] mb-4">
+          Select a whisper.cpp model for speech recognition. Larger models are more accurate but slower.
+        </p>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 size={24} className="animate-spin text-[var(--color-text-muted)]" />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {models.map((model) => {
+              const isSelected = model.size === selectedModel;
+              const isDownloading = downloadProgress !== null;
+
+              return (
+                <div
+                  key={model.size}
+                  data-testid={`whisper-model-${model.size}`}
+                  className={`flex items-center gap-3 p-3 rounded-md transition-colors ${
+                    isSelected
+                      ? 'bg-[var(--color-accent-bg)] ring-2 ring-[var(--color-accent-primary)]'
+                      : 'bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-tertiary)]'
+                  }`}
+                >
+                  {/* Model info */}
+                  <button
+                    onClick={() => {
+                      if (model.downloaded) {
+                        onSelectModel(model.size);
+                      }
+                    }}
+                    disabled={!model.downloaded}
+                    className="flex-1 text-left disabled:opacity-50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-[var(--color-text-primary)] font-medium">
+                        {model.name}
+                      </span>
+                      {isSelected && model.downloaded && (
+                        <Check size={14} className="text-[var(--color-status-success)]" />
+                      )}
+                    </div>
+                    <div className="text-[var(--color-text-muted)] text-xs mt-0.5">
+                      {model.description}
+                    </div>
+                    <div className="flex items-center gap-2 text-[var(--color-text-muted)] text-xs mt-1">
+                      <HardDrive size={10} />
+                      <span>{formatSize(model.sizeBytes)}</span>
+                      {model.downloaded && (
+                        <span className="text-[var(--color-status-success)]">Downloaded</span>
+                      )}
+                    </div>
+                  </button>
+
+                  {/* Download/delete actions */}
+                  <div className="flex items-center gap-1">
+                    {!model.downloaded && (
+                      <button
+                        data-testid={`whisper-download-${model.size}`}
+                        onClick={() => onDownloadModel(model.size)}
+                        disabled={isDownloading}
+                        className="flex items-center gap-1 px-2 py-1 rounded text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50"
+                        title={`Download ${model.name} model`}
+                      >
+                        {isDownloading ? (
+                          <>
+                            <Loader2 size={12} className="animate-spin" />
+                            <span>{downloadProgress}%</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download size={12} />
+                            <span>Download</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                    {model.downloaded && (
+                      <button
+                        data-testid={`whisper-delete-${model.size}`}
+                        onClick={() => onDeleteModel(model.size)}
+                        className="flex items-center gap-1 px-2 py-1 rounded text-xs text-[var(--color-text-muted)] hover:text-[var(--color-status-error)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                        title={`Delete ${model.name} model`}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Download progress bar */}
+        {downloadProgress !== null && (
+          <div className="mt-3">
+            <div className="w-full bg-[var(--color-bg-tertiary)] rounded-full h-1.5">
+              <div
+                className="bg-[var(--color-accent-primary)] h-1.5 rounded-full transition-all duration-300"
+                style={{ width: `${downloadProgress}%` }}
+              />
+            </div>
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">
+              Downloading... {downloadProgress}%
+            </p>
+          </div>
+        )}
+
+        <div className="mt-4 flex justify-end">
+          <button
+            data-testid="whisper-model-close"
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors flex items-center gap-2"
+          >
+            Close
+            <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">
+              Esc
+            </kbd>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

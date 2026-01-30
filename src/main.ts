@@ -29,6 +29,19 @@ import log, { createLogger, getLogPath } from './lib/logger';
 import { loadGitConfig, saveGitConfig } from './lib/git-config';
 import type { GitConfig } from './types/git';
 import { isGitRepo, hasCommits, getWorktreeBranch, initGitRepo } from './lib/git-worktree';
+import {
+  listModels,
+  isModelDownloaded,
+  downloadModel,
+  deleteModel,
+  transcribeAudio,
+  isWhisperBinaryAvailable,
+  getSelectedModel,
+  saveSelectedModel,
+} from './whisper-manager';
+import type { WhisperModelSize } from './types/whisper';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
 
 const logger = createLogger('main');
 
@@ -583,6 +596,63 @@ ipcMain.handle('cache:cleanup-orphaned', () => {
 ipcMain.handle('cache:cleanup-stale', (_event, maxAgeDays: number = 90) => {
   logger.info('IPC: cache:cleanup-stale', { maxAgeDays });
   return cleanupStaleCaches(maxAgeDays);
+});
+
+// ============================================================================
+// Whisper speech-to-text IPC handlers
+// ============================================================================
+
+ipcMain.handle('whisper:list-models', () => {
+  logger.info('IPC: whisper:list-models');
+  return listModels();
+});
+
+ipcMain.handle('whisper:is-model-downloaded', (_event, modelSize: WhisperModelSize) => {
+  return isModelDownloaded(modelSize);
+});
+
+ipcMain.handle('whisper:download-model', (event, modelSize: WhisperModelSize) => {
+  logger.info('IPC: whisper:download-model', { modelSize });
+  return downloadModel(modelSize, event.sender);
+});
+
+ipcMain.handle('whisper:delete-model', (_event, modelSize: WhisperModelSize) => {
+  logger.info('IPC: whisper:delete-model', { modelSize });
+  return deleteModel(modelSize);
+});
+
+ipcMain.handle('whisper:is-binary-available', () => {
+  return isWhisperBinaryAvailable();
+});
+
+ipcMain.handle('whisper:transcribe', async (_event, audioData: number[], modelSize: WhisperModelSize) => {
+  logger.info('IPC: whisper:transcribe', { modelSize, audioDataLength: audioData.length });
+
+  // Write audio data to a temp file
+  const tempDir = path.join(os.tmpdir(), 'yolium-whisper');
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+  const tempPath = path.join(tempDir, `audio-${Date.now()}.wav`);
+  fs.writeFileSync(tempPath, Buffer.from(audioData));
+
+  try {
+    const result = await transcribeAudio(tempPath, modelSize);
+    return result;
+  } finally {
+    // Clean up temp file
+    if (fs.existsSync(tempPath)) {
+      fs.unlinkSync(tempPath);
+    }
+  }
+});
+
+ipcMain.handle('whisper:get-selected-model', () => {
+  return getSelectedModel();
+});
+
+ipcMain.handle('whisper:save-selected-model', (_event, modelSize: WhisperModelSize) => {
+  saveSelectedModel(modelSize);
 });
 
 // This method will be called when Electron has finished

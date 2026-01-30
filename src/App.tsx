@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { Loader2, GitGraph } from 'lucide-react';
 import { useTabState } from './hooks/useTabState';
+import { useWhisper } from './hooks/useWhisper';
 import { TabBar } from './components/TabBar';
 import { Terminal } from './components/Terminal';
 import { StatusBar } from './components/StatusBar';
@@ -10,6 +11,8 @@ import { PathInputDialog } from './components/PathInputDialog';
 import { KeyboardShortcutsDialog } from './components/KeyboardShortcutsDialog';
 import { DockerSetupDialog } from './components/DockerSetupDialog';
 import { GitConfigDialog, GitConfig } from './components/GitConfigDialog';
+import { WhisperModelDialog } from './components/WhisperModelDialog';
+import type { WhisperModelSize } from './types/whisper';
 
 function App(): React.ReactElement {
   const {
@@ -24,6 +27,9 @@ function App(): React.ReactElement {
     closeAllTabs,
     closeOtherTabs,
   } = useTabState();
+
+  // Whisper speech-to-text
+  const whisper = useWhisper();
 
   // State for Docker readiness (null = checking, true = ready, false = needs setup)
   const [dockerReady, setDockerReady] = useState<boolean | null>(null);
@@ -353,6 +359,25 @@ function App(): React.ReactElement {
     }
   }, [tabs, closeAllTabs]);
 
+  // Send transcribed text to the active terminal
+  useEffect(() => {
+    if (whisper.state.transcribedText && activeTabId) {
+      const activeTab = tabs.find(t => t.id === activeTabId);
+      if (activeTab) {
+        window.electronAPI.writeYolium(activeTab.sessionId, whisper.state.transcribedText);
+        whisper.clearTranscription();
+      }
+    }
+  }, [whisper.state.transcribedText, activeTabId, tabs, whisper]);
+
+  // Handle whisper model deletion (refresh model list)
+  const handleDeleteWhisperModel = useCallback(async (modelSize: WhisperModelSize) => {
+    await window.electronAPI.whisperDeleteModel(modelSize);
+    // Re-open dialog to refresh state
+    whisper.closeModelDialog();
+    setTimeout(() => whisper.openModelDialog(), 100);
+  }, [whisper]);
+
   // Handle context menu
   const handleTabContextMenu = useCallback((tabId: string, x: number, y: number) => {
     window.electronAPI.showTabContextMenu(tabId, x, y);
@@ -483,6 +508,17 @@ function App(): React.ReactElement {
         onClose={handleCloseGitConfig}
         onSave={handleSaveGitConfig}
         initialConfig={gitConfig}
+      />
+
+      {/* Whisper model selection dialog */}
+      <WhisperModelDialog
+        isOpen={whisper.state.isModelDialogOpen}
+        selectedModel={whisper.state.selectedModel}
+        downloadProgress={whisper.state.downloadProgress}
+        onSelectModel={whisper.setModel}
+        onDownloadModel={whisper.downloadModel}
+        onDeleteModel={handleDeleteWhisperModel}
+        onClose={whisper.closeModelDialog}
       />
 
       {/* Docker image build progress overlay */}
@@ -625,12 +661,31 @@ function App(): React.ReactElement {
                   isRebuilding={isRebuilding}
                   gitBranch={tab.gitBranch}
                   worktreeName={tab.worktreeName}
+                  whisperRecordingState={whisper.state.recordingState}
+                  whisperSelectedModel={whisper.state.selectedModel}
+                  onToggleRecording={whisper.toggleRecording}
+                  onOpenModelDialog={whisper.openModelDialog}
                 />
               </div>
             ))}
           </>
         )}
       </main>
+
+      {/* Whisper error notification */}
+      {whisper.state.error && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 bg-[var(--color-status-error)] text-white px-4 py-2 rounded-md shadow-lg text-sm max-w-md">
+          <div className="flex items-center gap-2">
+            <span>Speech-to-text: {whisper.state.error}</span>
+            <button
+              onClick={whisper.clearTranscription}
+              className="text-white/80 hover:text-white ml-2"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

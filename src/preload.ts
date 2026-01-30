@@ -170,6 +170,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('container:exit', handler);
     return () => ipcRenderer.removeListener('container:exit', handler);
   },
+
+  // Whisper speech-to-text operations
+  whisperListModels: () => ipcRenderer.invoke('whisper:list-models'),
+  whisperIsModelDownloaded: (modelSize: string) => ipcRenderer.invoke('whisper:is-model-downloaded', modelSize),
+  whisperDownloadModel: (modelSize: string) => ipcRenderer.invoke('whisper:download-model', modelSize),
+  whisperDeleteModel: (modelSize: string) => ipcRenderer.invoke('whisper:delete-model', modelSize),
+  whisperIsBinaryAvailable: () => ipcRenderer.invoke('whisper:is-binary-available'),
+  whisperTranscribe: (audioData: number[], modelSize: string) =>
+    ipcRenderer.invoke('whisper:transcribe', audioData, modelSize),
+  whisperGetSelectedModel: () => ipcRenderer.invoke('whisper:get-selected-model'),
+  whisperSaveSelectedModel: (modelSize: string) => ipcRenderer.invoke('whisper:save-selected-model', modelSize),
+  onWhisperDownloadProgress: (callback: (progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) =>
+      callback(progress);
+    ipcRenderer.on('whisper:download-progress', handler);
+    return () => ipcRenderer.removeListener('whisper:download-progress', handler);
+  },
 });
 
 // Type declaration for TypeScript
@@ -270,6 +287,23 @@ declare global {
       } | null>;
       onContainerData: (callback: (sessionId: string, data: string) => void) => CleanupFn;
       onContainerExit: (callback: (sessionId: string, exitCode: number) => void) => CleanupFn;
+      // Whisper speech-to-text operations
+      whisperListModels: () => Promise<Array<{
+        size: string;
+        name: string;
+        fileName: string;
+        sizeBytes: number;
+        downloaded: boolean;
+        path?: string;
+      }>>;
+      whisperIsModelDownloaded: (modelSize: string) => Promise<boolean>;
+      whisperDownloadModel: (modelSize: string) => Promise<string>;
+      whisperDeleteModel: (modelSize: string) => Promise<boolean>;
+      whisperIsBinaryAvailable: () => Promise<boolean>;
+      whisperTranscribe: (audioData: number[], modelSize: string) => Promise<{ text: string; durationSeconds: number }>;
+      whisperGetSelectedModel: () => Promise<string>;
+      whisperSaveSelectedModel: (modelSize: string) => Promise<void>;
+      onWhisperDownloadProgress: (callback: (progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) => void) => CleanupFn;
     };
   }
 }
