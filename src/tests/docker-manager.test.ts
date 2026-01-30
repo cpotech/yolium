@@ -356,6 +356,108 @@ describe('persistent paths', () => {
   })
 })
 
+describe('container environment variables', () => {
+  /**
+   * Simulates the Env array construction from docker-manager.ts createYolium().
+   * Mirrors the logic that builds environment variables for the container.
+   */
+  function buildContainerEnv(options: {
+    agent: string;
+    gsdEnabled: boolean;
+    gitConfig?: { name: string; email: string };
+    openaiApiKey?: string;
+  }): string[] {
+    const env = [
+      `PROJECT_DIR=/workspace`,
+      `TOOL=${options.agent}`,
+      `GSD_ENABLED=${options.gsdEnabled}`,
+      'CLAUDE_CONFIG_DIR=/home/agent/.claude',
+      'HISTFILE=/home/agent/.yolium_history/zsh_history',
+      ...(options.gitConfig?.name ? [`GIT_USER_NAME=${options.gitConfig.name}`] : []),
+      ...(options.gitConfig?.email ? [`GIT_USER_EMAIL=${options.gitConfig.email}`] : []),
+      ...(options.openaiApiKey ? [`OPENAI_API_KEY=${options.openaiApiKey}`] : []),
+    ]
+    return env
+  }
+
+  it('passes OPENAI_API_KEY when provided', () => {
+    const env = buildContainerEnv({
+      agent: 'codex',
+      gsdEnabled: false,
+      openaiApiKey: 'sk-test-12345',
+    })
+    expect(env).toContain('OPENAI_API_KEY=sk-test-12345')
+  })
+
+  it('does not include OPENAI_API_KEY when not provided', () => {
+    const env = buildContainerEnv({
+      agent: 'codex',
+      gsdEnabled: false,
+    })
+    expect(env.some(e => e.startsWith('OPENAI_API_KEY='))).toBe(false)
+  })
+
+  it('passes OPENAI_API_KEY for any agent type', () => {
+    const env = buildContainerEnv({
+      agent: 'claude',
+      gsdEnabled: true,
+      openaiApiKey: 'sk-test-key',
+    })
+    expect(env).toContain('OPENAI_API_KEY=sk-test-key')
+  })
+})
+
+describe('settings config persistence', () => {
+  /**
+   * Simulates the gitconfig.json structure that now includes openaiApiKey.
+   */
+  interface SettingsConfig {
+    name: string;
+    email: string;
+    githubPat?: string;
+    openaiApiKey?: string;
+  }
+
+  function parseConfig(json: string): SettingsConfig | null {
+    try {
+      const config = JSON.parse(json)
+      if (typeof config.name === 'string' && typeof config.email === 'string') {
+        return {
+          name: config.name,
+          email: config.email,
+          ...(config.githubPat ? { githubPat: config.githubPat } : {}),
+          ...(config.openaiApiKey ? { openaiApiKey: config.openaiApiKey } : {}),
+        }
+      }
+      return null
+    } catch {
+      return null
+    }
+  }
+
+  it('loads openaiApiKey from config JSON', () => {
+    const json = JSON.stringify({ name: 'Test', email: 'test@test.com', openaiApiKey: 'sk-abc123' })
+    const config = parseConfig(json)
+    expect(config?.openaiApiKey).toBe('sk-abc123')
+  })
+
+  it('handles config without openaiApiKey', () => {
+    const json = JSON.stringify({ name: 'Test', email: 'test@test.com' })
+    const config = parseConfig(json)
+    expect(config?.openaiApiKey).toBeUndefined()
+  })
+
+  it('preserves openaiApiKey alongside githubPat', () => {
+    const json = JSON.stringify({
+      name: 'Test', email: 'test@test.com',
+      githubPat: 'ghp_test', openaiApiKey: 'sk-xyz'
+    })
+    const config = parseConfig(json)
+    expect(config?.githubPat).toBe('ghp_test')
+    expect(config?.openaiApiKey).toBe('sk-xyz')
+  })
+})
+
 describe('cleanup behavior patterns', () => {
   // Simulate the session storage pattern used in docker-manager
   interface MockSession {

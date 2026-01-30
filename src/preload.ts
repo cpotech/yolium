@@ -237,8 +237,8 @@ declare global {
         error: string | null;
       }>;
       // Git config operations
-      loadGitConfig: () => Promise<{ name: string; email: string; hasPat?: boolean } | null>;
-      saveGitConfig: (config: { name: string; email: string; githubPat?: string }) => Promise<void>;
+      loadGitConfig: () => Promise<{ name: string; email: string; hasPat?: boolean; hasOpenaiApiKey?: boolean } | null>;
+      saveGitConfig: (config: { name: string; email: string; githubPat?: string; openaiApiKey?: string }) => Promise<void>;
       // Git worktree operations
       checkGitRepo: (folderPath: string) => Promise<{ isRepo: boolean; hasCommits: boolean }>;
       getGitBranch: (folderPath: string) => Promise<string | null>;

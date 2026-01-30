@@ -1,5 +1,5 @@
 import React from 'react';
-import { Square, Loader2, Keyboard, Box, RefreshCw, GitGraph, GitBranch, TreeDeciduous, Sun, Moon, GitPullRequest } from 'lucide-react';
+import { Square, Loader2, Keyboard, Box, RefreshCw, GitGraph, GitBranch, TreeDeciduous, Sun, Moon, GitPullRequest, Settings } from 'lucide-react';
 import type { ContainerState } from '../types/tabs';
 import { useTheme } from '../theme';
 
@@ -143,14 +143,14 @@ export function StatusBar({
           <span>PR Review</span>
         </button>
 
-        {/* Git settings button */}
+        {/* Settings button */}
         <button
           data-testid="settings-button"
           onClick={onOpenSettings}
           className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-          title="Git Settings"
+          title="Settings"
         >
-          <GitGraph size={12} />
+          <Settings size={12} />
         </button>
 
         {/* Theme toggle */}

@@ -637,13 +637,13 @@ function App(): React.ReactElement {
                 <span>PR Review</span>
               </button>
 
-              {/* Git settings button */}
+              {/* Settings button */}
               <button
                 onClick={handleOpenGitConfig}
                 className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                title="Git Settings"
+                title="Settings"
               >
-                <GitGraph size={12} />
+                <Settings size={12} />
               </button>
 
               <button

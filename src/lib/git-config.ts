@@ -34,6 +34,7 @@ export function loadGitConfig(): GitConfig | null {
         name: config.name,
         email: config.email,
         ...(typeof config.githubPat === 'string' && config.githubPat ? { githubPat: config.githubPat } : {}),
+        ...(typeof config.openaiApiKey === 'string' && config.openaiApiKey ? { openaiApiKey: config.openaiApiKey } : {}),
       };
     }
 

@@ -551,20 +551,26 @@ export async function createYolium(
       AttachStdout: true,
       AttachStderr: true,
       WorkingDir: containerProjectPath,
-      Env: [
-        `PROJECT_DIR=${containerProjectPath}`,
-        `TOOL=${agent}`,
-        `GSD_ENABLED=${gsdEnabled}`,
-        `HOST_HOME=${toContainerHomePath(os.homedir())}`,
-        'CLAUDE_CONFIG_DIR=/home/agent/.claude',
-        'HISTFILE=/home/agent/.yolium_history/zsh_history',
-        ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
-        ...(process.env.YOLIUM_LOG_LEVEL ? [`YOLIUM_LOG_LEVEL=${process.env.YOLIUM_LOG_LEVEL}`] : []),
-        ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
-        ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
-        // For worktrees: pass the original repo path so entrypoint can create symlink for git
-        ...(worktreePath ? [`WORKTREE_REPO_PATH=${toDockerPath(resolvedFolderPath)}`] : []),
-      ],
+      Env: (() => {
+        // Load full config to get OpenAI API key for Codex agent
+        const fullConfig = loadGitConfig();
+        return [
+          `PROJECT_DIR=${containerProjectPath}`,
+          `TOOL=${agent}`,
+          `GSD_ENABLED=${gsdEnabled}`,
+          `HOST_HOME=${toContainerHomePath(os.homedir())}`,
+          'CLAUDE_CONFIG_DIR=/home/agent/.claude',
+          'HISTFILE=/home/agent/.yolium_history/zsh_history',
+          ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
+          ...(process.env.YOLIUM_LOG_LEVEL ? [`YOLIUM_LOG_LEVEL=${process.env.YOLIUM_LOG_LEVEL}`] : []),
+          ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
+          ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
+          // For worktrees: pass the original repo path so entrypoint can create symlink for git
+          ...(worktreePath ? [`WORKTREE_REPO_PATH=${toDockerPath(resolvedFolderPath)}`] : []),
+          // Pass OpenAI API key for Codex agent (loaded from settings)
+          ...(fullConfig?.openaiApiKey ? [`OPENAI_API_KEY=${fullConfig.openaiApiKey}`] : []),
+        ];
+      })(),
       HostConfig: {
         CapAdd: ['NET_ADMIN'],
         Binds: binds,
