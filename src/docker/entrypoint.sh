@@ -348,6 +348,14 @@ elif [ "$TOOL" = "code-review" ]; then
 
     echo "Starting code review with $REVIEW_AGENT..."
 
+    # Map agent to display name
+    case "$REVIEW_AGENT" in
+        claude)  AGENT_DISPLAY="Claude Code" ;;
+        opencode) AGENT_DISPLAY="OpenCode" ;;
+        codex)   AGENT_DISPLAY="Codex CLI" ;;
+        *)       AGENT_DISPLAY="$REVIEW_AGENT" ;;
+    esac
+
     # Build the review prompt
     REVIEW_PROMPT="You are an expert code reviewer. Review the code changes on this branch thoroughly.
 
@@ -365,6 +373,10 @@ Review the changes for:
 
 After reviewing, post your review as a PR comment using:
   gh pr comment $PR_NUMBER --body '<your review>'
+
+IMPORTANT: At the very end of your review comment, include this footer on its own line:
+---
+*Reviewed by $AGENT_DISPLAY via [Yolium](https://github.com/yolium-ai/yolium)*
 
 Be thorough but constructive. Focus on substantive issues, not nitpicks."
 
