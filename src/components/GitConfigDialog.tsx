@@ -31,9 +31,7 @@ export function GitConfigDialog({
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [showOpenaiKey, setShowOpenaiKey] = useState(false);
   const [openaiKeyError, setOpenaiKeyError] = useState<string | null>(null);
-  const [openaiExpanded, setOpenaiExpanded] = useState(false);
   const [openaiKeyCleared, setOpenaiKeyCleared] = useState(false);
-
   // Name validation: at least 2 chars, no problematic characters
   const validateName = (value: string): { valid: boolean; error?: string } => {
     const trimmed = value.trim();
@@ -68,7 +66,7 @@ export function GitConfigDialog({
   const validateOpenaiKey = (value: string): { valid: boolean; error?: string } => {
     if (!value.trim()) return { valid: true }; // Empty is valid (key is optional)
     if (!value.startsWith('sk-')) {
-      return { valid: false, error: 'API key must start with "sk-"' };
+      return { valid: false, error: 'Key must start with "sk-"' };
     }
     return { valid: true };
   };
@@ -90,9 +88,6 @@ export function GitConfigDialog({
       setOpenaiKeyCleared(false);
       if (initialConfig?.hasPat) {
         setAuthExpanded(true);
-      }
-      if (initialConfig?.hasOpenaiApiKey) {
-        setOpenaiExpanded(true);
       }
       // Focus dialog wrapper immediately for keyboard events (e.g. Escape)
       dialogRef.current?.focus();
@@ -190,7 +185,7 @@ export function GitConfigDialog({
       >
         <h2 className="text-lg font-semibold text-white mb-2">Settings</h2>
         <p className="text-sm text-gray-400 mb-4">
-          Configure your git identity and API keys for Yolium containers.
+          Configure your git identity for Yolium containers.
         </p>
 
         <div className="space-y-4">
@@ -233,6 +228,66 @@ export function GitConfigDialog({
             {emailError && (
               <p className="mt-1 text-xs text-red-400">{emailError}</p>
             )}
+          </div>
+
+          {/* OpenAI API Key */}
+          <div className="border-t border-gray-700 pt-4">
+            <label htmlFor="openai-key" className="block text-sm font-medium text-gray-300 mb-1">
+              OpenAI API Key
+              {initialConfig?.hasOpenaiKey && !openaiApiKey && !openaiKeyCleared && (
+                <span className="ml-2 text-xs text-green-400">(configured)</span>
+              )}
+            </label>
+            <div className="relative">
+              <input
+                id="openai-key"
+                type={showOpenaiKey ? 'text' : 'password'}
+                value={openaiApiKey}
+                onChange={(e) => handleOpenaiKeyChange(e.target.value)}
+                placeholder={initialConfig?.hasOpenaiKey ? '(keep existing key)' : 'sk-...'}
+                data-testid="openai-key-input"
+                className={`w-full px-3 py-2 pr-20 bg-gray-700 border rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm ${
+                  openaiKeyError ? 'border-red-500' : 'border-gray-600'
+                }`}
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => setShowOpenaiKey(!showOpenaiKey)}
+                  className="p-1 text-gray-400 hover:text-white transition-colors"
+                  title={showOpenaiKey ? 'Hide key' : 'Show key'}
+                >
+                  {showOpenaiKey ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
+                </button>
+                {(openaiApiKey || (initialConfig?.hasOpenaiKey && !openaiKeyCleared)) && (
+                  <button
+                    type="button"
+                    onClick={handleClearOpenaiKey}
+                    className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+                    title="Clear key"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+            {openaiKeyError && (
+              <p className="mt-1 text-xs text-red-400">{openaiKeyError}</p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">
+              Required for the Codex agent. Passed only to Codex containers.
+            </p>
           </div>
 
           {/* Collapsible GitHub Authentication Section */}
@@ -328,97 +383,6 @@ export function GitConfigDialog({
             )}
           </div>
 
-          {/* Collapsible OpenAI API Key Section */}
-          <div className="border-t border-gray-700 pt-4">
-            <button
-              type="button"
-              onClick={() => setOpenaiExpanded(!openaiExpanded)}
-              className="flex items-center gap-2 text-sm font-medium text-gray-300 hover:text-white transition-colors w-full"
-            >
-              <svg
-                className={`w-4 h-4 transition-transform ${openaiExpanded ? 'rotate-90' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-              OpenAI API Key
-              {initialConfig?.hasOpenaiApiKey && !openaiApiKey && !openaiKeyCleared && (
-                <span className="ml-2 text-xs text-green-400">(configured)</span>
-              )}
-            </button>
-
-            {openaiExpanded && (
-              <div className="mt-3 space-y-3">
-                <div>
-                  <label htmlFor="openai-api-key" className="block text-sm font-medium text-gray-300 mb-1">
-                    API Key
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="openai-api-key"
-                      type={showOpenaiKey ? 'text' : 'password'}
-                      value={openaiApiKey}
-                      onChange={(e) => handleOpenaiKeyChange(e.target.value)}
-                      placeholder={initialConfig?.hasOpenaiApiKey ? '(keep existing key)' : 'sk-...'}
-                      data-testid="openai-api-key-input"
-                      className={`w-full px-3 py-2 pr-20 bg-gray-700 border rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm ${
-                        openaiKeyError ? 'border-red-500' : 'border-gray-600'
-                      }`}
-                    />
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setShowOpenaiKey(!showOpenaiKey)}
-                        className="p-1 text-gray-400 hover:text-white transition-colors"
-                        title={showOpenaiKey ? 'Hide key' : 'Show key'}
-                      >
-                        {showOpenaiKey ? (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        )}
-                      </button>
-                      {(openaiApiKey || (initialConfig?.hasOpenaiApiKey && !openaiKeyCleared)) && (
-                        <button
-                          type="button"
-                          onClick={handleClearOpenaiKey}
-                          className="p-1 text-gray-400 hover:text-red-400 transition-colors"
-                          title="Clear key"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  {openaiKeyError && (
-                    <p className="mt-1 text-xs text-red-400">{openaiKeyError}</p>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500">
-                  Required for the Codex agent. Get your API key from{' '}
-                  <a
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      window.electronAPI?.openExternal('https://platform.openai.com/api-keys');
-                    }}
-                    className="text-blue-400 hover:text-blue-300"
-                  >
-                    platform.openai.com/api-keys
-                  </a>
-                </p>
-              </div>
-            )}
-          </div>
         </div>
 
         <p className="mt-4 text-xs text-gray-500">

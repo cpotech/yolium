@@ -376,6 +376,10 @@ Be thorough but constructive. Focus on substantive issues, not nitpicks."
         log "Running OpenCode for code review"
         opencode run "$REVIEW_PROMPT"
         exit $?
+    elif [ "$REVIEW_AGENT" = "codex" ]; then
+        log "Running Codex for code review"
+        codex exec --full-auto "$REVIEW_PROMPT"
+        exit $?
     else
         echo "ERROR: Unknown review agent: $REVIEW_AGENT"
         exit 1
@@ -394,6 +398,11 @@ elif [ "$TOOL" = "opencode" ]; then
     exit 1
 elif [ "$TOOL" = "codex" ]; then
     log "Starting Codex"
+    if [ -z "$OPENAI_API_KEY" ]; then
+        echo "OPENAI_API_KEY is not set. Set the environment variable on your host before using Codex."
+        echo "Falling back to shell."
+        exec /bin/zsh
+    fi
     CODEX_BIN=$(which codex)
     log "codex path: $CODEX_BIN"
     echo ""

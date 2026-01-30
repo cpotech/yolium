@@ -113,7 +113,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Git config operations
   loadGitConfig: () => ipcRenderer.invoke('git-config:load'),
-  saveGitConfig: (config: { name: string; email: string; githubPat?: string }) =>
+  saveGitConfig: (config: { name: string; email: string; githubPat?: string; openaiApiKey?: string }) =>
     ipcRenderer.invoke('git-config:save', config),
 
   // Git worktree operations
@@ -237,7 +237,7 @@ declare global {
         error: string | null;
       }>;
       // Git config operations
-      loadGitConfig: () => Promise<{ name: string; email: string; hasPat?: boolean; hasOpenaiApiKey?: boolean } | null>;
+      loadGitConfig: () => Promise<{ name: string; email: string; hasPat?: boolean; hasOpenaiKey?: boolean } | null>;
       saveGitConfig: (config: { name: string; email: string; githubPat?: string; openaiApiKey?: string }) => Promise<void>;
       // Git worktree operations
       checkGitRepo: (folderPath: string) => Promise<{ isRepo: boolean; hasCommits: boolean }>;

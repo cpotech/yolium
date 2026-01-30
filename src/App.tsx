@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState, useRef } from 'react';
-import { Loader2, GitGraph, GitPullRequest, Settings } from 'lucide-react';
+import { Loader2, GitPullRequest, Settings } from 'lucide-react';
 import { useTabState } from './hooks/useTabState';
 import { TabBar } from './components/TabBar';
 import { Terminal } from './components/Terminal';
@@ -188,7 +188,9 @@ function App(): React.ReactElement {
 
   const handleSaveGitConfig = useCallback(async (config: GitConfig) => {
     await window.electronAPI.saveGitConfig(config);
-    setGitConfig(config);
+    // Reload from IPC to get sanitized form with hasPat/hasOpenaiKey flags
+    const reloaded = await window.electronAPI.loadGitConfig();
+    setGitConfig(reloaded);
     setGitConfigDialogOpen(false);
   }, []);
 

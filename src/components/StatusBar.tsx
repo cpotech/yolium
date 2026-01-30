@@ -1,5 +1,5 @@
 import React from 'react';
-import { Square, Loader2, Keyboard, Box, RefreshCw, GitGraph, GitBranch, TreeDeciduous, Sun, Moon, GitPullRequest, Settings } from 'lucide-react';
+import { Square, Loader2, Keyboard, Box, RefreshCw, GitBranch, TreeDeciduous, Sun, Moon, GitPullRequest, Settings } from 'lucide-react';
 import type { ContainerState } from '../types/tabs';
 import { useTheme } from '../theme';
 

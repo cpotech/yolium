@@ -118,9 +118,9 @@ describe('entrypoint.sh', () => {
       expect(entrypointContent).toContain('Press any key to start Codex');
     });
 
-    it('should check for OPENAI_API_KEY in diagnostics', () => {
-      // Entrypoint logs which codex is available
-      expect(entrypointContent).toContain('which codex');
+    it('should check for OPENAI_API_KEY before launching Codex', () => {
+      expect(entrypointContent).toContain('OPENAI_API_KEY');
+      expect(entrypointContent).toContain('Falling back to shell');
     });
 
     it('should display codex persistent data path in banner', () => {

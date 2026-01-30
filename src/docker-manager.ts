@@ -395,7 +395,7 @@ function getYoliumSshDir(): string | null {
 
 /**
  * Get git-credentials bind mount if PAT is configured.
- * Generates the credentials file from gitconfig.json and returns the mount string.
+ * Generates the credentials file from settings.json and returns the mount string.
  */
 function getGitCredentialsBind(): string | null {
   const gitConfig = loadGitConfig();
@@ -468,7 +468,7 @@ export async function ensureImage(
  *
  * @param webContentsId - The Electron webContents ID for IPC
  * @param folderPath - The local folder to mount in the container
- * @param agent - The agent to run: 'claude' or 'opencode'
+ * @param agent - The agent to run: 'claude', 'opencode', 'codex', or 'shell'
  * @param gsdEnabled - Whether to run get-shit-done-cc before Claude
  * @param gitConfig - Optional git identity config (name and email)
  * @param worktreeEnabled - Whether to create a git worktree for isolation
@@ -551,10 +551,7 @@ export async function createYolium(
       AttachStdout: true,
       AttachStderr: true,
       WorkingDir: containerProjectPath,
-      Env: (() => {
-        // Load full config to get OpenAI API key for Codex agent
-        const fullConfig = loadGitConfig();
-        return [
+      Env: [
           `PROJECT_DIR=${containerProjectPath}`,
           `TOOL=${agent}`,
           `GSD_ENABLED=${gsdEnabled}`,
@@ -567,10 +564,13 @@ export async function createYolium(
           ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
           // For worktrees: pass the original repo path so entrypoint can create symlink for git
           ...(worktreePath ? [`WORKTREE_REPO_PATH=${toDockerPath(resolvedFolderPath)}`] : []),
-          // Pass OpenAI API key for Codex agent (loaded from settings)
-          ...(fullConfig?.openaiApiKey ? [`OPENAI_API_KEY=${fullConfig.openaiApiKey}`] : []),
-        ];
-      })(),
+          // Pass OpenAI API key for Codex agent only (stored config takes precedence over env var)
+          ...(agent === 'codex' ? (() => {
+            const storedConfig = loadGitConfig();
+            const key = storedConfig?.openaiApiKey || process.env.OPENAI_API_KEY;
+            return key ? [`OPENAI_API_KEY=${key}`] : [];
+          })() : []),
+        ],
       HostConfig: {
         CapAdd: ['NET_ADMIN'],
         Binds: binds,
@@ -976,6 +976,29 @@ export function checkAgentAuth(agent: string): { authenticated: boolean } {
     }
   }
 
+  if (agent === 'codex') {
+    // Codex can authenticate via:
+    // 1. Stored OpenAI API key in Yolium settings
+    // 2. OPENAI_API_KEY environment variable
+    // 3. OAuth tokens in ~/.codex/auth.json (from `codex` login)
+    const storedConfig = loadGitConfig();
+    if (storedConfig?.openaiApiKey || process.env.OPENAI_API_KEY) {
+      return { authenticated: true };
+    }
+    const codexAuthFile = path.join(homeDir, '.codex', 'auth.json');
+    try {
+      const content = fs.readFileSync(codexAuthFile, 'utf-8');
+      const auth = JSON.parse(content);
+      // Check for OAuth tokens or an API key in auth.json
+      if (auth.tokens?.access_token || auth.OPENAI_API_KEY) {
+        return { authenticated: true };
+      }
+    } catch {
+      // auth.json doesn't exist or is invalid
+    }
+    return { authenticated: false };
+  }
+
   return { authenticated: false };
 }
 
@@ -1012,16 +1035,19 @@ export async function createCodeReviewContainer(
   const claudeDir = path.join(homeDir, '.claude');
   const opencodeConfigDir = path.join(homeDir, '.config', 'opencode');
   const opencodeDataDir = path.join(homeDir, '.local', 'share', 'opencode');
+  const codexDir = path.join(homeDir, '.codex');
 
   fs.mkdirSync(claudeDir, { recursive: true });
   fs.mkdirSync(opencodeConfigDir, { recursive: true });
   fs.mkdirSync(opencodeDataDir, { recursive: true });
+  fs.mkdirSync(codexDir, { recursive: true });
 
   const binds = [
     `${toDockerPath(tmpDir)}:${containerProjectPath}:rw`,
     `${toDockerPath(claudeDir)}:/home/agent/.claude:rw`,
     `${toDockerPath(opencodeConfigDir)}:/home/agent/.config/opencode:rw`,
     `${toDockerPath(opencodeDataDir)}:/home/agent/.local/share/opencode:rw`,
+    `${toDockerPath(codexDir)}:/home/agent/.codex:rw`,
   ];
 
   // Add SSH keys if available
@@ -1057,6 +1083,11 @@ export async function createCodeReviewContainer(
       ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
       ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
       ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
+      ...(agent === 'codex' ? (() => {
+        const storedConfig = loadGitConfig();
+        const key = storedConfig?.openaiApiKey || process.env.OPENAI_API_KEY;
+        return key ? [`OPENAI_API_KEY=${key}`] : [];
+      })() : []),
     ],
     HostConfig: {
       CapAdd: ['NET_ADMIN'],

@@ -61,7 +61,7 @@ export const selectors = {
   gitNameInput: '[data-testid="git-name-input"]',
   gitEmailInput: '[data-testid="git-email-input"]',
   gitPatInput: '[data-testid="git-pat-input"]',
-  openaiApiKeyInput: '[data-testid="openai-api-key-input"]',
+  openaiKeyInput: '[data-testid="openai-key-input"]',
   gitConfigSaveButton: '[data-testid="git-config-save"]',
   gitConfigCancelButton: '[data-testid="git-config-cancel"]',
 
@@ -82,6 +82,7 @@ export const selectors = {
   reviewBranchInput: '[data-testid="review-branch-input"]',
   reviewAgentClaude: '[data-testid="review-agent-claude"]',
   reviewAgentOpencode: '[data-testid="review-agent-opencode"]',
+  reviewAgentCodex: '[data-testid="review-agent-codex"]',
   reviewCancelButton: '[data-testid="review-cancel-button"]',
   reviewStartButton: '[data-testid="start-review-button"]',
   reviewCredentialsWarning: '[data-testid="review-credentials-warning"]',

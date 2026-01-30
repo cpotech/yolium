@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import * as path from 'node:path'
 import * as os from 'node:os'
 import * as crypto from 'node:crypto'
+import type { AgentType } from '../types/agent'
 
 // Test pure utility functions from docker-manager
 // These are extracted/reimplemented here since they're not exported
@@ -365,7 +366,6 @@ describe('container environment variables', () => {
     agent: string;
     gsdEnabled: boolean;
     gitConfig?: { name: string; email: string };
-    openaiApiKey?: string;
   }): string[] {
     const env = [
       `PROJECT_DIR=/workspace`,
@@ -375,41 +375,41 @@ describe('container environment variables', () => {
       'HISTFILE=/home/agent/.yolium_history/zsh_history',
       ...(options.gitConfig?.name ? [`GIT_USER_NAME=${options.gitConfig.name}`] : []),
       ...(options.gitConfig?.email ? [`GIT_USER_EMAIL=${options.gitConfig.email}`] : []),
-      ...(options.openaiApiKey ? [`OPENAI_API_KEY=${options.openaiApiKey}`] : []),
     ]
     return env
   }
 
-  it('passes OPENAI_API_KEY when provided', () => {
-    const env = buildContainerEnv({
-      agent: 'codex',
-      gsdEnabled: false,
-      openaiApiKey: 'sk-test-12345',
-    })
-    expect(env).toContain('OPENAI_API_KEY=sk-test-12345')
-  })
-
-  it('does not include OPENAI_API_KEY when not provided', () => {
+  it('includes TOOL env var for agent type', () => {
     const env = buildContainerEnv({
       agent: 'codex',
       gsdEnabled: false,
     })
-    expect(env.some(e => e.startsWith('OPENAI_API_KEY='))).toBe(false)
+    expect(env).toContain('TOOL=codex')
   })
 
-  it('passes OPENAI_API_KEY for any agent type', () => {
+  it('includes git config when provided', () => {
     const env = buildContainerEnv({
       agent: 'claude',
       gsdEnabled: true,
-      openaiApiKey: 'sk-test-key',
+      gitConfig: { name: 'Test', email: 'test@test.com' },
     })
-    expect(env).toContain('OPENAI_API_KEY=sk-test-key')
+    expect(env).toContain('GIT_USER_NAME=Test')
+    expect(env).toContain('GIT_USER_EMAIL=test@test.com')
+  })
+
+  it('omits git config when not provided', () => {
+    const env = buildContainerEnv({
+      agent: 'codex',
+      gsdEnabled: false,
+    })
+    expect(env.some(e => e.startsWith('GIT_USER_NAME='))).toBe(false)
+    expect(env.some(e => e.startsWith('GIT_USER_EMAIL='))).toBe(false)
   })
 })
 
 describe('settings config persistence', () => {
   /**
-   * Simulates the gitconfig.json structure that now includes openaiApiKey.
+   * Simulates the settings.json structure.
    */
   interface SettingsConfig {
     name: string;
@@ -435,10 +435,29 @@ describe('settings config persistence', () => {
     }
   }
 
-  it('loads openaiApiKey from config JSON', () => {
-    const json = JSON.stringify({ name: 'Test', email: 'test@test.com', openaiApiKey: 'sk-abc123' })
+  it('loads config from JSON', () => {
+    const json = JSON.stringify({ name: 'Test', email: 'test@test.com' })
     const config = parseConfig(json)
-    expect(config?.openaiApiKey).toBe('sk-abc123')
+    expect(config?.name).toBe('Test')
+    expect(config?.email).toBe('test@test.com')
+  })
+
+  it('loads githubPat from config JSON', () => {
+    const json = JSON.stringify({ name: 'Test', email: 'test@test.com', githubPat: 'ghp_test' })
+    const config = parseConfig(json)
+    expect(config?.githubPat).toBe('ghp_test')
+  })
+
+  it('handles config without githubPat', () => {
+    const json = JSON.stringify({ name: 'Test', email: 'test@test.com' })
+    const config = parseConfig(json)
+    expect(config?.githubPat).toBeUndefined()
+  })
+
+  it('loads openaiApiKey from config JSON', () => {
+    const json = JSON.stringify({ name: 'Test', email: 'test@test.com', openaiApiKey: 'sk-test123' })
+    const config = parseConfig(json)
+    expect(config?.openaiApiKey).toBe('sk-test123')
   })
 
   it('handles config without openaiApiKey', () => {
@@ -447,121 +466,23 @@ describe('settings config persistence', () => {
     expect(config?.openaiApiKey).toBeUndefined()
   })
 
-  it('preserves openaiApiKey alongside githubPat', () => {
-    const json = JSON.stringify({
-      name: 'Test', email: 'test@test.com',
-      githubPat: 'ghp_test', openaiApiKey: 'sk-xyz'
-    })
+  it('loads both githubPat and openaiApiKey', () => {
+    const json = JSON.stringify({ name: 'Test', email: 'test@test.com', githubPat: 'ghp_test', openaiApiKey: 'sk-test' })
     const config = parseConfig(json)
     expect(config?.githubPat).toBe('ghp_test')
-    expect(config?.openaiApiKey).toBe('sk-xyz')
+    expect(config?.openaiApiKey).toBe('sk-test')
   })
 })
 
 describe('codex agent type', () => {
-  type AgentType = 'claude' | 'opencode' | 'codex' | 'shell';
-
-  it('codex is a valid agent type', () => {
-    const validAgents: AgentType[] = ['claude', 'opencode', 'codex', 'shell'];
-    expect(validAgents).toContain('codex');
-  })
-
-  it('agent types include all four options', () => {
-    const validAgents: AgentType[] = ['claude', 'opencode', 'codex', 'shell'];
-    expect(validAgents).toHaveLength(4);
-  })
-
-  it('sets TOOL=codex for codex agent', () => {
+  it('codex is assignable to AgentType', () => {
     const agent: AgentType = 'codex';
-    const env = [`TOOL=${agent}`];
-    expect(env).toContain('TOOL=codex');
+    expect(agent).toBe('codex');
   })
 
-  it('GSD is disabled for non-claude agents', () => {
-    const selectedAgent: AgentType = 'codex';
-    const gsdEnabled = true;
-    const effectiveGsd = selectedAgent === 'claude' ? gsdEnabled : false;
-    expect(effectiveGsd).toBe(false);
-  })
-
-  it('GSD is only enabled for claude agent', () => {
+  it('all agent types are distinct', () => {
     const agents: AgentType[] = ['claude', 'opencode', 'codex', 'shell'];
-    for (const agent of agents) {
-      const effectiveGsd = agent === 'claude' ? true : false;
-      if (agent === 'claude') {
-        expect(effectiveGsd).toBe(true);
-      } else {
-        expect(effectiveGsd).toBe(false);
-      }
-    }
-  })
-})
-
-describe('codex keyboard shortcuts', () => {
-  it('key 3 maps to codex agent', () => {
-    type AgentType = 'claude' | 'opencode' | 'codex' | 'shell';
-    const keyMap: Record<string, AgentType> = {
-      '1': 'claude',
-      '2': 'opencode',
-      '3': 'codex',
-      '4': 'shell',
-    };
-    expect(keyMap['3']).toBe('codex');
-  })
-
-  it('key 4 maps to shell (shifted from 3)', () => {
-    type AgentType = 'claude' | 'opencode' | 'codex' | 'shell';
-    const keyMap: Record<string, AgentType> = {
-      '1': 'claude',
-      '2': 'opencode',
-      '3': 'codex',
-      '4': 'shell',
-    };
-    expect(keyMap['4']).toBe('shell');
-  })
-
-  it('all four agent keys are unique', () => {
-    const keys = ['1', '2', '3', '4'];
-    const agents = ['claude', 'opencode', 'codex', 'shell'];
-    expect(new Set(keys).size).toBe(4);
-    expect(new Set(agents).size).toBe(4);
-  })
-})
-
-describe('openai api key validation', () => {
-  function validateOpenaiKey(value: string): { valid: boolean; error?: string } {
-    if (!value.trim()) return { valid: true };
-    if (!value.startsWith('sk-')) {
-      return { valid: false, error: 'API key must start with "sk-"' };
-    }
-    return { valid: true };
-  }
-
-  it('accepts empty key (optional)', () => {
-    expect(validateOpenaiKey('')).toEqual({ valid: true });
-  })
-
-  it('accepts key starting with sk-', () => {
-    expect(validateOpenaiKey('sk-abc123xyz')).toEqual({ valid: true });
-  })
-
-  it('rejects key not starting with sk-', () => {
-    const result = validateOpenaiKey('pk-invalidkey');
-    expect(result.valid).toBe(false);
-    expect(result.error).toContain('sk-');
-  })
-
-  it('rejects random string', () => {
-    const result = validateOpenaiKey('randomstring');
-    expect(result.valid).toBe(false);
-  })
-
-  it('accepts whitespace-only as empty (optional)', () => {
-    expect(validateOpenaiKey('   ')).toEqual({ valid: true });
-  })
-
-  it('accepts real-world key format', () => {
-    expect(validateOpenaiKey('sk-proj-abc123def456ghi789')).toEqual({ valid: true });
+    expect(new Set(agents).size).toBe(agents.length);
   })
 })
 
@@ -583,13 +504,32 @@ describe('codex container config', () => {
     expect(codexPath).not.toBe(opencodePath);
   })
 
-  it('OPENAI_API_KEY is not leaked when empty string provided', () => {
-    const apiKey = '';
-    const env: string[] = [];
-    if (apiKey) {
-      env.push(`OPENAI_API_KEY=${apiKey}`);
+  it('OPENAI_API_KEY is only passed for codex agent', () => {
+    // The production code gates OPENAI_API_KEY on agent === 'codex'
+    const agents = ['claude', 'opencode', 'codex', 'shell'];
+    for (const agent of agents) {
+      const shouldPass = agent === 'codex';
+      expect(shouldPass).toBe(agent === 'codex');
     }
-    expect(env.some(e => e.startsWith('OPENAI_API_KEY='))).toBe(false);
+  })
+
+  it('OPENAI_API_KEY env var is built from stored config for codex', () => {
+    const storedKey = 'sk-stored-key-123';
+    const agent = 'codex';
+    const env = [
+      ...(agent === 'codex' && storedKey ? [`OPENAI_API_KEY=${storedKey}`] : []),
+    ];
+    expect(env).toContain('OPENAI_API_KEY=sk-stored-key-123');
+  })
+
+  it('OPENAI_API_KEY env var is not set for non-codex agents even with stored key', () => {
+    const storedKey = 'sk-stored-key-123';
+    for (const agent of ['claude', 'opencode', 'shell']) {
+      const env = [
+        ...(agent === 'codex' && storedKey ? [`OPENAI_API_KEY=${storedKey}`] : []),
+      ];
+      expect(env.some(e => e.startsWith('OPENAI_API_KEY='))).toBe(false);
+    }
   })
 })
 

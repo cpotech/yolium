@@ -436,7 +436,7 @@ ipcMain.handle('git-config:load', () => {
     name: config.name,
     email: config.email,
     hasPat: !!config.githubPat,
-    hasOpenaiApiKey: !!config.openaiApiKey,
+    hasOpenaiKey: !!config.openaiApiKey,
   };
 });
 
@@ -459,7 +459,7 @@ ipcMain.handle('git-config:save', (_event, config: GitConfig & { githubPat?: str
     toSave.githubPat = existing.githubPat;
   }
 
-  // If new OpenAI API key is provided, use it; otherwise preserve existing
+  // If new OpenAI key is provided, use it; otherwise preserve existing
   if (config.openaiApiKey !== undefined) {
     if (config.openaiApiKey) {
       toSave.openaiApiKey = config.openaiApiKey;
