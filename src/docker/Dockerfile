@@ -213,10 +213,11 @@ USER ${USERNAME}
 ARG BUILD_TIMESTAMP=unknown
 RUN bash -c "source $NVM_DIR/nvm.sh && \
     npm install -g \
-        @anthropic-ai/claude-code opencode-ai && \
-    # Verify both tools installed correctly
+        @anthropic-ai/claude-code opencode-ai @openai/codex && \
+    # Verify all tools installed correctly
     which claude && claude --version && \
-    which opencode && opencode --version"
+    which opencode && opencode --version && \
+    which codex && codex --version"
 
 # Entrypoint
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

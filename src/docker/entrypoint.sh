@@ -273,6 +273,8 @@ BANNER
     echo "💾 Persistent data (survives container removal):"
     if [ "$TOOL" = "opencode" ]; then
         echo "   ~/.config/opencode  → OpenCode config & auth"
+    elif [ "$TOOL" = "codex" ]; then
+        echo "   ~/.codex             → Codex CLI config & auth"
     else
         echo "   ~/.claude            → Claude CLI auth & settings"
     fi
@@ -289,6 +291,8 @@ BANNER
     echo "🔷 .NET: $(DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 dotnet --version 2>/dev/null || echo 'not found')"
     if [ "$TOOL" = "opencode" ]; then
         echo "🤖 OpenCode: $(opencode --version 2>/dev/null || echo 'not found - check installation')"
+    elif [ "$TOOL" = "codex" ]; then
+        echo "🤖 Codex CLI: $(codex --version 2>/dev/null || echo 'not found - check installation')"
     else
         echo "🤖 Claude CLI: $(claude --version 2>/dev/null || echo 'not found - check installation')"
     fi
@@ -306,6 +310,7 @@ log "Args passed: $@"
 log "PATH=$PATH"
 log "which opencode: $(which opencode 2>&1 || echo 'not found')"
 log "which claude: $(which claude 2>&1 || echo 'not found')"
+log "which codex: $(which codex 2>&1 || echo 'not found')"
 log "TTY status: $(tty 2>&1 || echo 'no tty')"
 log "=== Starting exec ==="
 
@@ -384,6 +389,18 @@ elif [ "$TOOL" = "opencode" ]; then
     read -n 1
     log "Key pressed, launching opencode..."
     exec "$OPENCODE_BIN"
+    # If we reach here, exec failed
+    log "ERROR: exec failed unexpectedly"
+    exit 1
+elif [ "$TOOL" = "codex" ]; then
+    log "Starting Codex"
+    CODEX_BIN=$(which codex)
+    log "codex path: $CODEX_BIN"
+    echo ""
+    echo "Press any key to start Codex..."
+    read -n 1
+    log "Key pressed, launching codex..."
+    exec "$CODEX_BIN" --full-auto
     # If we reach here, exec failed
     log "ERROR: exec failed unexpectedly"
     exit 1

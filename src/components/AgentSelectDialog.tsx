@@ -75,6 +75,8 @@ export function AgentSelectDialog({
       } else if (e.key === '2') {
         setSelectedAgent('opencode');
       } else if (e.key === '3') {
+        setSelectedAgent('codex');
+      } else if (e.key === '4') {
         setSelectedAgent('shell');
       } else if (e.key === 'i' || e.key === 'I') {
         // Init git if not a repo
@@ -153,6 +155,22 @@ export function AgentSelectDialog({
           </button>
 
           <button
+            data-testid="agent-option-codex"
+            onClick={() => setSelectedAgent('codex')}
+            className={`w-full flex items-center gap-3 p-3 rounded-md transition-colors text-left group ${
+              selectedAgent === 'codex'
+                ? 'bg-blue-600 ring-2 ring-blue-500'
+                : 'bg-gray-700 hover:bg-gray-600'
+            } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          >
+            <span className="text-gray-500 text-sm font-mono">3</span>
+            <div className="flex-1">
+              <div className="text-white font-medium">Codex</div>
+              <div className="text-gray-400 text-sm">OpenAI's Codex CLI agent</div>
+            </div>
+          </button>
+
+          <button
             data-testid="agent-option-shell"
             onClick={() => setSelectedAgent('shell')}
             className={`w-full flex items-center gap-3 p-3 rounded-md transition-colors text-left group ${
@@ -161,7 +179,7 @@ export function AgentSelectDialog({
                 : 'bg-gray-700 hover:bg-gray-600'
             } focus:outline-none focus:ring-2 focus:ring-blue-500`}
           >
-            <span className="text-gray-500 text-sm font-mono">3</span>
+            <span className="text-gray-500 text-sm font-mono">4</span>
             <div className="flex-1">
               <div className="text-white font-medium">Shell</div>
               <div className="text-gray-400 text-sm">Interactive zsh terminal</div>

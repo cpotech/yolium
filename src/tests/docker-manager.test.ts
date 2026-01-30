@@ -312,6 +312,7 @@ describe('persistent paths', () => {
         config: path.join(homeDir, '.config', 'opencode'),
         data: path.join(homeDir, '.local', 'share', 'opencode'),
       },
+      codex: path.join(homeDir, '.codex'),
     }
   }
 
@@ -341,6 +342,17 @@ describe('persistent paths', () => {
     const paths = getPersistentPaths('/home/user/project')
     const nugetBind = `${toDockerPath(paths.cache.nuget, false)}:/home/agent/.nuget:rw`
     expect(nugetBind).toContain(':/home/agent/.nuget:rw')
+  })
+
+  it('includes codex config path', () => {
+    const paths = getPersistentPaths('/home/user/project')
+    expect(paths.codex).toContain('.codex')
+  })
+
+  it('codex config bind mount maps to /home/agent/.codex', () => {
+    const paths = getPersistentPaths('/home/user/project')
+    const codexBind = `${toDockerPath(paths.codex, false)}:/home/agent/.codex:rw`
+    expect(codexBind).toContain(':/home/agent/.codex:rw')
   })
 })
 

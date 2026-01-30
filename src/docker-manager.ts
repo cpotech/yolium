@@ -200,6 +200,7 @@ function getPersistentPaths(projectPath: string) {
       config: path.join(homeDir, '.config', 'opencode'),
       data: path.join(homeDir, '.local', 'share', 'opencode'),
     },
+    codex: path.join(homeDir, '.codex'),
   };
 }
 
@@ -228,6 +229,9 @@ function ensurePersistentDirs(paths: ReturnType<typeof getPersistentPaths>, proj
 
   // Create Claude directory (might not exist for new users)
   fs.mkdirSync(paths.claude, { recursive: true });
+
+  // Create Codex directory
+  fs.mkdirSync(paths.codex, { recursive: true });
 }
 
 // Initialize docker client (auto-detects socket path)
@@ -353,6 +357,7 @@ function buildPersistentBindMounts(mountPath: string, cacheKeyPath?: string, ori
     `${toDockerPath(paths.claude)}:/home/agent/.claude:rw`,
     `${toDockerPath(paths.opencode.config)}:/home/agent/.config/opencode:rw`,
     `${toDockerPath(paths.opencode.data)}:/home/agent/.local/share/opencode:rw`,
+    `${toDockerPath(paths.codex)}:/home/agent/.codex:rw`,
   ];
 
   // For worktrees, mount the original repo's .git directory so git commands work

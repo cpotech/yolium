@@ -72,6 +72,22 @@ describe('entrypoint.sh', () => {
       expect(entrypointContent).toContain('E2E');
       expect(entrypointContent).toContain('test:e2e');
     });
+
+    it('should handle codex tool selection', () => {
+      // The entrypoint should have a branch for TOOL=codex
+      expect(entrypointContent).toContain('"codex"');
+      expect(entrypointContent).toContain('codex');
+    });
+
+    it('should display codex version in banner when TOOL=codex', () => {
+      // The banner should show codex info when codex is selected
+      expect(entrypointContent).toContain('Codex');
+    });
+
+    it('should display codex config path in persistent data section', () => {
+      // The banner should show ~/.codex for persistent data
+      expect(entrypointContent).toContain('.codex');
+    });
   });
 
   describe('gh token extraction logic', () => {
