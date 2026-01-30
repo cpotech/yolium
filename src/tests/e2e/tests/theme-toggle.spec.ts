@@ -7,6 +7,12 @@ test.describe('Theme Toggle', () => {
 
   test.afterEach(async () => {
     if (ctx) {
+      // Clear theme preference to prevent leaking between tests
+      try {
+        await ctx.window.evaluate(() => localStorage.removeItem('yolium:theme'));
+      } catch {
+        // Page may already be closed
+      }
       await closeApp(ctx);
     }
   });
@@ -44,8 +50,9 @@ test.describe('Theme Toggle', () => {
     ctx = await launchApp();
     const { window } = ctx;
 
-    // Click toggle twice
+    // Click toggle twice (wait for React re-render between clicks)
     await window.click(selectors.themeToggle);
+    await expect(window.locator('html')).toHaveAttribute('data-theme', 'light');
     await window.click(selectors.themeToggle);
 
     // Should be back to dark

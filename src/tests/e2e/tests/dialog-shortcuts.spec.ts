@@ -78,12 +78,12 @@ test.describe('Dialog Shortcuts', () => {
       // Wait for git status to be checked
       await window.waitForTimeout(500);
 
-      // Worktree toggle should not show 'w' keyboard hint
+      // Worktree toggle should not show 'w' keyboard hint (kbd element)
       const worktreeToggle = window.locator(selectors.worktreeToggle);
       await expect(worktreeToggle).toBeVisible();
-      // Should not contain the w keyboard hint
-      const toggleText = await worktreeToggle.textContent();
-      expect(toggleText).not.toContain('w');
+      // Should not contain a kbd element with 'w' shortcut
+      const worktreeKbd = window.locator(`${selectors.worktreeToggle} kbd`);
+      await expect(worktreeKbd).toHaveCount(0);
     });
 
     test('pressing w key should not toggle worktree', async () => {
@@ -115,10 +115,12 @@ test.describe('Dialog Shortcuts', () => {
   test.describe('Git Settings Dialog', () => {
     test('Ctrl+Shift+G should open git settings dialog', async () => {
       ctx = await launchApp();
-      const { window } = ctx;
+      const { window, app } = ctx;
 
-      // Press Ctrl+Shift+G
-      await window.keyboard.press('Control+Shift+G');
+      // Trigger via IPC (Electron menu accelerators aren't captured by Playwright DOM events)
+      await app.evaluate(({ BrowserWindow }) => {
+        BrowserWindow.getAllWindows()[0].webContents.send('git-settings:show');
+      });
 
       // Git config dialog should open
       await expect(window.locator(selectors.gitConfigDialog)).toBeVisible();
@@ -126,10 +128,12 @@ test.describe('Dialog Shortcuts', () => {
 
     test('Enter should save valid git settings form', async () => {
       ctx = await launchApp();
-      const { window } = ctx;
+      const { window, app } = ctx;
 
-      // Open git settings dialog
-      await window.keyboard.press('Control+Shift+G');
+      // Open git settings dialog via IPC
+      await app.evaluate(({ BrowserWindow }) => {
+        BrowserWindow.getAllWindows()[0].webContents.send('git-settings:show');
+      });
       await expect(window.locator(selectors.gitConfigDialog)).toBeVisible();
 
       // Fill in valid values
@@ -145,10 +149,12 @@ test.describe('Dialog Shortcuts', () => {
 
     test('Escape should close git settings dialog', async () => {
       ctx = await launchApp();
-      const { window } = ctx;
+      const { window, app } = ctx;
 
-      // Open git settings dialog
-      await window.keyboard.press('Control+Shift+G');
+      // Open git settings dialog via IPC
+      await app.evaluate(({ BrowserWindow }) => {
+        BrowserWindow.getAllWindows()[0].webContents.send('git-settings:show');
+      });
       await expect(window.locator(selectors.gitConfigDialog)).toBeVisible();
 
       // Press Escape

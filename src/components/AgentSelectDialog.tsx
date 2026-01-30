@@ -48,10 +48,12 @@ export function AgentSelectDialog({
     }
   }, [folderPath, onGitInit]);
 
-  // Auto-focus first button when opened
+  // Auto-focus dialog when opened for keyboard event capture
   useEffect(() => {
     if (isOpen) {
-      // Small delay to ensure dialog is rendered
+      // Focus dialog wrapper immediately for keyboard events (e.g. Escape)
+      dialogRef.current?.focus();
+      // Then move focus to first button for better UX
       setTimeout(() => firstButtonRef.current?.focus(), 50);
     }
   }, [isOpen]);

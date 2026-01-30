@@ -73,7 +73,9 @@ export function GitConfigDialog({
       if (initialConfig?.hasPat) {
         setAuthExpanded(true);
       }
-      // Auto-focus name field when opened
+      // Focus dialog wrapper immediately for keyboard events (e.g. Escape)
+      dialogRef.current?.focus();
+      // Then move focus to name field for better UX
       setTimeout(() => nameInputRef.current?.focus(), 50);
     }
   }, [isOpen, initialConfig]);
