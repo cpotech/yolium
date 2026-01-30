@@ -85,6 +85,10 @@ test.describe('Codex Agent Feature', () => {
       await window.click(selectors.pathNextButton);
       await expect(window.locator(selectors.agentDialog)).toBeVisible();
 
+      // Click the dialog overlay to ensure it has focus for key events
+      await window.locator(selectors.agentDialog).click();
+      await window.waitForTimeout(100);
+
       // Press '3' to select Codex
       await window.keyboard.press('3');
 
@@ -102,6 +106,10 @@ test.describe('Codex Agent Feature', () => {
       await window.fill(selectors.pathInput, testRepoPath);
       await window.click(selectors.pathNextButton);
       await expect(window.locator(selectors.agentDialog)).toBeVisible();
+
+      // Click the dialog overlay to ensure it has focus for key events
+      await window.locator(selectors.agentDialog).click();
+      await window.waitForTimeout(100);
 
       // Press '4' to select Shell
       await window.keyboard.press('4');
@@ -173,8 +181,8 @@ test.describe('Codex Agent Feature', () => {
       ctx = await launchApp();
       const { window } = ctx;
 
-      // Open Settings dialog
-      await window.keyboard.press('Control+Shift+G');
+      // Open Settings dialog via the settings button in status bar
+      await window.locator('button[title="Settings"]').click();
       await expect(window.locator(selectors.gitConfigDialog)).toBeVisible();
 
       // Dialog title should say "Settings" (not "Git Settings")
@@ -189,8 +197,8 @@ test.describe('Codex Agent Feature', () => {
       ctx = await launchApp();
       const { window } = ctx;
 
-      // Open Settings dialog
-      await window.keyboard.press('Control+Shift+G');
+      // Open Settings dialog via settings button
+      await window.locator('button[title="Settings"]').click();
       await expect(window.locator(selectors.gitConfigDialog)).toBeVisible();
 
       // Click the OpenAI section to expand it
@@ -205,7 +213,7 @@ test.describe('Codex Agent Feature', () => {
       const { window } = ctx;
 
       // Open Settings dialog and expand OpenAI section
-      await window.keyboard.press('Control+Shift+G');
+      await window.locator('button[title="Settings"]').click();
       await expect(window.locator(selectors.gitConfigDialog)).toBeVisible();
       await window.locator('button:has-text("OpenAI API Key")').click();
 
@@ -219,7 +227,7 @@ test.describe('Codex Agent Feature', () => {
       const { window } = ctx;
 
       // Open Settings dialog and expand OpenAI section
-      await window.keyboard.press('Control+Shift+G');
+      await window.locator('button[title="Settings"]').click();
       await expect(window.locator(selectors.gitConfigDialog)).toBeVisible();
       await window.locator('button:has-text("OpenAI API Key")').click();
 
