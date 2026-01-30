@@ -116,6 +116,7 @@ if [ -d "$HOME/.dotnet" ]; then
     export DOTNET_ROOT="$HOME/.dotnet"
     export PATH="$DOTNET_ROOT:$DOTNET_ROOT/tools:$PATH"
     export DOTNET_CLI_TELEMETRY_OPTOUT=1
+    export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
     log ".NET SDK configured"
 fi
 
@@ -285,7 +286,7 @@ BANNER
     echo "🐍 Python: $(python3 --version 2>&1 | cut -d' ' -f2) (uv available)"
     echo "🟢 Node.js: $(node --version 2>/dev/null || echo 'not found')"
     echo "☕ Java: $(java -version 2>&1 | head -1 | cut -d'"' -f2 || echo 'not found')"
-    echo "🔷 .NET: $(dotnet --version 2>/dev/null || echo 'not found')"
+    echo "🔷 .NET: $(DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 dotnet --version 2>/dev/null || echo 'not found')"
     if [ "$TOOL" = "opencode" ]; then
         echo "🤖 OpenCode: $(opencode --version 2>/dev/null || echo 'not found - check installation')"
     else
