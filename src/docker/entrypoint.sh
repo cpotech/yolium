@@ -314,6 +314,59 @@ log "=== Starting exec ==="
 if [ "$TOOL" = "shell" ]; then
     log "Starting shell mode"
     exec zsh
+elif [ "$TOOL" = "code-review" ]; then
+    log "Starting code review mode"
+    log "REVIEW_REPO_URL=$REVIEW_REPO_URL"
+    log "REVIEW_BRANCH=$REVIEW_BRANCH"
+    log "REVIEW_AGENT=$REVIEW_AGENT"
+
+    # Clone the repository
+    echo "Cloning repository: $REVIEW_REPO_URL"
+    if ! git clone --depth 50 --branch "$REVIEW_BRANCH" "$REVIEW_REPO_URL" "$PROJECT_DIR/repo" 2>&1; then
+        echo "ERROR: Failed to clone repository"
+        exit 1
+    fi
+    cd "$PROJECT_DIR/repo"
+    git config --global --add safe.directory "$PROJECT_DIR/repo"
+
+    echo "Checked out branch: $REVIEW_BRANCH"
+    echo "Starting code review with $REVIEW_AGENT..."
+
+    # Build the review prompt
+    REVIEW_PROMPT="You are an expert code reviewer. Review the code changes on this branch thoroughly.
+
+Look at the git log and diff to understand all changes:
+1. Run: git log --oneline -20
+2. Run: git diff origin/HEAD...HEAD (or git diff main...HEAD if that fails)
+
+Review the changes for:
+- Bugs, logic errors, edge cases
+- Security vulnerabilities (injection, XSS, auth issues)
+- Performance concerns
+- Code style, readability, maintainability
+- Missing error handling
+- Test coverage gaps
+
+After reviewing, find the PR number for this branch and post your review as a PR comment using:
+  gh pr comment <PR_NUMBER> --body '<your review>'
+
+If you cannot find a PR for this branch, write your review to a file called REVIEW.md instead.
+
+Be thorough but constructive. Focus on substantive issues, not nitpicks."
+
+    if [ "$REVIEW_AGENT" = "claude" ]; then
+        log "Running Claude for code review"
+        claude --dangerously-skip-permissions -p "$REVIEW_PROMPT"
+        exit $?
+    elif [ "$REVIEW_AGENT" = "opencode" ]; then
+        log "Running OpenCode for code review"
+        # OpenCode uses a different invocation for non-interactive mode
+        echo "$REVIEW_PROMPT" | opencode
+        exit $?
+    else
+        echo "ERROR: Unknown review agent: $REVIEW_AGENT"
+        exit 1
+    fi
 elif [ "$TOOL" = "opencode" ]; then
     log "Starting OpenCode"
     OPENCODE_BIN=$(which opencode)

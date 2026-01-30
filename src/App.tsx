@@ -9,7 +9,9 @@ import { AgentSelectDialog, AgentType } from './components/AgentSelectDialog';
 import { PathInputDialog } from './components/PathInputDialog';
 import { KeyboardShortcutsDialog } from './components/KeyboardShortcutsDialog';
 import { DockerSetupDialog } from './components/DockerSetupDialog';
-import { GitConfigDialog, GitConfig } from './components/GitConfigDialog';
+import { GitConfigDialog, GitConfig, GitConfigWithPat } from './components/GitConfigDialog';
+import { CodeReviewDialog } from './components/CodeReviewDialog';
+import type { ReviewAgentType, CodeReviewStatus } from './types/agent';
 
 function App(): React.ReactElement {
   const {
@@ -44,7 +46,7 @@ function App(): React.ReactElement {
 
   // State for git config dialog
   const [gitConfigDialogOpen, setGitConfigDialogOpen] = useState(false);
-  const [gitConfig, setGitConfig] = useState<GitConfig | null>(null);
+  const [gitConfig, setGitConfig] = useState<GitConfigWithPat | null>(null);
 
   // State for Docker image build progress (array of lines)
   const [buildProgress, setBuildProgress] = useState<string[] | null>(null);
@@ -52,6 +54,11 @@ function App(): React.ReactElement {
   // State for image rebuild
   const [isRebuilding, setIsRebuilding] = useState(false);
   const [imageRemoved, setImageRemoved] = useState(false);
+
+  // State for code review dialog
+  const [codeReviewDialogOpen, setCodeReviewDialogOpen] = useState(false);
+  const [reviewStatus, setReviewStatus] = useState<CodeReviewStatus | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   // Ref for auto-scrolling build progress
   const progressRef = useRef<HTMLDivElement>(null);
@@ -184,6 +191,42 @@ function App(): React.ReactElement {
     setGitConfig(config);
     setGitConfigDialogOpen(false);
   }, []);
+
+  // Code review dialog handlers
+  const handleOpenCodeReview = useCallback(() => {
+    setReviewStatus(null);
+    setReviewError(null);
+    setCodeReviewDialogOpen(true);
+  }, []);
+
+  const handleCloseCodeReview = useCallback(() => {
+    setCodeReviewDialogOpen(false);
+  }, []);
+
+  const handleStartReview = useCallback(async (repoUrl: string, branch: string, agent: ReviewAgentType) => {
+    setReviewStatus('starting');
+    setReviewError(null);
+
+    try {
+      // Set up completion listener
+      const cleanupComplete = window.electronAPI.onCodeReviewComplete((_sessionId, exitCode) => {
+        if (exitCode === 0) {
+          setReviewStatus('completed');
+        } else {
+          setReviewStatus('failed');
+          setReviewError(`Container exited with code ${exitCode}`);
+        }
+        cleanupComplete();
+      });
+
+      await window.electronAPI.ensureImage();
+      await window.electronAPI.startCodeReview(repoUrl, branch, agent, gitConfig || undefined);
+      setReviewStatus('running');
+    } catch (err) {
+      setReviewStatus('failed');
+      setReviewError(err instanceof Error ? err.message : 'Failed to start code review');
+    }
+  }, [gitConfig]);
 
   // Check Docker state on app launch
   useEffect(() => {
@@ -485,6 +528,16 @@ function App(): React.ReactElement {
         initialConfig={gitConfig}
       />
 
+      {/* Code review dialog */}
+      <CodeReviewDialog
+        isOpen={codeReviewDialogOpen}
+        onClose={handleCloseCodeReview}
+        onStartReview={handleStartReview}
+        hasGitCredentials={!!gitConfig?.hasPat}
+        reviewStatus={reviewStatus}
+        reviewError={reviewError}
+      />
+
       {/* Docker image build progress overlay */}
       {buildProgress && (
         <div data-testid="build-progress-overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
@@ -620,6 +673,7 @@ function App(): React.ReactElement {
                   onStop={() => handleStopYolium(tab.id)}
                   onShowShortcuts={handleShowShortcuts}
                   onOpenSettings={handleOpenGitConfig}
+                  onOpenCodeReview={handleOpenCodeReview}
                   imageName={imageRemoved ? undefined : 'yolium:latest'}
                   onRebuild={handleRebuildImage}
                   isRebuilding={isRebuilding}

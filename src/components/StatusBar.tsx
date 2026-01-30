@@ -1,5 +1,5 @@
 import React from 'react';
-import { Square, Loader2, Keyboard, Box, RefreshCw, GitGraph, GitBranch, TreeDeciduous, Sun, Moon } from 'lucide-react';
+import { Square, Loader2, Keyboard, Box, RefreshCw, GitGraph, GitBranch, TreeDeciduous, Sun, Moon, GitPullRequest } from 'lucide-react';
 import type { ContainerState } from '../types/tabs';
 import { useTheme } from '../theme';
 
@@ -9,6 +9,7 @@ interface StatusBarProps {
   onStop: () => void;
   onShowShortcuts: () => void;
   onOpenSettings: () => void;
+  onOpenCodeReview: () => void;
   imageName?: string;
   onRebuild?: () => void;
   isRebuilding?: boolean;
@@ -22,6 +23,7 @@ export function StatusBar({
   onStop,
   onShowShortcuts,
   onOpenSettings,
+  onOpenCodeReview,
   imageName = 'yolium:latest',
   onRebuild,
   isRebuilding = false,
@@ -129,6 +131,17 @@ export function StatusBar({
 
         {/* Separator */}
         <span className="text-[var(--color-text-disabled)]">|</span>
+
+        {/* PR Review button */}
+        <button
+          data-testid="code-review-button"
+          onClick={onOpenCodeReview}
+          className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+          title="PR Code Review"
+        >
+          <GitPullRequest size={12} />
+          <span>PR Review</span>
+        </button>
 
         {/* Git settings button */}
         <button
