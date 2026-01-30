@@ -214,7 +214,7 @@ describe.skipIf(!dockerAvailable || !imageExists)('entrypoint.sh integration', (
     fs.writeFileSync(gitCredentialsPath, mockCredentials, { mode: 0o600 });
 
     const result = execSync(
-      `docker run --rm -v "${gitCredentialsPath}:/home/agent/.git-credentials:ro" -e TOOL=shell yolium:latest bash -c "gh auth status 2>&1 || true"`,
+      `docker run --rm -v "${gitCredentialsPath}:/home/agent/.git-credentials-mounted:ro" -e TOOL=shell yolium:latest bash -c "gh auth status 2>&1 || true"`,
       { encoding: 'utf-8', timeout: 30000 }
     );
 

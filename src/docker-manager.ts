@@ -406,7 +406,7 @@ function getGitCredentialsBind(): string | null {
     return null;
   }
   logger.info('Git credentials file generated', { credPath });
-  return `${toDockerPath(credPath)}:/home/agent/.git-credentials:ro`;
+  return `${toDockerPath(credPath)}:/home/agent/.git-credentials-mounted:ro`;
 }
 
 /**
@@ -891,7 +891,7 @@ export async function listRemoteBranches(repoUrl: string): Promise<{ branches: s
       // Use credential helper with the stored credentials file
       env.GIT_CONFIG_COUNT = '1';
       env.GIT_CONFIG_KEY_0 = 'credential.helper';
-      env.GIT_CONFIG_VALUE_0 = `store --file ${credPath}`;
+      env.GIT_CONFIG_VALUE_0 = `store --file "${credPath}"`;
     }
   }
 

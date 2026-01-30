@@ -183,20 +183,27 @@ if [ -n "$PROJECT_DIR" ]; then
 fi
 
 # Configure git credential helper if git-credentials file is mounted
-if [ -f "/home/agent/.git-credentials" ]; then
-    git config --global credential.helper 'store --file /home/agent/.git-credentials'
+# Git credentials are bind-mounted read-only at a staging path.
+# Copy to a local writable location so git credential store can create lock files.
+# Using /tmp avoids issues with bind-mounted home directory overlaps.
+if [ -f "/home/agent/.git-credentials-mounted" ]; then
+    GIT_CRED_FILE="/tmp/.git-credentials"
+    cp /home/agent/.git-credentials-mounted "$GIT_CRED_FILE"
+    chmod 600 "$GIT_CRED_FILE"
+    git config --global credential.helper "store --file $GIT_CRED_FILE"
     add_status "✅ GitHub HTTPS credentials configured"
 
     # Authenticate gh CLI using stored credentials
     if command -v gh >/dev/null 2>&1; then
         # Extract token from git-credentials (supports github_pat_* and ghp_* formats)
-        GH_TOKEN=$(grep 'github.com' /home/agent/.git-credentials 2>/dev/null | sed 's/.*:\(github_pat_[^@]*\|ghp_[^@]*\)@.*/\1/')
+        GH_TOKEN=$(grep 'github.com' "$GIT_CRED_FILE" 2>/dev/null | sed 's/.*:\(github_pat_[^@]*\|ghp_[^@]*\)@.*/\1/')
         if [ -n "$GH_TOKEN" ]; then
             echo "$GH_TOKEN" | gh auth login --with-token 2>/dev/null && \
                 add_status "✅ GitHub CLI (gh) authenticated"
         fi
         unset GH_TOKEN
     fi
+    unset GIT_CRED_FILE
 fi
 
 # Create CLAUDE.md with Yolium container environment info

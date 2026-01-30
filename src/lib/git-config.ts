@@ -95,7 +95,9 @@ export function generateGitCredentials(gitConfig: GitConfig | null): string | nu
 
   // Write credentials in git's store format
   // Using 'git' as the username works with GitHub PATs
-  const credContent = `https://git:${gitConfig.githubPat}@github.com\n`;
+  // Strip trailing @github.com if user pasted the full credential URL token
+  const pat = gitConfig.githubPat.replace(/@github\.com$/, '');
+  const credContent = `https://git:${pat}@github.com\n`;
   fs.writeFileSync(credPath, credContent, { mode: 0o600 });
 
   return credPath;

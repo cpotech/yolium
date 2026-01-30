@@ -53,11 +53,18 @@ export function GitConfigDialog({
     return emailRegex.test(value.trim());
   };
 
-  // PAT validation: must start with github_pat_ or ghp_
+  // PAT validation: must be a valid github_pat_ or ghp_ token (alphanumeric + underscores only)
   const validatePat = (value: string): { valid: boolean; error?: string } => {
     if (!value.trim()) return { valid: true }; // Empty is valid (PAT is optional)
-    if (!value.startsWith('github_pat_') && !value.startsWith('ghp_')) {
+    const trimmed = value.trim();
+    if (!trimmed.startsWith('github_pat_') && !trimmed.startsWith('ghp_')) {
       return { valid: false, error: 'Token must start with "github_pat_" or "ghp_"' };
+    }
+    if (/[@:\/]/.test(trimmed)) {
+      return { valid: false, error: 'Paste only the token, not a URL (remove @github.com or similar)' };
+    }
+    if (!/^[A-Za-z0-9_]+$/.test(trimmed)) {
+      return { valid: false, error: 'Token should only contain letters, numbers, and underscores' };
     }
     return { valid: true };
   };
