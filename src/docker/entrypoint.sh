@@ -132,7 +132,7 @@ if [ -n "$PROJECT_DIR" ] && [ -d "$HOME/.dotnet" ]; then
         export DOTNET_ROOT="$HOME/.dotnet"
         export PATH="$DOTNET_ROOT:$DOTNET_ROOT/tools:$PATH"
         cd "$PROJECT_DIR"
-        dotnet restore --verbosity quiet 2>/dev/null && \
+        dotnet restore --verbosity quiet >/dev/null 2>&1 && \
             add_status "✅ .NET packages restored"
     fi
 fi
@@ -183,20 +183,28 @@ if [ -n "$PROJECT_DIR" ]; then
 fi
 
 # Configure git credential helper if git-credentials file is mounted
-if [ -f "/home/agent/.git-credentials" ]; then
-    git config --global credential.helper 'store --file /home/agent/.git-credentials'
+# Git credentials are bind-mounted read-only at a staging path.
+# Copy to a local writable location so git credential store can create lock files.
+# Using /tmp avoids issues with bind-mounted home directory overlaps.
+if [ -f "/home/agent/.git-credentials-mounted" ]; then
+    GIT_CRED_FILE="/tmp/.git-credentials"
+    cp /home/agent/.git-credentials-mounted "$GIT_CRED_FILE"
+    chmod 600 "$GIT_CRED_FILE"
+    git config --global credential.helper "store --file=\"$GIT_CRED_FILE\""
+    trap 'rm -f /tmp/.git-credentials' EXIT
     add_status "✅ GitHub HTTPS credentials configured"
 
     # Authenticate gh CLI using stored credentials
     if command -v gh >/dev/null 2>&1; then
         # Extract token from git-credentials (supports github_pat_* and ghp_* formats)
-        GH_TOKEN=$(grep 'github.com' /home/agent/.git-credentials 2>/dev/null | sed 's/.*:\(github_pat_[^@]*\|ghp_[^@]*\)@.*/\1/')
+        GH_TOKEN=$(grep 'github.com' "$GIT_CRED_FILE" 2>/dev/null | sed 's/.*:\(github_pat_[^@]*\|ghp_[^@]*\)@.*/\1/')
         if [ -n "$GH_TOKEN" ]; then
             echo "$GH_TOKEN" | gh auth login --with-token 2>/dev/null && \
                 add_status "✅ GitHub CLI (gh) authenticated"
         fi
         unset GH_TOKEN
     fi
+    unset GIT_CRED_FILE
 fi
 
 # Create CLAUDE.md with Yolium container environment info
@@ -273,6 +281,8 @@ BANNER
     echo "💾 Persistent data (survives container removal):"
     if [ "$TOOL" = "opencode" ]; then
         echo "   ~/.config/opencode  → OpenCode config & auth"
+    elif [ "$TOOL" = "codex" ]; then
+        echo "   ~/.codex             → Codex CLI config & auth"
     else
         echo "   ~/.claude            → Claude CLI auth & settings"
     fi
@@ -289,6 +299,8 @@ BANNER
     echo "🔷 .NET: $(DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 dotnet --version 2>/dev/null || echo 'not found')"
     if [ "$TOOL" = "opencode" ]; then
         echo "🤖 OpenCode: $(opencode --version 2>/dev/null || echo 'not found - check installation')"
+    elif [ "$TOOL" = "codex" ]; then
+        echo "🤖 Codex CLI: $(codex --version 2>/dev/null || echo 'not found - check installation')"
     else
         echo "🤖 Claude CLI: $(claude --version 2>/dev/null || echo 'not found - check installation')"
     fi
@@ -306,6 +318,7 @@ log "Args passed: $@"
 log "PATH=$PATH"
 log "which opencode: $(which opencode 2>&1 || echo 'not found')"
 log "which claude: $(which claude 2>&1 || echo 'not found')"
+log "which codex: $(which codex 2>&1 || echo 'not found')"
 log "TTY status: $(tty 2>&1 || echo 'no tty')"
 log "=== Starting exec ==="
 
@@ -332,9 +345,21 @@ elif [ "$TOOL" = "code-review" ]; then
 
     echo "Checked out branch: $REVIEW_BRANCH"
 
+    # Verify GitHub authentication before querying PRs
+    if ! gh auth status >/dev/null 2>&1; then
+        echo "ERROR: GitHub CLI is not authenticated. Configure a PAT in Yolium settings."
+        exit 3
+    fi
+
     # Check if a PR exists for this branch
     echo "Checking for open PR on branch $REVIEW_BRANCH..."
-    PR_NUMBER=$(gh pr list --head "$REVIEW_BRANCH" --state open --json number --jq '.[0].number' 2>/dev/null)
+    PR_OUTPUT=$(gh pr list --head "$REVIEW_BRANCH" --state open --json number --jq '.[0].number' 2>&1)
+    PR_EXIT=$?
+    if [ $PR_EXIT -ne 0 ]; then
+        echo "ERROR: Failed to query GitHub PRs: $PR_OUTPUT"
+        exit 3
+    fi
+    PR_NUMBER="$PR_OUTPUT"
     if [ -z "$PR_NUMBER" ]; then
         echo "ERROR: No open PR found for branch '$REVIEW_BRANCH'. Please create a PR first."
         exit 2
@@ -342,6 +367,14 @@ elif [ "$TOOL" = "code-review" ]; then
     echo "Found PR #$PR_NUMBER"
 
     echo "Starting code review with $REVIEW_AGENT..."
+
+    # Map agent to display name
+    case "$REVIEW_AGENT" in
+        claude)  AGENT_DISPLAY="Claude Code" ;;
+        opencode) AGENT_DISPLAY="OpenCode" ;;
+        codex)   AGENT_DISPLAY="Codex CLI" ;;
+        *)       AGENT_DISPLAY="$REVIEW_AGENT" ;;
+    esac
 
     # Build the review prompt
     REVIEW_PROMPT="You are an expert code reviewer. Review the code changes on this branch thoroughly.
@@ -361,6 +394,10 @@ Review the changes for:
 After reviewing, post your review as a PR comment using:
   gh pr comment $PR_NUMBER --body '<your review>'
 
+IMPORTANT: At the very end of your review comment, include this footer on its own line:
+---
+*Reviewed by $AGENT_DISPLAY via [Yolium](https://github.com/yolium-ai/yolium)*
+
 Be thorough but constructive. Focus on substantive issues, not nitpicks."
 
     if [ "$REVIEW_AGENT" = "claude" ]; then
@@ -370,6 +407,14 @@ Be thorough but constructive. Focus on substantive issues, not nitpicks."
     elif [ "$REVIEW_AGENT" = "opencode" ]; then
         log "Running OpenCode for code review"
         opencode run "$REVIEW_PROMPT"
+        exit $?
+    elif [ "$REVIEW_AGENT" = "codex" ]; then
+        log "Running Codex for code review"
+        # Use danger-full-access sandbox — Codex's Landlock sandbox panics on
+        # kernels where Landlock is compiled but not functional.
+        # Docker already provides container-level isolation.
+        # See: https://github.com/openai/codex/issues/2267
+        codex exec --sandbox danger-full-access "$REVIEW_PROMPT"
         exit $?
     else
         echo "ERROR: Unknown review agent: $REVIEW_AGENT"
@@ -384,6 +429,36 @@ elif [ "$TOOL" = "opencode" ]; then
     read -n 1
     log "Key pressed, launching opencode..."
     exec "$OPENCODE_BIN"
+    # If we reach here, exec failed
+    log "ERROR: exec failed unexpectedly"
+    exit 1
+elif [ "$TOOL" = "codex" ]; then
+    log "Starting Codex"
+    if [ -z "$OPENAI_API_KEY" ]; then
+        # Check for OAuth auth in ~/.codex/auth.json (from `codex login`)
+        if [ -f /home/agent/.codex/auth.json ] && \
+           command -v jq >/dev/null 2>&1 && \
+           jq -e '.tokens.access_token // empty' /home/agent/.codex/auth.json >/dev/null 2>&1; then
+            add_status "✅ Codex OAuth authentication detected"
+        else
+            echo "No Codex authentication found."
+            echo "Set OPENAI_API_KEY or run 'codex login' on the host."
+            echo "Falling back to shell."
+            exec /bin/zsh
+        fi
+    fi
+    CODEX_BIN=$(which codex)
+    log "codex path: $CODEX_BIN"
+    echo ""
+    echo "Press any key to start Codex..."
+    read -n 1
+    log "Key pressed, launching codex..."
+    # Use -a on-request (auto-approve) with danger-full-access sandbox.
+    # --full-auto is a convenience alias that forces workspace-write sandbox,
+    # which panics on kernels where Landlock is compiled but not functional.
+    # Docker already provides container-level isolation.
+    # See: https://github.com/openai/codex/issues/2267
+    exec "$CODEX_BIN" -a on-request --sandbox danger-full-access
     # If we reach here, exec failed
     log "ERROR: exec failed unexpectedly"
     exit 1

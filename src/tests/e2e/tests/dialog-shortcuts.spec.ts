@@ -144,6 +144,42 @@ test.describe('Dialog Shortcuts', () => {
       await expect(window.locator(selectors.gitConfigDialog)).not.toBeVisible();
     });
 
+    test('should display OpenAI API Key input in settings dialog', async () => {
+      ctx = await launchApp();
+      const { window, app } = ctx;
+
+      // Open settings dialog via IPC
+      await app.evaluate(({ BrowserWindow }) => {
+        BrowserWindow.getAllWindows()[0].webContents.send('git-settings:show');
+      });
+      await expect(window.locator(selectors.gitConfigDialog)).toBeVisible();
+
+      // OpenAI API Key input should be present
+      await expect(window.locator(selectors.openaiKeyInput)).toBeVisible();
+    });
+
+    test('should accept and save OpenAI API Key', async () => {
+      ctx = await launchApp();
+      const { window, app } = ctx;
+
+      // Open settings dialog via IPC
+      await app.evaluate(({ BrowserWindow }) => {
+        BrowserWindow.getAllWindows()[0].webContents.send('git-settings:show');
+      });
+      await expect(window.locator(selectors.gitConfigDialog)).toBeVisible();
+
+      // Fill in required fields and OpenAI key
+      await window.fill(selectors.gitNameInput, 'Test User');
+      await window.fill(selectors.gitEmailInput, 'test@example.com');
+      await window.fill(selectors.openaiKeyInput, 'sk-test-key-12345');
+
+      // Save
+      await window.click(selectors.gitConfigSaveButton);
+
+      // Dialog should close
+      await expect(window.locator(selectors.gitConfigDialog)).not.toBeVisible();
+    });
+
     test('Escape should close git settings dialog', async () => {
       ctx = await launchApp();
       const { window, app } = ctx;

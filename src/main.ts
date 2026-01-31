@@ -81,7 +81,7 @@ function createAppMenu(window: BrowserWindow): void {
         },
         { type: 'separator' },
         {
-          label: 'Git Settings',
+          label: 'Settings',
           accelerator: 'CmdOrCtrl+Shift+G',
           click: () => window.webContents.send('git-settings:show'),
         },
@@ -431,16 +431,17 @@ ipcMain.handle('fs:create-directory', async (_event, parentPath: string, folderN
 ipcMain.handle('git-config:load', () => {
   const config = loadGitConfig();
   if (!config) return null;
-  // Return hasPat flag instead of actual token for security
+  // Return flags instead of actual secrets for security
   return {
     name: config.name,
     email: config.email,
     hasPat: !!config.githubPat,
+    hasOpenaiKey: !!config.openaiApiKey,
   };
 });
 
-ipcMain.handle('git-config:save', (_event, config: GitConfig & { githubPat?: string }) => {
-  // Load existing config to preserve PAT if not provided in save
+ipcMain.handle('git-config:save', (_event, config: GitConfig & { githubPat?: string; openaiApiKey?: string }) => {
+  // Load existing config to preserve secrets if not provided in save
   const existing = loadGitConfig();
   const toSave: GitConfig = {
     name: config.name,
@@ -456,6 +457,17 @@ ipcMain.handle('git-config:save', (_event, config: GitConfig & { githubPat?: str
   } else if (existing?.githubPat) {
     // Preserve existing PAT if not explicitly changed
     toSave.githubPat = existing.githubPat;
+  }
+
+  // If new OpenAI key is provided, use it; otherwise preserve existing
+  if (config.openaiApiKey !== undefined) {
+    if (config.openaiApiKey) {
+      toSave.openaiApiKey = config.openaiApiKey;
+    }
+    // If empty string, key is being cleared (don't include it)
+  } else if (existing?.openaiApiKey) {
+    // Preserve existing key if not explicitly changed
+    toSave.openaiApiKey = existing.openaiApiKey;
   }
 
   saveGitConfig(toSave);

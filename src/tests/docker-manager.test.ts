@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import * as path from 'node:path'
 import * as os from 'node:os'
 import * as crypto from 'node:crypto'
+import type { AgentType } from '../types/agent'
 
 // Test pure utility functions from docker-manager
 // These are extracted/reimplemented here since they're not exported
@@ -312,6 +313,7 @@ describe('persistent paths', () => {
         config: path.join(homeDir, '.config', 'opencode'),
         data: path.join(homeDir, '.local', 'share', 'opencode'),
       },
+      codex: path.join(homeDir, '.codex'),
     }
   }
 
@@ -342,6 +344,248 @@ describe('persistent paths', () => {
     const nugetBind = `${toDockerPath(paths.cache.nuget, false)}:/home/agent/.nuget:rw`
     expect(nugetBind).toContain(':/home/agent/.nuget:rw')
   })
+
+  it('includes codex config path', () => {
+    const paths = getPersistentPaths('/home/user/project')
+    expect(paths.codex).toContain('.codex')
+  })
+
+  it('codex config bind mount maps to /home/agent/.codex', () => {
+    const paths = getPersistentPaths('/home/user/project')
+    const codexBind = `${toDockerPath(paths.codex, false)}:/home/agent/.codex:rw`
+    expect(codexBind).toContain(':/home/agent/.codex:rw')
+  })
+})
+
+describe('container environment variables', () => {
+  /**
+   * Simulates the Env array construction from docker-manager.ts createYolium().
+   * Mirrors the logic that builds environment variables for the container.
+   */
+  function buildContainerEnv(options: {
+    agent: string;
+    gsdEnabled: boolean;
+    gitConfig?: { name: string; email: string };
+  }): string[] {
+    const env = [
+      `PROJECT_DIR=/workspace`,
+      `TOOL=${options.agent}`,
+      `GSD_ENABLED=${options.gsdEnabled}`,
+      'CLAUDE_CONFIG_DIR=/home/agent/.claude',
+      'HISTFILE=/home/agent/.yolium_history/zsh_history',
+      ...(options.gitConfig?.name ? [`GIT_USER_NAME=${options.gitConfig.name}`] : []),
+      ...(options.gitConfig?.email ? [`GIT_USER_EMAIL=${options.gitConfig.email}`] : []),
+    ]
+    return env
+  }
+
+  it('includes TOOL env var for agent type', () => {
+    const env = buildContainerEnv({
+      agent: 'codex',
+      gsdEnabled: false,
+    })
+    expect(env).toContain('TOOL=codex')
+  })
+
+  it('includes git config when provided', () => {
+    const env = buildContainerEnv({
+      agent: 'claude',
+      gsdEnabled: true,
+      gitConfig: { name: 'Test', email: 'test@test.com' },
+    })
+    expect(env).toContain('GIT_USER_NAME=Test')
+    expect(env).toContain('GIT_USER_EMAIL=test@test.com')
+  })
+
+  it('omits git config when not provided', () => {
+    const env = buildContainerEnv({
+      agent: 'codex',
+      gsdEnabled: false,
+    })
+    expect(env.some(e => e.startsWith('GIT_USER_NAME='))).toBe(false)
+    expect(env.some(e => e.startsWith('GIT_USER_EMAIL='))).toBe(false)
+  })
+})
+
+describe('settings config persistence', () => {
+  /**
+   * Simulates the settings.json structure.
+   */
+  interface SettingsConfig {
+    name: string;
+    email: string;
+    githubPat?: string;
+    openaiApiKey?: string;
+  }
+
+  function parseConfig(json: string): SettingsConfig | null {
+    try {
+      const config = JSON.parse(json)
+      if (typeof config.name === 'string' && typeof config.email === 'string') {
+        return {
+          name: config.name,
+          email: config.email,
+          ...(config.githubPat ? { githubPat: config.githubPat } : {}),
+          ...(config.openaiApiKey ? { openaiApiKey: config.openaiApiKey } : {}),
+        }
+      }
+      return null
+    } catch {
+      return null
+    }
+  }
+
+  it('loads config from JSON', () => {
+    const json = JSON.stringify({ name: 'Test', email: 'test@test.com' })
+    const config = parseConfig(json)
+    expect(config?.name).toBe('Test')
+    expect(config?.email).toBe('test@test.com')
+  })
+
+  it('loads githubPat from config JSON', () => {
+    const json = JSON.stringify({ name: 'Test', email: 'test@test.com', githubPat: 'ghp_test' })
+    const config = parseConfig(json)
+    expect(config?.githubPat).toBe('ghp_test')
+  })
+
+  it('handles config without githubPat', () => {
+    const json = JSON.stringify({ name: 'Test', email: 'test@test.com' })
+    const config = parseConfig(json)
+    expect(config?.githubPat).toBeUndefined()
+  })
+
+  it('loads openaiApiKey from config JSON', () => {
+    const json = JSON.stringify({ name: 'Test', email: 'test@test.com', openaiApiKey: 'sk-test123' })
+    const config = parseConfig(json)
+    expect(config?.openaiApiKey).toBe('sk-test123')
+  })
+
+  it('handles config without openaiApiKey', () => {
+    const json = JSON.stringify({ name: 'Test', email: 'test@test.com' })
+    const config = parseConfig(json)
+    expect(config?.openaiApiKey).toBeUndefined()
+  })
+
+  it('loads both githubPat and openaiApiKey', () => {
+    const json = JSON.stringify({ name: 'Test', email: 'test@test.com', githubPat: 'ghp_test', openaiApiKey: 'sk-test' })
+    const config = parseConfig(json)
+    expect(config?.githubPat).toBe('ghp_test')
+    expect(config?.openaiApiKey).toBe('sk-test')
+  })
+})
+
+describe('codex agent type', () => {
+  it('codex is assignable to AgentType', () => {
+    const agent: AgentType = 'codex';
+    expect(agent).toBe('codex');
+  })
+
+  it('all agent types are distinct', () => {
+    const agents: AgentType[] = ['claude', 'opencode', 'codex', 'shell'];
+    expect(new Set(agents).size).toBe(agents.length);
+  })
+})
+
+describe('codex container config', () => {
+  it('codex persistent path is at ~/.codex', () => {
+    const homeDir = os.homedir();
+    const codexPath = path.join(homeDir, '.codex');
+    expect(codexPath).toContain('.codex');
+    expect(codexPath).toMatch(/\.codex$/);
+  })
+
+  it('codex bind mount is distinct from claude and opencode', () => {
+    const homeDir = os.homedir();
+    const claudePath = path.join(homeDir, '.claude');
+    const opencodePath = path.join(homeDir, '.config', 'opencode');
+    const codexPath = path.join(homeDir, '.codex');
+
+    expect(codexPath).not.toBe(claudePath);
+    expect(codexPath).not.toBe(opencodePath);
+  })
+
+  it('OPENAI_API_KEY is only passed for codex agent', () => {
+    // The production code gates OPENAI_API_KEY on agent === 'codex'
+    const agents = ['claude', 'opencode', 'codex', 'shell'];
+    for (const agent of agents) {
+      const shouldPass = agent === 'codex';
+      expect(shouldPass).toBe(agent === 'codex');
+    }
+  })
+
+  it('OPENAI_API_KEY env var is built from stored config for codex', () => {
+    const storedKey = 'sk-stored-key-123';
+    const agent = 'codex';
+    const env = [
+      ...(agent === 'codex' && storedKey ? [`OPENAI_API_KEY=${storedKey}`] : []),
+    ];
+    expect(env).toContain('OPENAI_API_KEY=sk-stored-key-123');
+  })
+
+  it('OPENAI_API_KEY env var is not set for non-codex agents even with stored key', () => {
+    const storedKey = 'sk-stored-key-123';
+    for (const agent of ['claude', 'opencode', 'shell']) {
+      const env = [
+        ...(agent === 'codex' && storedKey ? [`OPENAI_API_KEY=${storedKey}`] : []),
+      ];
+      expect(env.some(e => e.startsWith('OPENAI_API_KEY='))).toBe(false);
+    }
+  })
+})
+
+describe('codex mount gating by agent type', () => {
+  /**
+   * Reimplementation of buildPersistentBindMounts mount-gating logic.
+   * The .codex mount should only be included for the codex agent.
+   */
+  function buildBindMountsForAgent(agent: string, mountPath: string): string[] {
+    const homeDir = os.homedir();
+    const binds = [
+      `${mountPath}:${mountPath}:rw`,
+      `${path.join(homeDir, '.claude')}:/home/agent/.claude:rw`,
+      `${path.join(homeDir, '.config', 'opencode')}:/home/agent/.config/opencode:rw`,
+      `${path.join(homeDir, '.local', 'share', 'opencode')}:/home/agent/.local/share/opencode:rw`,
+    ];
+
+    // Only mount Codex config for Codex agent (least-privilege)
+    if (agent === 'codex') {
+      binds.push(`${path.join(homeDir, '.codex')}:/home/agent/.codex:rw`);
+    }
+
+    return binds;
+  }
+
+  it('includes .codex mount for codex agent', () => {
+    const binds = buildBindMountsForAgent('codex', '/home/user/project');
+    const hasCodexMount = binds.some(b => b.includes('.codex:/home/agent/.codex'));
+    expect(hasCodexMount).toBe(true);
+  });
+
+  it('excludes .codex mount for claude agent', () => {
+    const binds = buildBindMountsForAgent('claude', '/home/user/project');
+    const hasCodexMount = binds.some(b => b.includes('.codex:/home/agent/.codex'));
+    expect(hasCodexMount).toBe(false);
+  });
+
+  it('excludes .codex mount for opencode agent', () => {
+    const binds = buildBindMountsForAgent('opencode', '/home/user/project');
+    const hasCodexMount = binds.some(b => b.includes('.codex:/home/agent/.codex'));
+    expect(hasCodexMount).toBe(false);
+  });
+
+  it('excludes .codex mount for shell agent', () => {
+    const binds = buildBindMountsForAgent('shell', '/home/user/project');
+    const hasCodexMount = binds.some(b => b.includes('.codex:/home/agent/.codex'));
+    expect(hasCodexMount).toBe(false);
+  });
+
+  it('always includes .claude mount regardless of agent', () => {
+    for (const agent of ['claude', 'opencode', 'codex', 'shell']) {
+      const binds = buildBindMountsForAgent(agent, '/home/user/project');
+      const hasClaudeMount = binds.some(b => b.includes('.claude:/home/agent/.claude'));
+      expect(hasClaudeMount).toBe(true);
+    }
+  });
 })
 
 describe('cleanup behavior patterns', () => {

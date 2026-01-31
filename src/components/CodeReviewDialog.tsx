@@ -66,8 +66,9 @@ export function CodeReviewDialog({
     try {
       const result = await window.electronAPI.checkAgentAuth(agent);
       if (!result.authenticated) {
+        const agentName = agent === 'claude' ? 'Claude Code' : agent === 'opencode' ? 'OpenCode' : 'Codex CLI';
         setAgentAuthWarning(
-          `${agent === 'claude' ? 'Claude Code' : 'OpenCode'} is not authenticated. Open a terminal and log in to ${agent === 'claude' ? 'Claude Code' : 'OpenCode'} first.`
+          `${agentName} is not authenticated. ${agent === 'codex' ? 'Add your OpenAI API Key in Settings.' : `Open a terminal and log in to ${agentName} first.`}`
         );
       } else {
         setAgentAuthWarning(null);
@@ -255,6 +256,18 @@ export function CodeReviewDialog({
               } disabled:opacity-50`}
             >
               OpenCode
+            </button>
+            <button
+              data-testid="review-agent-codex"
+              onClick={() => setSelectedAgent('codex')}
+              disabled={isReviewRunning}
+              className={`flex-1 px-3 py-2 text-sm rounded transition-colors ${
+                selectedAgent === 'codex'
+                  ? 'bg-blue-600 text-white ring-2 ring-blue-500'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              } disabled:opacity-50`}
+            >
+              Codex
             </button>
           </div>
         </div>

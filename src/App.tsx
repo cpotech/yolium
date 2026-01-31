@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState, useRef } from 'react';
-import { Loader2, GitGraph, GitPullRequest } from 'lucide-react';
+import { Loader2, GitPullRequest, Settings } from 'lucide-react';
 import { useTabState } from './hooks/useTabState';
 import { TabBar } from './components/TabBar';
 import { Terminal } from './components/Terminal';
@@ -188,7 +188,9 @@ function App(): React.ReactElement {
 
   const handleSaveGitConfig = useCallback(async (config: GitConfig) => {
     await window.electronAPI.saveGitConfig(config);
-    setGitConfig(config);
+    // Reload from IPC to get sanitized form with hasPat/hasOpenaiKey flags
+    const reloaded = await window.electronAPI.loadGitConfig();
+    setGitConfig(reloaded);
     setGitConfigDialogOpen(false);
   }, []);
 
@@ -637,13 +639,13 @@ function App(): React.ReactElement {
                 <span>PR Review</span>
               </button>
 
-              {/* Git settings button */}
+              {/* Settings button */}
               <button
                 onClick={handleOpenGitConfig}
                 className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                title="Git Settings"
+                title="Settings"
               >
-                <GitGraph size={12} />
+                <Settings size={12} />
               </button>
 
               <button

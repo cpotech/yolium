@@ -6,11 +6,21 @@ import type { GitConfig } from '../types/git';
 export type { GitConfig } from '../types/git';
 
 /**
- * Get the path to the git config file.
- * Stored at ~/.yolium/gitconfig.json
+ * Get the path to the settings file.
+ * Stored at ~/.yolium/settings.json
+ *
+ * Migrates from the legacy gitconfig.json path if needed.
  */
 export function getGitConfigPath(): string {
-  return path.join(os.homedir(), '.yolium', 'gitconfig.json');
+  const settingsPath = path.join(os.homedir(), '.yolium', 'settings.json');
+  const legacyPath = path.join(os.homedir(), '.yolium', 'gitconfig.json');
+
+  // Migrate: rename legacy file if new one doesn't exist yet
+  if (!fs.existsSync(settingsPath) && fs.existsSync(legacyPath)) {
+    fs.renameSync(legacyPath, settingsPath);
+  }
+
+  return settingsPath;
 }
 
 /**
@@ -34,6 +44,7 @@ export function loadGitConfig(): GitConfig | null {
         name: config.name,
         email: config.email,
         ...(typeof config.githubPat === 'string' && config.githubPat ? { githubPat: config.githubPat } : {}),
+        ...(typeof config.openaiApiKey === 'string' && config.openaiApiKey ? { openaiApiKey: config.openaiApiKey } : {}),
       };
     }
 
@@ -54,13 +65,13 @@ export function saveGitConfig(config: GitConfig): void {
   // Ensure .yolium directory exists
   fs.mkdirSync(configDir, { recursive: true });
 
-  // Write config file
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+  // Write config file with restrictive permissions (secrets may be included)
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), { encoding: 'utf-8', mode: 0o600 });
 }
 
 /**
  * Get the path to the git-credentials file.
- * This file is generated from the PAT in gitconfig.json.
+ * This file is generated from the PAT in settings.json.
  */
 export function getGitCredentialsPath(): string {
   return path.join(os.homedir(), '.yolium', 'git-credentials');
@@ -84,7 +95,9 @@ export function generateGitCredentials(gitConfig: GitConfig | null): string | nu
 
   // Write credentials in git's store format
   // Using 'git' as the username works with GitHub PATs
-  const credContent = `https://git:${gitConfig.githubPat}@github.com\n`;
+  // Strip trailing @github.com if user pasted the full credential URL token
+  const pat = gitConfig.githubPat.replace(/@github\.com$/, '');
+  const credContent = `https://git:${pat}@github.com\n`;
   fs.writeFileSync(credPath, credContent, { mode: 0o600 });
 
   return credPath;

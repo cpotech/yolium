@@ -193,20 +193,30 @@ test.describe('Code Review Dialog', () => {
 
     const claudeBtn = window.locator(selectors.reviewAgentClaude);
     const opencodeBtn = window.locator(selectors.reviewAgentOpencode);
+    const codexBtn = window.locator(selectors.reviewAgentCodex);
 
     // Claude selected by default
     await expect(claudeBtn).toHaveClass(/ring-2/);
     await expect(opencodeBtn).not.toHaveClass(/ring-2/);
+    await expect(codexBtn).not.toHaveClass(/ring-2/);
 
     // Click OpenCode
     await opencodeBtn.click();
     await expect(opencodeBtn).toHaveClass(/ring-2/);
     await expect(claudeBtn).not.toHaveClass(/ring-2/);
+    await expect(codexBtn).not.toHaveClass(/ring-2/);
+
+    // Click Codex
+    await codexBtn.click();
+    await expect(codexBtn).toHaveClass(/ring-2/);
+    await expect(claudeBtn).not.toHaveClass(/ring-2/);
+    await expect(opencodeBtn).not.toHaveClass(/ring-2/);
 
     // Click Claude back
     await claudeBtn.click();
     await expect(claudeBtn).toHaveClass(/ring-2/);
     await expect(opencodeBtn).not.toHaveClass(/ring-2/);
+    await expect(codexBtn).not.toHaveClass(/ring-2/);
   });
 
   test('should have Fetch button disabled without URL', async () => {

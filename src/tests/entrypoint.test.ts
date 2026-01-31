@@ -67,10 +67,137 @@ describe('entrypoint.sh', () => {
       expect(entrypointContent).toContain('unset');
     });
 
+    it('should quote the credential file path in git config', () => {
+      // The credential helper config must quote $GIT_CRED_FILE to handle paths with spaces
+      // It should NOT have an unquoted `--file $GIT_CRED_FILE`
+      expect(entrypointContent).not.toMatch(/store --file \$GIT_CRED_FILE"/);
+      // It should use proper quoting around the variable
+      expect(entrypointContent).toMatch(/store --file=.*\$GIT_CRED_FILE/);
+    });
+
+    it('should have an EXIT trap to clean up git credentials', () => {
+      // The credential file should be removed when the container process exits
+      expect(entrypointContent).toMatch(/trap\s+.*rm\s.*\.git-credentials.*EXIT/);
+    });
+
     it('should warn against using E2E tests in container', () => {
       // CLAUDE.md should tell Claude not to run E2E tests in container
       expect(entrypointContent).toContain('E2E');
       expect(entrypointContent).toContain('test:e2e');
+    });
+
+    it('should handle codex tool selection', () => {
+      // The entrypoint should have a branch for TOOL=codex
+      expect(entrypointContent).toContain('"codex"');
+      expect(entrypointContent).toContain('codex');
+    });
+
+    it('should display codex version in banner when TOOL=codex', () => {
+      // The banner should show codex info when codex is selected
+      expect(entrypointContent).toContain('Codex');
+    });
+
+    it('should display codex config path in persistent data section', () => {
+      // The banner should show ~/.codex for persistent data
+      expect(entrypointContent).toContain('.codex');
+    });
+  });
+
+  describe('codex agent entrypoint behavior', () => {
+    let entrypointContent: string;
+
+    beforeEach(() => {
+      entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+    });
+
+    it('should launch codex with --full-auto flag', () => {
+      expect(entrypointContent).toContain('--full-auto');
+    });
+
+    it('should have a dedicated codex branch in tool selection', () => {
+      // The entrypoint should have elif [ "$TOOL" = "codex" ]
+      expect(entrypointContent).toContain('TOOL" = "codex"');
+    });
+
+    it('should look up codex binary path', () => {
+      expect(entrypointContent).toContain('CODEX_BIN=$(which codex)');
+    });
+
+    it('should log codex path for debugging', () => {
+      expect(entrypointContent).toContain('codex path:');
+    });
+
+    it('should prompt user before starting codex', () => {
+      expect(entrypointContent).toContain('Press any key to start Codex');
+    });
+
+    it('should check for OPENAI_API_KEY before launching Codex', () => {
+      expect(entrypointContent).toContain('OPENAI_API_KEY');
+      expect(entrypointContent).toContain('Falling back to shell');
+    });
+
+    it('should check for OAuth auth.json when OPENAI_API_KEY is missing', () => {
+      // When OPENAI_API_KEY is empty, entrypoint should check for OAuth tokens in auth.json
+      expect(entrypointContent).toContain('.codex/auth.json');
+      expect(entrypointContent).toContain('access_token');
+      expect(entrypointContent).toContain('OAuth');
+    });
+
+    it('should show distinct message for missing auth vs missing API key', () => {
+      // Should mention both OPENAI_API_KEY and codex login as options
+      expect(entrypointContent).toContain('codex login');
+      expect(entrypointContent).toContain('OPENAI_API_KEY');
+    });
+
+    it('should display codex persistent data path in banner', () => {
+      // When TOOL=codex, banner shows ~/.codex
+      expect(entrypointContent).toContain('~/.codex');
+    });
+
+    it('should show Codex CLI version in banner', () => {
+      expect(entrypointContent).toContain('codex --version');
+    });
+  });
+
+  describe('PR detection error handling', () => {
+    let entrypointContent: string;
+
+    beforeEach(() => {
+      entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+    });
+
+    it('should check gh auth status before PR lookup', () => {
+      // The code-review section should verify gh auth before running gh pr list
+      // Extract the code-review block (from code-review elif to the next elif)
+      const reviewStart = entrypointContent.indexOf('TOOL" = "code-review"');
+      expect(reviewStart).toBeGreaterThan(-1);
+      // Find the next elif after the code-review block
+      const reviewEnd = entrypointContent.indexOf('elif', reviewStart + 1);
+      expect(reviewEnd).toBeGreaterThan(reviewStart);
+      const reviewBlock = entrypointContent.slice(reviewStart, reviewEnd);
+      const authInReview = reviewBlock.indexOf('gh auth status');
+      const prInReview = reviewBlock.indexOf('gh pr list');
+      expect(authInReview).toBeGreaterThan(-1);
+      expect(prInReview).toBeGreaterThan(authInReview);
+    });
+
+    it('should report auth-specific error when gh is not authenticated', () => {
+      expect(entrypointContent).toContain('GitHub CLI is not authenticated');
+    });
+
+    it('should capture gh pr list exit code separately', () => {
+      // Should check exit code of gh pr list rather than just empty output
+      expect(entrypointContent).toContain('PR_EXIT');
+    });
+
+    it('should not suppress stderr from gh pr list', () => {
+      // The gh pr list call should capture stderr (2>&1) not suppress it (2>/dev/null)
+      const reviewStart = entrypointContent.indexOf('TOOL" = "code-review"');
+      const reviewEnd = entrypointContent.indexOf('elif', reviewStart + 1);
+      const reviewBlock = entrypointContent.slice(reviewStart, reviewEnd);
+      // Should use 2>&1 not 2>/dev/null for PR lookup
+      expect(reviewBlock).toContain('2>&1');
+      expect(reviewBlock).not.toContain('2>/dev/null');
     });
   });
 
@@ -155,7 +282,7 @@ describe.skipIf(!dockerAvailable || !imageExists)('entrypoint.sh integration', (
     fs.writeFileSync(gitCredentialsPath, mockCredentials, { mode: 0o600 });
 
     const result = execSync(
-      `docker run --rm -v "${gitCredentialsPath}:/home/agent/.git-credentials:ro" -e TOOL=shell yolium:latest bash -c "gh auth status 2>&1 || true"`,
+      `docker run --rm -v "${gitCredentialsPath}:/home/agent/.git-credentials-mounted:ro" -e TOOL=shell yolium:latest bash -c "gh auth status 2>&1 || true"`,
       { encoding: 'utf-8', timeout: 30000 }
     );
 
