@@ -397,7 +397,11 @@ Be thorough but constructive. Focus on substantive issues, not nitpicks."
         exit $?
     elif [ "$REVIEW_AGENT" = "codex" ]; then
         log "Running Codex for code review"
-        codex exec --full-auto "$REVIEW_PROMPT"
+        # Use danger-full-access sandbox — Codex's Landlock sandbox panics on
+        # kernels where Landlock is compiled but not functional.
+        # Docker already provides container-level isolation.
+        # See: https://github.com/openai/codex/issues/2267
+        codex exec --sandbox danger-full-access "$REVIEW_PROMPT"
         exit $?
     else
         echo "ERROR: Unknown review agent: $REVIEW_AGENT"
@@ -428,7 +432,12 @@ elif [ "$TOOL" = "codex" ]; then
     echo "Press any key to start Codex..."
     read -n 1
     log "Key pressed, launching codex..."
-    exec "$CODEX_BIN" --full-auto
+    # Use -a on-request (auto-approve) with danger-full-access sandbox.
+    # --full-auto is a convenience alias that forces workspace-write sandbox,
+    # which panics on kernels where Landlock is compiled but not functional.
+    # Docker already provides container-level isolation.
+    # See: https://github.com/openai/codex/issues/2267
+    exec "$CODEX_BIN" -a on-request --sandbox danger-full-access
     # If we reach here, exec failed
     log "ERROR: exec failed unexpectedly"
     exit 1
