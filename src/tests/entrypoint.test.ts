@@ -136,6 +136,19 @@ describe('entrypoint.sh', () => {
       expect(entrypointContent).toContain('Falling back to shell');
     });
 
+    it('should check for OAuth auth.json when OPENAI_API_KEY is missing', () => {
+      // When OPENAI_API_KEY is empty, entrypoint should check for OAuth tokens in auth.json
+      expect(entrypointContent).toContain('.codex/auth.json');
+      expect(entrypointContent).toContain('access_token');
+      expect(entrypointContent).toContain('OAuth');
+    });
+
+    it('should show distinct message for missing auth vs missing API key', () => {
+      // Should mention both OPENAI_API_KEY and codex login as options
+      expect(entrypointContent).toContain('codex login');
+      expect(entrypointContent).toContain('OPENAI_API_KEY');
+    });
+
     it('should display codex persistent data path in banner', () => {
       // When TOOL=codex, banner shows ~/.codex
       expect(entrypointContent).toContain('~/.codex');
@@ -143,6 +156,48 @@ describe('entrypoint.sh', () => {
 
     it('should show Codex CLI version in banner', () => {
       expect(entrypointContent).toContain('codex --version');
+    });
+  });
+
+  describe('PR detection error handling', () => {
+    let entrypointContent: string;
+
+    beforeEach(() => {
+      entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+    });
+
+    it('should check gh auth status before PR lookup', () => {
+      // The code-review section should verify gh auth before running gh pr list
+      // Extract the code-review block (from code-review elif to the next elif)
+      const reviewStart = entrypointContent.indexOf('TOOL" = "code-review"');
+      expect(reviewStart).toBeGreaterThan(-1);
+      // Find the next elif after the code-review block
+      const reviewEnd = entrypointContent.indexOf('elif', reviewStart + 1);
+      expect(reviewEnd).toBeGreaterThan(reviewStart);
+      const reviewBlock = entrypointContent.slice(reviewStart, reviewEnd);
+      const authInReview = reviewBlock.indexOf('gh auth status');
+      const prInReview = reviewBlock.indexOf('gh pr list');
+      expect(authInReview).toBeGreaterThan(-1);
+      expect(prInReview).toBeGreaterThan(authInReview);
+    });
+
+    it('should report auth-specific error when gh is not authenticated', () => {
+      expect(entrypointContent).toContain('GitHub CLI is not authenticated');
+    });
+
+    it('should capture gh pr list exit code separately', () => {
+      // Should check exit code of gh pr list rather than just empty output
+      expect(entrypointContent).toContain('PR_EXIT');
+    });
+
+    it('should not suppress stderr from gh pr list', () => {
+      // The gh pr list call should capture stderr (2>&1) not suppress it (2>/dev/null)
+      const reviewStart = entrypointContent.indexOf('TOOL" = "code-review"');
+      const reviewEnd = entrypointContent.indexOf('elif', reviewStart + 1);
+      const reviewBlock = entrypointContent.slice(reviewStart, reviewEnd);
+      // Should use 2>&1 not 2>/dev/null for PR lookup
+      expect(reviewBlock).toContain('2>&1');
+      expect(reviewBlock).not.toContain('2>/dev/null');
     });
   });
 

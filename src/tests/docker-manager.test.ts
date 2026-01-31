@@ -533,6 +533,61 @@ describe('codex container config', () => {
   })
 })
 
+describe('codex mount gating by agent type', () => {
+  /**
+   * Reimplementation of buildPersistentBindMounts mount-gating logic.
+   * The .codex mount should only be included for the codex agent.
+   */
+  function buildBindMountsForAgent(agent: string, mountPath: string): string[] {
+    const homeDir = os.homedir();
+    const binds = [
+      `${mountPath}:${mountPath}:rw`,
+      `${path.join(homeDir, '.claude')}:/home/agent/.claude:rw`,
+      `${path.join(homeDir, '.config', 'opencode')}:/home/agent/.config/opencode:rw`,
+      `${path.join(homeDir, '.local', 'share', 'opencode')}:/home/agent/.local/share/opencode:rw`,
+    ];
+
+    // Only mount Codex config for Codex agent (least-privilege)
+    if (agent === 'codex') {
+      binds.push(`${path.join(homeDir, '.codex')}:/home/agent/.codex:rw`);
+    }
+
+    return binds;
+  }
+
+  it('includes .codex mount for codex agent', () => {
+    const binds = buildBindMountsForAgent('codex', '/home/user/project');
+    const hasCodexMount = binds.some(b => b.includes('.codex:/home/agent/.codex'));
+    expect(hasCodexMount).toBe(true);
+  });
+
+  it('excludes .codex mount for claude agent', () => {
+    const binds = buildBindMountsForAgent('claude', '/home/user/project');
+    const hasCodexMount = binds.some(b => b.includes('.codex:/home/agent/.codex'));
+    expect(hasCodexMount).toBe(false);
+  });
+
+  it('excludes .codex mount for opencode agent', () => {
+    const binds = buildBindMountsForAgent('opencode', '/home/user/project');
+    const hasCodexMount = binds.some(b => b.includes('.codex:/home/agent/.codex'));
+    expect(hasCodexMount).toBe(false);
+  });
+
+  it('excludes .codex mount for shell agent', () => {
+    const binds = buildBindMountsForAgent('shell', '/home/user/project');
+    const hasCodexMount = binds.some(b => b.includes('.codex:/home/agent/.codex'));
+    expect(hasCodexMount).toBe(false);
+  });
+
+  it('always includes .claude mount regardless of agent', () => {
+    for (const agent of ['claude', 'opencode', 'codex', 'shell']) {
+      const binds = buildBindMountsForAgent(agent, '/home/user/project');
+      const hasClaudeMount = binds.some(b => b.includes('.claude:/home/agent/.claude'));
+      expect(hasClaudeMount).toBe(true);
+    }
+  });
+})
+
 describe('cleanup behavior patterns', () => {
   // Simulate the session storage pattern used in docker-manager
   interface MockSession {

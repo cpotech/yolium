@@ -331,7 +331,7 @@ async function buildLocalImage(
  * @param cacheKeyPath - Optional path to use for cache directory isolation (defaults to mountPath)
  * @param originalRepoPath - Optional path to the original repo (for worktree .git access)
  */
-function buildPersistentBindMounts(mountPath: string, cacheKeyPath?: string, originalRepoPath?: string): string[] {
+function buildPersistentBindMounts(mountPath: string, agent: string, cacheKeyPath?: string, originalRepoPath?: string): string[] {
   // Use cacheKeyPath for persistent directories (so worktrees share cache with original project)
   const effectivePath = cacheKeyPath || mountPath;
   const paths = getPersistentPaths(effectivePath);
@@ -357,8 +357,12 @@ function buildPersistentBindMounts(mountPath: string, cacheKeyPath?: string, ori
     `${toDockerPath(paths.claude)}:/home/agent/.claude:rw`,
     `${toDockerPath(paths.opencode.config)}:/home/agent/.config/opencode:rw`,
     `${toDockerPath(paths.opencode.data)}:/home/agent/.local/share/opencode:rw`,
-    `${toDockerPath(paths.codex)}:/home/agent/.codex:rw`,
   ];
+
+  // Only mount Codex config for Codex agent (least-privilege)
+  if (agent === 'codex') {
+    binds.push(`${toDockerPath(paths.codex)}:/home/agent/.codex:rw`);
+  }
 
   // For worktrees, mount the original repo's .git directory so git commands work
   // The worktree's .git file points to the main repo's .git/worktrees/<name> directory
@@ -527,7 +531,7 @@ export async function createYolium(
   // Build bind mounts (extract to log them for debugging)
   // Use mountPath for project directory, but use original resolvedFolderPath for cache isolation
   // Pass resolvedFolderPath as originalRepoPath so worktrees can access the main repo's .git
-  const binds = buildPersistentBindMounts(mountPath, resolvedFolderPath, worktreePath ? resolvedFolderPath : undefined);
+  const binds = buildPersistentBindMounts(mountPath, agent, resolvedFolderPath, worktreePath ? resolvedFolderPath : undefined);
   const sshDir = getYoliumSshDir();
   if (sshDir) {
     binds.push(`${toDockerPath(sshDir)}:/home/agent/.ssh:rw`);
@@ -1035,20 +1039,23 @@ export async function createCodeReviewContainer(
   const claudeDir = path.join(homeDir, '.claude');
   const opencodeConfigDir = path.join(homeDir, '.config', 'opencode');
   const opencodeDataDir = path.join(homeDir, '.local', 'share', 'opencode');
-  const codexDir = path.join(homeDir, '.codex');
-
   fs.mkdirSync(claudeDir, { recursive: true });
   fs.mkdirSync(opencodeConfigDir, { recursive: true });
   fs.mkdirSync(opencodeDataDir, { recursive: true });
-  fs.mkdirSync(codexDir, { recursive: true });
 
   const binds = [
     `${toDockerPath(tmpDir)}:${containerProjectPath}:rw`,
     `${toDockerPath(claudeDir)}:/home/agent/.claude:rw`,
     `${toDockerPath(opencodeConfigDir)}:/home/agent/.config/opencode:rw`,
     `${toDockerPath(opencodeDataDir)}:/home/agent/.local/share/opencode:rw`,
-    `${toDockerPath(codexDir)}:/home/agent/.codex:rw`,
   ];
+
+  // Only mount Codex config for Codex agent (least-privilege)
+  if (agent === 'codex') {
+    const codexDir = path.join(homeDir, '.codex');
+    fs.mkdirSync(codexDir, { recursive: true });
+    binds.push(`${toDockerPath(codexDir)}:/home/agent/.codex:rw`);
+  }
 
   // Add SSH keys if available
   const sshDir = getYoliumSshDir();

@@ -345,9 +345,21 @@ elif [ "$TOOL" = "code-review" ]; then
 
     echo "Checked out branch: $REVIEW_BRANCH"
 
+    # Verify GitHub authentication before querying PRs
+    if ! gh auth status >/dev/null 2>&1; then
+        echo "ERROR: GitHub CLI is not authenticated. Configure a PAT in Yolium settings."
+        exit 3
+    fi
+
     # Check if a PR exists for this branch
     echo "Checking for open PR on branch $REVIEW_BRANCH..."
-    PR_NUMBER=$(gh pr list --head "$REVIEW_BRANCH" --state open --json number --jq '.[0].number' 2>/dev/null)
+    PR_OUTPUT=$(gh pr list --head "$REVIEW_BRANCH" --state open --json number --jq '.[0].number' 2>&1)
+    PR_EXIT=$?
+    if [ $PR_EXIT -ne 0 ]; then
+        echo "ERROR: Failed to query GitHub PRs: $PR_OUTPUT"
+        exit 3
+    fi
+    PR_NUMBER="$PR_OUTPUT"
     if [ -z "$PR_NUMBER" ]; then
         echo "ERROR: No open PR found for branch '$REVIEW_BRANCH'. Please create a PR first."
         exit 2
@@ -423,9 +435,17 @@ elif [ "$TOOL" = "opencode" ]; then
 elif [ "$TOOL" = "codex" ]; then
     log "Starting Codex"
     if [ -z "$OPENAI_API_KEY" ]; then
-        echo "OPENAI_API_KEY is not set. Set the environment variable on your host before using Codex."
-        echo "Falling back to shell."
-        exec /bin/zsh
+        # Check for OAuth auth in ~/.codex/auth.json (from `codex login`)
+        if [ -f /home/agent/.codex/auth.json ] && \
+           command -v jq >/dev/null 2>&1 && \
+           jq -e '.tokens.access_token // empty' /home/agent/.codex/auth.json >/dev/null 2>&1; then
+            add_status "✅ Codex OAuth authentication detected"
+        else
+            echo "No Codex authentication found."
+            echo "Set OPENAI_API_KEY or run 'codex login' on the host."
+            echo "Falling back to shell."
+            exec /bin/zsh
+        fi
     fi
     CODEX_BIN=$(which codex)
     log "codex path: $CODEX_BIN"
