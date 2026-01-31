@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState, useRef } from 'react';
-import { Loader2, GitGraph } from 'lucide-react';
+import { Loader2, GitPullRequest, Settings } from 'lucide-react';
 import { useTabState } from './hooks/useTabState';
 import { useWhisper } from './hooks/useWhisper';
 import { TabBar } from './components/TabBar';
@@ -10,7 +10,9 @@ import { AgentSelectDialog, AgentType } from './components/AgentSelectDialog';
 import { PathInputDialog } from './components/PathInputDialog';
 import { KeyboardShortcutsDialog } from './components/KeyboardShortcutsDialog';
 import { DockerSetupDialog } from './components/DockerSetupDialog';
-import { GitConfigDialog, GitConfig } from './components/GitConfigDialog';
+import { GitConfigDialog, GitConfig, GitConfigWithPat } from './components/GitConfigDialog';
+import { CodeReviewDialog } from './components/CodeReviewDialog';
+import type { ReviewAgentType, CodeReviewStatus } from './types/agent';
 import { WhisperModelDialog } from './components/WhisperModelDialog';
 import type { WhisperModelSize } from './types/whisper';
 
@@ -50,7 +52,7 @@ function App(): React.ReactElement {
 
   // State for git config dialog
   const [gitConfigDialogOpen, setGitConfigDialogOpen] = useState(false);
-  const [gitConfig, setGitConfig] = useState<GitConfig | null>(null);
+  const [gitConfig, setGitConfig] = useState<GitConfigWithPat | null>(null);
 
   // State for Docker image build progress (array of lines)
   const [buildProgress, setBuildProgress] = useState<string[] | null>(null);
@@ -58,6 +60,11 @@ function App(): React.ReactElement {
   // State for image rebuild
   const [isRebuilding, setIsRebuilding] = useState(false);
   const [imageRemoved, setImageRemoved] = useState(false);
+
+  // State for code review dialog
+  const [codeReviewDialogOpen, setCodeReviewDialogOpen] = useState(false);
+  const [reviewStatus, setReviewStatus] = useState<CodeReviewStatus | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   // Ref for auto-scrolling build progress
   const progressRef = useRef<HTMLDivElement>(null);
@@ -187,9 +194,50 @@ function App(): React.ReactElement {
 
   const handleSaveGitConfig = useCallback(async (config: GitConfig) => {
     await window.electronAPI.saveGitConfig(config);
-    setGitConfig(config);
+    // Reload from IPC to get sanitized form with hasPat/hasOpenaiKey flags
+    const reloaded = await window.electronAPI.loadGitConfig();
+    setGitConfig(reloaded);
     setGitConfigDialogOpen(false);
   }, []);
+
+  // Code review dialog handlers
+  const handleOpenCodeReview = useCallback(() => {
+    setReviewStatus(null);
+    setReviewError(null);
+    setCodeReviewDialogOpen(true);
+  }, []);
+
+  const handleCloseCodeReview = useCallback(() => {
+    setCodeReviewDialogOpen(false);
+  }, []);
+
+  const handleStartReview = useCallback(async (repoUrl: string, branch: string, agent: ReviewAgentType) => {
+    setReviewStatus('starting');
+    setReviewError(null);
+
+    try {
+      // Set up completion listener
+      const cleanupComplete = window.electronAPI.onCodeReviewComplete((_sessionId, exitCode) => {
+        if (exitCode === 0) {
+          setReviewStatus('completed');
+        } else if (exitCode === 2) {
+          setReviewStatus('failed');
+          setReviewError('No open PR found for this branch. Please create a PR first.');
+        } else {
+          setReviewStatus('failed');
+          setReviewError(`Container exited with code ${exitCode}`);
+        }
+        cleanupComplete();
+      });
+
+      await window.electronAPI.ensureImage();
+      await window.electronAPI.startCodeReview(repoUrl, branch, agent, gitConfig || undefined);
+      setReviewStatus('running');
+    } catch (err) {
+      setReviewStatus('failed');
+      setReviewError(err instanceof Error ? err.message : 'Failed to start code review');
+    }
+  }, [gitConfig]);
 
   // Check Docker state on app launch
   useEffect(() => {
@@ -521,6 +569,16 @@ function App(): React.ReactElement {
         onClose={whisper.closeModelDialog}
       />
 
+      {/* Code review dialog */}
+      <CodeReviewDialog
+        isOpen={codeReviewDialogOpen}
+        onClose={handleCloseCodeReview}
+        onStartReview={handleStartReview}
+        hasGitCredentials={!!gitConfig?.hasPat}
+        reviewStatus={reviewStatus}
+        reviewError={reviewError}
+      />
+
       {/* Docker image build progress overlay */}
       {buildProgress && (
         <div data-testid="build-progress-overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
@@ -606,13 +664,24 @@ function App(): React.ReactElement {
                 </>
               )}
 
-              {/* Git settings button */}
+              {/* PR Review button */}
+              <button
+                data-testid="code-review-button"
+                onClick={handleOpenCodeReview}
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                title="PR Code Review"
+              >
+                <GitPullRequest size={12} />
+                <span>PR Review</span>
+              </button>
+
+              {/* Settings button */}
               <button
                 onClick={handleOpenGitConfig}
                 className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                title="Git Settings"
+                title="Settings"
               >
-                <GitGraph size={12} />
+                <Settings size={12} />
               </button>
 
               <button
@@ -656,6 +725,7 @@ function App(): React.ReactElement {
                   onStop={() => handleStopYolium(tab.id)}
                   onShowShortcuts={handleShowShortcuts}
                   onOpenSettings={handleOpenGitConfig}
+                  onOpenCodeReview={handleOpenCodeReview}
                   imageName={imageRemoved ? undefined : 'yolium:latest'}
                   onRebuild={handleRebuildImage}
                   isRebuilding={isRebuilding}

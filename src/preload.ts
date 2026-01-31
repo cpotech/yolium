@@ -113,7 +113,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Git config operations
   loadGitConfig: () => ipcRenderer.invoke('git-config:load'),
-  saveGitConfig: (config: { name: string; email: string; githubPat?: string }) =>
+  saveGitConfig: (config: { name: string; email: string; githubPat?: string; openaiApiKey?: string }) =>
     ipcRenderer.invoke('git-config:save', config),
 
   // Git worktree operations
@@ -187,6 +187,26 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('whisper:download-progress', handler);
     return () => ipcRenderer.removeListener('whisper:download-progress', handler);
   },
+
+  // Code review operations
+  listRemoteBranches: (repoUrl: string) =>
+    ipcRenderer.invoke('code-review:list-branches', repoUrl),
+  checkAgentAuth: (agent: string) =>
+    ipcRenderer.invoke('code-review:check-agent-auth', agent),
+  startCodeReview: (repoUrl: string, branch: string, agent: string, gitConfig?: { name: string; email: string }) =>
+    ipcRenderer.invoke('code-review:start', repoUrl, branch, agent, gitConfig),
+  onCodeReviewOutput: (callback: (sessionId: string, data: string) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, data: string) =>
+      callback(sessionId, data);
+    ipcRenderer.on('code-review:output', handler);
+    return () => ipcRenderer.removeListener('code-review:output', handler);
+  },
+  onCodeReviewComplete: (callback: (sessionId: string, exitCode: number) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, exitCode: number) =>
+      callback(sessionId, exitCode);
+    ipcRenderer.on('code-review:complete', handler);
+    return () => ipcRenderer.removeListener('code-review:complete', handler);
+  },
 });
 
 // Type declaration for TypeScript
@@ -234,8 +254,8 @@ declare global {
         error: string | null;
       }>;
       // Git config operations
-      loadGitConfig: () => Promise<{ name: string; email: string; hasPat?: boolean } | null>;
-      saveGitConfig: (config: { name: string; email: string; githubPat?: string }) => Promise<void>;
+      loadGitConfig: () => Promise<{ name: string; email: string; hasPat?: boolean; hasOpenaiKey?: boolean } | null>;
+      saveGitConfig: (config: { name: string; email: string; githubPat?: string; openaiApiKey?: string }) => Promise<void>;
       // Git worktree operations
       checkGitRepo: (folderPath: string) => Promise<{ isRepo: boolean; hasCommits: boolean }>;
       getGitBranch: (folderPath: string) => Promise<string | null>;
@@ -304,6 +324,12 @@ declare global {
       whisperGetSelectedModel: () => Promise<string>;
       whisperSaveSelectedModel: (modelSize: string) => Promise<void>;
       onWhisperDownloadProgress: (callback: (progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) => void) => CleanupFn;
+      // Code review operations
+      listRemoteBranches: (repoUrl: string) => Promise<{ branches: string[]; error?: string }>;
+      checkAgentAuth: (agent: string) => Promise<{ authenticated: boolean }>;
+      startCodeReview: (repoUrl: string, branch: string, agent: string, gitConfig?: { name: string; email: string }) => Promise<string>;
+      onCodeReviewOutput: (callback: (sessionId: string, data: string) => void) => CleanupFn;
+      onCodeReviewComplete: (callback: (sessionId: string, exitCode: number) => void) => CleanupFn;
     };
   }
 }

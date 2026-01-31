@@ -28,7 +28,7 @@ export const selectors = {
 
   // Agent select dialog
   agentDialog: '[data-testid="agent-dialog"]',
-  agentOption: (agent: 'claude' | 'opencode' | 'shell') => `[data-testid="agent-option-${agent}"]`,
+  agentOption: (agent: 'claude' | 'opencode' | 'codex' | 'shell') => `[data-testid="agent-option-${agent}"]`,
   gsdToggle: '[data-testid="gsd-toggle"]',
   worktreeToggle: '[data-testid="worktree-toggle"]',
   branchNameInput: '[data-testid="branch-name-input"]',
@@ -56,11 +56,12 @@ export const selectors = {
   shortcutsButton: '[data-testid="shortcuts-button"]',
   themeToggle: '[data-testid="theme-toggle"]',
 
-  // Git config dialog
+  // Settings dialog (formerly Git Settings)
   gitConfigDialog: '[data-testid="git-config-dialog"]',
   gitNameInput: '[data-testid="git-name-input"]',
   gitEmailInput: '[data-testid="git-email-input"]',
   gitPatInput: '[data-testid="git-pat-input"]',
+  openaiKeyInput: '[data-testid="openai-key-input"]',
   gitConfigSaveButton: '[data-testid="git-config-save"]',
   gitConfigCancelButton: '[data-testid="git-config-cancel"]',
 
@@ -71,6 +72,23 @@ export const selectors = {
   // Build progress overlay
   buildProgressOverlay: '[data-testid="build-progress-overlay"]',
   buildProgressText: '[data-testid="build-progress-text"]',
+
+  // Code review dialog
+  codeReviewButton: '[data-testid="code-review-button"]',
+  codeReviewDialog: '[data-testid="code-review-dialog"]',
+  reviewRepoInput: '[data-testid="review-repo-input"]',
+  reviewFetchButton: '[data-testid="review-fetch-button"]',
+  reviewBranchSelect: '[data-testid="review-branch-select"]',
+  reviewBranchInput: '[data-testid="review-branch-input"]',
+  reviewAgentClaude: '[data-testid="review-agent-claude"]',
+  reviewAgentOpencode: '[data-testid="review-agent-opencode"]',
+  reviewAgentCodex: '[data-testid="review-agent-codex"]',
+  reviewCancelButton: '[data-testid="review-cancel-button"]',
+  reviewStartButton: '[data-testid="start-review-button"]',
+  reviewCredentialsWarning: '[data-testid="review-credentials-warning"]',
+  reviewAgentWarning: '[data-testid="review-agent-warning"]',
+  reviewStatus: '[data-testid="review-status"]',
+  reviewBranchError: '[data-testid="review-branch-error"]',
 
   // Confirmation dialogs (native, use Electron dialog API in tests)
   // These are handled via electronAPI mocking

@@ -1,12 +1,14 @@
 name: E2E Tests
 
 on:
-  workflow_dispatch: # Manual trigger only
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -38,18 +40,27 @@ jobs:
           fi
           echo "Build verified: .vite/build/main.js exists"
 
-      - name: Start Docker
+      - name: Pre-build Docker image
         run: |
-          # Docker is pre-installed on GitHub runners
           docker info
-          echo "Checking for existing yolium image..."
-          docker images | grep yolium || echo "No yolium image found - will be built during tests"
+          echo "Building yolium:latest Docker image..."
+          DOCKER_BUILDKIT=1 docker build \
+            --build-arg USER_ID=$(id -u) \
+            --build-arg GROUP_ID=$(id -g) \
+            --build-arg USERNAME=agent \
+            --build-arg BUILD_TIMESTAMP=$(date -Iseconds) \
+            --label yolium.version=1.0.0 \
+            --label "yolium.built=$(date -Iseconds)" \
+            -t yolium:latest \
+            src/docker/
+          echo "Docker image built successfully"
+          docker images yolium
 
       - name: Run E2E tests
         run: |
           echo "Starting E2E tests at $(date)"
           xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" \
-            npx playwright test --reporter=list --timeout=120000
+            npx playwright test --config config/playwright.config.ts --reporter=list --timeout=120000
           echo "E2E tests completed at $(date)"
         env:
           CI: true

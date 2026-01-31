@@ -9,8 +9,10 @@ import { createLogger } from './lib/logger';
 import { createWorktree, deleteWorktree, generateBranchName, hasUncommittedChanges, getWorktreeBranch } from './lib/git-worktree';
 import { loadGitConfig, generateGitCredentials } from './lib/git-config';
 import type { ContainerSession, ProjectCacheInfo, CacheStats, CleanupResult } from './types/docker';
+import type { ReviewAgentType } from './types/agent';
 
 export type { ContainerSession, ProjectCacheInfo, CacheStats, CleanupResult } from './types/docker';
+export type { ReviewAgentType } from './types/agent';
 
 const logger = createLogger('docker-manager');
 
@@ -198,6 +200,7 @@ function getPersistentPaths(projectPath: string) {
       config: path.join(homeDir, '.config', 'opencode'),
       data: path.join(homeDir, '.local', 'share', 'opencode'),
     },
+    codex: path.join(homeDir, '.codex'),
   };
 }
 
@@ -226,6 +229,9 @@ function ensurePersistentDirs(paths: ReturnType<typeof getPersistentPaths>, proj
 
   // Create Claude directory (might not exist for new users)
   fs.mkdirSync(paths.claude, { recursive: true });
+
+  // Create Codex directory
+  fs.mkdirSync(paths.codex, { recursive: true });
 }
 
 // Initialize docker client (auto-detects socket path)
@@ -325,7 +331,7 @@ async function buildLocalImage(
  * @param cacheKeyPath - Optional path to use for cache directory isolation (defaults to mountPath)
  * @param originalRepoPath - Optional path to the original repo (for worktree .git access)
  */
-function buildPersistentBindMounts(mountPath: string, cacheKeyPath?: string, originalRepoPath?: string): string[] {
+function buildPersistentBindMounts(mountPath: string, agent: string, cacheKeyPath?: string, originalRepoPath?: string): string[] {
   // Use cacheKeyPath for persistent directories (so worktrees share cache with original project)
   const effectivePath = cacheKeyPath || mountPath;
   const paths = getPersistentPaths(effectivePath);
@@ -352,6 +358,11 @@ function buildPersistentBindMounts(mountPath: string, cacheKeyPath?: string, ori
     `${toDockerPath(paths.opencode.config)}:/home/agent/.config/opencode:rw`,
     `${toDockerPath(paths.opencode.data)}:/home/agent/.local/share/opencode:rw`,
   ];
+
+  // Only mount Codex config for Codex agent (least-privilege)
+  if (agent === 'codex') {
+    binds.push(`${toDockerPath(paths.codex)}:/home/agent/.codex:rw`);
+  }
 
   // For worktrees, mount the original repo's .git directory so git commands work
   // The worktree's .git file points to the main repo's .git/worktrees/<name> directory
@@ -388,7 +399,7 @@ function getYoliumSshDir(): string | null {
 
 /**
  * Get git-credentials bind mount if PAT is configured.
- * Generates the credentials file from gitconfig.json and returns the mount string.
+ * Generates the credentials file from settings.json and returns the mount string.
  */
 function getGitCredentialsBind(): string | null {
   const gitConfig = loadGitConfig();
@@ -399,7 +410,7 @@ function getGitCredentialsBind(): string | null {
     return null;
   }
   logger.info('Git credentials file generated', { credPath });
-  return `${toDockerPath(credPath)}:/home/agent/.git-credentials:ro`;
+  return `${toDockerPath(credPath)}:/home/agent/.git-credentials-mounted:ro`;
 }
 
 /**
@@ -461,7 +472,7 @@ export async function ensureImage(
  *
  * @param webContentsId - The Electron webContents ID for IPC
  * @param folderPath - The local folder to mount in the container
- * @param agent - The agent to run: 'claude' or 'opencode'
+ * @param agent - The agent to run: 'claude', 'opencode', 'codex', or 'shell'
  * @param gsdEnabled - Whether to run get-shit-done-cc before Claude
  * @param gitConfig - Optional git identity config (name and email)
  * @param worktreeEnabled - Whether to create a git worktree for isolation
@@ -520,7 +531,7 @@ export async function createYolium(
   // Build bind mounts (extract to log them for debugging)
   // Use mountPath for project directory, but use original resolvedFolderPath for cache isolation
   // Pass resolvedFolderPath as originalRepoPath so worktrees can access the main repo's .git
-  const binds = buildPersistentBindMounts(mountPath, resolvedFolderPath, worktreePath ? resolvedFolderPath : undefined);
+  const binds = buildPersistentBindMounts(mountPath, agent, resolvedFolderPath, worktreePath ? resolvedFolderPath : undefined);
   const sshDir = getYoliumSshDir();
   if (sshDir) {
     binds.push(`${toDockerPath(sshDir)}:/home/agent/.ssh:rw`);
@@ -545,19 +556,25 @@ export async function createYolium(
       AttachStderr: true,
       WorkingDir: containerProjectPath,
       Env: [
-        `PROJECT_DIR=${containerProjectPath}`,
-        `TOOL=${agent}`,
-        `GSD_ENABLED=${gsdEnabled}`,
-        `HOST_HOME=${toContainerHomePath(os.homedir())}`,
-        'CLAUDE_CONFIG_DIR=/home/agent/.claude',
-        'HISTFILE=/home/agent/.yolium_history/zsh_history',
-        ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
-        ...(process.env.YOLIUM_LOG_LEVEL ? [`YOLIUM_LOG_LEVEL=${process.env.YOLIUM_LOG_LEVEL}`] : []),
-        ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
-        ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
-        // For worktrees: pass the original repo path so entrypoint can create symlink for git
-        ...(worktreePath ? [`WORKTREE_REPO_PATH=${toDockerPath(resolvedFolderPath)}`] : []),
-      ],
+          `PROJECT_DIR=${containerProjectPath}`,
+          `TOOL=${agent}`,
+          `GSD_ENABLED=${gsdEnabled}`,
+          `HOST_HOME=${toContainerHomePath(os.homedir())}`,
+          'CLAUDE_CONFIG_DIR=/home/agent/.claude',
+          'HISTFILE=/home/agent/.yolium_history/zsh_history',
+          ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
+          ...(process.env.YOLIUM_LOG_LEVEL ? [`YOLIUM_LOG_LEVEL=${process.env.YOLIUM_LOG_LEVEL}`] : []),
+          ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
+          ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
+          // For worktrees: pass the original repo path so entrypoint can create symlink for git
+          ...(worktreePath ? [`WORKTREE_REPO_PATH=${toDockerPath(resolvedFolderPath)}`] : []),
+          // Pass OpenAI API key for Codex agent only (stored config takes precedence over env var)
+          ...(agent === 'codex' ? (() => {
+            const storedConfig = loadGitConfig();
+            const key = storedConfig?.openaiApiKey || process.env.OPENAI_API_KEY;
+            return key ? [`OPENAI_API_KEY=${key}`] : [];
+          })() : []),
+        ],
       HostConfig: {
         CapAdd: ['NET_ADMIN'],
         Binds: binds,
@@ -856,6 +873,323 @@ export function deleteSessionWorktree(sessionId: string): void {
       error: err instanceof Error ? err.message : String(err),
     });
   }
+}
+
+// ============================================================================
+// Code Review Functions
+// ============================================================================
+
+/**
+ * List remote branches for a git repository URL.
+ * Uses git ls-remote with credentials from stored git config.
+ */
+export async function listRemoteBranches(repoUrl: string): Promise<{ branches: string[]; error?: string }> {
+  const gitConfig = loadGitConfig();
+  const env: Record<string, string> = { ...process.env as Record<string, string> };
+
+  // If PAT is configured, set GIT_ASKPASS to provide credentials
+  if (gitConfig?.githubPat) {
+    const credPath = generateGitCredentials(gitConfig);
+    if (credPath) {
+      env.GIT_TERMINAL_PROMPT = '0';
+      // Use credential helper with the stored credentials file
+      env.GIT_CONFIG_COUNT = '1';
+      env.GIT_CONFIG_KEY_0 = 'credential.helper';
+      env.GIT_CONFIG_VALUE_0 = `store --file "${credPath}"`;
+    }
+  }
+
+  return new Promise((resolve) => {
+    const proc = spawn('git', ['ls-remote', '--heads', repoUrl], {
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 30000,
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (data: Buffer) => {
+      stdout += data.toString();
+    });
+
+    proc.stderr.on('data', (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    proc.on('close', (code) => {
+      if (code !== 0) {
+        logger.error('Failed to list remote branches', { repoUrl, stderr });
+        resolve({ branches: [], error: stderr.trim() || `git ls-remote failed with code ${code}` });
+        return;
+      }
+
+      const branches = stdout
+        .split('\n')
+        .filter(line => line.trim())
+        .map(line => {
+          // Format: <sha>\trefs/heads/<branch-name>
+          const match = line.match(/refs\/heads\/(.+)$/);
+          return match ? match[1] : null;
+        })
+        .filter((b): b is string => b !== null)
+        .sort();
+
+      resolve({ branches });
+    });
+
+    proc.on('error', (err) => {
+      logger.error('Failed to spawn git ls-remote', { repoUrl, error: err.message });
+      resolve({ branches: [], error: `Failed to run git: ${err.message}` });
+    });
+  });
+}
+
+/**
+ * Check if an agent has cached authentication credentials.
+ * For Claude: checks if ~/.claude directory has auth data.
+ * For OpenCode: checks if ~/.config/opencode has auth data.
+ */
+export function checkAgentAuth(agent: string): { authenticated: boolean } {
+  const homeDir = os.homedir();
+
+  if (agent === 'claude') {
+    // Claude stores auth in ~/.claude/credentials.json or similar
+    const claudeDir = path.join(homeDir, '.claude');
+    try {
+      const entries = fs.readdirSync(claudeDir);
+      // If the directory has files beyond just settings, likely authenticated
+      const hasAuth = entries.some(e =>
+        e.includes('credentials') || e.includes('auth') || e === '.credentials.json'
+      );
+      // Also check if there's a non-empty directory (Claude stores session data)
+      const hasContent = entries.length > 0;
+      return { authenticated: hasAuth || hasContent };
+    } catch {
+      return { authenticated: false };
+    }
+  }
+
+  if (agent === 'opencode') {
+    const opencodeConfig = path.join(homeDir, '.config', 'opencode');
+    try {
+      const entries = fs.readdirSync(opencodeConfig);
+      return { authenticated: entries.length > 0 };
+    } catch {
+      return { authenticated: false };
+    }
+  }
+
+  if (agent === 'codex') {
+    // Codex can authenticate via:
+    // 1. Stored OpenAI API key in Yolium settings
+    // 2. OPENAI_API_KEY environment variable
+    // 3. OAuth tokens in ~/.codex/auth.json (from `codex` login)
+    const storedConfig = loadGitConfig();
+    if (storedConfig?.openaiApiKey || process.env.OPENAI_API_KEY) {
+      return { authenticated: true };
+    }
+    const codexAuthFile = path.join(homeDir, '.codex', 'auth.json');
+    try {
+      const content = fs.readFileSync(codexAuthFile, 'utf-8');
+      const auth = JSON.parse(content);
+      // Check for OAuth tokens or an API key in auth.json
+      if (auth.tokens?.access_token || auth.OPENAI_API_KEY) {
+        return { authenticated: true };
+      }
+    } catch {
+      // auth.json doesn't exist or is invalid
+    }
+    return { authenticated: false };
+  }
+
+  return { authenticated: false };
+}
+
+/**
+ * Create a headless code review container.
+ * Clones the repo, checks out the branch, runs the agent with a review prompt,
+ * and posts comments to the PR via gh CLI.
+ *
+ * @param webContentsId - The Electron webContents ID for IPC status updates
+ * @param repoUrl - The git repository URL to clone
+ * @param branch - The branch to review
+ * @param agent - The review agent to use ('claude' or 'opencode')
+ * @param gitConfig - Git identity config
+ */
+export async function createCodeReviewContainer(
+  webContentsId: number,
+  repoUrl: string,
+  branch: string,
+  agent: string = 'claude',
+  gitConfig?: { name: string; email: string },
+): Promise<string> {
+  const sessionId = `review-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+  logger.info('Creating code review container', { sessionId, repoUrl, branch, agent });
+
+  // Create a temporary directory for the clone
+  const tmpDir = path.join(os.tmpdir(), `yolium-review-${sessionId}`);
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  const containerProjectPath = getContainerProjectPath(tmpDir);
+
+  // Build minimal bind mounts (no project cache needed for ephemeral review)
+  const homeDir = os.homedir();
+  const claudeDir = path.join(homeDir, '.claude');
+  const opencodeConfigDir = path.join(homeDir, '.config', 'opencode');
+  const opencodeDataDir = path.join(homeDir, '.local', 'share', 'opencode');
+  fs.mkdirSync(claudeDir, { recursive: true });
+  fs.mkdirSync(opencodeConfigDir, { recursive: true });
+  fs.mkdirSync(opencodeDataDir, { recursive: true });
+
+  const binds = [
+    `${toDockerPath(tmpDir)}:${containerProjectPath}:rw`,
+    `${toDockerPath(claudeDir)}:/home/agent/.claude:rw`,
+    `${toDockerPath(opencodeConfigDir)}:/home/agent/.config/opencode:rw`,
+    `${toDockerPath(opencodeDataDir)}:/home/agent/.local/share/opencode:rw`,
+  ];
+
+  // Only mount Codex config for Codex agent (least-privilege)
+  if (agent === 'codex') {
+    const codexDir = path.join(homeDir, '.codex');
+    fs.mkdirSync(codexDir, { recursive: true });
+    binds.push(`${toDockerPath(codexDir)}:/home/agent/.codex:rw`);
+  }
+
+  // Add SSH keys if available
+  const sshDir = getYoliumSshDir();
+  if (sshDir) {
+    binds.push(`${toDockerPath(sshDir)}:/home/agent/.ssh:rw`);
+  }
+
+  // Add git credentials
+  const gitCredBind = getGitCredentialsBind();
+  if (gitCredBind) {
+    binds.push(gitCredBind);
+  }
+
+  logger.debug('Code review container bind mounts', { sessionId, binds });
+
+  const container = await docker.createContainer({
+    Image: DEFAULT_IMAGE,
+    Tty: false,
+    OpenStdin: false,
+    AttachStdin: false,
+    AttachStdout: true,
+    AttachStderr: true,
+    WorkingDir: containerProjectPath,
+    Env: [
+      `PROJECT_DIR=${containerProjectPath}`,
+      `TOOL=code-review`,
+      `REVIEW_REPO_URL=${repoUrl}`,
+      `REVIEW_BRANCH=${branch}`,
+      `REVIEW_AGENT=${agent}`,
+      `HOST_HOME=${toContainerHomePath(os.homedir())}`,
+      'CLAUDE_CONFIG_DIR=/home/agent/.claude',
+      ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
+      ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
+      ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
+      ...(agent === 'codex' ? (() => {
+        const storedConfig = loadGitConfig();
+        const key = storedConfig?.openaiApiKey || process.env.OPENAI_API_KEY;
+        return key ? [`OPENAI_API_KEY=${key}`] : [];
+      })() : []),
+    ],
+    HostConfig: {
+      CapAdd: ['NET_ADMIN'],
+      Binds: binds,
+    },
+  });
+
+  await container.start();
+
+  // Attach to container output (no stdin - headless)
+  const stream = await container.attach({
+    stream: true,
+    stdout: true,
+    stderr: true,
+  });
+
+  // Store session
+  sessions.set(sessionId, {
+    id: sessionId,
+    containerId: container.id,
+    stream: stream as unknown as NodeJS.ReadWriteStream,
+    webContentsId,
+    folderPath: tmpDir,
+    state: 'running',
+  });
+
+  // Forward output for status tracking
+  stream.on('data', (data: Buffer) => {
+    const dataStr = data.toString();
+    logger.debug('Code review output', { sessionId, output: dataStr.slice(0, 200) });
+
+    const webContents = BrowserWindow.getAllWindows().find(
+      (w) => w.webContents.id === webContentsId
+    )?.webContents;
+
+    if (webContents && !webContents.isDestroyed()) {
+      webContents.send('code-review:output', sessionId, dataStr);
+    }
+  });
+
+  // Handle completion
+  stream.on('end', async () => {
+    const session = sessions.get(sessionId);
+    if (session) {
+      session.state = 'stopped';
+
+      let exitCode = 0;
+      try {
+        const info = await container.inspect();
+        exitCode = info.State.ExitCode;
+      } catch {
+        // Container may already be removed
+      }
+
+      const webContents = BrowserWindow.getAllWindows().find(
+        (w) => w.webContents.id === webContentsId
+      )?.webContents;
+
+      if (webContents && !webContents.isDestroyed()) {
+        webContents.send('code-review:complete', sessionId, exitCode);
+      }
+
+      // Cleanup: remove container and temp directory
+      try {
+        await container.remove({ force: true });
+      } catch {
+        // Container may already be removed
+      }
+      try {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      } catch {
+        // Temp dir may already be removed
+      }
+
+      sessions.delete(sessionId);
+    }
+  });
+
+  stream.on('error', (err: Error) => {
+    logger.error('Code review stream error', { sessionId, error: err.message });
+    const session = sessions.get(sessionId);
+    if (session) {
+      session.state = 'crashed';
+    }
+
+    const webContents = BrowserWindow.getAllWindows().find(
+      (w) => w.webContents.id === webContentsId
+    )?.webContents;
+
+    if (webContents && !webContents.isDestroyed()) {
+      webContents.send('code-review:complete', sessionId, 1);
+    }
+  });
+
+  return sessionId;
 }
 
 // ============================================================================
