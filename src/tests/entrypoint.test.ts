@@ -67,6 +67,19 @@ describe('entrypoint.sh', () => {
       expect(entrypointContent).toContain('unset');
     });
 
+    it('should quote the credential file path in git config', () => {
+      // The credential helper config must quote $GIT_CRED_FILE to handle paths with spaces
+      // It should NOT have an unquoted `--file $GIT_CRED_FILE`
+      expect(entrypointContent).not.toMatch(/store --file \$GIT_CRED_FILE"/);
+      // It should use proper quoting around the variable
+      expect(entrypointContent).toMatch(/store --file=.*\$GIT_CRED_FILE/);
+    });
+
+    it('should have an EXIT trap to clean up git credentials', () => {
+      // The credential file should be removed when the container process exits
+      expect(entrypointContent).toMatch(/trap\s+.*rm\s.*\.git-credentials.*EXIT/);
+    });
+
     it('should warn against using E2E tests in container', () => {
       // CLAUDE.md should tell Claude not to run E2E tests in container
       expect(entrypointContent).toContain('E2E');

@@ -190,7 +190,8 @@ if [ -f "/home/agent/.git-credentials-mounted" ]; then
     GIT_CRED_FILE="/tmp/.git-credentials"
     cp /home/agent/.git-credentials-mounted "$GIT_CRED_FILE"
     chmod 600 "$GIT_CRED_FILE"
-    git config --global credential.helper "store --file $GIT_CRED_FILE"
+    git config --global credential.helper "store --file=\"$GIT_CRED_FILE\""
+    trap 'rm -f /tmp/.git-credentials' EXIT
     add_status "✅ GitHub HTTPS credentials configured"
 
     # Authenticate gh CLI using stored credentials

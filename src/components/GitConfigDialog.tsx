@@ -63,8 +63,8 @@ export function GitConfigDialog({
     if (/[@:\/]/.test(trimmed)) {
       return { valid: false, error: 'Paste only the token, not a URL (remove @github.com or similar)' };
     }
-    if (!/^[A-Za-z0-9_]+$/.test(trimmed)) {
-      return { valid: false, error: 'Token should only contain letters, numbers, and underscores' };
+    if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) {
+      return { valid: false, error: 'Token should only contain letters, numbers, underscores, and hyphens' };
     }
     return { valid: true };
   };
