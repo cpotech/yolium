@@ -410,6 +410,18 @@ Be thorough but constructive. Focus on substantive issues, not nitpicks."
         exit $?
     elif [ "$REVIEW_AGENT" = "codex" ]; then
         log "Running Codex for code review"
+        # Validate authentication before running Codex
+        if [ -z "$OPENAI_API_KEY" ]; then
+            if [ -f /home/agent/.codex/auth.json ] && \
+               command -v jq >/dev/null 2>&1 && \
+               jq -e '.tokens.access_token // empty' /home/agent/.codex/auth.json >/dev/null 2>&1; then
+                log "Using Codex OAuth authentication for code review"
+            else
+                echo "ERROR: No Codex authentication found."
+                echo "Set your OpenAI API Key in Yolium Settings, or run 'codex login' on the host."
+                exit 3
+            fi
+        fi
         # Use danger-full-access sandbox — Codex's Landlock sandbox panics on
         # kernels where Landlock is compiled but not functional.
         # Docker already provides container-level isolation.

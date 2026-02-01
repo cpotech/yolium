@@ -184,9 +184,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('code-review:output', handler);
     return () => ipcRenderer.removeListener('code-review:output', handler);
   },
-  onCodeReviewComplete: (callback: (sessionId: string, exitCode: number) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, exitCode: number) =>
-      callback(sessionId, exitCode);
+  onCodeReviewComplete: (callback: (sessionId: string, exitCode: number, authError?: boolean) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, exitCode: number, authError?: boolean) =>
+      callback(sessionId, exitCode, authError);
     ipcRenderer.on('code-review:complete', handler);
     return () => ipcRenderer.removeListener('code-review:complete', handler);
   },
@@ -295,7 +295,7 @@ declare global {
       checkAgentAuth: (agent: string) => Promise<{ authenticated: boolean }>;
       startCodeReview: (repoUrl: string, branch: string, agent: string, gitConfig?: { name: string; email: string }) => Promise<string>;
       onCodeReviewOutput: (callback: (sessionId: string, data: string) => void) => CleanupFn;
-      onCodeReviewComplete: (callback: (sessionId: string, exitCode: number) => void) => CleanupFn;
+      onCodeReviewComplete: (callback: (sessionId: string, exitCode: number, authError?: boolean) => void) => CleanupFn;
     };
   }
 }
