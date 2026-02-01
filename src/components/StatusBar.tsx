@@ -43,7 +43,7 @@ export function StatusBar({
   return (
     <div data-testid="status-bar" className="flex items-center justify-between h-7 px-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)] text-xs shrink-0">
       {/* Left: folder path + git branch + state */}
-      <div className="flex items-center gap-2 text-[var(--color-text-secondary)] truncate">
+      <div className="flex items-center gap-2 text-[var(--color-text-secondary)] truncate overflow-hidden min-w-0">
         <span data-testid="status-path" className="truncate max-w-[300px]" title={folderPath}>
           {folderPath}
         </span>
@@ -74,7 +74,7 @@ export function StatusBar({
       </div>
 
       {/* Right: action buttons and shortcuts hint */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-shrink-0">
         {/* Stop button (only when running or starting) */}
         {(containerState === 'running' || containerState === 'starting') && (
           <button
@@ -84,7 +84,7 @@ export function StatusBar({
             title="Stop yolium"
           >
             <Square size={10} className="fill-current" />
-            <span>Stop</span>
+            <span className="hidden sm:inline">Stop</span>
           </button>
         )}
 
@@ -95,7 +95,7 @@ export function StatusBar({
             className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-tertiary)] transition-colors"
             title="Close and restart"
           >
-            <span>Close</span>
+            <span className="hidden sm:inline">Close</span>
           </button>
         )}
 
@@ -123,7 +123,7 @@ export function StatusBar({
                 ) : (
                   <RefreshCw size={10} />
                 )}
-                <span>Delete</span>
+                <span className="hidden sm:inline">Delete</span>
               </button>
             )}
           </>
@@ -140,7 +140,7 @@ export function StatusBar({
           title="PR Code Review"
         >
           <GitPullRequest size={12} />
-          <span>PR Review</span>
+          <span className="hidden sm:inline">PR Review</span>
         </button>
 
         {/* Settings button */}
@@ -175,7 +175,7 @@ export function StatusBar({
           title="Keyboard shortcuts (Ctrl+?)"
         >
           <Keyboard size={12} />
-          <span>Ctrl+?</span>
+          <span className="hidden sm:inline">Ctrl+?</span>
         </button>
       </div>
     </div>

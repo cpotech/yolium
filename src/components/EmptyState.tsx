@@ -63,7 +63,7 @@ export function EmptyState({ onNewTab }: EmptyStateProps): React.ReactElement {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <div data-testid="empty-state" className="relative flex flex-col items-center justify-center h-full bg-[var(--color-bg-primary)] text-[var(--color-text-muted)] px-4 py-8">
+    <div data-testid="empty-state" className="relative flex flex-col items-center justify-center h-full overflow-y-auto bg-[var(--color-bg-primary)] text-[var(--color-text-muted)] px-4 py-8">
       {/* Theme toggle - top right */}
       <button
         data-testid="theme-toggle"
