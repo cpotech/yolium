@@ -166,6 +166,8 @@ const createWindow = (): void => {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    minWidth: 800,
+    minHeight: 600,
     autoHideMenuBar: true,
     icon: iconPath,
     webPreferences: {
@@ -176,8 +178,10 @@ const createWindow = (): void => {
     },
   });
 
-  // Maximize window on launch
-  mainWindow.maximize();
+  // Maximize window on launch (skip in test mode for deterministic E2E window size)
+  if (process.env.NODE_ENV !== 'test') {
+    mainWindow.maximize();
+  }
 
   // Load the renderer
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
