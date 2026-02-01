@@ -294,10 +294,16 @@ async function buildLocalImage(
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
+    // Capture recent output lines so we can include them in error messages
+    const recentLines: string[] = [];
+    const MAX_ERROR_LINES = 20;
+
     proc.stdout.on('data', (data: Buffer) => {
       const lines = data.toString().split('\n').filter((l) => l.trim());
       for (const line of lines) {
         onProgress?.(line);
+        recentLines.push(line);
+        if (recentLines.length > MAX_ERROR_LINES) recentLines.shift();
       }
     });
 
@@ -305,6 +311,8 @@ async function buildLocalImage(
       const lines = data.toString().split('\n').filter((l) => l.trim());
       for (const line of lines) {
         onProgress?.(line);
+        recentLines.push(line);
+        if (recentLines.length > MAX_ERROR_LINES) recentLines.shift();
       }
     });
 
@@ -313,7 +321,10 @@ async function buildLocalImage(
         onProgress?.('Image built successfully!');
         resolve();
       } else {
-        reject(new Error(`Docker build failed with exit code ${code}`));
+        const context = recentLines.length > 0
+          ? `\n\nBuild output:\n${recentLines.join('\n')}`
+          : '';
+        reject(new Error(`Docker build failed with exit code ${code}${context}`));
       }
     });
 
