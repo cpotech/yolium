@@ -1140,8 +1140,9 @@ export async function createCodeReviewContainer(
     const dataStr = data.toString();
     logger.debug('Code review output', { sessionId, output: dataStr.slice(0, 200) });
 
-    // Detect 401 auth errors from agent output (e.g. Codex missing OPENAI_API_KEY)
-    if (!detectedAuthError && /401 Unauthorized|Missing bearer.*authentication/i.test(dataStr)) {
+    // Detect 401 auth errors from Codex output (missing OPENAI_API_KEY)
+    // Scoped to codex agent to avoid false positives from reviewed repo output
+    if (!detectedAuthError && agent === 'codex' && /401 Unauthorized|Missing bearer.*authentication/i.test(dataStr)) {
       detectedAuthError = true;
       logger.warn('Code review auth error detected', { sessionId, agent });
     }

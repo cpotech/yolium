@@ -412,9 +412,16 @@ Be thorough but constructive. Focus on substantive issues, not nitpicks."
         log "Running Codex for code review"
         # Validate authentication before running Codex
         if [ -z "$OPENAI_API_KEY" ]; then
-            if [ -f /home/agent/.codex/auth.json ] && \
-               command -v jq >/dev/null 2>&1 && \
-               jq -e '.tokens.access_token // empty' /home/agent/.codex/auth.json >/dev/null 2>&1; then
+            HAS_OAUTH=false
+            if [ -f /home/agent/.codex/auth.json ]; then
+                if command -v jq >/dev/null 2>&1; then
+                    jq -e '.tokens.access_token // empty' /home/agent/.codex/auth.json >/dev/null 2>&1 && HAS_OAUTH=true
+                else
+                    # Fallback: grep for access_token when jq is not available
+                    grep -q '"access_token"' /home/agent/.codex/auth.json 2>/dev/null && HAS_OAUTH=true
+                fi
+            fi
+            if [ "$HAS_OAUTH" = "true" ]; then
                 log "Using Codex OAuth authentication for code review"
             else
                 echo "ERROR: No Codex authentication found."

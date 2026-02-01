@@ -948,3 +948,32 @@ describe('cleanup behavior patterns', () => {
     })
   })
 })
+
+describe('code review auth error detection', () => {
+  /**
+   * Reimplementation of the auth error detection logic from
+   * createCodeReviewContainer's stream.on('data') handler.
+   * The regex must be scoped to the codex agent to avoid false positives
+   * from 401s appearing in reviewed repo output.
+   */
+  function detectAuthError(dataStr: string, agent: string): boolean {
+    return agent === 'codex' && /401 Unauthorized|Missing bearer.*authentication/i.test(dataStr)
+  }
+
+  it('detects 401 Unauthorized in codex agent output', () => {
+    const output = '2026-02-01T17:48:34Z ERROR: unexpected status 401 Unauthorized: Missing bearer authentication'
+    expect(detectAuthError(output, 'codex')).toBe(true)
+  })
+
+  it('does not flag 401 errors for non-codex agents', () => {
+    const output = 'error=http 401 Unauthorized: Missing bearer authentication in header'
+    expect(detectAuthError(output, 'claude')).toBe(false)
+    expect(detectAuthError(output, 'opencode')).toBe(false)
+    expect(detectAuthError(output, 'shell')).toBe(false)
+  })
+
+  it('does not flag unrelated output for codex agent', () => {
+    const output = 'Reviewing file src/auth.ts... found 3 issues'
+    expect(detectAuthError(output, 'codex')).toBe(false)
+  })
+})
