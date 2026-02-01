@@ -214,12 +214,15 @@ function App(): React.ReactElement {
 
     try {
       // Set up completion listener
-      const cleanupComplete = window.electronAPI.onCodeReviewComplete((_sessionId, exitCode) => {
+      const cleanupComplete = window.electronAPI.onCodeReviewComplete((_sessionId, exitCode, authError) => {
         if (exitCode === 0) {
           setReviewStatus('completed');
         } else if (exitCode === 2) {
           setReviewStatus('failed');
           setReviewError('No open PR found for this branch. Please create a PR first.');
+        } else if (exitCode === 3 || authError) {
+          setReviewStatus('failed');
+          setReviewError('Agent authentication failed. Please check your API key in Settings.');
         } else {
           setReviewStatus('failed');
           setReviewError(`Container exited with code ${exitCode}`);

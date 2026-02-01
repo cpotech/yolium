@@ -1132,10 +1132,20 @@ export async function createCodeReviewContainer(
     state: 'running',
   });
 
+  // Track whether we've seen an auth error in the output
+  let detectedAuthError = false;
+
   // Forward output for status tracking
   stream.on('data', (data: Buffer) => {
     const dataStr = data.toString();
     logger.debug('Code review output', { sessionId, output: dataStr.slice(0, 200) });
+
+    // Detect 401 auth errors from Codex output (missing OPENAI_API_KEY)
+    // Scoped to codex agent to avoid false positives from reviewed repo output
+    if (!detectedAuthError && agent === 'codex' && /401 Unauthorized|Missing bearer.*authentication/i.test(dataStr)) {
+      detectedAuthError = true;
+      logger.warn('Code review auth error detected', { sessionId, agent });
+    }
 
     const webContents = BrowserWindow.getAllWindows().find(
       (w) => w.webContents.id === webContentsId
@@ -1165,7 +1175,7 @@ export async function createCodeReviewContainer(
       )?.webContents;
 
       if (webContents && !webContents.isDestroyed()) {
-        webContents.send('code-review:complete', sessionId, exitCode);
+        webContents.send('code-review:complete', sessionId, exitCode, detectedAuthError);
       }
 
       // Cleanup: remove container and temp directory
