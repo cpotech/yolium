@@ -14,7 +14,7 @@ export async function convertBlobToWav(blob: Blob): Promise<Uint8Array> {
 
   try {
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-    const pcmData = resampleToMono(audioBuffer, WHISPER_SAMPLE_RATE);
+    const pcmData = resampleToMono(audioBuffer);
     return encodeWav(pcmData, WHISPER_SAMPLE_RATE);
   } finally {
     await audioContext.close();
@@ -25,9 +25,7 @@ export async function convertBlobToWav(blob: Blob): Promise<Uint8Array> {
  * Mix an AudioBuffer down to a mono Float32Array.
  * Resampling is handled by AudioContext — this just averages channels.
  */
-export function resampleToMono(audioBuffer: AudioBuffer, targetRate: number): Float32Array {
-  // If AudioContext was created with the target rate, decodeAudioData
-  // already resampled for us. Just mix channels to mono.
+export function resampleToMono(audioBuffer: AudioBuffer): Float32Array {
   const numChannels = audioBuffer.numberOfChannels;
   const length = audioBuffer.length;
   const mono = new Float32Array(length);

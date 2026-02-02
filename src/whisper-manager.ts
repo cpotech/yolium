@@ -168,10 +168,11 @@ export function downloadModel(
     const makeRequest = (requestUrl: string) => {
       https.get(requestUrl, (response) => {
         // Handle redirects (Hugging Face uses them)
-        if (response.statusCode === 301 || response.statusCode === 302) {
+        if ([301, 302, 307, 308].includes(response.statusCode ?? 0)) {
           const redirectUrl = response.headers.location;
           if (redirectUrl) {
-            logger.debug('Following redirect', { from: requestUrl, to: redirectUrl });
+            logger.debug('Following redirect', { from: requestUrl, to: redirectUrl, statusCode: response.statusCode });
+            response.resume(); // Drain the response to free the socket
             makeRequest(redirectUrl);
             return;
           }
@@ -317,11 +318,22 @@ export function transcribeAudio(
     const args = buildTranscribeArgs(modelPath, audioPath, language);
     logger.info('Starting transcription', { binaryPath, modelSize, audioPath, language });
 
+    const TRANSCRIPTION_TIMEOUT_MS = 120_000; // 2 minutes
     const startTime = Date.now();
     let stdout = '';
     let stderr = '';
+    let settled = false;
 
     const proc = spawn(binaryPath, args);
+
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        logger.error('Transcription timed out', { timeoutMs: TRANSCRIPTION_TIMEOUT_MS });
+        proc.kill('SIGKILL');
+        reject(new Error(`Transcription timed out after ${TRANSCRIPTION_TIMEOUT_MS / 1000}s`));
+      }
+    }, TRANSCRIPTION_TIMEOUT_MS);
 
     proc.stdout.on('data', (data: Buffer) => {
       stdout += data.toString();
@@ -332,6 +344,10 @@ export function transcribeAudio(
     });
 
     proc.on('close', (code) => {
+      clearTimeout(timeout);
+      if (settled) return;
+      settled = true;
+
       const durationSeconds = (Date.now() - startTime) / 1000;
 
       if (code !== 0) {
@@ -348,6 +364,9 @@ export function transcribeAudio(
     });
 
     proc.on('error', (err) => {
+      clearTimeout(timeout);
+      if (settled) return;
+      settled = true;
       logger.error('Failed to spawn whisper process', { error: err.message });
       reject(err);
     });

@@ -3,100 +3,16 @@ import * as path from 'node:path'
 import * as os from 'node:os'
 import type { WhisperModelSize } from '../types/whisper'
 import { WHISPER_MODELS, WHISPER_MODEL_BASE_URL } from '../types/whisper'
-
-// ============================================================================
-// Pure utility functions extracted for testing
-// These mirror the implementation in whisper-manager.ts
-// ============================================================================
-
-/**
- * Get the directory where whisper models are stored.
- */
-function getModelsDir(): string {
-  return path.join(os.homedir(), '.yolium', 'whisper-models')
-}
-
-/**
- * Get the full file path for a specific model.
- */
-function getModelPath(modelSize: WhisperModelSize): string {
-  const model = WHISPER_MODELS[modelSize]
-  return path.join(getModelsDir(), model.fileName)
-}
-
-/**
- * Get the download URL for a specific model.
- */
-function getModelDownloadUrl(modelSize: WhisperModelSize): string {
-  const model = WHISPER_MODELS[modelSize]
-  return `${WHISPER_MODEL_BASE_URL}/${model.fileName}`
-}
-
-/**
- * Format bytes to a human-readable string.
- */
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(1024))
-  const value = bytes / Math.pow(1024, i)
-  return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`
-}
-
-/**
- * Validate a model size string.
- */
-function isValidModelSize(size: string): size is WhisperModelSize {
-  return size === 'small' || size === 'medium' || size === 'large'
-}
-
-/**
- * Get the directory for the whisper.cpp binary.
- */
-function getWhisperBinaryDir(): string {
-  return path.join(os.homedir(), '.yolium', 'whisper-cpp')
-}
-
-/**
- * Build the command-line arguments for whisper.cpp transcription.
- */
-function buildTranscribeArgs(
-  modelPath: string,
-  audioPath: string,
-  language: string = 'en'
-): string[] {
-  const args = [
-    '-m', modelPath,
-    '--no-timestamps',
-  ]
-  if (language !== 'auto') {
-    args.push('-l', language)
-  }
-  // Audio file as positional argument (whisper-cli style)
-  args.push(audioPath)
-  return args
-}
-
-/**
- * Parse whisper.cpp text output to extract transcription.
- */
-function parseWhisperOutput(output: string): string {
-  // whisper.cpp outputs various log lines then the transcription
-  // Filter out lines that are log/progress info
-  const lines = output.split('\n')
-  const textLines = lines.filter(line => {
-    const trimmed = line.trim()
-    // Skip empty lines
-    if (!trimmed) return false
-    // Skip whisper.cpp log lines (they start with specific patterns)
-    if (trimmed.startsWith('whisper_')) return false
-    if (trimmed.startsWith('main:')) return false
-    if (trimmed.startsWith('system_info:')) return false
-    if (trimmed.match(/^\[[\d:.\s->]+\]/)) return false // timestamp lines like [00:00:00.000 --> 00:00:05.000]
-    return true
-  })
-  return textLines.join(' ').trim()
-}
+import {
+  getModelsDir,
+  getModelPath,
+  getModelDownloadUrl,
+  formatBytes,
+  isValidModelSize,
+  getWhisperBinaryDir,
+  buildTranscribeArgs,
+  parseWhisperOutput,
+} from '../whisper-manager'
 
 // ============================================================================
 // Tests

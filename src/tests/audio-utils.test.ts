@@ -154,7 +154,7 @@ describe('resampleToMono', () => {
   it('returns mono unchanged for single channel input', () => {
     const input = new Float32Array([0.1, 0.2, 0.3, 0.4])
     const buffer = createMockAudioBuffer([input])
-    const result = resampleToMono(buffer, 16000)
+    const result = resampleToMono(buffer)
     expect(result.length).toBe(4)
     expect(result[0]).toBeCloseTo(0.1)
     expect(result[1]).toBeCloseTo(0.2)
@@ -166,7 +166,7 @@ describe('resampleToMono', () => {
     const left = new Float32Array([1.0, 0.0, -1.0])
     const right = new Float32Array([0.0, 1.0, -1.0])
     const buffer = createMockAudioBuffer([left, right])
-    const result = resampleToMono(buffer, 16000)
+    const result = resampleToMono(buffer)
     expect(result.length).toBe(3)
     expect(result[0]).toBeCloseTo(0.5)  // (1.0 + 0.0) / 2
     expect(result[1]).toBeCloseTo(0.5)  // (0.0 + 1.0) / 2
@@ -178,20 +178,20 @@ describe('resampleToMono', () => {
     const ch2 = new Float32Array([0.6])
     const ch3 = new Float32Array([0.9])
     const buffer = createMockAudioBuffer([ch1, ch2, ch3])
-    const result = resampleToMono(buffer, 16000)
+    const result = resampleToMono(buffer)
     expect(result[0]).toBeCloseTo(0.6) // (0.3 + 0.6 + 0.9) / 3
   })
 
   it('handles empty buffer', () => {
     const buffer = createMockAudioBuffer([new Float32Array(0)])
-    const result = resampleToMono(buffer, 16000)
+    const result = resampleToMono(buffer)
     expect(result.length).toBe(0)
   })
 
   it('preserves silence', () => {
     const silence = new Float32Array(100) // all zeros
     const buffer = createMockAudioBuffer([silence, silence])
-    const result = resampleToMono(buffer, 16000)
+    const result = resampleToMono(buffer)
     for (let i = 0; i < 100; i++) {
       expect(result[i]).toBe(0)
     }

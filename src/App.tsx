@@ -34,6 +34,15 @@ function App(): React.ReactElement {
   // Whisper speech-to-text
   const whisper = useWhisper();
 
+  // Stable ref for toggleRecording to avoid IPC listener re-registration
+  const toggleRecordingRef = useRef(whisper.toggleRecording);
+  toggleRecordingRef.current = whisper.toggleRecording;
+  const stableToggleRecording = useCallback(() => toggleRecordingRef.current(), []);
+
+  // Stable ref for clearTranscription to avoid useEffect dependency issues
+  const clearTranscriptionRef = useRef(whisper.clearTranscription);
+  clearTranscriptionRef.current = whisper.clearTranscription;
+
   // State for Docker readiness (null = checking, true = ready, false = needs setup)
   const [dockerReady, setDockerReady] = useState<boolean | null>(null);
 
@@ -432,17 +441,18 @@ function App(): React.ReactElement {
       const activeTab = tabs.find(t => t.id === activeTabId);
       if (activeTab) {
         window.electronAPI.writeYolium(activeTab.sessionId, whisper.state.transcribedText);
-        whisper.clearTranscription();
+        clearTranscriptionRef.current();
       }
     }
-  }, [whisper.state.transcribedText, activeTabId, tabs, whisper]);
+  }, [whisper.state.transcribedText, activeTabId, tabs]);
 
-  // Handle whisper model deletion (refresh model list)
+  // Handle whisper model deletion (refresh model list by closing and reopening dialog synchronously)
   const handleDeleteWhisperModel = useCallback(async (modelSize: WhisperModelSize) => {
     await window.electronAPI.whisperDeleteModel(modelSize);
-    // Re-open dialog to refresh state
+    // Close and re-open to force the dialog to re-fetch model list
     whisper.closeModelDialog();
-    setTimeout(() => whisper.openModelDialog(), 100);
+    // Use requestAnimationFrame to wait for React to process the close before reopening
+    requestAnimationFrame(() => whisper.openModelDialog());
   }, [whisper]);
 
   // Handle context menu
@@ -466,7 +476,7 @@ function App(): React.ReactElement {
     const cleanupCloseAll = window.electronAPI.onTabCloseAll(handleCloseAllTabs);
     const cleanupShortcuts = window.electronAPI.onShortcutsShow(handleShowShortcuts);
     const cleanupGitSettings = window.electronAPI.onGitSettingsShow(handleOpenGitConfig);
-    const cleanupRecording = window.electronAPI.onRecordingToggle(whisper.toggleRecording);
+    const cleanupRecording = window.electronAPI.onRecordingToggle(stableToggleRecording);
 
     return () => {
       cleanupNew();
@@ -480,7 +490,7 @@ function App(): React.ReactElement {
       cleanupGitSettings();
       cleanupRecording();
     };
-  }, [handleNewYolium, handleCloseActiveTab, handleNextTab, handlePrevTab, handleCloseTab, handleCloseOtherTabs, handleCloseAllTabs, handleShowShortcuts, handleOpenGitConfig, whisper.toggleRecording]);
+  }, [handleNewYolium, handleCloseActiveTab, handleNextTab, handlePrevTab, handleCloseTab, handleCloseOtherTabs, handleCloseAllTabs, handleShowShortcuts, handleOpenGitConfig, stableToggleRecording]);
 
   // Listen for container exit events to update state
   useEffect(() => {

@@ -41,10 +41,12 @@ import {
   isWhisperBinaryAvailable,
   getSelectedModel,
   saveSelectedModel,
+  isValidModelSize,
 } from './whisper-manager';
 import type { WhisperModelSize } from './types/whisper';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
+import * as crypto from 'node:crypto';
 
 const logger = createLogger('main');
 
@@ -633,15 +635,18 @@ ipcMain.handle('whisper:list-models', () => {
 });
 
 ipcMain.handle('whisper:is-model-downloaded', (_event, modelSize: WhisperModelSize) => {
+  if (!isValidModelSize(modelSize)) throw new Error(`Invalid model size: ${modelSize}`);
   return isModelDownloaded(modelSize);
 });
 
 ipcMain.handle('whisper:download-model', (event, modelSize: WhisperModelSize) => {
+  if (!isValidModelSize(modelSize)) throw new Error(`Invalid model size: ${modelSize}`);
   logger.info('IPC: whisper:download-model', { modelSize });
   return downloadModel(modelSize, event.sender);
 });
 
 ipcMain.handle('whisper:delete-model', (_event, modelSize: WhisperModelSize) => {
+  if (!isValidModelSize(modelSize)) throw new Error(`Invalid model size: ${modelSize}`);
   logger.info('IPC: whisper:delete-model', { modelSize });
   return deleteModel(modelSize);
 });
@@ -651,6 +656,7 @@ ipcMain.handle('whisper:is-binary-available', () => {
 });
 
 ipcMain.handle('whisper:transcribe', async (_event, audioData: number[], modelSize: WhisperModelSize) => {
+  if (!isValidModelSize(modelSize)) throw new Error(`Invalid model size: ${modelSize}`);
   logger.info('IPC: whisper:transcribe', { modelSize, audioDataLength: audioData.length });
 
   // Write audio data to a temp file
@@ -658,7 +664,7 @@ ipcMain.handle('whisper:transcribe', async (_event, audioData: number[], modelSi
   if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir, { recursive: true });
   }
-  const tempPath = path.join(tempDir, `audio-${Date.now()}.wav`);
+  const tempPath = path.join(tempDir, `audio-${crypto.randomUUID()}.wav`);
   fs.writeFileSync(tempPath, Buffer.from(audioData));
 
   try {
@@ -677,6 +683,7 @@ ipcMain.handle('whisper:get-selected-model', () => {
 });
 
 ipcMain.handle('whisper:save-selected-model', (_event, modelSize: WhisperModelSize) => {
+  if (!isValidModelSize(modelSize)) throw new Error(`Invalid model size: ${modelSize}`);
   saveSelectedModel(modelSize);
 });
 
