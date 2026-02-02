@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
-import { Download, Trash2, Check, Loader2, HardDrive } from 'lucide-react';
+import { Download, Trash2, Check, Loader2, HardDrive, Copy, ClipboardCheck } from 'lucide-react';
 import type { WhisperModelSize } from '../types/whisper';
 import { WHISPER_MODELS } from '../types/whisper';
 
@@ -20,6 +20,27 @@ interface ModelInfo {
   sizeBytes: number;
   downloaded: boolean;
   description: string;
+  path?: string;
+}
+
+function CopyPathButton({ path }: { path: string }): React.ReactElement {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(path).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex-shrink-0 p-0.5 rounded text-[var(--color-text-disabled)] hover:text-[var(--color-text-secondary)] transition-colors"
+      title="Copy path to clipboard"
+    >
+      {copied ? <ClipboardCheck size={10} /> : <Copy size={10} />}
+    </button>
+  );
 }
 
 function formatSize(bytes: number): string {
@@ -54,6 +75,7 @@ export function WhisperModelDialog({
         sizeBytes: m.sizeBytes,
         downloaded: m.downloaded,
         description: WHISPER_MODELS[m.size as WhisperModelSize]?.description || '',
+        path: m.path,
       }));
       setModels(infos);
       setLoading(false);
@@ -145,6 +167,12 @@ export function WhisperModelDialog({
                         <span className="text-[var(--color-status-success)]">Downloaded</span>
                       )}
                     </div>
+                    {model.downloaded && model.path && (
+                      <div className="flex items-center gap-1 mt-0.5 max-w-xs">
+                        <span className="text-[var(--color-text-disabled)] text-[10px] font-mono truncate" title={model.path}>{model.path}</span>
+                        <CopyPathButton path={model.path} />
+                      </div>
+                    )}
                   </button>
 
                   {/* Download/delete actions */}

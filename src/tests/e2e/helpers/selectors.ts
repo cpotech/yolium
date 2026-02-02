@@ -65,6 +65,16 @@ export const selectors = {
   gitConfigSaveButton: '[data-testid="git-config-save"]',
   gitConfigCancelButton: '[data-testid="git-config-cancel"]',
 
+  // Speech-to-text / Whisper
+  speechToTextButton: '[data-testid="speech-to-text-button"]',
+  speechModelSelect: '[data-testid="speech-model-select"]',
+  whisperModelDialog: '[data-testid="whisper-model-dialog"]',
+  whisperModelClose: '[data-testid="whisper-model-close"]',
+  whisperModel: (size: 'small' | 'medium' | 'large') => `[data-testid="whisper-model-${size}"]`,
+  whisperDownload: (size: 'small' | 'medium' | 'large') => `[data-testid="whisper-download-${size}"]`,
+  whisperDelete: (size: 'small' | 'medium' | 'large') => `[data-testid="whisper-delete-${size}"]`,
+  recordingHint: '[data-testid="recording-hint"]',
+
   // Keyboard shortcuts dialog
   shortcutsDialog: '[data-testid="shortcuts-dialog"]',
   shortcutsCloseButton: '[data-testid="shortcuts-close"]',

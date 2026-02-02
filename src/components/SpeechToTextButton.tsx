@@ -36,10 +36,10 @@ export function SpeechToTextButton({
         } disabled:opacity-50`}
         title={
           isRecording
-            ? 'Stop recording (click to transcribe)'
+            ? 'Stop recording (Ctrl+Shift+R)'
             : isTranscribing
             ? 'Transcribing...'
-            : 'Start speech-to-text'
+            : 'Start speech-to-text (Ctrl+Shift+R)'
         }
       >
         {isTranscribing ? (
@@ -51,6 +51,7 @@ export function SpeechToTextButton({
         )}
         {isRecording && <span className="text-xs">Rec</span>}
         {isTranscribing && <span className="text-xs">...</span>}
+        {isIdle && <span data-testid="recording-hint" className="text-[10px] text-[var(--color-text-disabled)] ml-0.5">Ctrl+Shift+R</span>}
       </button>
 
       {/* Model selector dropdown trigger */}

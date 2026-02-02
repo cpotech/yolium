@@ -38,6 +38,22 @@ const initialState: WhisperState = {
   downloadProgress: null,
 };
 
+/** Map DOMException names from getUserMedia to user-friendly messages */
+export function micErrorMessage(err: DOMException): string {
+  switch (err.name) {
+    case 'NotFoundError':
+      return 'No microphone found. Connect a microphone and check Windows Settings > Privacy > Microphone.';
+    case 'NotAllowedError':
+      return 'Microphone access denied. Allow microphone in Windows Settings > Privacy > Microphone > "Let desktop apps access your microphone".';
+    case 'NotReadableError':
+      return 'Microphone is in use by another application. Close other apps using the mic and try again.';
+    case 'AbortError':
+      return 'Microphone access was interrupted. Please try again.';
+    default:
+      return `Microphone error: ${err.message}`;
+  }
+}
+
 export function whisperReducer(state: WhisperState, action: WhisperAction): WhisperState {
   switch (action.type) {
     case 'SET_MODEL':
@@ -131,10 +147,10 @@ export function useWhisper(): UseWhisperReturn {
       mediaRecorder.start(100); // Collect data every 100ms
       dispatch({ type: 'START_RECORDING' });
     } catch (err) {
-      dispatch({
-        type: 'TRANSCRIPTION_ERROR',
-        payload: err instanceof Error ? err.message : 'Failed to access microphone',
-      });
+      const message = err instanceof DOMException
+        ? micErrorMessage(err)
+        : err instanceof Error ? err.message : 'Failed to access microphone';
+      dispatch({ type: 'TRANSCRIPTION_ERROR', payload: message });
     }
   }, [state.recordingState]);
 

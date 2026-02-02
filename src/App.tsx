@@ -14,6 +14,7 @@ import { GitConfigDialog, GitConfig, GitConfigWithPat } from './components/GitCo
 import { CodeReviewDialog } from './components/CodeReviewDialog';
 import type { ReviewAgentType, CodeReviewStatus } from './types/agent';
 import { WhisperModelDialog } from './components/WhisperModelDialog';
+import { SpeechToTextButton } from './components/SpeechToTextButton';
 import type { WhisperModelSize } from './types/whisper';
 
 function App(): React.ReactElement {
@@ -663,6 +664,15 @@ function App(): React.ReactElement {
                   <span className="text-[var(--color-text-disabled)]">|</span>
                 </>
               )}
+
+              {/* Speech-to-text button */}
+              <SpeechToTextButton
+                recordingState={whisper.state.recordingState}
+                selectedModel={whisper.state.selectedModel}
+                onToggleRecording={whisper.toggleRecording}
+                onOpenModelDialog={whisper.openModelDialog}
+              />
+              <span className="text-[var(--color-text-disabled)]">|</span>
 
               {/* PR Review button */}
               <button

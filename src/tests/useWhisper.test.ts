@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { WhisperModelSize, WhisperRecordingState } from '../types/whisper'
+import { micErrorMessage } from '../hooks/useWhisper'
 
 // ============================================================================
 // Extract the reducer logic for testing (mirrors useWhisper.ts)
@@ -287,5 +288,32 @@ describe('whisperReducer', () => {
       expect(state.error).toBe('Audio too short')
       expect(state.transcribedText).toBeNull()
     })
+  })
+})
+
+describe('micErrorMessage', () => {
+  it('returns friendly message for NotFoundError', () => {
+    const err = new DOMException('', 'NotFoundError')
+    expect(micErrorMessage(err)).toContain('No microphone found')
+  })
+
+  it('returns friendly message for NotAllowedError', () => {
+    const err = new DOMException('', 'NotAllowedError')
+    expect(micErrorMessage(err)).toContain('Microphone access denied')
+  })
+
+  it('returns friendly message for NotReadableError', () => {
+    const err = new DOMException('', 'NotReadableError')
+    expect(micErrorMessage(err)).toContain('in use by another application')
+  })
+
+  it('returns friendly message for AbortError', () => {
+    const err = new DOMException('', 'AbortError')
+    expect(micErrorMessage(err)).toContain('interrupted')
+  })
+
+  it('returns generic message for unknown DOMException', () => {
+    const err = new DOMException('something broke', 'UnknownError')
+    expect(micErrorMessage(err)).toContain('something broke')
   })
 })

@@ -37,7 +37,6 @@ const shortcutGroups: ShortcutGroup[] = [
   {
     title: 'View',
     shortcuts: [
-      { keys: 'Ctrl+R', description: 'Reload' },
       { keys: 'Ctrl+Shift+I', description: 'Developer tools' },
       { keys: 'Ctrl++', description: 'Zoom in' },
       { keys: 'Ctrl+-', description: 'Zoom out' },
@@ -50,6 +49,7 @@ const shortcutGroups: ShortcutGroup[] = [
     shortcuts: [
       { keys: 'Ctrl+?', description: 'Keyboard shortcuts' },
       { keys: 'Ctrl+Shift+G', description: 'Git settings' },
+      { keys: 'Ctrl+Shift+R', description: 'Toggle recording' },
     ],
   },
 ];
