@@ -9,6 +9,7 @@ interface CodeReviewDialogProps {
   hasGitCredentials: boolean;
   reviewStatus: CodeReviewStatus | null;
   reviewError: string | null;
+  reviewLog: string[];
 }
 
 export function CodeReviewDialog({
@@ -18,9 +19,11 @@ export function CodeReviewDialog({
   hasGitCredentials,
   reviewStatus,
   reviewError,
+  reviewLog,
 }: CodeReviewDialogProps): React.ReactElement | null {
   const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const logEndRef = useRef<HTMLDivElement>(null);
 
   const [repoUrl, setRepoUrl] = useState('');
   const [branch, setBranch] = useState('');
@@ -42,6 +45,11 @@ export function CodeReviewDialog({
       setAgentAuthWarning(null);
     }
   }, [isOpen]);
+
+  // Auto-scroll log to bottom when new lines arrive
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [reviewLog]);
 
   // Document-level Escape listener (works regardless of focus state)
   useEffect(() => {
@@ -293,6 +301,16 @@ export function CodeReviewDialog({
             )}
             {reviewStatus === 'completed' && 'Review completed. Comments have been posted to the PR.'}
             {reviewStatus === 'failed' && `Review failed: ${reviewError || 'Unknown error'}`}
+          </div>
+        )}
+
+        {/* Container log output */}
+        {reviewLog.length > 0 && (
+          <div data-testid="review-log" className="mb-4 max-h-48 overflow-y-auto rounded-md bg-gray-950 border border-gray-700 p-2 font-mono text-xs text-gray-400">
+            {reviewLog.map((line, i) => (
+              <div key={i} className="whitespace-pre-wrap break-all">{line}</div>
+            ))}
+            <div ref={logEndRef} />
           </div>
         )}
 
