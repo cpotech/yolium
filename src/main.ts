@@ -98,6 +98,12 @@ function createAppMenu(window: BrowserWindow): void {
           accelerator: 'CmdOrCtrl+Shift+G',
           click: () => window.webContents.send('git-settings:show'),
         },
+        { type: 'separator' },
+        {
+          label: 'Toggle Recording',
+          accelerator: 'CmdOrCtrl+Shift+R',
+          click: () => window.webContents.send('recording:toggle'),
+        },
       ],
     },
     {

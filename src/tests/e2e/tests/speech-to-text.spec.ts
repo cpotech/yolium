@@ -98,7 +98,7 @@ test.describe('Speech-to-Text', () => {
       await window.click(selectors.pathNextButton);
       await expect(window.locator(selectors.agentDialog)).toBeVisible();
       await window.locator(selectors.agentOption('shell')).click();
-      await window.click(selectors.agentStartButton);
+      await window.keyboard.press('Enter');
 
       // Wait for status bar to appear with speech button
       await expect(window.locator(selectors.speechModelSelect)).toBeVisible({ timeout: 15000 });
@@ -128,7 +128,7 @@ test.describe('Speech-to-Text', () => {
       await window.click(selectors.pathNextButton);
       await expect(window.locator(selectors.agentDialog)).toBeVisible();
       await window.locator(selectors.agentOption('shell')).click();
-      await window.click(selectors.agentStartButton);
+      await window.keyboard.press('Enter');
 
       await expect(window.locator(selectors.speechModelSelect)).toBeVisible({ timeout: 15000 });
 
@@ -204,7 +204,7 @@ test.describe('Speech-to-Text', () => {
       await window.click(selectors.pathNextButton);
       await expect(window.locator(selectors.agentDialog)).toBeVisible();
       await window.locator(selectors.agentOption('shell')).click();
-      await window.click(selectors.agentStartButton);
+      await window.keyboard.press('Enter');
 
       // Wait for status bar
       await expect(window.locator(selectors.statusBar)).toBeVisible({ timeout: 15000 });
@@ -223,7 +223,7 @@ test.describe('Speech-to-Text', () => {
       await window.click(selectors.pathNextButton);
       await expect(window.locator(selectors.agentDialog)).toBeVisible();
       await window.locator(selectors.agentOption('shell')).click();
-      await window.click(selectors.agentStartButton);
+      await window.keyboard.press('Enter');
 
       await expect(window.locator(selectors.speechToTextButton)).toBeVisible({ timeout: 15000 });
       await expect(window.locator(selectors.speechToTextButton)).toContainText('Ctrl+Shift+R');
@@ -238,7 +238,7 @@ test.describe('Speech-to-Text', () => {
       await window.click(selectors.pathNextButton);
       await expect(window.locator(selectors.agentDialog)).toBeVisible();
       await window.locator(selectors.agentOption('shell')).click();
-      await window.click(selectors.agentStartButton);
+      await window.keyboard.press('Enter');
 
       await expect(window.locator(selectors.speechModelSelect)).toBeVisible({ timeout: 15000 });
       // Default model is Small
@@ -254,7 +254,7 @@ test.describe('Speech-to-Text', () => {
       await window.click(selectors.pathNextButton);
       await expect(window.locator(selectors.agentDialog)).toBeVisible();
       await window.locator(selectors.agentOption('shell')).click();
-      await window.click(selectors.agentStartButton);
+      await window.keyboard.press('Enter');
 
       await expect(window.locator(selectors.speechModelSelect)).toBeVisible({ timeout: 15000 });
 

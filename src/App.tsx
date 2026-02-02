@@ -454,6 +454,7 @@ function App(): React.ReactElement {
     const cleanupCloseAll = window.electronAPI.onTabCloseAll(handleCloseAllTabs);
     const cleanupShortcuts = window.electronAPI.onShortcutsShow(handleShowShortcuts);
     const cleanupGitSettings = window.electronAPI.onGitSettingsShow(handleOpenGitConfig);
+    const cleanupRecording = window.electronAPI.onRecordingToggle(whisper.toggleRecording);
 
     return () => {
       cleanupNew();
@@ -465,8 +466,9 @@ function App(): React.ReactElement {
       cleanupCloseAll();
       cleanupShortcuts();
       cleanupGitSettings();
+      cleanupRecording();
     };
-  }, [handleNewYolium, handleCloseActiveTab, handleNextTab, handlePrevTab, handleCloseTab, handleCloseOtherTabs, handleCloseAllTabs, handleShowShortcuts, handleOpenGitConfig]);
+  }, [handleNewYolium, handleCloseActiveTab, handleNextTab, handlePrevTab, handleCloseTab, handleCloseOtherTabs, handleCloseAllTabs, handleShowShortcuts, handleOpenGitConfig, whisper.toggleRecording]);
 
   // Listen for container exit events to update state
   useEffect(() => {

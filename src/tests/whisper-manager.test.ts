@@ -51,11 +51,10 @@ function isValidModelSize(size: string): size is WhisperModelSize {
 }
 
 /**
- * Get the path for the whisper.cpp binary.
+ * Get the directory for the whisper.cpp binary.
  */
-function getWhisperBinaryPath(): string {
-  const name = process.platform === 'win32' ? 'main.exe' : 'main'
-  return path.join(os.homedir(), '.yolium', 'whisper-cpp', name)
+function getWhisperBinaryDir(): string {
+  return path.join(os.homedir(), '.yolium', 'whisper-cpp')
 }
 
 /**
@@ -68,13 +67,13 @@ function buildTranscribeArgs(
 ): string[] {
   const args = [
     '-m', modelPath,
-    '-f', audioPath,
-    '--output-txt',
     '--no-timestamps',
   ]
   if (language !== 'auto') {
     args.push('-l', language)
   }
+  // Audio file as positional argument (whisper-cli style)
+  args.push(audioPath)
   return args
 }
 
@@ -189,11 +188,10 @@ describe('whisper-manager utilities', () => {
     })
   })
 
-  describe('getWhisperBinaryPath', () => {
+  describe('getWhisperBinaryDir', () => {
     it('returns path under ~/.yolium/whisper-cpp/', () => {
-      const binPath = getWhisperBinaryPath()
-      const expectedName = process.platform === 'win32' ? 'main.exe' : 'main'
-      expect(binPath).toBe(path.join(os.homedir(), '.yolium', 'whisper-cpp', expectedName))
+      const binDir = getWhisperBinaryDir()
+      expect(binDir).toBe(path.join(os.homedir(), '.yolium', 'whisper-cpp'))
     })
   })
 
@@ -202,13 +200,13 @@ describe('whisper-manager utilities', () => {
       const args = buildTranscribeArgs('/path/to/model.bin', '/path/to/audio.wav')
       expect(args).toContain('-m')
       expect(args).toContain('/path/to/model.bin')
-      expect(args).toContain('-f')
       expect(args).toContain('/path/to/audio.wav')
+      // Audio file should be last (positional arg)
+      expect(args[args.length - 1]).toBe('/path/to/audio.wav')
     })
 
-    it('includes output and no-timestamps flags', () => {
+    it('includes no-timestamps flag', () => {
       const args = buildTranscribeArgs('/model.bin', '/audio.wav')
-      expect(args).toContain('--output-txt')
       expect(args).toContain('--no-timestamps')
     })
 

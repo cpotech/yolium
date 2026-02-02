@@ -53,10 +53,19 @@ export function getWhisperBinaryDir(): string {
   return path.join(os.homedir(), '.yolium', 'whisper-cpp');
 }
 
-/** Get the path for the whisper.cpp binary. */
+/** Get the path for the whisper.cpp binary (prefers whisper-cli over deprecated main). */
 export function getWhisperBinaryPath(): string {
-  const name = process.platform === 'win32' ? 'main.exe' : 'main';
-  return path.join(getWhisperBinaryDir(), name);
+  const dir = getWhisperBinaryDir();
+  // Prefer whisper-cli (newer) over main (deprecated)
+  const candidates = process.platform === 'win32'
+    ? ['whisper-cli.exe', 'main.exe']
+    : ['whisper-cli', 'main'];
+  for (const name of candidates) {
+    const p = path.join(dir, name);
+    if (fs.existsSync(p)) return p;
+  }
+  // Return first candidate as default (for error messages)
+  return path.join(dir, candidates[0]);
 }
 
 /** Build the command-line arguments for whisper.cpp transcription. */
@@ -67,13 +76,13 @@ export function buildTranscribeArgs(
 ): string[] {
   const args = [
     '-m', modelPath,
-    '-f', audioPath,
-    '--output-txt',
     '--no-timestamps',
   ];
   if (language !== 'auto') {
     args.push('-l', language);
   }
+  // Audio file as positional argument (whisper-cli style)
+  args.push(audioPath);
   return args;
 }
 
