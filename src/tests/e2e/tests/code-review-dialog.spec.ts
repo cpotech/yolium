@@ -343,3 +343,112 @@ test.describe('Code Review Dialog', () => {
     await expect(window.locator(selectors.reviewStatus)).toContainText('Container exited with code 1');
   });
 });
+
+/**
+ * Integration tests that exercise the real container lifecycle.
+ * Requires Docker running and yolium:latest image available.
+ * Skipped automatically when Docker or the image is unavailable.
+ */
+test.describe('Code Review Container Integration', () => {
+  let ctx: AppContext;
+  let dockerAvailable = false;
+
+  test.beforeAll(async () => {
+    // Check if Docker is running and image exists
+    const { execSync } = await import('child_process');
+    try {
+      execSync('docker image inspect yolium:latest', { stdio: 'pipe' });
+      dockerAvailable = true;
+    } catch {
+      dockerAvailable = false;
+    }
+  });
+
+  test.beforeEach(async () => {
+    test.skip(!dockerAvailable, 'Docker not available or yolium:latest image not built');
+    await cleanupYoliumContainers();
+  });
+
+  test.afterEach(async () => {
+    if (ctx) {
+      try {
+        await ctx.window.evaluate(() => localStorage.removeItem('yolium:lastReviewRepoUrl'));
+      } catch {
+        // Page may already be closed
+      }
+      await closeApp(ctx);
+    }
+    await cleanupYoliumContainers();
+  });
+
+  test('should start real container and stay in running state', async () => {
+    test.setTimeout(120_000);
+    ctx = await launchApp();
+
+    // Override only credentials and branch listing — NOT code-review:start
+    // so the real createCodeReviewContainer is exercised
+    await ctx.app.evaluate(({ ipcMain }) => {
+      ipcMain.removeHandler('git-config:load');
+      ipcMain.handle('git-config:load', () => ({
+        name: 'Test User',
+        email: 'test@example.com',
+        hasPat: true,
+      }));
+
+      ipcMain.removeHandler('code-review:check-agent-auth');
+      ipcMain.handle('code-review:check-agent-auth', () => ({
+        authenticated: true,
+      }));
+
+      ipcMain.removeHandler('code-review:list-branches');
+      ipcMain.handle('code-review:list-branches', () => ({
+        branches: ['main'],
+      }));
+    });
+
+    const { window } = ctx;
+    await window.reload();
+    await window.waitForSelector(
+      '[data-testid="empty-state"], [data-testid="docker-setup-dialog"], [data-testid="tab-bar"]',
+      { timeout: 30000 },
+    );
+
+    // Open the code review dialog
+    await window.click(selectors.codeReviewButton);
+    await expect(window.locator(selectors.codeReviewDialog)).toBeVisible();
+
+    // Fill in a real public repo URL and fetch branches
+    await window.fill(selectors.reviewRepoInput, 'https://github.com/yolium-ai/yolium');
+    await window.click(selectors.reviewFetchButton);
+    await expect(window.locator(selectors.reviewBranchSelect)).toBeVisible({ timeout: 15000 });
+
+    // Select main branch
+    await window.locator(selectors.reviewBranchSelect).selectOption('main');
+
+    // Start the review — this uses the REAL code-review:start handler
+    await window.click(selectors.reviewStartButton);
+
+    // The key assertion: status should transition to "running" first, then eventually
+    // complete successfully. Before the fix, the container would exit immediately
+    // due to the attach-after-start race condition, producing exit code 0 with no
+    // output (no "Comments have been posted" message).
+    //
+    // We check for either "in progress" or "completed" because fast reviews may
+    // finish before the assertion runs. The critical signal is that the review
+    // completes *successfully* with real output, not an empty immediate exit.
+    const status = window.locator(selectors.reviewStatus);
+    await expect(status).toBeVisible({ timeout: 30000 });
+
+    // Wait for the review to complete (real container runs the review agent)
+    await expect(status).toContainText(/Review (in progress|completed)/, { timeout: 120000 });
+
+    // If still running, wait for completion
+    const currentText = await status.textContent();
+    if (currentText?.includes('in progress')) {
+      await expect(status).toContainText('Review completed', { timeout: 120000 });
+    }
+
+    // The review should have completed successfully, not failed
+    await expect(status).toContainText('Review completed');
+  });
+});
