@@ -159,6 +159,35 @@ describe('entrypoint.sh', () => {
     });
   });
 
+  describe('codex code review auth validation', () => {
+    let entrypointContent: string;
+
+    beforeEach(() => {
+      entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+    });
+
+    it('should validate auth before running codex exec in code review', () => {
+      // The code review codex path should check OPENAI_API_KEY before running codex exec
+      // Find the code-review codex block (REVIEW_AGENT = codex)
+      const reviewCodexSection = entrypointContent.split('REVIEW_AGENT" = "codex"')[1]?.split('exit $?')[0];
+      expect(reviewCodexSection).toBeDefined();
+      expect(reviewCodexSection).toContain('OPENAI_API_KEY');
+      expect(reviewCodexSection).toContain('.codex/auth.json');
+    });
+
+    it('should exit with code 3 when no codex auth is found in code review', () => {
+      const reviewCodexSection = entrypointContent.split('REVIEW_AGENT" = "codex"')[1]?.split('codex exec')[0];
+      expect(reviewCodexSection).toContain('exit 3');
+    });
+
+    it('should have a grep fallback when jq is unavailable for OAuth detection', () => {
+      // The code review path should not solely rely on jq for auth.json parsing
+      const reviewCodexSection = entrypointContent.split('REVIEW_AGENT" = "codex"')[1]?.split('codex exec')[0];
+      expect(reviewCodexSection).toContain('grep');
+      expect(reviewCodexSection).toContain('access_token');
+    });
+  });
+
   describe('PR detection error handling', () => {
     let entrypointContent: string;
 

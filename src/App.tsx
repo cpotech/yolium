@@ -57,6 +57,8 @@ function App(): React.ReactElement {
 
   // State for Docker image build progress (array of lines)
   const [buildProgress, setBuildProgress] = useState<string[] | null>(null);
+  // State for build failure (shows error in overlay instead of hiding it)
+  const [buildError, setBuildError] = useState<string | null>(null);
 
   // State for image rebuild
   const [isRebuilding, setIsRebuilding] = useState(false);
@@ -84,15 +86,16 @@ function App(): React.ReactElement {
 
     // Ensure image is available (builds if needed)
     try {
+      setBuildError(null);
       setBuildProgress(['Checking Yolium image...']);
       await window.electronAPI.ensureImage();
       setBuildProgress(null);
       setImageRemoved(false); // Image now exists
     } catch (err) {
-      setBuildProgress(null);
       console.error('Failed to ensure yolium image:', err);
       const message = err instanceof Error ? err.message : 'Unknown error';
-      alert(message);
+      // Show error in the build progress overlay instead of hiding it
+      setBuildError(message);
       cleanupProgress();
       return;
     }
@@ -218,12 +221,15 @@ function App(): React.ReactElement {
 
     try {
       // Set up completion listener
-      const cleanupComplete = window.electronAPI.onCodeReviewComplete((_sessionId, exitCode) => {
+      const cleanupComplete = window.electronAPI.onCodeReviewComplete((_sessionId, exitCode, authError) => {
         if (exitCode === 0) {
           setReviewStatus('completed');
         } else if (exitCode === 2) {
           setReviewStatus('failed');
           setReviewError('No open PR found for this branch. Please create a PR first.');
+        } else if (exitCode === 3 || authError) {
+          setReviewStatus('failed');
+          setReviewError('Agent authentication failed. Please check your API key in Settings.');
         } else {
           setReviewStatus('failed');
           setReviewError(`Container exited with code ${exitCode}`);
@@ -581,24 +587,48 @@ function App(): React.ReactElement {
       />
 
       {/* Docker image build progress overlay */}
-      {buildProgress && (
+      {(buildProgress || buildError) && (
         <div data-testid="build-progress-overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
           <div className="bg-[var(--color-bg-secondary)] rounded-lg p-6 max-w-2xl w-full mx-4 shadow-xl border border-[var(--color-border-primary)]">
             <div className="flex items-center gap-3 mb-4">
-              <Loader2 className="w-6 h-6 text-[var(--color-accent-primary)] animate-spin" />
-              <h2 className="text-lg font-semibold text-white">{isRebuilding ? 'Deleting Docker Image' : 'Building Docker Image'}</h2>
+              {buildError ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-[var(--color-status-error)]">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              ) : (
+                <Loader2 className="w-6 h-6 text-[var(--color-accent-primary)] animate-spin" />
+              )}
+              <h2 className="text-lg font-semibold text-white">
+                {buildError ? 'Docker Image Build Failed' : isRebuilding ? 'Deleting Docker Image' : 'Building Docker Image'}
+              </h2>
             </div>
-            <div
-              ref={progressRef}
-              className="bg-[var(--color-bg-primary)] rounded p-3 font-mono text-xs text-[var(--color-text-secondary)] max-h-64 overflow-y-auto"
-            >
-              {buildProgress.map((line, index) => (
-                <div key={index} className="whitespace-pre-wrap break-all leading-relaxed">
-                  {line}
-                </div>
-              ))}
-            </div>
-            {!isRebuilding && (
+            {buildProgress && (
+              <div
+                ref={progressRef}
+                className="bg-[var(--color-bg-primary)] rounded p-3 font-mono text-xs text-[var(--color-text-secondary)] max-h-64 overflow-y-auto"
+              >
+                {buildProgress.map((line, index) => (
+                  <div key={index} className="whitespace-pre-wrap break-all leading-relaxed">
+                    {line}
+                  </div>
+                ))}
+              </div>
+            )}
+            {buildError && (
+              <div className="mt-3 p-3 bg-[var(--color-status-error)]/10 border border-[var(--color-status-error)]/30 rounded text-sm text-[var(--color-status-error)]">
+                {buildError}
+              </div>
+            )}
+            {buildError ? (
+              <button
+                onClick={() => { setBuildError(null); setBuildProgress(null); }}
+                className="mt-4 px-4 py-2 bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-border-primary)] text-white rounded transition-colors"
+              >
+                Close
+              </button>
+            ) : !isRebuilding && (
               <p className="mt-3 text-xs text-[var(--color-text-muted)]">
                 This only happens once. Future launches will be instant.
               </p>
