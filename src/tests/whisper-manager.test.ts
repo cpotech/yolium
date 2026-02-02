@@ -54,7 +54,8 @@ function isValidModelSize(size: string): size is WhisperModelSize {
  * Get the path for the whisper.cpp binary.
  */
 function getWhisperBinaryPath(): string {
-  return path.join(os.homedir(), '.yolium', 'whisper-cpp', 'main')
+  const name = process.platform === 'win32' ? 'main.exe' : 'main'
+  return path.join(os.homedir(), '.yolium', 'whisper-cpp', name)
 }
 
 /**
@@ -191,7 +192,8 @@ describe('whisper-manager utilities', () => {
   describe('getWhisperBinaryPath', () => {
     it('returns path under ~/.yolium/whisper-cpp/', () => {
       const binPath = getWhisperBinaryPath()
-      expect(binPath).toBe(path.join(os.homedir(), '.yolium', 'whisper-cpp', 'main'))
+      const expectedName = process.platform === 'win32' ? 'main.exe' : 'main'
+      expect(binPath).toBe(path.join(os.homedir(), '.yolium', 'whisper-cpp', expectedName))
     })
   })
 

@@ -13,6 +13,7 @@ interface WhisperState {
   error: string | null
   isModelDialogOpen: boolean
   downloadProgress: number | null // percent 0-100
+  downloadingModel: WhisperModelSize | null
 }
 
 type WhisperAction =
@@ -24,7 +25,7 @@ type WhisperAction =
   | { type: 'CLEAR_TRANSCRIPTION' }
   | { type: 'OPEN_MODEL_DIALOG' }
   | { type: 'CLOSE_MODEL_DIALOG' }
-  | { type: 'SET_DOWNLOAD_PROGRESS'; payload: number | null }
+  | { type: 'SET_DOWNLOAD_PROGRESS'; payload: { progress: number | null; model: WhisperModelSize | null } }
   | { type: 'RESET' }
 
 const initialState: WhisperState = {
@@ -34,6 +35,7 @@ const initialState: WhisperState = {
   error: null,
   isModelDialogOpen: false,
   downloadProgress: null,
+  downloadingModel: null,
 }
 
 function whisperReducer(state: WhisperState, action: WhisperAction): WhisperState {
@@ -65,7 +67,11 @@ function whisperReducer(state: WhisperState, action: WhisperAction): WhisperStat
       return { ...state, isModelDialogOpen: false }
 
     case 'SET_DOWNLOAD_PROGRESS':
-      return { ...state, downloadProgress: action.payload }
+      return {
+        ...state,
+        downloadProgress: action.payload.progress,
+        downloadingModel: action.payload.model !== null ? action.payload.model : (action.payload.progress === null ? null : state.downloadingModel),
+      }
 
     case 'RESET':
       return { ...initialState, selectedModel: state.selectedModel }
@@ -216,15 +222,24 @@ describe('whisperReducer', () => {
   })
 
   describe('SET_DOWNLOAD_PROGRESS', () => {
-    it('sets download progress percentage', () => {
-      const state = whisperReducer(initialState, { type: 'SET_DOWNLOAD_PROGRESS', payload: 45 })
+    it('sets download progress and model', () => {
+      const state = whisperReducer(initialState, { type: 'SET_DOWNLOAD_PROGRESS', payload: { progress: 45, model: 'medium' } })
       expect(state.downloadProgress).toBe(45)
+      expect(state.downloadingModel).toBe('medium')
     })
 
-    it('clears progress with null', () => {
-      const stateWithProgress: WhisperState = { ...initialState, downloadProgress: 75 }
-      const state = whisperReducer(stateWithProgress, { type: 'SET_DOWNLOAD_PROGRESS', payload: null })
+    it('preserves downloadingModel when model is null and progress is non-null', () => {
+      const downloading: WhisperState = { ...initialState, downloadProgress: 30, downloadingModel: 'large' }
+      const state = whisperReducer(downloading, { type: 'SET_DOWNLOAD_PROGRESS', payload: { progress: 50, model: null } })
+      expect(state.downloadProgress).toBe(50)
+      expect(state.downloadingModel).toBe('large')
+    })
+
+    it('clears progress and model with null progress', () => {
+      const downloading: WhisperState = { ...initialState, downloadProgress: 75, downloadingModel: 'small' }
+      const state = whisperReducer(downloading, { type: 'SET_DOWNLOAD_PROGRESS', payload: { progress: null, model: null } })
       expect(state.downloadProgress).toBeNull()
+      expect(state.downloadingModel).toBeNull()
     })
   })
 
@@ -237,6 +252,7 @@ describe('whisperReducer', () => {
         error: 'err',
         isModelDialogOpen: true,
         downloadProgress: 50,
+        downloadingModel: 'medium',
       }
       const state = whisperReducer(modifiedState, { type: 'RESET' })
       expect(state.recordingState).toBe('idle')

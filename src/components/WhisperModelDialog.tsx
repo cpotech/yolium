@@ -7,6 +7,7 @@ interface WhisperModelDialogProps {
   isOpen: boolean;
   selectedModel: WhisperModelSize;
   downloadProgress: number | null;
+  downloadingModel: WhisperModelSize | null;
   onSelectModel: (model: WhisperModelSize) => void;
   onDownloadModel: (model: WhisperModelSize) => void;
   onDeleteModel: (model: WhisperModelSize) => void;
@@ -54,6 +55,7 @@ export function WhisperModelDialog({
   isOpen,
   selectedModel,
   downloadProgress,
+  downloadingModel,
   onSelectModel,
   onDownloadModel,
   onDeleteModel,
@@ -128,6 +130,7 @@ export function WhisperModelDialog({
             {models.map((model) => {
               const isSelected = model.size === selectedModel;
               const isDownloading = downloadProgress !== null;
+              const isThisModelDownloading = isDownloading && downloadingModel === model.size;
 
               return (
                 <div
@@ -185,7 +188,7 @@ export function WhisperModelDialog({
                         className="flex items-center gap-1 px-2 py-1 rounded text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50"
                         title={`Download ${model.name} model`}
                       >
-                        {isDownloading ? (
+                        {isThisModelDownloading ? (
                           <>
                             <Loader2 size={12} className="animate-spin" />
                             <span>{downloadProgress}%</span>

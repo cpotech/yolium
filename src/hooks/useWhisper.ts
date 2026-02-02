@@ -3,6 +3,7 @@
 
 import { useReducer, useCallback, useRef, useEffect } from 'react';
 import type { WhisperModelSize, WhisperRecordingState, WhisperDownloadProgress } from '../types/whisper';
+import { convertBlobToWav } from '../lib/audio-utils';
 
 // ============================================================================
 // State and reducer (tested in useWhisper.test.ts)
@@ -15,6 +16,7 @@ export interface WhisperState {
   error: string | null;
   isModelDialogOpen: boolean;
   downloadProgress: number | null;
+  downloadingModel: WhisperModelSize | null;
 }
 
 export type WhisperAction =
@@ -26,7 +28,7 @@ export type WhisperAction =
   | { type: 'CLEAR_TRANSCRIPTION' }
   | { type: 'OPEN_MODEL_DIALOG' }
   | { type: 'CLOSE_MODEL_DIALOG' }
-  | { type: 'SET_DOWNLOAD_PROGRESS'; payload: number | null }
+  | { type: 'SET_DOWNLOAD_PROGRESS'; payload: { progress: number | null; model: WhisperModelSize | null } }
   | { type: 'RESET' };
 
 const initialState: WhisperState = {
@@ -36,6 +38,7 @@ const initialState: WhisperState = {
   error: null,
   isModelDialogOpen: false,
   downloadProgress: null,
+  downloadingModel: null,
 };
 
 /** Map DOMException names from getUserMedia to user-friendly messages */
@@ -83,7 +86,12 @@ export function whisperReducer(state: WhisperState, action: WhisperAction): Whis
       return { ...state, isModelDialogOpen: false };
 
     case 'SET_DOWNLOAD_PROGRESS':
-      return { ...state, downloadProgress: action.payload };
+      return {
+        ...state,
+        downloadProgress: action.payload.progress,
+        // Only update downloadingModel when explicitly provided (non-null)
+        downloadingModel: action.payload.model !== null ? action.payload.model : (action.payload.progress === null ? null : state.downloadingModel),
+      };
 
     case 'RESET':
       return { ...initialState, selectedModel: state.selectedModel };
@@ -124,7 +132,7 @@ export function useWhisper(): UseWhisperReturn {
   // Listen for download progress from main process
   useEffect(() => {
     const cleanup = window.electronAPI.onWhisperDownloadProgress((progress: WhisperDownloadProgress) => {
-      dispatch({ type: 'SET_DOWNLOAD_PROGRESS', payload: progress.percent });
+      dispatch({ type: 'SET_DOWNLOAD_PROGRESS', payload: { progress: progress.percent, model: null } });
     });
     return cleanup;
   }, []);
@@ -171,10 +179,9 @@ export function useWhisper(): UseWhisperReturn {
     // Stop all audio tracks
     mediaRecorder.stream.getTracks().forEach(track => track.stop());
 
-    // Convert collected audio chunks to a buffer
+    // Convert WebM audio to WAV (16-bit PCM, 16kHz mono) for whisper.cpp
     const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-    const arrayBuffer = await audioBlob.arrayBuffer();
-    const audioData = new Uint8Array(arrayBuffer);
+    const audioData = await convertBlobToWav(audioBlob);
 
     try {
       // Send audio to main process for transcription
@@ -218,12 +225,12 @@ export function useWhisper(): UseWhisperReturn {
   }, []);
 
   const downloadModelFn = useCallback(async (modelSize: WhisperModelSize) => {
-    dispatch({ type: 'SET_DOWNLOAD_PROGRESS', payload: 0 });
+    dispatch({ type: 'SET_DOWNLOAD_PROGRESS', payload: { progress: 0, model: modelSize } });
     try {
       await window.electronAPI.whisperDownloadModel(modelSize);
-      dispatch({ type: 'SET_DOWNLOAD_PROGRESS', payload: null });
+      dispatch({ type: 'SET_DOWNLOAD_PROGRESS', payload: { progress: null, model: null } });
     } catch (err) {
-      dispatch({ type: 'SET_DOWNLOAD_PROGRESS', payload: null });
+      dispatch({ type: 'SET_DOWNLOAD_PROGRESS', payload: { progress: null, model: null } });
       dispatch({
         type: 'TRANSCRIPTION_ERROR',
         payload: err instanceof Error ? err.message : 'Download failed',

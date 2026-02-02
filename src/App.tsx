@@ -570,6 +570,7 @@ function App(): React.ReactElement {
         isOpen={whisper.state.isModelDialogOpen}
         selectedModel={whisper.state.selectedModel}
         downloadProgress={whisper.state.downloadProgress}
+        downloadingModel={whisper.state.downloadingModel}
         onSelectModel={whisper.setModel}
         onDownloadModel={whisper.downloadModel}
         onDeleteModel={handleDeleteWhisperModel}

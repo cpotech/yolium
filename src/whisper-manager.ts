@@ -55,7 +55,8 @@ export function getWhisperBinaryDir(): string {
 
 /** Get the path for the whisper.cpp binary. */
 export function getWhisperBinaryPath(): string {
-  return path.join(getWhisperBinaryDir(), 'main');
+  const name = process.platform === 'win32' ? 'main.exe' : 'main';
+  return path.join(getWhisperBinaryDir(), name);
 }
 
 /** Build the command-line arguments for whisper.cpp transcription. */
@@ -241,7 +242,10 @@ export function isWhisperBinaryAvailable(): boolean {
 
   // Check if 'whisper-cpp' or 'whisper' is in PATH
   try {
-    execSync('which whisper-cpp 2>/dev/null || which whisper 2>/dev/null', { stdio: 'pipe' });
+    const cmd = process.platform === 'win32'
+      ? 'where whisper-cli 2>nul || where whisper 2>nul'
+      : 'which whisper-cpp 2>/dev/null || which whisper 2>/dev/null';
+    execSync(cmd, { stdio: 'pipe' });
     return true;
   } catch {
     return false;
@@ -258,10 +262,13 @@ export function resolveWhisperBinary(): string | null {
   }
 
   try {
-    const systemBinary = execSync('which whisper-cpp 2>/dev/null || which whisper 2>/dev/null', {
+    const cmd = process.platform === 'win32'
+      ? 'where whisper-cli 2>nul || where whisper 2>nul'
+      : 'which whisper-cpp 2>/dev/null || which whisper 2>/dev/null';
+    const systemBinary = execSync(cmd, {
       stdio: 'pipe',
       encoding: 'utf-8',
-    }).trim();
+    }).trim().split(/\r?\n/)[0]; // 'where' on Windows may return multiple lines
     if (systemBinary) return systemBinary;
   } catch {
     // Not in PATH
@@ -282,7 +289,8 @@ export function transcribeAudio(
   return new Promise((resolve, reject) => {
     const binaryPath = resolveWhisperBinary();
     if (!binaryPath) {
-      reject(new Error('whisper.cpp binary not found. Please install whisper.cpp or place the binary in ~/.yolium/whisper-cpp/main'));
+      const expectedPath = getWhisperBinaryPath();
+      reject(new Error(`whisper.cpp binary not found. Please install whisper.cpp or place the binary at ${expectedPath}`));
       return;
     }
 
