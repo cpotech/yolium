@@ -3,6 +3,7 @@ import { BrowserWindow, app } from 'electron';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import { PassThrough } from 'node:stream';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createLogger } from './lib/logger';
@@ -1113,14 +1114,20 @@ export async function createCodeReviewContainer(
     },
   });
 
-  await container.start();
-
-  // Attach to container output (no stdin - headless)
+  // Attach before start to avoid race condition where container exits before attach completes
   const stream = await container.attach({
     stream: true,
     stdout: true,
     stderr: true,
   });
+
+  // Demux the multiplexed stream (Tty: false uses 8-byte header framing)
+  const stdout = new PassThrough();
+  const stderr = new PassThrough();
+  docker.modem.demuxStream(stream, stdout, stderr);
+
+  await container.start();
+  logger.info('Code review container started', { sessionId, containerId: container.id });
 
   // Store session
   sessions.set(sessionId, {
@@ -1135,8 +1142,7 @@ export async function createCodeReviewContainer(
   // Track whether we've seen an auth error in the output
   let detectedAuthError = false;
 
-  // Forward output for status tracking
-  stream.on('data', (data: Buffer) => {
+  const handleOutput = (data: Buffer) => {
     const dataStr = data.toString();
     logger.debug('Code review output', { sessionId, output: dataStr.slice(0, 200) });
 
@@ -1154,9 +1160,13 @@ export async function createCodeReviewContainer(
     if (webContents && !webContents.isDestroyed()) {
       webContents.send('code-review:output', sessionId, dataStr);
     }
-  });
+  };
 
-  // Handle completion
+  // Forward demuxed output for status tracking
+  stdout.on('data', handleOutput);
+  stderr.on('data', handleOutput);
+
+  // Handle completion (stream ends when container exits)
   stream.on('end', async () => {
     const session = sessions.get(sessionId);
     if (session) {
@@ -1166,6 +1176,7 @@ export async function createCodeReviewContainer(
       try {
         const info = await container.inspect();
         exitCode = info.State.ExitCode;
+        logger.info('Code review completed', { sessionId, exitCode });
       } catch {
         // Container may already be removed
       }

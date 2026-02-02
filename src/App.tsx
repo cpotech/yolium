@@ -68,6 +68,7 @@ function App(): React.ReactElement {
   const [codeReviewDialogOpen, setCodeReviewDialogOpen] = useState(false);
   const [reviewStatus, setReviewStatus] = useState<CodeReviewStatus | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  const [reviewLog, setReviewLog] = useState<string[]>([]);
 
   // Ref for auto-scrolling build progress
   const progressRef = useRef<HTMLDivElement>(null);
@@ -208,6 +209,7 @@ function App(): React.ReactElement {
   const handleOpenCodeReview = useCallback(() => {
     setReviewStatus(null);
     setReviewError(null);
+    setReviewLog([]);
     setCodeReviewDialogOpen(true);
   }, []);
 
@@ -218,8 +220,17 @@ function App(): React.ReactElement {
   const handleStartReview = useCallback(async (repoUrl: string, branch: string, agent: ReviewAgentType) => {
     setReviewStatus('starting');
     setReviewError(null);
+    setReviewLog([]);
 
     try {
+      // Set up output listener to capture container logs
+      const cleanupOutput = window.electronAPI.onCodeReviewOutput((_sessionId, data) => {
+        const lines = data.split('\n').filter((line: string) => line.trim() !== '');
+        if (lines.length > 0) {
+          setReviewLog(prev => [...prev, ...lines]);
+        }
+      });
+
       // Set up completion listener
       const cleanupComplete = window.electronAPI.onCodeReviewComplete((_sessionId, exitCode, authError) => {
         if (exitCode === 0) {
@@ -234,6 +245,7 @@ function App(): React.ReactElement {
           setReviewStatus('failed');
           setReviewError(`Container exited with code ${exitCode}`);
         }
+        cleanupOutput();
         cleanupComplete();
       });
 
@@ -587,6 +599,7 @@ function App(): React.ReactElement {
         hasGitCredentials={!!gitConfig?.hasPat}
         reviewStatus={reviewStatus}
         reviewError={reviewError}
+        reviewLog={reviewLog}
       />
 
       {/* Docker image build progress overlay */}
