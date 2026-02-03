@@ -366,6 +366,7 @@ test.describe('Code Review Container Integration', () => {
 
   test.beforeEach(async () => {
     test.skip(!dockerAvailable, 'Docker not available or yolium:latest image not built');
+    test.skip(!!process.env.CI, 'Skipped in CI - requires real agent credentials');
     await cleanupYoliumContainers();
   });
 
