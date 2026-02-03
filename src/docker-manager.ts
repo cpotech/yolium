@@ -479,7 +479,9 @@ export async function ensureImage(
         const labels = inspect.Config?.Labels || {};
         const currentHash = computeDockerImageHash();
         const imageHash = labels['yolium.build_hash'];
-        if (!imageHash || imageHash !== currentHash) {
+        // Only rebuild if the hash label exists but doesn't match.
+        // If the label is missing, the image was built externally (e.g., CI) - skip rebuild.
+        if (imageHash && imageHash !== currentHash) {
           onProgress?.('Dockerfile or entrypoint changed, rebuilding image...');
           await buildLocalImage(onProgress);
         }
