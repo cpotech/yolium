@@ -206,10 +206,16 @@ export function PathInputDialog({
       switch (e.key) {
         case 'Escape':
           e.preventDefault();
-          // Go back one directory level, or close if at root
-          if (inputValue && inputValue.length > 1 && inputValue !== '~/' && !/^[A-Za-z]:\/$/.test(inputValue)) {
+          // Go back one directory level, or close if already at root
+          if (inputValue) {
             const parentPath = getParentDirectory(inputValue);
-            setInputValue(parentPath || PATH_SEP);
+            const normalizedInput = normalizePath(inputValue);
+            // If parent is the same as current (at root), close the dialog
+            if (parentPath === normalizedInput) {
+              onCancel();
+            } else {
+              setInputValue(parentPath);
+            }
           } else {
             onCancel();
           }
@@ -566,6 +572,7 @@ export function PathInputDialog({
         <div className="mt-4 pt-3 border-t border-gray-700 flex items-center justify-between">
           <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
             <span><kbd className="px-1 py-0.5 bg-gray-700 rounded text-gray-400">Tab</kbd> complete</span>
+            <span><kbd className="px-1 py-0.5 bg-gray-700 rounded text-gray-400">Esc</kbd> back</span>
             <span><kbd className="px-1 py-0.5 bg-gray-700 rounded text-gray-400">^N</kbd> new folder</span>
             {favorites.length > 0 && (
               <span><kbd className="px-1 py-0.5 bg-gray-700 rounded text-gray-400">^#</kbd> favorite</span>
