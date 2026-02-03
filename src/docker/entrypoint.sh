@@ -462,22 +462,16 @@ elif [ "$TOOL" = "codex" ]; then
         else
             echo "No Codex authentication found."
             echo "Set OPENAI_API_KEY or run 'codex login' on the host."
-            echo "Falling back to shell."
-            exec /bin/zsh
+            exit 3
         fi
     fi
     CODEX_BIN=$(which codex)
     log "codex path: $CODEX_BIN"
-    echo ""
-    echo "Press any key to start Codex..."
-    read -n 1
-    log "Key pressed, launching codex..."
-    # Use -a on-request (auto-approve) with danger-full-access sandbox.
-    # --full-auto is a convenience alias that forces workspace-write sandbox,
-    # which panics on kernels where Landlock is compiled but not functional.
+    log "Launching codex (auto-start, full control)..."
+    # Use auto-approve with danger-full-access sandbox.
     # Docker already provides container-level isolation.
     # See: https://github.com/openai/codex/issues/2267
-    exec "$CODEX_BIN" -a on-request --sandbox danger-full-access
+    exec "$CODEX_BIN" -a all --sandbox danger-full-access
     # If we reach here, exec failed
     log "ERROR: exec failed unexpectedly"
     exit 1
