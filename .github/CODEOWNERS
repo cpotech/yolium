@@ -1,2 +1,5 @@
-# Default code owner for all files
-* @Yolium
+# Code Owners
+# These users will be automatically requested for review on all PRs
+
+# Default owner for everything
+* @yolium-ai
