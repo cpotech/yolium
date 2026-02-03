@@ -1,4 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  normalizePath,
+  getParentDirectory,
+  ensureTrailingSeparator,
+  hasTrailingSeparator,
+  getBasename,
+  PATH_SEP,
+} from '../lib/path-utils';
 
 interface DirectoryEntry {
   name: string;
@@ -68,13 +76,13 @@ export function PathInputDialog({
 
   // Get current directory from input value
   const getCurrentDirectory = useCallback((): string => {
-    let path = inputValue;
-    // If path doesn't end with /, get the directory portion
-    if (!path.endsWith('/')) {
-      const lastSlash = path.lastIndexOf('/');
-      path = lastSlash >= 0 ? path.substring(0, lastSlash + 1) : '/';
+    if (!inputValue) return PATH_SEP;
+    // If path already ends with a separator, normalize and return it
+    if (hasTrailingSeparator(inputValue)) {
+      return normalizePath(inputValue);
     }
-    return path || '/';
+    // Otherwise, get the parent directory
+    return getParentDirectory(inputValue);
   }, [inputValue]);
 
   // Start folder creation mode
@@ -107,8 +115,8 @@ export function PathInputDialog({
       setIsCreatingFolder(false);
       setNewFolderName('');
       setCreateFolderError(null);
-      // Navigate to the new folder
-      setInputValue(result.path + '/');
+      // Navigate to the new folder (normalize path and ensure trailing separator)
+      setInputValue(ensureTrailingSeparator(result.path));
       // Return focus to main input
       setTimeout(() => inputRef.current?.focus(), 50);
     } else {
@@ -184,7 +192,7 @@ export function PathInputDialog({
         if (favIndex < favorites.length) {
           e.preventDefault();
           const favPath = favorites[favIndex];
-          onConfirm(favPath.endsWith('/') ? favPath : favPath + '/');
+          onConfirm(ensureTrailingSeparator(favPath));
         }
         return;
       }
@@ -198,12 +206,8 @@ export function PathInputDialog({
         case 'Enter':
           e.preventDefault();
           if (inputValue.trim()) {
-            // Ensure path ends with / for directories
-            let finalPath = inputValue;
-            if (!finalPath.endsWith('/')) {
-              finalPath += '/';
-            }
-            onConfirm(finalPath);
+            // Ensure path is normalized and ends with separator
+            onConfirm(ensureTrailingSeparator(inputValue));
           }
           break;
 
@@ -212,7 +216,7 @@ export function PathInputDialog({
           e.preventDefault();
           if (filteredSuggestions.length > 0) {
             const selected = filteredSuggestions[selectedIndex];
-            setInputValue(selected.path + '/');
+            setInputValue(ensureTrailingSeparator(selected.path));
           }
           break;
 
@@ -232,12 +236,11 @@ export function PathInputDialog({
 
         case 'Backspace':
           // Go up one directory when backspace at path separator
-          if (inputValue.endsWith('/') && inputValue.length > 1) {
+          if (hasTrailingSeparator(inputValue) && inputValue.length > 1) {
             e.preventDefault();
-            // Remove trailing slash and go to parent
-            const withoutSlash = inputValue.slice(0, -1);
-            const parentPath = withoutSlash.substring(0, withoutSlash.lastIndexOf('/') + 1);
-            setInputValue(parentPath || '/');
+            // Navigate to parent directory
+            const parentPath = getParentDirectory(inputValue);
+            setInputValue(parentPath || PATH_SEP);
           }
           break;
       }
@@ -252,13 +255,13 @@ export function PathInputDialog({
 
   // Handle suggestion click
   const handleSuggestionClick = (entry: DirectoryEntry) => {
-    setInputValue(entry.path + '/');
+    setInputValue(ensureTrailingSeparator(entry.path));
     inputRef.current?.focus();
   };
 
   // Handle suggestion double-click to confirm
   const handleSuggestionDoubleClick = (entry: DirectoryEntry) => {
-    onConfirm(entry.path + '/');
+    onConfirm(ensureTrailingSeparator(entry.path));
   };
 
   if (!isOpen) return null;
@@ -322,16 +325,16 @@ export function PathInputDialog({
             </div>
             <ul className="border border-gray-700 rounded-md bg-gray-900 max-h-32 overflow-y-auto">
               {favorites.map((favPath, index) => {
-                const folderName = favPath.replace(/\/$/, '').split('/').pop() || favPath;
+                const folderName = getBasename(favPath) || favPath;
                 const shortcutNum = index < 9 ? index + 1 : null;
                 return (
                   <li
                     key={favPath}
                     onClick={() => {
-                      setInputValue(favPath.endsWith('/') ? favPath : favPath + '/');
+                      setInputValue(ensureTrailingSeparator(favPath));
                       inputRef.current?.focus();
                     }}
-                    onDoubleClick={() => onConfirm(favPath.endsWith('/') ? favPath : favPath + '/')}
+                    onDoubleClick={() => onConfirm(ensureTrailingSeparator(favPath))}
                     className="px-3 py-1.5 cursor-pointer flex items-center gap-2 text-gray-300 hover:bg-gray-700 group"
                   >
                     {shortcutNum && (
@@ -562,11 +565,7 @@ export function PathInputDialog({
               data-testid="path-next"
               onClick={() => {
                 if (inputValue.trim()) {
-                  let finalPath = inputValue;
-                  if (!finalPath.endsWith('/')) {
-                    finalPath += '/';
-                  }
-                  onConfirm(finalPath);
+                  onConfirm(ensureTrailingSeparator(inputValue));
                 }
               }}
               disabled={!inputValue.trim()}
