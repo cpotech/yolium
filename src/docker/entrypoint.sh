@@ -78,6 +78,60 @@ if [ -n "$HOST_HOME" ] && [ "$HOST_HOME" != "$HOME" ] && [ ! -e "$HOST_HOME" ]; 
         add_status "✅ Host path compatibility symlink created"
 fi
 
+# Fix Windows paths in Claude config files when running on Windows host
+# Claude stores absolute paths in config files. On Windows, these are Windows paths
+# (e.g., C:\Users\gaming\.claude\...) which don't work inside the Linux container.
+# We need to rewrite these paths to use the container's home directory.
+if [ -n "$HOST_HOME" ] && [ "$HOST_HOME" != "$HOME" ]; then
+    log "Fixing Windows paths in Claude config files"
+
+    # Use Python for reliable path replacement (handles JSON escaping properly)
+    python3 << 'PYEOF'
+import os
+import re
+import glob
+
+host_home = os.environ.get('HOST_HOME', '')  # e.g., /c/Users/gaming
+container_home = os.environ.get('HOME', '/home/agent')
+
+if host_home and host_home.startswith('/') and len(host_home) > 2:
+    # Extract drive letter and path: /c/Users/gaming -> C, Users/gaming
+    drive_letter = host_home[1].upper()
+    path_suffix = host_home[3:]  # Users/gaming
+
+    # Build patterns to match Windows paths in JSON files
+    # Pattern 1: C:/Users/gaming (forward slashes)
+    # Pattern 2: C:\\Users\\gaming (JSON-escaped backslashes)
+    win_fwd = f"{drive_letter}:/{path_suffix}"
+    # Build regex pattern: C:[\\/]+Users[\\/]+gaming (matches both / and \ separators)
+    path_parts = [p for p in path_suffix.split('/') if p]
+    win_pattern = f"{drive_letter}:" + r"[\\/]+" + r"[\\/]+".join(re.escape(p) for p in path_parts)
+
+    for json_file in glob.glob('/home/agent/.claude/**/*.json', recursive=True):
+        try:
+            with open(json_file, 'r') as f:
+                content = f.read()
+
+            original = content
+            # Replace Windows paths with container paths
+            # Handle forward slash version
+            content = content.replace(win_fwd, container_home)
+            # Handle backslash/mixed version (case-insensitive for drive letter)
+            content = re.sub(win_pattern, container_home, content, flags=re.IGNORECASE)
+            # Convert remaining backslashes in paths to forward slashes
+            # Match double backslashes (JSON-escaped) followed by path characters
+            content = re.sub(r'\\\\(?=[A-Za-z0-9_./])', '/', content)
+
+            if content != original:
+                with open(json_file, 'w') as f:
+                    f.write(content)
+                print(f"Fixed: {json_file}")
+        except Exception as e:
+            print(f"Warning: Could not process {json_file}: {e}")
+PYEOF
+    add_status "✅ Windows paths in Claude config fixed for container"
+fi
+
 # For worktrees: fix the .git file to point to Linux-mounted path
 # The worktree's .git file references Windows path (e.g., gitdir: C:/Users/.../worktrees/name)
 # We mount .git at /c/Users/..., so update the .git file to use Linux path
