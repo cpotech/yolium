@@ -1,7 +1,9 @@
 import React from 'react';
 import { Square, Loader2, Keyboard, Box, RefreshCw, GitBranch, TreeDeciduous, Sun, Moon, GitPullRequest, Settings } from 'lucide-react';
 import type { ContainerState } from '../types/tabs';
+import type { WhisperRecordingState, WhisperModelSize } from '../types/whisper';
 import { useTheme } from '../theme';
+import { SpeechToTextButton } from './SpeechToTextButton';
 
 interface StatusBarProps {
   folderPath: string;
@@ -15,6 +17,11 @@ interface StatusBarProps {
   isRebuilding?: boolean;
   gitBranch?: string;
   worktreeName?: string;
+  // Speech-to-text props
+  whisperRecordingState?: WhisperRecordingState;
+  whisperSelectedModel?: WhisperModelSize;
+  onToggleRecording?: () => void;
+  onOpenModelDialog?: () => void;
 }
 
 export function StatusBar({
@@ -29,6 +36,10 @@ export function StatusBar({
   isRebuilding = false,
   gitBranch,
   worktreeName,
+  whisperRecordingState = 'idle',
+  whisperSelectedModel = 'small',
+  onToggleRecording,
+  onOpenModelDialog,
 }: StatusBarProps): React.ReactElement {
   const stateDisplay: Record<ContainerState, { text: string; className: string }> = {
     starting: { text: 'Starting...', className: 'text-[var(--color-status-warning)]' },
@@ -131,6 +142,19 @@ export function StatusBar({
 
         {/* Separator */}
         <span className="text-[var(--color-text-disabled)]">|</span>
+
+        {/* Speech-to-text button */}
+        {onToggleRecording && onOpenModelDialog && (
+          <>
+            <SpeechToTextButton
+              recordingState={whisperRecordingState}
+              selectedModel={whisperSelectedModel}
+              onToggleRecording={onToggleRecording}
+              onOpenModelDialog={onOpenModelDialog}
+            />
+            <span className="text-[var(--color-text-disabled)]">|</span>
+          </>
+        )}
 
         {/* PR Review button */}
         <button

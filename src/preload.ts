@@ -89,6 +89,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('git-settings:show', handler);
   },
 
+  // Recording toggle event (main -> renderer, Ctrl+Shift+R)
+  onRecordingToggle: (callback: () => void): CleanupFn => {
+    const handler = () => callback();
+    ipcRenderer.on('recording:toggle', handler);
+    return () => ipcRenderer.removeListener('recording:toggle', handler);
+  },
+
   // Tab context menu
   showTabContextMenu: (tabId: string, x: number, y: number) =>
     ipcRenderer.invoke('tab:context-menu', tabId, x, y),
@@ -171,6 +178,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('container:exit', handler);
   },
 
+  // Whisper speech-to-text operations
+  whisperListModels: () => ipcRenderer.invoke('whisper:list-models'),
+  whisperIsModelDownloaded: (modelSize: string) => ipcRenderer.invoke('whisper:is-model-downloaded', modelSize),
+  whisperDownloadModel: (modelSize: string) => ipcRenderer.invoke('whisper:download-model', modelSize),
+  whisperDeleteModel: (modelSize: string) => ipcRenderer.invoke('whisper:delete-model', modelSize),
+  whisperIsBinaryAvailable: () => ipcRenderer.invoke('whisper:is-binary-available'),
+  whisperTranscribe: (audioData: number[], modelSize: string) =>
+    ipcRenderer.invoke('whisper:transcribe', audioData, modelSize),
+  whisperGetSelectedModel: () => ipcRenderer.invoke('whisper:get-selected-model'),
+  whisperSaveSelectedModel: (modelSize: string) => ipcRenderer.invoke('whisper:save-selected-model', modelSize),
+  onWhisperDownloadProgress: (callback: (progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) =>
+      callback(progress);
+    ipcRenderer.on('whisper:download-progress', handler);
+    return () => ipcRenderer.removeListener('whisper:download-progress', handler);
+  },
+
   // Code review operations
   listRemoteBranches: (repoUrl: string) =>
     ipcRenderer.invoke('code-review:list-branches', repoUrl),
@@ -217,6 +241,7 @@ declare global {
       onTabCloseAll: (callback: () => void) => CleanupFn;
       onShortcutsShow: (callback: () => void) => CleanupFn;
       onGitSettingsShow: (callback: () => void) => CleanupFn;
+      onRecordingToggle: (callback: () => void) => CleanupFn;
       showTabContextMenu: (tabId: string, x: number, y: number) => Promise<void>;
       showConfirmClose: (message: string) => Promise<boolean>;
       showConfirmOkCancel: (title: string, message: string) => Promise<boolean>;
@@ -290,6 +315,23 @@ declare global {
       } | null>;
       onContainerData: (callback: (sessionId: string, data: string) => void) => CleanupFn;
       onContainerExit: (callback: (sessionId: string, exitCode: number) => void) => CleanupFn;
+      // Whisper speech-to-text operations
+      whisperListModels: () => Promise<Array<{
+        size: string;
+        name: string;
+        fileName: string;
+        sizeBytes: number;
+        downloaded: boolean;
+        path?: string;
+      }>>;
+      whisperIsModelDownloaded: (modelSize: string) => Promise<boolean>;
+      whisperDownloadModel: (modelSize: string) => Promise<string>;
+      whisperDeleteModel: (modelSize: string) => Promise<boolean>;
+      whisperIsBinaryAvailable: () => Promise<boolean>;
+      whisperTranscribe: (audioData: number[], modelSize: string) => Promise<{ text: string; durationSeconds: number }>;
+      whisperGetSelectedModel: () => Promise<string>;
+      whisperSaveSelectedModel: (modelSize: string) => Promise<void>;
+      onWhisperDownloadProgress: (callback: (progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) => void) => CleanupFn;
       // Code review operations
       listRemoteBranches: (repoUrl: string) => Promise<{ branches: string[]; error?: string }>;
       checkAgentAuth: (agent: string) => Promise<{ authenticated: boolean }>;

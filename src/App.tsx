@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { Loader2, GitPullRequest, Settings } from 'lucide-react';
 import { useTabState } from './hooks/useTabState';
+import { useWhisper } from './hooks/useWhisper';
 import { TabBar } from './components/TabBar';
 import { Terminal } from './components/Terminal';
 import { StatusBar } from './components/StatusBar';
@@ -12,6 +13,9 @@ import { DockerSetupDialog } from './components/DockerSetupDialog';
 import { GitConfigDialog, GitConfig, GitConfigWithPat } from './components/GitConfigDialog';
 import { CodeReviewDialog } from './components/CodeReviewDialog';
 import type { ReviewAgentType, CodeReviewStatus } from './types/agent';
+import { WhisperModelDialog } from './components/WhisperModelDialog';
+import { SpeechToTextButton } from './components/SpeechToTextButton';
+import type { WhisperModelSize } from './types/whisper';
 
 function App(): React.ReactElement {
   const {
@@ -26,6 +30,18 @@ function App(): React.ReactElement {
     closeAllTabs,
     closeOtherTabs,
   } = useTabState();
+
+  // Whisper speech-to-text
+  const whisper = useWhisper();
+
+  // Stable ref for toggleRecording to avoid IPC listener re-registration
+  const toggleRecordingRef = useRef(whisper.toggleRecording);
+  toggleRecordingRef.current = whisper.toggleRecording;
+  const stableToggleRecording = useCallback(() => toggleRecordingRef.current(), []);
+
+  // Stable ref for clearTranscription to avoid useEffect dependency issues
+  const clearTranscriptionRef = useRef(whisper.clearTranscription);
+  clearTranscriptionRef.current = whisper.clearTranscription;
 
   // State for Docker readiness (null = checking, true = ready, false = needs setup)
   const [dockerReady, setDockerReady] = useState<boolean | null>(null);
@@ -419,6 +435,26 @@ function App(): React.ReactElement {
     }
   }, [tabs, closeAllTabs]);
 
+  // Send transcribed text to the active terminal
+  useEffect(() => {
+    if (whisper.state.transcribedText && activeTabId) {
+      const activeTab = tabs.find(t => t.id === activeTabId);
+      if (activeTab) {
+        window.electronAPI.writeYolium(activeTab.sessionId, whisper.state.transcribedText);
+        clearTranscriptionRef.current();
+      }
+    }
+  }, [whisper.state.transcribedText, activeTabId, tabs]);
+
+  // Handle whisper model deletion (refresh model list by closing and reopening dialog synchronously)
+  const handleDeleteWhisperModel = useCallback(async (modelSize: WhisperModelSize) => {
+    await window.electronAPI.whisperDeleteModel(modelSize);
+    // Close and re-open to force the dialog to re-fetch model list
+    whisper.closeModelDialog();
+    // Use requestAnimationFrame to wait for React to process the close before reopening
+    requestAnimationFrame(() => whisper.openModelDialog());
+  }, [whisper]);
+
   // Handle context menu
   const handleTabContextMenu = useCallback((tabId: string, x: number, y: number) => {
     window.electronAPI.showTabContextMenu(tabId, x, y);
@@ -440,6 +476,7 @@ function App(): React.ReactElement {
     const cleanupCloseAll = window.electronAPI.onTabCloseAll(handleCloseAllTabs);
     const cleanupShortcuts = window.electronAPI.onShortcutsShow(handleShowShortcuts);
     const cleanupGitSettings = window.electronAPI.onGitSettingsShow(handleOpenGitConfig);
+    const cleanupRecording = window.electronAPI.onRecordingToggle(stableToggleRecording);
 
     return () => {
       cleanupNew();
@@ -451,8 +488,9 @@ function App(): React.ReactElement {
       cleanupCloseAll();
       cleanupShortcuts();
       cleanupGitSettings();
+      cleanupRecording();
     };
-  }, [handleNewYolium, handleCloseActiveTab, handleNextTab, handlePrevTab, handleCloseTab, handleCloseOtherTabs, handleCloseAllTabs, handleShowShortcuts, handleOpenGitConfig]);
+  }, [handleNewYolium, handleCloseActiveTab, handleNextTab, handlePrevTab, handleCloseTab, handleCloseOtherTabs, handleCloseAllTabs, handleShowShortcuts, handleOpenGitConfig, stableToggleRecording]);
 
   // Listen for container exit events to update state
   useEffect(() => {
@@ -549,6 +587,18 @@ function App(): React.ReactElement {
         onClose={handleCloseGitConfig}
         onSave={handleSaveGitConfig}
         initialConfig={gitConfig}
+      />
+
+      {/* Whisper model selection dialog */}
+      <WhisperModelDialog
+        isOpen={whisper.state.isModelDialogOpen}
+        selectedModel={whisper.state.selectedModel}
+        downloadProgress={whisper.state.downloadProgress}
+        downloadingModel={whisper.state.downloadingModel}
+        onSelectModel={whisper.setModel}
+        onDownloadModel={whisper.downloadModel}
+        onDeleteModel={handleDeleteWhisperModel}
+        onClose={whisper.closeModelDialog}
       />
 
       {/* Code review dialog */}
@@ -671,6 +721,15 @@ function App(): React.ReactElement {
                 </>
               )}
 
+              {/* Speech-to-text button */}
+              <SpeechToTextButton
+                recordingState={whisper.state.recordingState}
+                selectedModel={whisper.state.selectedModel}
+                onToggleRecording={whisper.toggleRecording}
+                onOpenModelDialog={whisper.openModelDialog}
+              />
+              <span className="text-[var(--color-text-disabled)]">|</span>
+
               {/* PR Review button */}
               <button
                 data-testid="code-review-button"
@@ -738,12 +797,31 @@ function App(): React.ReactElement {
                   isRebuilding={isRebuilding}
                   gitBranch={tab.gitBranch}
                   worktreeName={tab.worktreeName}
+                  whisperRecordingState={whisper.state.recordingState}
+                  whisperSelectedModel={whisper.state.selectedModel}
+                  onToggleRecording={whisper.toggleRecording}
+                  onOpenModelDialog={whisper.openModelDialog}
                 />
               </div>
             ))}
           </>
         )}
       </main>
+
+      {/* Whisper error notification */}
+      {whisper.state.error && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 bg-[var(--color-status-error)] text-white px-4 py-2 rounded-md shadow-lg text-sm max-w-md">
+          <div className="flex items-center gap-2">
+            <span>Speech-to-text: {whisper.state.error}</span>
+            <button
+              onClick={whisper.clearTranscription}
+              className="text-white/80 hover:text-white ml-2"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
