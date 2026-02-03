@@ -101,7 +101,7 @@ test.describe('Dialog Navigation', () => {
     await expect(window.locator(selectors.pathDialog)).toBeVisible();
   });
 
-  test('Escape in path dialog should cancel entire flow', async () => {
+  test('Escape in path dialog should go back then close at root', async () => {
     ctx = await launchApp();
     const { window } = ctx;
 
@@ -109,8 +109,34 @@ test.describe('Dialog Navigation', () => {
     await window.click(selectors.newTabButton);
     await expect(window.locator(selectors.pathDialog)).toBeVisible();
 
-    // Press Escape
-    await window.keyboard.press('Escape');
+    // Press Escape multiple times to navigate back to root and then close
+    // (Escape now goes back one directory level, closes only when at root)
+    for (let i = 0; i < 10; i++) {
+      await window.keyboard.press('Escape');
+      // Check if dialog closed
+      const isVisible = await window.locator(selectors.pathDialog).isVisible();
+      if (!isVisible) break;
+      // Small delay between presses
+      await window.waitForTimeout(100);
+    }
+
+    // Dialog should close
+    await expect(window.locator(selectors.pathDialog)).not.toBeVisible();
+
+    // Should show empty state
+    await expect(window.locator(selectors.emptyState)).toBeVisible();
+  });
+
+  test('Cancel button in path dialog should close immediately', async () => {
+    ctx = await launchApp();
+    const { window } = ctx;
+
+    // Open path dialog
+    await window.click(selectors.newTabButton);
+    await expect(window.locator(selectors.pathDialog)).toBeVisible();
+
+    // Click Cancel button
+    await window.click(selectors.pathCancelButton);
 
     // Dialog should close
     await expect(window.locator(selectors.pathDialog)).not.toBeVisible();
