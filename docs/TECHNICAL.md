@@ -77,16 +77,9 @@ Every container is a complete, reproducible development environment. No setup sc
 
 ### Languages & Runtimes
 
-- Python 3 with pip (uv available)
+- Python 3 with pip
 - Java (OpenJDK) with Maven and Gradle
-- Node.js with npm (via nvm)
-- .NET 10 LTS SDK with NuGet
-
-### .NET 10 Highlights (LTS)
-
-- Runtime optimizations (JIT inlining, devirtualization, stack allocations, AVX10.2, NativeAOT improvements)
-- Libraries: stricter JSON serialization options, `WebSocketStream`, TLS 1.3 for macOS clients, expanded post-quantum crypto APIs
-- SDK: Microsoft.Testing.Platform support in `dotnet test`, native tab-completion scripts, and built-in container image support for console apps
+- Node.js with npm
 
 ### Build Tools
 
@@ -97,7 +90,6 @@ Every container is a complete, reproducible development environment. No setup sc
 
 - Git with full configuration
 - GitHub CLI (gh) - pre-authenticated via your PAT
-- GitLab CLI (glab)
 
 ### Developer Utilities
 
@@ -109,24 +101,6 @@ Every container is a complete, reproducible development environment. No setup sc
 ### Shell
 
 zsh configured and ready
-
----
-
-## Speech-to-Text (Whisper.cpp)
-
-Yolium includes offline speech-to-text using `whisper.cpp`. You can record, transcribe, and inject text directly into the active session.
-
-### How It Works
-
-- **Local models**: Downloaded models are stored in `~/.yolium/whisper-models`
-- **Binary lookup**: Yolium looks for `whisper-cli` (preferred) or `main` in `~/.yolium/whisper-cpp/`, then falls back to PATH
-- **Audio format**: Recorded audio is converted to 16kHz mono WAV before transcription
-
-### Available Models
-
-- **Small** (~466 MB) - Fast, good for quick dictation
-- **Medium** (~1.5 GB) - Balanced speed and accuracy
-- **Large** (~3.1 GB) - Best accuracy, slower
 
 ---
 
@@ -143,7 +117,6 @@ The AI agent inside the container does **not** have direct access to your host f
 | `~/.cache/yolium/<project>/pip` | `/home/agent/.cache/pip` | Per-project | pip package cache |
 | `~/.cache/yolium/<project>/maven` | `/home/agent/.m2` | Per-project | Maven repository cache |
 | `~/.cache/yolium/<project>/gradle` | `/home/agent/.gradle` | Per-project | Gradle cache |
-| `~/.cache/yolium/<project>/nuget` | `/home/agent/.nuget` | Per-project | NuGet cache |
 | `~/.yolium/projects/<project>/history` | `/home/agent/.yolium_history` | Per-project | Shell command history |
 | `~/.claude` | `/home/agent/.claude` | Global | Claude Code settings & memory |
 | `~/.config/opencode` | `/home/agent/.config/opencode` | Global | OpenCode configuration |

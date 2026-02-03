@@ -16,6 +16,7 @@ import type { ReviewAgentType, CodeReviewStatus } from './types/agent';
 import { WhisperModelDialog } from './components/WhisperModelDialog';
 import { SpeechToTextButton } from './components/SpeechToTextButton';
 import type { WhisperModelSize } from './types/whisper';
+import { normalizePath } from './lib/path-utils';
 
 function App(): React.ReactElement {
   const {
@@ -49,7 +50,8 @@ function App(): React.ReactElement {
   // State for path input dialog
   const [pathDialogOpen, setPathDialogOpen] = useState(false);
   const [lastUsedPath, setLastUsedPath] = useState<string>(() => {
-    return localStorage.getItem('yolium:lastPath') || '~/';
+    const stored = localStorage.getItem('yolium:lastPath');
+    return stored ? normalizePath(stored) : '~/';
   });
 
   // State for agent selection dialog

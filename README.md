@@ -15,10 +15,9 @@
 - **🔀 Parallel Agents** - Each agent gets its own git worktree and branch. Zero conflicts, clean branches ready for PR. ([details](docs/TECHNICAL.md#git-worktrees))
 - **📑 Multi-Tab Terminal** - Run multiple concurrent sessions with a tabbed interface
 - **🐳 Docker Isolation** - Each session runs in its own container, isolated from your host
-- **🤖 AI Agent Selection** - Claude Code, OpenCode, Codex, or interactive Shell
-- **🎙️ Speech-to-Text (Whisper.cpp)** - Local dictation with downloadable models; insert transcription into the active session
-- **🔗 Git Integration** - Worktrees, configuration, GitHub PAT support, plus GitHub CLI (gh) and GitLab CLI (glab)
-- **📦 Pre-configured Environment** - Python, Node.js, Java, .NET 10 LTS, and common dev tools ready to use ([details](docs/TECHNICAL.md#container-environment))
+- **🤖 AI Agent Selection** - Claude Code, OpenCode, or interactive Shell
+- **🔗 Git Integration** - Worktrees, configuration, and GitHub PAT support
+- **📦 Pre-configured Environment** - Python, Node.js, Java, and common dev tools ready to use ([details](docs/TECHNICAL.md#container-environment))
 - **💾 Persistent Caches** - Package manager caches survive across sessions ([details](docs/TECHNICAL.md#file-mounts--cache))
 - **🔒 Network Restrictions** - Only outbound HTTPS and SSH allowed
 - **🖥️ Cross-Platform** - Windows, macOS, and Linux
