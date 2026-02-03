@@ -134,7 +134,12 @@ export function PathInputDialog({
 
     const result = await window.electronAPI.listDirectory(path);
     if (result.success) {
-      setSuggestions(result.entries);
+      // Normalize paths from backend to use forward slashes consistently
+      const normalizedEntries = result.entries.map((entry: DirectoryEntry) => ({
+        ...entry,
+        path: normalizePath(entry.path),
+      }));
+      setSuggestions(normalizedEntries);
       setError(null);
     } else {
       setSuggestions([]);
@@ -248,9 +253,16 @@ export function PathInputDialog({
     [inputValue, filteredSuggestions, selectedIndex, favorites, onConfirm, onCancel, startFolderCreation]
   );
 
-  // Handle input change
+  // Handle input change - normalize backslashes to forward slashes as user types
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value);
+    // Normalize the path as user types to provide consistent experience
+    const value = e.target.value;
+    // Only normalize if there are backslashes, to preserve cursor position when possible
+    if (value.includes('\\')) {
+      setInputValue(normalizePath(value));
+    } else {
+      setInputValue(value);
+    }
   };
 
   // Handle suggestion click
