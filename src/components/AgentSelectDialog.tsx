@@ -62,18 +62,35 @@ export function AgentSelectDialog({
 
   const validateBranchName = useCallback((value: string): string | null => {
     if (!value.trim()) return null;
+    if (value === '@') return 'Branch name cannot be "@"';
     if (/\s/.test(value)) return 'Branch name cannot contain spaces';
     if (value.startsWith('-')) return 'Branch name cannot start with a hyphen';
+    if (value.startsWith('/')) return 'Branch name cannot start with a slash';
+    if (value.endsWith('/')) return 'Branch name cannot end with a slash';
+    if (value.endsWith('.lock')) return 'Branch name cannot end with .lock';
     if (value.includes('..')) return 'Branch name cannot contain consecutive dots';
+    if (value.includes('@{')) return 'Branch name cannot contain "@{"';
+    if (value.includes('//')) return 'Branch name cannot contain consecutive slashes';
+    if (/[\u0000-\u001f\u007f]/.test(value)) return 'Branch name contains control characters';
+    if (/[~^:?*\\[\\]\\\\]/.test(value)) {
+      return 'Branch name contains invalid characters';
+    }
     if (!/^[a-zA-Z0-9._/-]+$/.test(value)) return 'Branch name contains invalid characters';
     return null;
   }, []);
 
-  const handleConfirm = useCallback(() => {
+  const handleConfirm = useCallback(async () => {
     if (worktreeEnabled) {
       const error = validateBranchName(branchName);
       setBranchError(error);
       if (error) return;
+      if (branchName.trim()) {
+        const result = await window.electronAPI.validateBranchName(branchName);
+        if (!result.valid) {
+          setBranchError(result.error || 'Invalid branch name');
+          return;
+        }
+      }
     }
     const gsd = selectedAgent === 'claude' ? gsdEnabled : false;
     onSelect(selectedAgent, gsd, worktreeEnabled, branchName || null);
@@ -85,7 +102,7 @@ export function AgentSelectDialog({
         e.preventDefault();
         onBack();
       } else if (e.key === 'Enter') {
-        handleConfirm();
+        void handleConfirm();
       } else if (e.key === '1') {
         setSelectedAgent('claude');
       } else if (e.key === '2') {
