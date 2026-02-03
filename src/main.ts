@@ -29,7 +29,7 @@ import {
   startDockerEngine,
 } from './docker-setup';
 import log, { createLogger, getLogPath } from './lib/logger';
-import { loadGitConfig, saveGitConfig } from './lib/git-config';
+import { loadGitConfig, loadDetectedGitConfig, saveGitConfig } from './lib/git-config';
 import type { GitConfig } from './types/git';
 import { isGitRepo, hasCommits, getWorktreeBranch, initGitRepo } from './lib/git-worktree';
 import {
@@ -454,14 +454,16 @@ ipcMain.handle('fs:create-directory', async (_event, parentPath: string, folderN
 
 // Git config operations
 ipcMain.handle('git-config:load', () => {
-  const config = loadGitConfig();
-  if (!config) return null;
-  // Return flags instead of actual secrets for security
+  const detectedConfig = loadDetectedGitConfig();
+  if (!detectedConfig) return null;
+  
+  // Return detected config with source info and flags instead of actual secrets for security
   return {
-    name: config.name,
-    email: config.email,
-    hasPat: !!config.githubPat,
-    hasOpenaiKey: !!config.openaiApiKey,
+    name: detectedConfig.name,
+    email: detectedConfig.email,
+    sources: detectedConfig.sources,
+    hasPat: !!detectedConfig.githubPat,
+    hasOpenaiKey: !!detectedConfig.openaiApiKey,
   };
 });
 

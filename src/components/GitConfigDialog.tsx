@@ -10,6 +10,24 @@ interface GitConfigDialogProps {
   initialConfig?: GitConfigWithPat | null;
 }
 
+/**
+ * Get source display text and color for a field
+ */
+function getSourceDisplay(source?: 'system' | 'environment' | 'yolium'): { text: string; color: string } {
+  if (!source) return { text: '', color: '' };
+  
+  switch (source) {
+    case 'system':
+      return { text: ' (from Git)', color: 'text-blue-400' };
+    case 'environment':
+      return { text: ' (from env)', color: 'text-green-400' };
+    case 'yolium':
+      return { text: ' (saved)', color: 'text-yellow-400' };
+    default:
+      return { text: '', color: '' };
+  }
+}
+
 export function GitConfigDialog({
   isOpen,
   onClose,
@@ -199,6 +217,11 @@ export function GitConfigDialog({
           <div>
             <label htmlFor="git-name" className="block text-sm font-medium text-gray-300 mb-1">
               Name
+              {initialConfig?.sources?.name && (
+                <span className={`ml-2 text-xs ${getSourceDisplay(initialConfig.sources.name).color}`}>
+                  {getSourceDisplay(initialConfig.sources.name).text}
+                </span>
+              )}
             </label>
             <input
               ref={nameInputRef}
@@ -220,6 +243,11 @@ export function GitConfigDialog({
           <div>
             <label htmlFor="git-email" className="block text-sm font-medium text-gray-300 mb-1">
               Email
+              {initialConfig?.sources?.email && (
+                <span className={`ml-2 text-xs ${getSourceDisplay(initialConfig.sources.email).color}`}>
+                  {getSourceDisplay(initialConfig.sources.email).text}
+                </span>
+              )}
             </label>
             <input
               id="git-email"
@@ -242,7 +270,11 @@ export function GitConfigDialog({
             <label htmlFor="openai-key" className="block text-sm font-medium text-gray-300 mb-1">
               OpenAI API Key
               {initialConfig?.hasOpenaiKey && !openaiApiKey && !openaiKeyCleared && (
-                <span className="ml-2 text-xs text-green-400">(configured)</span>
+                <span className="ml-2 text-xs text-green-400">
+                  {initialConfig?.sources?.openaiApiKey 
+                    ? getSourceDisplay(initialConfig.sources.openaiApiKey).text 
+                    : '(configured)'}
+                </span>
               )}
             </label>
             <div className="relative">
@@ -314,7 +346,11 @@ export function GitConfigDialog({
               </svg>
               GitHub Authentication
               {initialConfig?.hasPat && !githubPat && !patCleared && (
-                <span className="ml-2 text-xs text-green-400">(configured)</span>
+                <span className="ml-2 text-xs text-green-400">
+                  {initialConfig?.sources?.githubPat 
+                    ? getSourceDisplay(initialConfig.sources.githubPat).text 
+                    : '(configured)'}
+                </span>
               )}
             </button>
 

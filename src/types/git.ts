@@ -10,4 +10,10 @@ export interface GitConfig {
 export interface GitConfigWithPat extends GitConfig {
   hasPat?: boolean;  // Used by IPC to indicate PAT exists without exposing it
   hasOpenaiKey?: boolean;  // Used by IPC to indicate OpenAI key exists without exposing it
+  sources?: {
+    name?: 'system' | 'environment' | 'yolium';
+    email?: 'system' | 'environment' | 'yolium';
+    githubPat?: 'system' | 'environment' | 'yolium';
+    openaiApiKey?: 'system' | 'environment' | 'yolium';
+  };
 }

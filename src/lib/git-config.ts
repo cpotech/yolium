@@ -1,9 +1,132 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import { execSync } from 'node:child_process';
 import type { GitConfig } from '../types/git';
 
 export type { GitConfig } from '../types/git';
+
+/**
+ * Interface to track the source of detected Git configuration
+ */
+export interface DetectedGitConfig extends GitConfig {
+  sources: {
+    name?: 'system' | 'environment' | 'yolium';
+    email?: 'system' | 'environment' | 'yolium';
+    githubPat?: 'system' | 'environment' | 'yolium';
+    openaiApiKey?: 'system' | 'environment' | 'yolium';
+  };
+}
+
+/**
+ * Load Git configuration from system Git (git config --global)
+ */
+function loadSystemGitConfig(): Partial<GitConfig> | null {
+  try {
+    const name = execSync('git config --global user.name', { encoding: 'utf-8' }).trim();
+    const email = execSync('git config --global user.email', { encoding: 'utf-8' }).trim();
+    
+    const config: Partial<GitConfig> = {};
+    if (name) config.name = name;
+    if (email) config.email = email;
+    
+    return Object.keys(config).length > 0 ? config : null;
+  } catch {
+    // Git not available or no global config set
+    return null;
+  }
+}
+
+/**
+ * Load Git configuration from environment variables
+ */
+function loadEnvironmentGitConfig(): Partial<GitConfig> | null {
+  const config: Partial<GitConfig> = {};
+  
+  // Check common Git environment variables
+  const name = process.env.GIT_AUTHOR_NAME || process.env.GIT_COMMITTER_NAME;
+  const email = process.env.GIT_AUTHOR_EMAIL || process.env.GIT_COMMITTER_EMAIL;
+  
+  // Check for other potential environment variables
+  const githubPat = process.env.GITHUB_TOKEN || process.env.GITHUB_PAT;
+  const openaiKey = process.env.OPENAI_API_KEY;
+  
+  if (name) config.name = name;
+  if (email) config.email = email;
+  if (githubPat) config.githubPat = githubPat;
+  if (openaiKey) config.openaiApiKey = openaiKey;
+  
+  return Object.keys(config).length > 0 ? config : null;
+}
+
+/**
+ * Load Git configuration from all sources with source tracking
+ */
+export function loadDetectedGitConfig(): DetectedGitConfig | null {
+  const systemConfig = loadSystemGitConfig();
+  const envConfig = loadEnvironmentGitConfig();
+  const yoliumConfig = loadGitConfig();
+  
+  const detected: DetectedGitConfig = {
+    name: '',
+    email: '',
+    sources: {}
+  };
+  
+  let hasAnyConfig = false;
+  
+  // Priority: Yolium > Environment > System for each field
+  if (yoliumConfig?.name) {
+    detected.name = yoliumConfig.name;
+    detected.sources.name = 'yolium';
+    hasAnyConfig = true;
+  } else if (envConfig?.name) {
+    detected.name = envConfig.name;
+    detected.sources.name = 'environment';
+    hasAnyConfig = true;
+  } else if (systemConfig?.name) {
+    detected.name = systemConfig.name;
+    detected.sources.name = 'system';
+    hasAnyConfig = true;
+  }
+  
+  if (yoliumConfig?.email) {
+    detected.email = yoliumConfig.email;
+    detected.sources.email = 'yolium';
+    hasAnyConfig = true;
+  } else if (envConfig?.email) {
+    detected.email = envConfig.email;
+    detected.sources.email = 'environment';
+    hasAnyConfig = true;
+  } else if (systemConfig?.email) {
+    detected.email = systemConfig.email;
+    detected.sources.email = 'system';
+    hasAnyConfig = true;
+  }
+  
+  // For tokens, we only check environment and yolium (no system git config for these)
+  if (yoliumConfig?.githubPat) {
+    detected.githubPat = yoliumConfig.githubPat;
+    detected.sources.githubPat = 'yolium';
+    hasAnyConfig = true;
+  } else if (envConfig?.githubPat) {
+    detected.githubPat = envConfig.githubPat;
+    detected.sources.githubPat = 'environment';
+    hasAnyConfig = true;
+  }
+  
+  if (yoliumConfig?.openaiApiKey) {
+    detected.openaiApiKey = yoliumConfig.openaiApiKey;
+    detected.sources.openaiApiKey = 'yolium';
+    hasAnyConfig = true;
+  } else if (envConfig?.openaiApiKey) {
+    detected.openaiApiKey = envConfig.openaiApiKey;
+    detected.sources.openaiApiKey = 'environment';
+    hasAnyConfig = true;
+  }
+  
+  return hasAnyConfig ? detected : null;
+}
 
 /**
  * Get the path to the settings file.
