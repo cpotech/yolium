@@ -3,9 +3,8 @@ import * as path from 'node:path'
 import * as os from 'node:os'
 import * as crypto from 'node:crypto'
 
-// Mock execSync to avoid actual git commands
+// Mock execFileSync to avoid actual git commands
 vi.mock('node:child_process', () => ({
-  execSync: vi.fn(),
   execFileSync: vi.fn(),
 }))
 
@@ -16,7 +15,7 @@ vi.mock('node:fs', () => ({
 }))
 
 // Import after mocking
-import { execSync, execFileSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import {
   isGitRepo,
@@ -35,12 +34,12 @@ describe('git-worktree', () => {
 
   describe('isGitRepo', () => {
     it('returns true for valid git repo', () => {
-      vi.mocked(execSync).mockReturnValue(Buffer.from('true'))
+      vi.mocked(execFileSync).mockReturnValue(Buffer.from('true'))
       expect(isGitRepo('/some/path')).toBe(true)
     })
 
     it('returns false when git command fails', () => {
-      vi.mocked(execSync).mockImplementation(() => {
+      vi.mocked(execFileSync).mockImplementation(() => {
         throw new Error('not a git repo')
       })
       expect(isGitRepo('/not/a/repo')).toBe(false)
@@ -49,12 +48,12 @@ describe('git-worktree', () => {
 
   describe('hasCommits', () => {
     it('returns true when repo has commits', () => {
-      vi.mocked(execSync).mockReturnValue(Buffer.from('abc123'))
+      vi.mocked(execFileSync).mockReturnValue(Buffer.from('abc123'))
       expect(hasCommits('/some/path')).toBe(true)
     })
 
     it('returns false when repo has no commits', () => {
-      vi.mocked(execSync).mockImplementation(() => {
+      vi.mocked(execFileSync).mockImplementation(() => {
         throw new Error('fatal: bad revision HEAD')
       })
       expect(hasCommits('/empty/repo')).toBe(false)
@@ -129,20 +128,20 @@ describe('git-worktree', () => {
   describe('initGitRepo', () => {
     it('initializes git in a non-repo folder', () => {
       // First call to isGitRepo returns false (not a repo)
-      vi.mocked(execSync).mockImplementationOnce(() => {
+      vi.mocked(execFileSync).mockImplementationOnce(() => {
         throw new Error('not a git repo')
       })
       // Second call is git init which succeeds
-      vi.mocked(execSync).mockImplementationOnce(() => Buffer.from('Initialized empty Git repository'))
+      vi.mocked(execFileSync).mockImplementationOnce(() => Buffer.from('Initialized empty Git repository'))
 
       const result = initGitRepo('/some/folder')
       expect(result).toBe(true)
-      expect(execSync).toHaveBeenCalledWith('git init', expect.objectContaining({ cwd: '/some/folder' }))
+      expect(execFileSync).toHaveBeenCalledWith('git', ['init'], expect.objectContaining({ cwd: '/some/folder' }))
     })
 
     it('returns false if already a git repo', () => {
       // isGitRepo returns true
-      vi.mocked(execSync).mockReturnValue(Buffer.from('true'))
+      vi.mocked(execFileSync).mockReturnValue(Buffer.from('true'))
 
       const result = initGitRepo('/existing/repo')
       expect(result).toBe(false)
@@ -150,13 +149,13 @@ describe('git-worktree', () => {
 
     it('throws error if git init fails', () => {
       // First call to isGitRepo returns false
-      vi.mocked(execSync).mockImplementationOnce(() => {
+      vi.mocked(execFileSync).mockImplementationOnce(() => {
         throw new Error('not a git repo')
       })
       // Second call is git init which fails
       const error = new Error('git init failed') as Error & { stderr: Buffer }
       error.stderr = Buffer.from('permission denied')
-      vi.mocked(execSync).mockImplementationOnce(() => {
+      vi.mocked(execFileSync).mockImplementationOnce(() => {
         throw error
       })
 
@@ -171,7 +170,11 @@ describe('git-worktree', () => {
       const worktreePath = getWorktreePath(projectPath, branchName)
 
       vi.mocked(fs.existsSync).mockReturnValue(true)
-      vi.mocked(execSync).mockImplementation((command: string) => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) {
+          return Buffer.from('')
+        }
         if (command.startsWith('git rev-parse HEAD')) {
           return Buffer.from('abc123')
         }
@@ -186,8 +189,9 @@ describe('git-worktree', () => {
 
       const result = createWorktree(projectPath, branchName)
       expect(result).toBe(worktreePath)
-      expect(execSync).not.toHaveBeenCalledWith(
-        expect.stringContaining('git worktree add'),
+      expect(execFileSync).not.toHaveBeenCalledWith(
+        'git',
+        expect.arrayContaining(['worktree', 'add']),
         expect.any(Object)
       )
     })
