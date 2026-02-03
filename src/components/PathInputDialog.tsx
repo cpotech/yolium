@@ -151,7 +151,8 @@ export function PathInputDialog({
   // Initialize with last used path or home directory on open
   useEffect(() => {
     if (isOpen) {
-      const startPath = initialPath || '~/';
+      // Normalize the initial path to use forward slashes
+      const startPath = initialPath ? normalizePath(initialPath) : '~/';
       setInputValue(startPath);
       setSelectedIndex(0);
       setShowHidden(false);
