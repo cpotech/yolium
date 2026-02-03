@@ -200,7 +200,12 @@ function App(): React.ReactElement {
   }, []);
 
   // Git config dialog handlers
-  const handleOpenGitConfig = useCallback(() => {
+  const handleOpenGitConfig = useCallback(async () => {
+    // Fetch latest config values before opening dialog
+    const config = await window.electronAPI.loadGitConfig();
+    if (config) {
+      setGitConfig(config);
+    }
     setGitConfigDialogOpen(true);
   }, []);
 
