@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -14,19 +14,10 @@ import * as crypto from 'node:crypto';
  * @throws Error if the branch name contains unsafe characters
  */
 function validateBranchName(branchName: string): void {
-  // Must only contain safe characters (alphanumeric, hyphen, underscore, slash, dot)
-  if (!/^[a-zA-Z0-9._/-]+$/.test(branchName)) {
-    throw new Error('Invalid branch name: contains unsafe characters');
-  }
-
-  // Cannot start with a hyphen (would be interpreted as command option)
-  if (branchName.startsWith('-')) {
-    throw new Error('Invalid branch name: cannot start with a hyphen');
-  }
-
-  // Cannot contain consecutive dots (git restriction and path traversal risk)
-  if (branchName.includes('..')) {
-    throw new Error('Invalid branch name: cannot contain consecutive dots');
+  try {
+    execFileSync('git', ['check-ref-format', '--branch', branchName], { stdio: 'ignore' });
+  } catch {
+    throw new Error('Invalid branch name: does not match git branch naming rules');
   }
 }
 
@@ -88,7 +79,7 @@ export function hasCommits(folderPath: string): boolean {
  * Generate a unique branch name for a worktree.
  */
 export function generateBranchName(): string {
-  return `yolium-${Date.now()}`;
+  return `yolium-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
 }
 
 /**
@@ -144,7 +135,12 @@ export function createWorktree(projectPath: string, branchName: string): string 
         cwd: projectPath,
         encoding: 'utf-8',
       });
-      if (output.includes(worktreePath)) {
+      const normalizedTarget = path.resolve(worktreePath);
+      const hasMatch = output
+        .split('\n')
+        .filter((line) => line.startsWith('worktree '))
+        .some((line) => path.resolve(line.replace('worktree ', '').trim()) === normalizedTarget);
+      if (hasMatch) {
         // Worktree exists and is valid, reuse it
         return worktreePath;
       }
