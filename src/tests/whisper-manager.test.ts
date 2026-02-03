@@ -3,6 +3,17 @@ import * as path from 'node:path'
 import * as os from 'node:os'
 import type { WhisperModelSize } from '../types/whisper'
 import { WHISPER_MODELS, WHISPER_MODEL_BASE_URL } from '../types/whisper'
+
+// Mock the logger before importing whisper-manager (which imports logger.ts that uses Electron's app)
+vi.mock('../lib/logger', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }),
+}))
+
 import {
   getModelsDir,
   getModelPath,
