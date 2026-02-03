@@ -206,7 +206,13 @@ export function PathInputDialog({
       switch (e.key) {
         case 'Escape':
           e.preventDefault();
-          onCancel();
+          // Go back one directory level, or close if at root
+          if (inputValue && inputValue.length > 1 && inputValue !== '~/' && !/^[A-Za-z]:\/$/.test(inputValue)) {
+            const parentPath = getParentDirectory(inputValue);
+            setInputValue(parentPath || PATH_SEP);
+          } else {
+            onCancel();
+          }
           break;
 
         case 'Enter':
