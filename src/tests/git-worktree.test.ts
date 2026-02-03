@@ -6,6 +6,7 @@ import * as crypto from 'node:crypto'
 // Mock execSync to avoid actual git commands
 vi.mock('node:child_process', () => ({
   execSync: vi.fn(),
+  execFileSync: vi.fn(),
 }))
 
 vi.mock('node:fs', () => ({
@@ -15,7 +16,7 @@ vi.mock('node:fs', () => ({
 }))
 
 // Import after mocking
-import { execSync } from 'node:child_process'
+import { execSync, execFileSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import {
   isGitRepo,
@@ -23,11 +24,13 @@ import {
   generateBranchName,
   getWorktreePath,
   initGitRepo,
+  createWorktree,
 } from '../lib/git-worktree'
 
 describe('git-worktree', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(execFileSync).mockReturnValue(Buffer.from(''))
   })
 
   describe('isGitRepo', () => {
@@ -61,7 +64,7 @@ describe('git-worktree', () => {
   describe('generateBranchName', () => {
     it('generates branch name with yolium prefix', () => {
       const name = generateBranchName()
-      expect(name).toMatch(/^yolium-\d+$/)
+      expect(name).toMatch(/^yolium-\d+-[a-f0-9]{6}$/)
     })
 
     it('generates names based on timestamp', async () => {
@@ -87,21 +90,39 @@ describe('git-worktree', () => {
     })
 
     it('throws for branch names with unsafe characters', () => {
-      expect(() => getWorktreePath('/path', 'branch;rm -rf /')).toThrow('unsafe characters')
+      vi.mocked(execFileSync).mockImplementationOnce(() => {
+        throw new Error('invalid')
+      })
+      expect(() => getWorktreePath('/path', 'branch;rm -rf /')).toThrow('Invalid branch name')
     })
 
     it('throws for branch names starting with hyphen', () => {
-      expect(() => getWorktreePath('/path', '-branch')).toThrow('cannot start with a hyphen')
+      vi.mocked(execFileSync).mockImplementationOnce(() => {
+        throw new Error('invalid')
+      })
+      expect(() => getWorktreePath('/path', '-branch')).toThrow('Invalid branch name')
     })
 
     it('throws for branch names with consecutive dots', () => {
-      expect(() => getWorktreePath('/path', 'branch..name')).toThrow('consecutive dots')
+      vi.mocked(execFileSync).mockImplementationOnce(() => {
+        throw new Error('invalid')
+      })
+      expect(() => getWorktreePath('/path', 'branch..name')).toThrow('Invalid branch name')
     })
 
     it('accepts valid branch names', () => {
       expect(() => getWorktreePath('/path', 'feature/my-branch')).not.toThrow()
       expect(() => getWorktreePath('/path', 'fix_bug_123')).not.toThrow()
       expect(() => getWorktreePath('/path', 'v1.0.0')).not.toThrow()
+    })
+
+    it('validates branch names with git check-ref-format', () => {
+      getWorktreePath('/path', 'feature/branch')
+      expect(execFileSync).toHaveBeenCalledWith(
+        'git',
+        ['check-ref-format', '--branch', 'feature/branch'],
+        expect.any(Object)
+      )
     })
   })
 
@@ -140,6 +161,35 @@ describe('git-worktree', () => {
       })
 
       expect(() => initGitRepo('/some/folder')).toThrow('Failed to initialize git repository')
+    })
+  })
+
+  describe('createWorktree', () => {
+    it('reuses existing worktree when path is already registered', () => {
+      const projectPath = '/home/user/project'
+      const branchName = 'feature-branch'
+      const worktreePath = getWorktreePath(projectPath, branchName)
+
+      vi.mocked(fs.existsSync).mockReturnValue(true)
+      vi.mocked(execSync).mockImplementation((command: string) => {
+        if (command.startsWith('git rev-parse HEAD')) {
+          return Buffer.from('abc123')
+        }
+        if (command.startsWith('git worktree prune')) {
+          return Buffer.from('')
+        }
+        if (command.startsWith('git worktree list --porcelain')) {
+          return `worktree ${worktreePath}\nbranch refs/heads/${branchName}\n`
+        }
+        throw new Error(`Unexpected command: ${command}`)
+      })
+
+      const result = createWorktree(projectPath, branchName)
+      expect(result).toBe(worktreePath)
+      expect(execSync).not.toHaveBeenCalledWith(
+        expect.stringContaining('git worktree add'),
+        expect.any(Object)
+      )
     })
   })
 })

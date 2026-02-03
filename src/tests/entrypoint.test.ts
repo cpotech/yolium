@@ -114,6 +114,10 @@ describe('entrypoint.sh', () => {
       expect(entrypointContent).toContain('--full-auto');
     });
 
+    it('should launch codex with full-auto and danger-full-access sandbox', () => {
+      expect(entrypointContent).toMatch(/exec\s+"\$CODEX_BIN"\s+--full-auto\s+--sandbox\s+danger-full-access/);
+    });
+
     it('should have a dedicated codex branch in tool selection', () => {
       // The entrypoint should have elif [ "$TOOL" = "codex" ]
       expect(entrypointContent).toContain('TOOL" = "codex"');

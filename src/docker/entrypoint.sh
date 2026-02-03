@@ -472,12 +472,9 @@ elif [ "$TOOL" = "codex" ]; then
     echo "Press any key to start Codex..."
     read -n 1
     log "Key pressed, launching codex..."
-    # Use -a on-request (auto-approve) with danger-full-access sandbox.
-    # --full-auto is a convenience alias that forces workspace-write sandbox,
-    # which panics on kernels where Landlock is compiled but not functional.
+    # Use --full-auto with danger-full-access sandbox.
     # Docker already provides container-level isolation.
-    # See: https://github.com/openai/codex/issues/2267
-    exec "$CODEX_BIN" -a on-request --sandbox danger-full-access
+    exec "$CODEX_BIN" --full-auto --sandbox danger-full-access
     # If we reach here, exec failed
     log "ERROR: exec failed unexpectedly"
     exit 1

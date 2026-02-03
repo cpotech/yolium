@@ -109,14 +109,18 @@ test.describe('Dialog Navigation', () => {
     await window.click(selectors.newTabButton);
     await expect(window.locator(selectors.pathDialog)).toBeVisible();
 
+    const currentPath = await window.locator(selectors.pathInput).inputValue();
+    const depth = currentPath.split(/[\\/]+/).filter(Boolean).length;
+    const maxPresses = Math.max(6, depth + 3);
+    const start = Date.now();
+
     // Press Escape multiple times to navigate back to root and then close
     // (Escape now goes back one directory level, closes only when at root)
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < maxPresses; i++) {
       await window.keyboard.press('Escape');
-      // Check if dialog closed
       const isVisible = await window.locator(selectors.pathDialog).isVisible();
       if (!isVisible) break;
-      // Small delay between presses
+      if (Date.now() - start > 5000) break;
       await window.waitForTimeout(100);
     }
 

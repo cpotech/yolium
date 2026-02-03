@@ -28,6 +28,8 @@ export function AgentSelectDialog({
   const [gsdEnabled, setGsdEnabled] = useState(false);
   const [worktreeEnabled, setWorktreeEnabled] = useState(false);
   const [branchName, setBranchName] = useState('');
+  const [branchPlaceholder] = useState(() => `yolium-${Date.now()}`);
+  const [branchError, setBranchError] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
 
@@ -58,10 +60,41 @@ export function AgentSelectDialog({
     }
   }, [isOpen]);
 
-  const handleConfirm = useCallback(() => {
+  const validateBranchName = useCallback((value: string): string | null => {
+    if (!value.trim()) return null;
+    if (value === '@') return 'Branch name cannot be "@"';
+    if (/\s/.test(value)) return 'Branch name cannot contain spaces';
+    if (value.startsWith('-')) return 'Branch name cannot start with a hyphen';
+    if (value.startsWith('/')) return 'Branch name cannot start with a slash';
+    if (value.endsWith('/')) return 'Branch name cannot end with a slash';
+    if (value.endsWith('.lock')) return 'Branch name cannot end with .lock';
+    if (value.includes('..')) return 'Branch name cannot contain consecutive dots';
+    if (value.includes('@{')) return 'Branch name cannot contain "@{"';
+    if (value.includes('//')) return 'Branch name cannot contain consecutive slashes';
+    if (/[\u0000-\u001f\u007f]/.test(value)) return 'Branch name contains control characters';
+    if (/[~^:?*\\[\\]\\\\]/.test(value)) {
+      return 'Branch name contains invalid characters';
+    }
+    if (!/^[a-zA-Z0-9._/-]+$/.test(value)) return 'Branch name contains invalid characters';
+    return null;
+  }, []);
+
+  const handleConfirm = useCallback(async () => {
+    if (worktreeEnabled) {
+      const error = validateBranchName(branchName);
+      setBranchError(error);
+      if (error) return;
+      if (branchName.trim()) {
+        const result = await window.electronAPI.validateBranchName(branchName);
+        if (!result.valid) {
+          setBranchError(result.error || 'Invalid branch name');
+          return;
+        }
+      }
+    }
     const gsd = selectedAgent === 'claude' ? gsdEnabled : false;
     onSelect(selectedAgent, gsd, worktreeEnabled, branchName || null);
-  }, [selectedAgent, gsdEnabled, worktreeEnabled, branchName, onSelect]);
+  }, [selectedAgent, gsdEnabled, worktreeEnabled, branchName, onSelect, validateBranchName]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -69,7 +102,7 @@ export function AgentSelectDialog({
         e.preventDefault();
         onBack();
       } else if (e.key === 'Enter') {
-        handleConfirm();
+        void handleConfirm();
       } else if (e.key === '1') {
         setSelectedAgent('claude');
       } else if (e.key === '2') {
@@ -222,14 +255,28 @@ export function AgentSelectDialog({
             );
           })()}
           {worktreeEnabled && (
-            <input
-              data-testid="branch-name-input"
-              type="text"
-              placeholder={`yolium-${Date.now()}`}
-              value={branchName}
-              onChange={e => setBranchName(e.target.value)}
-              className="mt-2 ml-6 w-[calc(100%-1.5rem)] px-2 py-1 text-sm rounded bg-gray-700 border border-gray-600 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
-            />
+            <>
+              <input
+                data-testid="branch-name-input"
+                type="text"
+                placeholder={branchPlaceholder}
+                value={branchName}
+                onChange={e => {
+                  const nextValue = e.target.value;
+                  setBranchName(nextValue);
+                  setBranchError(validateBranchName(nextValue));
+                }}
+                className="mt-2 ml-6 w-[calc(100%-1.5rem)] px-2 py-1 text-sm rounded bg-gray-700 border border-gray-600 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              />
+              <div data-testid="worktree-branch-helper" className="mt-1 ml-6 text-xs text-gray-500">
+                Creates a new branch for this session.
+              </div>
+              {branchError && (
+                <div data-testid="worktree-branch-error" className="mt-1 ml-6 text-xs text-red-400">
+                  {branchError}
+                </div>
+              )}
+            </>
           )}
           {gitStatus && !gitStatus.isRepo && (
             <div className="mt-3">

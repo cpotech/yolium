@@ -31,7 +31,7 @@ import {
 import log, { createLogger, getLogPath } from './lib/logger';
 import { loadGitConfig, loadDetectedGitConfig, saveGitConfig } from './lib/git-config';
 import type { GitConfig } from './types/git';
-import { isGitRepo, hasCommits, getWorktreeBranch, initGitRepo } from './lib/git-worktree';
+import { isGitRepo, hasCommits, getWorktreeBranch, initGitRepo, validateBranchNameForUi } from './lib/git-worktree';
 import {
   listModels,
   isModelDownloaded,
@@ -523,6 +523,10 @@ ipcMain.handle('git:init', (_event, folderPath: string) => {
     logger.error('Failed to init git repo:', { error: message });
     return { success: false, error: message };
   }
+});
+
+ipcMain.handle('git:validate-branch', (_event, branchName: string) => {
+  return validateBranchNameForUi(branchName);
 });
 
 // Docker availability check

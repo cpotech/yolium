@@ -19,7 +19,7 @@ Multiple agents on one repo = file conflicts. Agent A edits `src/api.ts` while A
 
 ```
 your-repo/                    # Main repository (shared .git)
-/tmp/yolium-worktrees/
+~/.yolium/worktrees/
 ├── your-repo-abc123/         # Agent A: feature/auth
 ├── your-repo-def456/         # Agent B: fix/api-bug
 └── your-repo-ghi789/         # Agent C: refactor/db

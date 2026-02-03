@@ -374,7 +374,7 @@ run_container() {
         if [[ "$tool" == "opencode" ]]; then
             tool_cmd="opencode"
         elif [[ "$tool" == "codex" ]]; then
-            tool_cmd="codex --full-auto"
+            tool_cmd="codex --full-auto --sandbox danger-full-access"
         else
             tool_cmd="npx get-shit-done-cc --global && claude --dangerously-skip-permissions"
         fi

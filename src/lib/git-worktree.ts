@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -13,21 +13,29 @@ import * as crypto from 'node:crypto';
  *
  * @throws Error if the branch name contains unsafe characters
  */
-function validateBranchName(branchName: string): void {
-  // Must only contain safe characters (alphanumeric, hyphen, underscore, slash, dot)
-  if (!/^[a-zA-Z0-9._/-]+$/.test(branchName)) {
-    throw new Error('Invalid branch name: contains unsafe characters');
+function getBranchNameValidationError(branchName: string): string | null {
+  if (!branchName.trim()) {
+    return 'Branch name cannot be empty';
   }
 
-  // Cannot start with a hyphen (would be interpreted as command option)
-  if (branchName.startsWith('-')) {
-    throw new Error('Invalid branch name: cannot start with a hyphen');
+  try {
+    execFileSync('git', ['check-ref-format', '--branch', branchName], { stdio: 'ignore' });
+    return null;
+  } catch {
+    return 'Invalid branch name: does not match git branch naming rules';
   }
+}
 
-  // Cannot contain consecutive dots (git restriction and path traversal risk)
-  if (branchName.includes('..')) {
-    throw new Error('Invalid branch name: cannot contain consecutive dots');
+export function validateBranchName(branchName: string): void {
+  const error = getBranchNameValidationError(branchName);
+  if (error) {
+    throw new Error(error);
   }
+}
+
+export function validateBranchNameForUi(branchName: string): { valid: boolean; error: string | null } {
+  const error = getBranchNameValidationError(branchName);
+  return { valid: !error, error };
 }
 
 /**
@@ -42,7 +50,7 @@ export function initGitRepo(folderPath: string): boolean {
   }
 
   try {
-    execSync('git init', {
+    execFileSync('git', ['init'], {
       cwd: folderPath,
       stdio: 'pipe',
     });
@@ -59,7 +67,7 @@ export function initGitRepo(folderPath: string): boolean {
  */
 export function isGitRepo(folderPath: string): boolean {
   try {
-    execSync('git rev-parse --is-inside-work-tree', {
+    execFileSync('git', ['rev-parse', '--is-inside-work-tree'], {
       cwd: folderPath,
       stdio: 'ignore',
     });
@@ -74,7 +82,7 @@ export function isGitRepo(folderPath: string): boolean {
  */
 export function hasCommits(folderPath: string): boolean {
   try {
-    execSync('git rev-parse HEAD', {
+    execFileSync('git', ['rev-parse', 'HEAD'], {
       cwd: folderPath,
       stdio: 'ignore',
     });
@@ -88,7 +96,7 @@ export function hasCommits(folderPath: string): boolean {
  * Generate a unique branch name for a worktree.
  */
 export function generateBranchName(): string {
-  return `yolium-${Date.now()}`;
+  return `yolium-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
 }
 
 /**
@@ -122,7 +130,7 @@ export function createWorktree(projectPath: string, branchName: string): string 
 
   // Prune stale worktree references (directories deleted but still registered)
   try {
-    execSync('git worktree prune', {
+    execFileSync('git', ['worktree', 'prune'], {
       cwd: projectPath,
       stdio: 'ignore',
     });
@@ -140,11 +148,16 @@ export function createWorktree(projectPath: string, branchName: string): string 
   if (fs.existsSync(worktreePath)) {
     // Verify it's a valid worktree for this repo
     try {
-      const output = execSync('git worktree list --porcelain', {
+      const output = execFileSync('git', ['worktree', 'list', '--porcelain'], {
         cwd: projectPath,
         encoding: 'utf-8',
       });
-      if (output.includes(worktreePath)) {
+      const normalizedTarget = path.resolve(worktreePath);
+      const hasMatch = output
+        .split('\n')
+        .filter((line) => line.startsWith('worktree '))
+        .some((line) => path.resolve(line.replace('worktree ', '').trim()) === normalizedTarget);
+      if (hasMatch) {
         // Worktree exists and is valid, reuse it
         return worktreePath;
       }
@@ -159,7 +172,7 @@ export function createWorktree(projectPath: string, branchName: string): string 
   // Check if branch already exists
   let branchExists = false;
   try {
-    execSync(`git rev-parse --verify "${branchName}"`, {
+    execFileSync('git', ['rev-parse', '--verify', branchName], {
       cwd: projectPath,
       stdio: 'ignore',
     });
@@ -172,13 +185,13 @@ export function createWorktree(projectPath: string, branchName: string): string 
   try {
     if (branchExists) {
       // Use existing branch (will fail if branch is checked out elsewhere)
-      execSync(`git worktree add "${worktreePath}" "${branchName}"`, {
+      execFileSync('git', ['worktree', 'add', worktreePath, branchName], {
         cwd: projectPath,
         stdio: 'pipe',
       });
     } else {
       // Create new branch from current HEAD
-      execSync(`git worktree add -b "${branchName}" "${worktreePath}"`, {
+      execFileSync('git', ['worktree', 'add', '-b', branchName, worktreePath], {
         cwd: projectPath,
         stdio: 'pipe',
       });
@@ -207,17 +220,17 @@ export function createWorktree(projectPath: string, branchName: string): string 
 export function deleteWorktree(projectPath: string, worktreePath: string): void {
   try {
     // First try the clean git worktree remove
-    execSync(`git worktree remove "${worktreePath}" --force`, {
+    execFileSync('git', ['worktree', 'remove', worktreePath, '--force'], {
       cwd: projectPath,
       stdio: 'pipe',
     });
   } catch {
     // If git worktree remove fails, manually prune and remove directory
     try {
-      execSync('git worktree prune', {
-        cwd: projectPath,
-        stdio: 'ignore',
-      });
+    execFileSync('git', ['worktree', 'prune'], {
+      cwd: projectPath,
+      stdio: 'ignore',
+    });
     } catch {
       // Ignore prune errors
     }
@@ -237,7 +250,7 @@ export function deleteWorktree(projectPath: string, worktreePath: string): void 
  */
 export function hasUncommittedChanges(worktreePath: string): boolean {
   try {
-    const output = execSync('git status --porcelain', {
+    const output = execFileSync('git', ['status', '--porcelain'], {
       cwd: worktreePath,
       encoding: 'utf-8',
     });
@@ -255,7 +268,7 @@ export function hasUncommittedChanges(worktreePath: string): boolean {
  */
 export function getWorktreeBranch(worktreePath: string): string | null {
   try {
-    const output = execSync('git rev-parse --abbrev-ref HEAD', {
+    const output = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
       cwd: worktreePath,
       encoding: 'utf-8',
     });

@@ -263,6 +263,23 @@ function getDockerDir(): string {
 }
 
 /**
+ * Compute a combined hash of Dockerfile + entrypoint.sh to detect image staleness.
+ */
+function computeDockerImageHash(): string {
+  const dockerDir = getDockerDir();
+  const dockerfilePath = path.join(dockerDir, 'Dockerfile');
+  const entrypointPath = path.join(dockerDir, 'entrypoint.sh');
+  const dockerfile = fs.readFileSync(dockerfilePath, 'utf-8');
+  const entrypoint = fs.readFileSync(entrypointPath, 'utf-8');
+  return createHash('sha256')
+    .update(dockerfile)
+    .update('\n---\n')
+    .update(entrypoint)
+    .digest('hex')
+    .substring(0, 20);
+}
+
+/**
  * Build the yolium Docker image locally using docker CLI with BuildKit.
  */
 async function buildLocalImage(
@@ -273,6 +290,7 @@ async function buildLocalImage(
   const userId = os.userInfo().uid > 0 ? os.userInfo().uid : 1000;
   const groupId = os.userInfo().gid > 0 ? os.userInfo().gid : 1000;
   const buildTimestamp = new Date().toISOString();
+  const buildHash = computeDockerImageHash();
 
   onProgress?.('Building Docker image (this may take a few minutes on first run)...');
 
@@ -285,6 +303,7 @@ async function buildLocalImage(
     '--build-arg', `BUILD_TIMESTAMP=${buildTimestamp}`,
     '--label', 'yolium.version=1.0.0',
     '--label', `yolium.built=${buildTimestamp}`,
+    '--label', `yolium.build_hash=${buildHash}`,
     '-t', DEFAULT_IMAGE,
     dockerDir,
   ];
@@ -452,7 +471,27 @@ export async function ensureImage(
   });
 
   if (images.length > 0) {
-    return; // Image already present
+    // If this is the local yolium image, rebuild when Dockerfile/entrypoint changes
+    if (imageName === DEFAULT_IMAGE) {
+      try {
+        const image = docker.getImage(imageName);
+        const inspect = await image.inspect();
+        const labels = inspect.Config?.Labels || {};
+        const currentHash = computeDockerImageHash();
+        const imageHash = labels['yolium.build_hash'];
+        if (!imageHash || imageHash !== currentHash) {
+          onProgress?.('Dockerfile or entrypoint changed, rebuilding image...');
+          await buildLocalImage(onProgress);
+        }
+      } catch (err) {
+        logger.warn('Failed to inspect existing image, rebuilding', {
+          imageName,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        await buildLocalImage(onProgress);
+      }
+    }
+    return; // Image already present (or rebuilt above)
   }
 
   // For local yolium image, build it automatically

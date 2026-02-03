@@ -150,6 +150,34 @@ test.describe('Tab Lifecycle', () => {
     await expect(window.locator(selectors.branchNameInput)).toBeVisible();
   });
 
+  test('should show worktree helper text when enabled', async () => {
+    ctx = await launchApp();
+    const { window } = ctx;
+
+    await window.click(selectors.newTabButton);
+    await window.fill(selectors.pathInput, testRepoPath);
+    await window.click(selectors.pathNextButton);
+
+    await window.click(selectors.worktreeToggle);
+    await expect(window.locator(selectors.worktreeBranchHelper)).toBeVisible();
+  });
+
+  test('should validate worktree branch names in dialog', async () => {
+    ctx = await launchApp();
+    const { window } = ctx;
+
+    await window.click(selectors.newTabButton);
+    await window.fill(selectors.pathInput, testRepoPath);
+    await window.click(selectors.pathNextButton);
+
+    await window.click(selectors.worktreeToggle);
+    await window.fill(selectors.branchNameInput, 'bad name');
+    await expect(window.locator(selectors.worktreeBranchError)).toBeVisible();
+
+    await window.fill(selectors.branchNameInput, 'feature/branch');
+    await expect(window.locator(selectors.worktreeBranchError)).toHaveCount(0);
+  });
+
   test('should create tab when agent is selected and confirmed', async () => {
     // This test requires Docker to actually create a container
     // It may be slow and should be run with appropriate timeout
