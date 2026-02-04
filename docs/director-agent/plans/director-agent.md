@@ -44,6 +44,60 @@ Interactive HTML mockups (open in a browser):
 - **Iteration counter** tracks how many agent runs an item has been through.
 - **Director = Task Decomposer** — User enters a high-level goal (e.g., "Add user authentication"), Director analyzes the codebase and creates multiple structured kanban items in Backlog. User reviews/edits items, then moves to Ready and runs agents manually.
 
+### Agent Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              AGENT WORKFLOW                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────┐                                                        │
+│  │   PLAN_AGENT    │  ← Runs in Docker container (Opus model)              │
+│  │   (Director)    │  ← Analyzes codebase, creates work items              │
+│  │                 │  ← Can ask questions via comments (async)             │
+│  └────────┬────────┘                                                        │
+│           │ creates items                                                   │
+│           ▼                                                                 │
+│  ┌─────────────────┐                                                        │
+│  │     BACKLOG     │  ← User reviews/edits items                           │
+│  └────────┬────────┘                                                        │
+│           │ user moves to Ready                                             │
+│           ▼                                                                 │
+│  ┌─────────────────┐                                                        │
+│  │      READY      │  ← User clicks "Run Agent"                            │
+│  └────────┬────────┘                                                        │
+│           │                                                                 │
+│           ▼                                                                 │
+│  ┌─────────────────┐                                                        │
+│  │   CODE_AGENT    │  ← Runs in Docker container (future release)          │
+│  │  (In Progress)  │  ← codex/claude/opencode/shell                        │
+│  └────────┬────────┘                                                        │
+│           │ agent completes                                                 │
+│           ▼                                                                 │
+│  ┌─────────────────┐                                                        │
+│  │     REVIEW      │  ← Human reviews work                                 │
+│  └────────┬────────┘                                                        │
+│           │ user approves                                                   │
+│           ▼                                                                 │
+│  ┌─────────────────┐                                                        │
+│  │      DONE       │  ← User clicks "Create PR"                            │
+│  └─────────────────┘                                                        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Points:**
+- **ALL agents run in Docker containers** with full auto-bypass permissions
+- **PLAN_AGENT (Director)**: Uses Opus model, can ask questions via work item comments
+- **CODE_AGENT**: Future release — codex/claude/opencode/shell options
+- **Agent definitions**: Markdown files in `src/agents/` — easy to edit and extend
+
+**Agent Permissions:**
+All agents run with `--dangerously-skip-permissions` to enable autonomous operation:
+```bash
+claude --dangerously-skip-permissions --model opus -p "$PROMPT"
+```
+
 ---
 
 ## Phase 1: Kanban Types + Store (TDD)
@@ -53,17 +107,17 @@ Interactive HTML mockups (open in a browser):
 ```typescript
 export type KanbanColumn = 'backlog' | 'ready' | 'in_progress' | 'review' | 'done';
 
-export type CommentSource = 'user' | 'director' | 'review' | 'system';
+export type CommentSource = 'user' | 'agent' | 'system';
 
 export interface KanbanComment {
   id: string;                     // comment-{timestamp}-{random}
   source: CommentSource;          // who posted it
   text: string;                   // markdown content
-  tag?: 'feedback';               // special tag for send-back feedback
+  tag?: 'feedback' | 'question';  // special tags
   createdAt: number;
 }
 
-export type AgentStatus = 'idle' | 'running' | 'stopped' | 'completed' | 'failed';
+export type AgentStatus = 'idle' | 'running' | 'waiting' | 'interrupted' | 'completed' | 'failed';
 
 export interface KanbanItem {
   id: string;                     // kanban-{timestamp}-{random}
@@ -75,18 +129,16 @@ export interface KanbanItem {
   column: KanbanColumn;
   projectPath: string;
   order: number;                  // sort order within column
-  comments: KanbanComment[];      // activity thread (user, review, system)
+  comments: KanbanComment[];      // activity thread (user, agent, system)
   iteration: number;              // agent run count (starts at 1, incremented on re-run)
   agentStatus: AgentStatus;       // current agent lifecycle state
+  agentQuestion?: string;         // current question (if waiting)
+  agentQuestionOptions?: string[];// optional choices for question
   output: string[];               // last N lines of agent stdout (ring buffer, ~200 lines)
   outputUpdatedAt?: number;       // timestamp of last output capture
   sessionId?: string;             // headless container session when running
-  taskId?: string;                // links to DirectorTask.id
   prUrl?: string;                 // after PR creation
   error?: string;                 // last error message
-  reviewOutput?: string;          // review agent findings (also posted as comment)
-  reviewSessionId?: string;       // review container session
-  reviewStatus?: 'pending' | 'running' | 'completed' | 'failed';
   createdAt: number;
   updatedAt: number;
 }
@@ -106,13 +158,14 @@ export const VALID_TRANSITIONS: Record<KanbanColumn, { ui: KanbanColumn[]; syste
   done:        { ui: [],                       system: [] },
 };
 
-// Agent control rules:
-// - Run Agent:     ready/in_progress(stopped) → in_progress(running)
-// - Stop Agent:    in_progress(running) → in_progress(stopped)
-// - Restart Agent: in_progress(stopped) → in_progress(running), iteration++
-// - Agent completes: in_progress(running) → review (auto), agentStatus='completed'
-// - Agent fails:   in_progress(running) → in_progress(stopped), agentStatus='failed'
-// - Send Back:     review → in_progress(running) if autoRerun, else → ready
+// Agent status rules:
+// - Run Agent:       ready → in_progress(running)
+// - Stop Agent:      in_progress(running) → in_progress(interrupted)
+// - Resume Agent:    in_progress(waiting|interrupted) → in_progress(running)
+// - Agent asks:      in_progress(running) → in_progress(waiting), question posted as comment
+// - Agent completes: in_progress(running) → review, agentStatus='completed'
+// - Agent fails:     in_progress(running) → in_progress(failed), error posted as comment
+// - Send Back:       review → in_progress(running) if autoRerun, else → ready
 ```
 
 ### 1.2 Store — `src/lib/kanban-store.ts` (NEW)
@@ -364,88 +417,125 @@ Add optional `agentType?: AgentType` and `followMode?: boolean` to Tab interface
 
 ---
 
-## Phase 4: Auto-Review + Agent Runner (TDD)
+## Phase 4: Agent Infrastructure (TDD)
 
-### 4.1 Agent Runner — `src/lib/agent-runner.ts` (NEW)
+### 4.1 Agent Loader — `src/lib/agent-loader.ts` (NEW)
+
+**Test first**: `src/tests/agent-loader.test.ts`
+
+Loads agent definitions from `src/agents/*.md`:
+
+```typescript
+export interface AgentDefinition {
+  name: string;
+  description: string;
+  model: 'opus' | 'sonnet' | 'haiku';
+  tools: string[];
+  systemPrompt: string;
+}
+
+export function loadAgent(agentName: string): AgentDefinition;
+export function listAgents(): AgentDefinition[];
+```
+
+Parses YAML frontmatter + markdown body from agent files.
+
+### 4.2 Agent Protocol — `src/lib/agent-protocol.ts` (NEW)
+
+**Test first**: `src/tests/agent-protocol.test.ts`
+
+Parses `@@YOLIUM:` protocol messages from agent stdout:
+
+```typescript
+type AgentCommand =
+  | { type: 'ask_question'; text: string; options?: string[] }
+  | { type: 'create_item'; title: string; description: string; branch: string; agentType: string; order: number }
+  | { type: 'complete'; summary: string }
+  | { type: 'error'; message: string };
+
+export function parseProtocol(chunk: string): { commands: AgentCommand[]; passthrough: string };
+```
+
+### 4.3 Agent Runner — `src/lib/agent-runner.ts` (NEW)
 
 **Test first**: `src/tests/agent-runner.test.ts`
 
-Manages headless container lifecycle for kanban work items:
+Manages headless container lifecycle for all agents:
 
 ```typescript
 export class AgentRunner {
   constructor(private dockerManager: DockerManager) {}
 
-  async startAgent(projectPath: string, item: KanbanItem): Promise<string> {
-    // 1. Build prompt via buildAgentPrompt(item) — description + all comments
-    // 2. Create headless container (Tty:false, no stdin)
-    //    - Mount project directory
-    //    - Set up worktree for item.branch
-    //    - Pass prompt via AGENT_PROMPT env var
-    // 3. Start output capture — ring buffer (200 lines), flush to item every 30s
-    // 4. Register container exit handler:
-    //    - Exit 0: agentStatus='completed', auto-move to review, trigger auto-review
-    //    - Exit non-0: agentStatus='failed', add error comment, stay in_progress
-    // 5. Return sessionId
+  async runAgent(request: {
+    projectPath: string;
+    agentName: string;
+    goal: string;
+    conversationHistory?: string;
+  }): Promise<void> {
+    // 1. Load agent definition from src/agents/{agentName}.md
+    // 2. Build prompt: agent system prompt + goal + conversation history
+    // 3. Spawn headless Docker container:
+    //    - claude --dangerously-skip-permissions --model {agent.model} -p "$PROMPT"
+    //    - Mount projectPath
+    //    - Capture stdout, parse with agent-protocol
+    // 4. Handle protocol commands in real-time:
+    //    - ask_question: post comment, set agentStatus='waiting', stop container
+    //    - create_item: validate, add to Backlog
+    //    - complete: set agentStatus='completed', move to review
+    //    - error: set agentStatus='failed', post error comment
+    // 5. Update board + notify UI after each command
   }
 
   async stopAgent(sessionId: string): Promise<void> {
     // Stop container gracefully (SIGTERM, 10s timeout, SIGKILL)
-    // agentStatus='stopped', stop output capture
+    // Set agentStatus='interrupted'
   }
 
-  async restartAgent(projectPath: string, item: KanbanItem): Promise<string> {
-    // Same as startAgent but increments iteration
-    // Agent gets updated description + all new comments
+  async resumeAgent(item: KanbanItem): Promise<void> {
+    // Rebuild conversation history from comments
+    // Call runAgent with history
   }
 }
 ```
 
-**Output capture loop**:
+**Container execution:**
+```bash
+docker run --rm \
+  -v /project:/workspace \
+  yolium-agent \
+  claude --dangerously-skip-permissions --model opus -p "$PROMPT"
+```
+
+**Output capture loop** (every 30 seconds while running):
 ```typescript
-// Every 30 seconds while agent is running:
 // 1. Read new lines from container stdout stream
 // 2. Append to ring buffer (cap at 200 lines)
 // 3. appendOutput(board, itemId, newLines) → saveBoard()
 // 4. notifyBoardUpdated(projectPath)
 ```
 
-### 4.2 Auto-Review Agent — `src/lib/kanban-review.ts` (NEW)
+### 4.4 Session Recovery — `src/lib/agent-recovery.ts` (NEW)
 
-**Test first**: `src/tests/kanban-review.test.ts`
+**Test first**: `src/tests/agent-recovery.test.ts`
 
-When an agent completes and item moves to Review, main process spawns a review agent:
+Recovers agent state when app restarts:
 
 ```typescript
-export async function spawnReviewAgent(projectPath: string, item: KanbanItem): Promise<void> {
-  // 1. Build review prompt focused on the item's branch changes
-  const reviewPrompt = `You are reviewing code changes on branch "${item.branch}".
-Run: git log --oneline main..${item.branch}
-Run: git diff main...${item.branch}
-
-Original task: ${item.title}
-${item.description}
-
-Review for: bugs, security, performance, style, test coverage.
-Post your review summary to stdout. Be thorough but constructive.`;
-
-  // 2. Spawn headless Claude container (hardcoded — best at code review)
-  //    Tty:false, no stdin, captures stdout
-  //    Mounts the project directory (branch is local)
-
-  // 3. On exit: store review text on KanbanItem.reviewOutput
-  //    Post review output as 'review' comment in activity thread
-  //    Update reviewStatus: 'completed' or 'failed'
-  //    Notify UI: webContents.send('kanban:board-updated', projectPath)
+export async function recoverAgentSessions(board: KanbanBoard): Promise<void> {
+  for (const item of board.items) {
+    if (item.agentStatus === 'running') {
+      // Container is gone (app was closed)
+      item.agentStatus = 'interrupted';
+      addSystemComment(item, 'Agent was interrupted. Click Resume to continue.');
+    }
+    // 'waiting' items need no recovery - question is already in comments
+  }
 }
 ```
 
-**KanbanCard in Review column** shows:
-- Spinner while `reviewStatus === 'running'`
-- Expandable review output when completed
-- "Re-run Review" button if review failed
+Called on app startup before loading UI.
 
-### 4.3 Security Enforcement
+### 4.5 Security Enforcement
 
 - **Path traversal protection**: `kanban-store.ts` validates resolved path is under `~/.yolium/kanban/`
 - **Column transition enforcement**: `moveItem()` validates source ('ui' vs 'system') against `VALID_TRANSITIONS`
@@ -455,10 +545,16 @@ Post your review summary to stdout. Be thorough but constructive.`;
 
 | File | Type |
 |------|------|
+| `src/agents/plan-agent.md` | NEW |
+| `src/agents/README.md` | NEW |
+| `src/lib/agent-loader.ts` | NEW |
+| `src/lib/agent-protocol.ts` | NEW |
 | `src/lib/agent-runner.ts` | NEW |
+| `src/lib/agent-recovery.ts` | NEW |
+| `src/tests/agent-loader.test.ts` | NEW (write first) |
+| `src/tests/agent-protocol.test.ts` | NEW (write first) |
 | `src/tests/agent-runner.test.ts` | NEW (write first) |
-| `src/lib/kanban-review.ts` | NEW |
-| `src/tests/kanban-review.test.ts` | NEW (write first) |
+| `src/tests/agent-recovery.test.ts` | NEW (write first) |
 | `src/docker-manager.ts` | MODIFY (headless container support for agent-runner) |
 
 ---
@@ -493,131 +589,52 @@ Uses git hooks (post-checkout, post-commit) in worktrees → marker file on bind
 
 ---
 
-## Phase 6: Director Agent — Task Decomposer (TDD)
+## Phase 6: Plan Agent Integration
 
-The Director Agent is a **planning tool**: it takes a high-level goal, analyzes the codebase, and creates multiple structured kanban items. It does NOT orchestrate the pipeline or run agents.
+Integrate the Plan Agent (defined in Phase 4) with the Kanban UI.
 
-### 6.1 Agent Type — `src/types/agent.ts` (MODIFY)
+**Plan Agent Summary:**
+- **Defined in `src/agents/plan-agent.md`** — easy to edit and refine
+- **Runs in Docker container** with Claude Code and full auto-bypass permissions
+- **Uses Opus model** for best reasoning and planning
+- **Can ask questions** via work item comments (async flow)
+- **Protocol-based communication** via `@@YOLIUM:` JSON messages
 
-```typescript
-export type AgentType = 'claude' | 'opencode' | 'codex' | 'shell' | 'director';
-```
+When the user clicks "Decompose Goal", Yolium spawns a headless container running Claude Code with the Plan Agent prompt. The agent streams structured `@@YOLIUM:` commands back to the Kanban board.
 
-### 6.2 Director Protocol — `src/lib/director-protocol.ts` (NEW)
-
-**Test first**: `src/tests/director-protocol.test.ts`
-
-Stateful line buffer that parses `@@YOLIUM:` protocol messages from the Director container's stdout.
-
-Director output commands:
+### 6.1 Agent Types — `src/types/agent.ts` (MODIFY)
 
 ```typescript
-interface CreateItemCommand {
-  type: 'create_item';
-  title: string;
-  description: string;
-  branch: string;
-  targetBranch: string;
-  agentType: 'codex' | 'claude' | 'opencode' | 'shell';
-  order: number;         // suggested execution order
-}
-
-interface DecomposeCompleteCommand {
-  type: 'decompose_complete';
-  summary: string;       // brief summary of what was planned
-  itemCount: number;
-}
-
-interface DecomposeErrorCommand {
-  type: 'decompose_error';
-  error: string;
-}
+export type AgentType = 'plan-agent' | 'claude' | 'opencode' | 'codex' | 'shell';
 ```
 
-Parser: `feed(chunk)` → `{ commands: DirectorCommand[], passthrough: string }`.
+### 6.2 IPC Handlers — `src/main.ts` (MODIFY)
 
-### 6.3 Director Runner — `src/lib/director-runner.ts` (NEW)
-
-**Test first**: `src/tests/director-runner.test.ts`
-
-```typescript
-export interface DecomposeRequest {
-  projectPath: string;
-  goal: string;              // high-level user goal
-  targetBranch?: string;     // default: current branch or 'main'
-}
-
-export interface DecomposeResult {
-  items: KanbanItem[];       // created items (in Backlog)
-  summary: string;
-}
-
-export async function decomposeGoal(
-  request: DecomposeRequest,
-  dockerManager: DockerManager,
-): Promise<DecomposeResult> {
-  // 1. Build Director prompt:
-  //    - "Analyze the codebase at {projectPath}"
-  //    - "Break down the following goal into independent work items: {goal}"
-  //    - "For each item, output: @@YOLIUM:{create_item JSON}"
-  //    - "Choose appropriate agent types: codex for code changes, claude for complex reasoning, shell for scripts"
-  //    - "Choose branch names: {convention}/{short-name}"
-  //    - "When done: @@YOLIUM:{decompose_complete JSON}"
-  //
-  // 2. Spawn headless Claude container (Director always uses Claude)
-  //    - Mount projectPath read-only
-  //    - DIRECTOR_PROMPT env var with instructions
-  //    - Capture stdout, parse with director-protocol
-  //
-  // 3. For each create_item command:
-  //    - Validate branch name, description length
-  //    - addItem(board, itemData) → saves to Backlog
-  //    - notifyBoardUpdated(projectPath)
-  //
-  // 4. On decompose_complete: return summary + created items
-  // 5. On error/timeout: return partial results + error
-}
-```
-
-### 6.4 Director Prompt — `src/docker/entrypoint.sh` (MODIFY)
-
-Add Director case to entrypoint:
-
-```bash
-if [ "$AGENT_TYPE" = "director" ]; then
-  # Director gets DIRECTOR_PROMPT which includes:
-  # - Codebase analysis instructions
-  # - Output format: @@YOLIUM:{create_item} for each work item
-  # - Guidelines: keep items independent, choose right agent types, suggest branch names
-  # - Completion signal: @@YOLIUM:{decompose_complete}
-  claude -p "$DIRECTOR_PROMPT"
-fi
-```
-
-### 6.5 IPC Handlers — `src/main.ts` (MODIFY)
+Uses agent infrastructure from Phase 4 (agent-loader, agent-protocol, agent-runner).
 
 ```
-director:decompose    (projectPath, goal, targetBranch?)    → { success, items, summary }
-director:status       ()                                     → { success, running: boolean }
-director:cancel       ()                                     → { success }
+agent:run         (projectPath, agentName, goal, conversationHistory?)  → { success, sessionId }
+agent:stop        (sessionId)                                            → { success }
+agent:resume      (projectPath, itemId)                                  → { success, sessionId }
+agent:status      (sessionId)                                            → { success, status }
 ```
 
 ### Files
 
 | File | Type |
 |------|------|
-| `src/types/agent.ts` | MODIFY (add 'director') |
-| `src/lib/director-protocol.ts` | NEW |
-| `src/lib/director-runner.ts` | NEW |
-| `src/tests/director-protocol.test.ts` | NEW (write first) |
-| `src/tests/director-runner.test.ts` | NEW (write first) |
-| `src/docker/entrypoint.sh` | MODIFY (Director case) |
-| `src/main.ts` | MODIFY (director IPC handlers) |
-| `src/preload.ts` | MODIFY (director API) |
+| `src/agents/plan-agent.md` | NEW |
+| `src/agents/README.md` | NEW |
+| `src/lib/agent-loader.ts` | NEW |
+| `src/lib/agent-protocol.ts` | NEW |
+| `src/lib/agent-runner.ts` | NEW |
+| `src/lib/agent-recovery.ts` | NEW |
+| `src/main.ts` | MODIFY (agent IPC handlers) |
+| `src/preload.ts` | MODIFY (agent API) |
 
 ---
 
-## Phase 7: Director UI + Future Auto-Pilot
+## Phase 7: Plan Agent UI
 
 ### 7.1 Decompose Dialog — `src/components/kanban/KanbanDecomposeDialog.tsx` (NEW)
 
@@ -625,22 +642,30 @@ Triggered by "Decompose Goal" button on KanbanToolbar:
 
 - Large textarea for the high-level goal (e.g., "Add user authentication with OAuth2, JWT tokens, and role-based access control")
 - Optional target branch selector (defaults to main)
-- "Decompose" button → calls `director:decompose` IPC
-- Shows progress: "Director analyzing codebase...", spinner
+- "Decompose" button → calls `agent:run` with `plan-agent`
+- Shows progress: "Plan Agent analyzing codebase...", spinner
+- **If agent asks question**: Shows question inline with answer input
 - On completion: shows list of created items with titles, branches, agent types
 - User can review items in Backlog, edit/reorder/delete before moving to Ready
 
 ### 7.2 Kanban Toolbar Update — `src/components/kanban/KanbanToolbar.tsx` (MODIFY)
 
 Add "Decompose Goal" button (sparkle icon) next to "New Item":
-- Disabled while Director is running
-- Shows spinner + "Decomposing..." while in progress
+- Disabled while Plan Agent is running
+- Shows spinner + "Planning..." while in progress
 
-### 7.3 Director Status in Toolbar
+### 7.3 Agent Status Indicators
 
-Small indicator when Director is running:
-- Spinner + "Decomposing..." text
-- Cancel button to abort
+**Card status badges:**
+- `running`: Spinner + "Agent working..."
+- `waiting`: Yellow badge "Needs input" + question text
+- `interrupted`: Orange badge "Interrupted" + Resume button
+- `completed`: Green checkmark
+- `failed`: Red badge + error message
+
+**Resume flow:**
+- User clicks Resume on `waiting` or `interrupted` item
+- Agent restarts with full conversation history from comments
 
 ### Files
 
@@ -648,7 +673,7 @@ Small indicator when Director is running:
 |------|------|
 | `src/components/kanban/KanbanDecomposeDialog.tsx` | NEW |
 | `src/components/kanban/KanbanToolbar.tsx` | MODIFY |
-| `src/preload.ts` | MODIFY (director API) |
+| `src/preload.ts` | MODIFY (agent API) |
 
 ---
 
@@ -690,30 +715,30 @@ Small indicator when Director is running:
 | 17 | `src/components/kanban/KanbanSendBackDialog.tsx` | NEW | 3 |
 | 18 | `src/hooks/useKanbanState.ts` | NEW | 3 |
 | 19 | `src/tests/useKanbanState.test.ts` | NEW | 3 |
-| 20 | `src/lib/agent-runner.ts` | NEW | 4 |
-| 21 | `src/tests/agent-runner.test.ts` | NEW | 4 |
-| 22 | `src/lib/kanban-review.ts` | NEW | 4 |
-| 23 | `src/tests/kanban-review.test.ts` | NEW | 4 |
-| 24 | `src/lib/git-follow.ts` | NEW | 5 |
-| 25 | `src/tests/git-follow.test.ts` | NEW | 5 |
-| 26 | `src/lib/director-protocol.ts` | NEW | 6 |
-| 27 | `src/lib/director-runner.ts` | NEW | 6 |
-| 28 | `src/tests/director-protocol.test.ts` | NEW | 6 |
-| 29 | `src/tests/director-runner.test.ts` | NEW | 6 |
-| 30 | `src/components/kanban/KanbanDecomposeDialog.tsx` | NEW | 7 |
-| 31 | `src/tests/e2e/tests/kanban-board.spec.ts` | NEW | 3 |
-| 32 | `src/tests/e2e/tests/director.spec.ts` | NEW | 7 |
-| 33 | `src/docker-manager.ts` | MODIFY | 1,4,5 |
-| 34 | `src/main.ts` | MODIFY | 2,6 |
-| 35 | `src/preload.ts` | MODIFY | 2,6,7 |
-| 36 | `src/App.tsx` | MODIFY | 3 |
-| 37 | `src/components/Terminal.tsx` | MODIFY | 3 |
-| 38 | `src/components/StatusBar.tsx` | MODIFY | 5 |
-| 39 | `src/types/agent.ts` | MODIFY | 6 |
-| 40 | `src/types/tabs.ts` | MODIFY | 3 |
-| 41 | `src/docker/entrypoint.sh` | MODIFY | 6 |
+| 20 | `src/agents/plan-agent.md` | NEW | 4 |
+| 21 | `src/agents/README.md` | NEW | 4 |
+| 22 | `src/lib/agent-loader.ts` | NEW | 4 |
+| 23 | `src/lib/agent-protocol.ts` | NEW | 4 |
+| 24 | `src/lib/agent-runner.ts` | NEW | 4 |
+| 25 | `src/lib/agent-recovery.ts` | NEW | 4 |
+| 26 | `src/tests/agent-loader.test.ts` | NEW | 4 |
+| 27 | `src/tests/agent-protocol.test.ts` | NEW | 4 |
+| 28 | `src/tests/agent-runner.test.ts` | NEW | 4 |
+| 29 | `src/tests/agent-recovery.test.ts` | NEW | 4 |
+| 30 | `src/lib/git-follow.ts` | NEW | 5 |
+| 31 | `src/tests/git-follow.test.ts` | NEW | 5 |
+| 32 | `src/components/kanban/KanbanDecomposeDialog.tsx` | NEW | 6 |
+| 33 | `src/tests/e2e/tests/kanban-board.spec.ts` | NEW | 3 |
+| 34 | `src/tests/e2e/tests/plan-agent.spec.ts` | NEW | 6 |
+| 35 | `src/docker-manager.ts` | MODIFY | 1,4,5 |
+| 36 | `src/main.ts` | MODIFY | 2,4 |
+| 37 | `src/preload.ts` | MODIFY | 2,4,6 |
+| 38 | `src/App.tsx` | MODIFY | 3 |
+| 39 | `src/components/Terminal.tsx` | MODIFY | 3 |
+| 40 | `src/components/StatusBar.tsx` | MODIFY | 5 |
+| 41 | `src/types/tabs.ts` | MODIFY | 3 |
 | 42 | `src/tests/e2e/helpers/selectors.ts` | MODIFY | 3 |
-| 43 | `src/components/kanban/KanbanToolbar.tsx` | MODIFY | 7 |
+| 43 | `src/components/kanban/KanbanToolbar.tsx` | MODIFY | 6 |
 
 ---
 
@@ -724,10 +749,9 @@ Each phase: write tests → run (fail) → implement → run (pass) → refactor
 1. **Phase 1** (kanban-store) — pure logic, zero dependencies, fastest TDD cycle
 2. **Phase 2** (IPC + PR) — mock execSync for gh CLI, mock fs for store
 3. **Phase 3** (UI) — components + hook, E2E tests after unit
-4. **Phase 4** (Agent Runner + Auto-Review) — mock Docker for headless containers, output capture
+4. **Phase 4** (Agent Infrastructure) — agent loader, protocol parser, runner with Docker mocks
 5. **Phase 5** (Git Follow) — mock fs.watchFile, execSync for git
-6. **Phase 6** (Director Decomposer) — mock Docker, test protocol parser + item creation
-7. **Phase 7** (Director UI) — component tests + E2E
+6. **Phase 6** (Plan Agent UI) — Decompose dialog, toolbar integration, E2E tests
 
 ## Verification
 
