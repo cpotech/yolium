@@ -1360,6 +1360,7 @@ export async function createAgentContainer(
 
   // Encode prompt as base64 to avoid shell escaping issues
   const promptBase64 = Buffer.from(prompt).toString('base64');
+  logger.info('Agent prompt encoded', { sessionId, promptLength: prompt.length, base64Length: promptBase64.length });
 
   const container = await docker.createContainer({
     Image: DEFAULT_IMAGE,
@@ -1452,7 +1453,7 @@ export async function createAgentContainer(
       session.timeoutId = timeoutId;
     }
 
-    logger.debug('Agent output', { sessionId, output: dataStr.slice(0, 200) });
+    logger.info('Agent output', { sessionId, outputLength: dataStr.length, output: dataStr.slice(0, 500) });
 
     // Forward raw output
     onOutput?.(dataStr);
