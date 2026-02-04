@@ -2,13 +2,23 @@ name: E2E Tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, e2efix]
   workflow_dispatch:
 
 jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    services:
+      docker:
+        image: docker:dind
+        options: --privileged --userns=host
+      xvfb:
+        image: selenium/standalone-chrome
+        options: --shm-size=2g --no-sandbox --cap-add=SYS_ADMIN
+    env:
+      DOCKER_HOST: tcp://localhost:2375
+      DISPLAY: :99
 
     steps:
       - name: Checkout
@@ -28,6 +38,24 @@ jobs:
 
       - name: Rebuild native modules for Electron
         run: npx electron-rebuild --only node-pty
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Install Docker CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-ce-cli
+
+      - name: Install Xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libxi6 libgconf-2-4
+
+      - name: Start Xvfb
+        run: |
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1280x960x24 &
 
       - name: Build app for E2E tests
         run: npm run build
@@ -56,6 +84,14 @@ jobs:
           echo "Docker image built successfully"
           docker images yolium
 
+      - name: Verify Docker image
+        run: |
+          docker images yolium:latest
+          if [ $? -ne 0 ]; then
+            echo "ERROR: yolium:latest image not found"
+            exit 1
+          fi
+
       - name: Run E2E tests
         run: |
           echo "Starting E2E tests at $(date)"
@@ -69,9 +105,9 @@ jobs:
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
-          name: e2e-results
+          name: e2e-results-${{ github.run_id }}
           path: |
             src/tests/e2e-results/
             playwright-report/
