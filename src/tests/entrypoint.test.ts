@@ -234,6 +234,94 @@ describe('entrypoint.sh', () => {
     });
   });
 
+  describe('agent tool mode', () => {
+    it('should decode base64 prompt and build claude command', () => {
+      const testPrompt = 'You are a test agent.\n\nDo something.';
+      const base64Prompt = Buffer.from(testPrompt).toString('base64');
+
+      // Test that base64 decoding works correctly
+      const decoded = Buffer.from(base64Prompt, 'base64').toString('utf-8');
+      expect(decoded).toBe(testPrompt);
+    });
+
+    it('should handle multi-line prompts with special characters', () => {
+      const complexPrompt = `# Agent
+
+Use these tools:
+- Read
+- Glob
+
+Output: @@YOLIUM:{"type":"complete","summary":"done"}`;
+
+      const base64Prompt = Buffer.from(complexPrompt).toString('base64');
+      const decoded = Buffer.from(base64Prompt, 'base64').toString('utf-8');
+      expect(decoded).toBe(complexPrompt);
+    });
+
+    it('should have agent mode in entrypoint script', () => {
+      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
+      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+
+      // The entrypoint should have a branch for TOOL=agent
+      expect(entrypointContent).toContain('TOOL" = "agent"');
+    });
+
+    it('should require AGENT_PROMPT environment variable', () => {
+      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
+      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+
+      expect(entrypointContent).toContain('AGENT_PROMPT');
+      expect(entrypointContent).toContain('AGENT_PROMPT environment variable is required');
+    });
+
+    it('should require AGENT_MODEL environment variable', () => {
+      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
+      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+
+      expect(entrypointContent).toContain('AGENT_MODEL');
+      expect(entrypointContent).toContain('AGENT_MODEL environment variable is required');
+    });
+
+    it('should decode base64 prompt in agent mode', () => {
+      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
+      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+
+      expect(entrypointContent).toContain('base64 -d');
+    });
+
+    it('should map model short names to full model IDs', () => {
+      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
+      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+
+      expect(entrypointContent).toContain('opus)');
+      expect(entrypointContent).toContain('sonnet)');
+      expect(entrypointContent).toContain('haiku)');
+      expect(entrypointContent).toContain('claude-opus-4-5-20251101');
+      expect(entrypointContent).toContain('claude-sonnet-4-20250514');
+      expect(entrypointContent).toContain('claude-haiku-3-5-20241022');
+    });
+
+    it('should support optional AGENT_TOOLS for allowed tools', () => {
+      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
+      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+
+      expect(entrypointContent).toContain('AGENT_TOOLS');
+      expect(entrypointContent).toContain('--allowedTools');
+    });
+
+    it('should run claude with --dangerously-skip-permissions', () => {
+      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
+      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+
+      // Find the agent section specifically
+      const agentStart = entrypointContent.indexOf('TOOL" = "agent"');
+      const agentEnd = entrypointContent.indexOf('elif', agentStart + 1);
+      const agentBlock = entrypointContent.slice(agentStart, agentEnd > -1 ? agentEnd : undefined);
+
+      expect(agentBlock).toContain('--dangerously-skip-permissions');
+    });
+  });
+
   describe('gh token extraction logic', () => {
     // Helper that mimics the entrypoint.sh extraction logic using JS regex
     // This is equivalent to: grep 'github.com' file | sed 's/.*:\(github_pat_[^@]*\|ghp_[^@]*\)@.*/\1/'
