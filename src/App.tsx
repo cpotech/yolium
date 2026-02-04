@@ -566,6 +566,21 @@ function App(): React.ReactElement {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTabId]);
 
+  // Switch to terminal view when tabs become empty (unless standalone kanban project)
+  useEffect(() => {
+    if (tabs.length === 0 && activeView === 'kanban' && !kanbanProjectPath) {
+      setActiveView('terminal');
+    }
+  }, [tabs.length, activeView, kanbanProjectPath]);
+
+  // Handle view change from sidebar - clear standalone kanban when switching to terminal
+  const handleViewChange = useCallback((view: ViewType) => {
+    setActiveView(view);
+    if (view === 'terminal') {
+      setKanbanProjectPath(null);
+    }
+  }, []);
+
   // Show loading spinner while checking Docker status
   if (dockerReady === null) {
     return (
@@ -714,7 +729,7 @@ function App(): React.ReactElement {
         {/* Sidebar - always visible */}
         <Sidebar
           activeView={activeView}
-          onViewChange={setActiveView}
+          onViewChange={handleViewChange}
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
