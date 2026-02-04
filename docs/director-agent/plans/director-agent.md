@@ -15,7 +15,15 @@ Add a Kanban dashboard to Yolium with a left sidebar, integrated with async back
 
 Interactive HTML mockups (open in a browser):
 
-- **[Async Background Agents](../mockups/async-agents-mockup.html)** — **PRIMARY MOCKUP** — 9-scene walkthrough of the full workflow:
+- **[Plan Agent Workflow](../mockups/plan-agent-mockup.html)** — **PRIMARY MOCKUP for Phase 1** — 6-scene walkthrough of Plan Agent:
+  1. **Decompose Goal** — User enters high-level goal, starts Plan Agent
+  2. **Agent Analyzing** — Plan Agent explores codebase in background
+  3. **Agent Asks Question** — Status changes to "Waiting", question shown prominently
+  4. **User Answers** — User selects option, agent resumes with full context
+  5. **Planning Complete** — Work items created in Backlog, ready for review
+  6. **Session Recovery** — Interrupted status, Resume from conversation history
+
+- **[Async Background Agents](../mockups/async-agents-mockup.html)** — **FUTURE REFERENCE** — Full workflow with Code/Review agents:
   1. **Board Overview** — Toolbar with "Decompose Goal" button; In Progress cards show live output preview + progress bar
   2. **Decompose Goal (Director)** — User enters a high-level goal; Director analyzes codebase and creates work items
   3. **Decompose Result** — Director finished; items listed with titles, branches, agent types; user reviews before moving to Ready
@@ -449,12 +457,15 @@ Parses `@@YOLIUM:` protocol messages from agent stdout:
 ```typescript
 type AgentCommand =
   | { type: 'ask_question'; text: string; options?: string[] }
+  | { type: 'create_mockup'; path: string; description: string }
   | { type: 'create_item'; title: string; description: string; branch: string; agentType: string; order: number }
-  | { type: 'complete'; summary: string }
+  | { type: 'complete'; summary: string; mockupPath?: string }
   | { type: 'error'; message: string };
 
 export function parseProtocol(chunk: string): { commands: AgentCommand[]; passthrough: string };
 ```
+
+**Mockup creation:** Plan Agent creates interactive HTML mockups for UI-related goals before decomposing into work items. Mockups are saved to `docs/mockups/` and referenced in work item descriptions.
 
 ### 4.3 Agent Runner — `src/lib/agent-runner.ts` (NEW)
 
