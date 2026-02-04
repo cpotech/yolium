@@ -215,6 +215,71 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('code-review:complete', handler);
     return () => ipcRenderer.removeListener('code-review:complete', handler);
   },
+
+  // Kanban board operations
+  kanbanGetBoard: (projectPath: string) =>
+    ipcRenderer.invoke('kanban:get-board', projectPath),
+  kanbanAddItem: (projectPath: string, params: {
+    title: string;
+    description: string;
+    branch?: string;
+    agentType: 'claude' | 'codex' | 'opencode' | 'shell';
+    order: number;
+  }) => ipcRenderer.invoke('kanban:add-item', projectPath, params),
+  kanbanUpdateItem: (projectPath: string, itemId: string, updates: object) =>
+    ipcRenderer.invoke('kanban:update-item', projectPath, itemId, updates),
+  kanbanAddComment: (projectPath: string, itemId: string, source: string, text: string) =>
+    ipcRenderer.invoke('kanban:add-comment', projectPath, itemId, source, text),
+  onKanbanBoardUpdated: (callback: (projectPath: string) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, projectPath: string) =>
+      callback(projectPath);
+    ipcRenderer.on('kanban:board-updated', handler);
+    return () => ipcRenderer.removeListener('kanban:board-updated', handler);
+  },
+
+  // Agent operations
+  agentStart: (params: {
+    agentName: string;
+    projectPath: string;
+    itemId: string;
+    goal: string;
+  }) => ipcRenderer.invoke('agent:start', params),
+  agentAnswer: (sessionId: string, answer: string) =>
+    ipcRenderer.invoke('agent:answer', sessionId, answer),
+  agentStop: (sessionId: string) =>
+    ipcRenderer.invoke('agent:stop', sessionId),
+  agentRecover: (projectPath: string) =>
+    ipcRenderer.invoke('agent:recover', projectPath),
+  onAgentOutput: (callback: (sessionId: string, data: string) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, data: string) =>
+      callback(sessionId, data);
+    ipcRenderer.on('agent:output', handler);
+    return () => ipcRenderer.removeListener('agent:output', handler);
+  },
+  onAgentQuestion: (callback: (sessionId: string, question: { text: string; options?: string[] }) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, question: { text: string; options?: string[] }) =>
+      callback(sessionId, question);
+    ipcRenderer.on('agent:question', handler);
+    return () => ipcRenderer.removeListener('agent:question', handler);
+  },
+  onAgentItemCreated: (callback: (sessionId: string, item: object) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, item: object) =>
+      callback(sessionId, item);
+    ipcRenderer.on('agent:item-created', handler);
+    return () => ipcRenderer.removeListener('agent:item-created', handler);
+  },
+  onAgentComplete: (callback: (sessionId: string, summary: string) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, summary: string) =>
+      callback(sessionId, summary);
+    ipcRenderer.on('agent:complete', handler);
+    return () => ipcRenderer.removeListener('agent:complete', handler);
+  },
+  onAgentError: (callback: (sessionId: string, message: string) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, message: string) =>
+      callback(sessionId, message);
+    ipcRenderer.on('agent:error', handler);
+    return () => ipcRenderer.removeListener('agent:error', handler);
+  },
 });
 
 // Type declaration for TypeScript
@@ -340,6 +405,53 @@ declare global {
       startCodeReview: (repoUrl: string, branch: string, agent: string, gitConfig?: { name: string; email: string }) => Promise<string>;
       onCodeReviewOutput: (callback: (sessionId: string, data: string) => void) => CleanupFn;
       onCodeReviewComplete: (callback: (sessionId: string, exitCode: number, authError?: boolean) => void) => CleanupFn;
+      // Kanban board operations
+      kanbanGetBoard: (projectPath: string) => Promise<{
+        id: string;
+        projectPath: string;
+        items: Array<{
+          id: string;
+          title: string;
+          description: string;
+          column: 'backlog' | 'ready' | 'in-progress' | 'done';
+          branch?: string;
+          agentType: 'claude' | 'codex' | 'opencode' | 'shell';
+          order: number;
+          agentStatus: 'idle' | 'running' | 'waiting' | 'interrupted' | 'completed' | 'failed';
+          agentQuestion?: string;
+          agentQuestionOptions?: string[];
+          comments: Array<{ id: string; source: 'user' | 'agent' | 'system'; text: string; timestamp: string }>;
+          createdAt: string;
+          updatedAt: string;
+        }>;
+        createdAt: string;
+        updatedAt: string;
+      }>;
+      kanbanAddItem: (projectPath: string, params: {
+        title: string;
+        description: string;
+        branch?: string;
+        agentType: 'claude' | 'codex' | 'opencode' | 'shell';
+        order: number;
+      }) => Promise<object>;
+      kanbanUpdateItem: (projectPath: string, itemId: string, updates: object) => Promise<object | null>;
+      kanbanAddComment: (projectPath: string, itemId: string, source: string, text: string) => Promise<object | null>;
+      onKanbanBoardUpdated: (callback: (projectPath: string) => void) => CleanupFn;
+      // Agent operations
+      agentStart: (params: {
+        agentName: string;
+        projectPath: string;
+        itemId: string;
+        goal: string;
+      }) => Promise<string>;
+      agentAnswer: (sessionId: string, answer: string) => Promise<void>;
+      agentStop: (sessionId: string) => Promise<void>;
+      agentRecover: (projectPath: string) => Promise<Array<object>>;
+      onAgentOutput: (callback: (sessionId: string, data: string) => void) => CleanupFn;
+      onAgentQuestion: (callback: (sessionId: string, question: { text: string; options?: string[] }) => void) => CleanupFn;
+      onAgentItemCreated: (callback: (sessionId: string, item: object) => void) => CleanupFn;
+      onAgentComplete: (callback: (sessionId: string, summary: string) => void) => CleanupFn;
+      onAgentError: (callback: (sessionId: string, message: string) => void) => CleanupFn;
     };
   }
 }
