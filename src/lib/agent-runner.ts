@@ -11,6 +11,11 @@ import {
   addComment,
   buildConversationHistory,
 } from './kanban-store';
+import {
+  createAgentContainer,
+  stopAgentContainer,
+  checkAgentAuth,
+} from '../docker-manager';
 import type { KanbanBoard, KanbanItem } from '../types/kanban';
 import type {
   AskQuestionMessage,
@@ -51,6 +56,7 @@ export interface AgentSession {
 const sessions = new Map<string, AgentSession>();
 
 export interface StartAgentParams {
+  webContentsId: number;
   agentName: string;
   projectPath: string;
   itemId: string;
@@ -62,20 +68,43 @@ export interface StartAgentParams {
   onError?: (message: string) => void;
 }
 
-export async function startAgent(params: StartAgentParams): Promise<string> {
+export interface StartAgentResult {
+  sessionId: string;
+  error?: string;
+}
+
+export async function startAgent(params: StartAgentParams): Promise<StartAgentResult> {
   const {
+    webContentsId,
     agentName,
     projectPath,
     itemId,
     goal,
+    onOutput,
+    onQuestion,
+    onItemCreated,
+    onComplete,
+    onError,
   } = params;
+
+  // Check if Claude is authenticated
+  const auth = checkAgentAuth('claude');
+  if (!auth.authenticated) {
+    return {
+      sessionId: '',
+      error: 'Claude is not authenticated. Please authenticate Claude first using an interactive container.',
+    };
+  }
 
   const agent = loadAgentDefinition(agentName);
   const board = getOrCreateBoard(projectPath);
   const item = board.items.find(i => i.id === itemId);
 
   if (!item) {
-    throw new Error(`Item not found: ${itemId}`);
+    return {
+      sessionId: '',
+      error: `Item not found: ${itemId}`,
+    };
   }
 
   const conversationHistory = buildConversationHistory(item);
@@ -89,36 +118,111 @@ export async function startAgent(params: StartAgentParams): Promise<string> {
   updateItem(board, itemId, { agentStatus: 'running' });
   addComment(board, itemId, 'system', `${agentName} started`);
 
-  const sessionId = `agent-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const events = new EventEmitter();
-
-  const session: AgentSession = {
-    id: sessionId,
-    agentName,
-    itemId,
-    projectPath,
-    process: null,
-    events,
+  // Map model name to full model ID
+  const modelMap: Record<string, string> = {
+    opus: 'claude-opus-4-5-20251101',
+    sonnet: 'claude-sonnet-4-20250514',
+    haiku: 'claude-haiku-3-5-20241022',
   };
-  sessions.set(sessionId, session);
+  const model = modelMap[agent.model] || agent.model;
 
-  // Build claude command
-  // In production, this runs in a Docker container via docker-manager
-  // For now, we'll prepare the command that docker-manager will execute
-  const claudeArgs = [
-    '--model', agent.model === 'opus' ? 'claude-opus-4-5-20251101' : agent.model,
-    '-p', prompt,
-    '--allowedTools', agent.tools.join(','),
-    '--dangerously-skip-permissions',
-  ];
+  logger.info('Starting agent container', { agentName, projectPath, itemId, model });
 
-  logger.info('Starting agent', { sessionId, agentName, claudeArgs: claudeArgs.slice(0, 4) });
+  try {
+    // Create the agent container
+    const sessionId = await createAgentContainer(
+      {
+        webContentsId,
+        projectPath,
+        agentName,
+        prompt,
+        model,
+        tools: agent.tools,
+        itemId,
+      },
+      {
+        onOutput: (data: string) => {
+          // Forward raw output
+          onOutput?.(data);
+          // Also process via handleAgentOutput for protocol messages
+          handleAgentOutput(sessionId, data);
+        },
+        onProtocolMessage: (message: unknown) => {
+          // Protocol messages are handled in handleAgentOutput
+          // This callback can be used for additional processing
+        },
+        onExit: (code: number) => {
+          const session = sessions.get(sessionId);
+          if (session) {
+            const exitBoard = getOrCreateBoard(session.projectPath);
+            const exitItem = exitBoard.items.find(i => i.id === session.itemId);
 
-  // The actual process spawning will be done by docker-manager
-  // This function returns the session ID for tracking
-  // The docker-manager will call handleAgentOutput with stdout data
+            if (code === 0) {
+              // Success - check if already marked as completed
+              if (exitItem && exitItem.agentStatus === 'running') {
+                updateItem(exitBoard, session.itemId, { agentStatus: 'completed' });
+                addComment(exitBoard, session.itemId, 'system', 'Agent finished successfully');
+              }
+            } else if (code === 124) {
+              // Timeout
+              updateItem(exitBoard, session.itemId, { agentStatus: 'failed' });
+              addComment(exitBoard, session.itemId, 'system', 'Agent timed out (no activity for 10 minutes)');
+              onError?.('Agent timed out');
+            } else {
+              // Non-zero exit that wasn't handled by protocol
+              if (exitItem && exitItem.agentStatus === 'running') {
+                updateItem(exitBoard, session.itemId, { agentStatus: 'failed' });
+                addComment(exitBoard, session.itemId, 'system', `Agent exited with code ${code}`);
+                onError?.(`Agent exited with code ${code}`);
+              }
+            }
 
-  return sessionId;
+            sessions.delete(sessionId);
+          }
+        },
+      }
+    );
+
+    // Store session for tracking
+    const events = new EventEmitter();
+    const session: AgentSession = {
+      id: sessionId,
+      agentName,
+      itemId,
+      projectPath,
+      process: null, // Container-based, no direct process reference
+      events,
+    };
+    sessions.set(sessionId, session);
+
+    // Wire up event listeners for callbacks
+    if (onQuestion) {
+      events.on('question', onQuestion);
+    }
+    if (onItemCreated) {
+      events.on('itemCreated', onItemCreated);
+    }
+    if (onComplete) {
+      events.on('complete', onComplete);
+    }
+    if (onError) {
+      events.on('error', onError);
+    }
+
+    return { sessionId };
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    logger.error('Failed to create agent container', { agentName, projectPath, error: errorMessage });
+
+    // Revert status on failure
+    updateItem(board, itemId, { agentStatus: 'failed' });
+    addComment(board, itemId, 'system', `Failed to start agent: ${errorMessage}`);
+
+    return {
+      sessionId: '',
+      error: errorMessage,
+    };
+  }
 }
 
 export function handleAgentOutput(sessionId: string, data: string): void {
@@ -199,13 +303,12 @@ export function getSession(sessionId: string): AgentSession | undefined {
   return sessions.get(sessionId);
 }
 
-export function stopAgent(sessionId: string): void {
+export async function stopAgent(sessionId: string): Promise<void> {
   const session = sessions.get(sessionId);
   if (!session) return;
 
-  if (session.process) {
-    session.process.kill();
-  }
+  // Stop the container
+  await stopAgentContainer(sessionId);
 
   const board = getOrCreateBoard(session.projectPath);
   const item = board.items.find(i => i.id === session.itemId);
@@ -215,6 +318,74 @@ export function stopAgent(sessionId: string): void {
   }
 
   sessions.delete(sessionId);
+}
+
+/**
+ * Answer a question for an agent task.
+ * Records the answer and marks the item as ready to resume.
+ */
+export function answerAgentQuestion(
+  projectPath: string,
+  itemId: string,
+  answer: string
+): void {
+  const board = getOrCreateBoard(projectPath);
+  const item = board.items.find(i => i.id === itemId);
+
+  if (!item) {
+    throw new Error(`Item not found: ${itemId}`);
+  }
+
+  if (item.agentStatus !== 'waiting') {
+    throw new Error(`Item is not waiting for an answer: ${item.agentStatus}`);
+  }
+
+  // Record the answer as a user comment
+  addComment(board, itemId, 'user', answer);
+
+  // Clear the question and mark as ready to resume
+  updateItem(board, itemId, {
+    agentStatus: 'idle',
+    agentQuestion: undefined,
+    agentQuestionOptions: undefined,
+  });
+}
+
+/**
+ * Resume an agent task after it was waiting for user input.
+ */
+export async function resumeAgent(params: StartAgentParams): Promise<StartAgentResult> {
+  const { projectPath, itemId } = params;
+
+  const board = getOrCreateBoard(projectPath);
+  const item = board.items.find(i => i.id === itemId);
+
+  if (!item) {
+    return {
+      sessionId: '',
+      error: `Item not found: ${itemId}`,
+    };
+  }
+
+  // Verify item is in a resumable state (idle after answering a question, or interrupted)
+  if (item.agentStatus !== 'idle' && item.agentStatus !== 'interrupted') {
+    return {
+      sessionId: '',
+      error: `Item cannot be resumed in current state: ${item.agentStatus}`,
+    };
+  }
+
+  // Start the agent - it will pick up conversation history including the answer
+  return startAgent(params);
+}
+
+/**
+ * Get agent events emitter for a session.
+ * Returns undefined if session doesn't exist.
+ */
+export function getAgentEvents(sessionId: string): EventEmitter | undefined {
+  const session = sessions.get(sessionId);
+  return session?.events;
 }
 
 export function recoverInterruptedAgents(projectPath: string): KanbanItem[] {
