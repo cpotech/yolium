@@ -11,6 +11,41 @@ export interface ParsedAgent extends AgentDefinition {
 
 const VALID_MODELS = ['opus', 'sonnet', 'haiku'] as const;
 
+/**
+ * Get the agents directory path.
+ * Works in:
+ * - Development: uses app.getAppPath() -> src/agents
+ * - Production: uses process.resourcesPath -> resources/agents
+ * - Test environment: fallback to __dirname -> ../agents
+ */
+export function getAgentsDir(): string {
+  // Try Electron app path first (development)
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { app } = require('electron');
+    const appPath = app.getAppPath();
+    const devPath = path.join(appPath, 'src', 'agents');
+    if (fs.existsSync(devPath)) {
+      return devPath;
+    }
+  } catch {
+    // Electron not available (test environment or non-Electron context)
+  }
+
+  // Try production path (process.resourcesPath)
+  if (process.resourcesPath) {
+    const prodPath = path.join(process.resourcesPath, 'agents');
+    if (fs.existsSync(prodPath)) {
+      return prodPath;
+    }
+  }
+
+  // Fallback for test environment or when running directly
+  // __dirname is dist/lib in built code, src/lib in dev
+  const fallbackPath = path.join(__dirname, '..', 'agents');
+  return fallbackPath;
+}
+
 export function parseAgentDefinition(markdown: string): ParsedAgent {
   const { data, content } = matter(markdown);
 
@@ -39,9 +74,8 @@ export function parseAgentDefinition(markdown: string): ParsedAgent {
 }
 
 export function loadAgentDefinition(agentName: string): ParsedAgent {
-  // Agents are in src/agents/ relative to project root
-  // In production, they're bundled with the app
-  const agentPath = path.join(__dirname, '..', 'agents', `${agentName}.md`);
+  const agentsDir = getAgentsDir();
+  const agentPath = path.join(agentsDir, `${agentName}.md`);
 
   if (!fs.existsSync(agentPath)) {
     throw new Error(`Agent definition not found: ${agentName}`);
@@ -52,7 +86,7 @@ export function loadAgentDefinition(agentName: string): ParsedAgent {
 }
 
 export function listAgents(): string[] {
-  const agentsDir = path.join(__dirname, '..', 'agents');
+  const agentsDir = getAgentsDir();
 
   if (!fs.existsSync(agentsDir)) {
     return [];
