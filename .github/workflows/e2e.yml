@@ -80,6 +80,15 @@ jobs:
             exit 1
           fi
           echo "Buildx is accessible"
+      - name: Test Docker socket connectivity
+        run: |
+          echo "Testing Docker socket connectivity..."
+          docker -H tcp://localhost:2375 info
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Cannot connect to Docker socket at localhost:2375"
+            exit 1
+          fi
+          echo "Docker socket at localhost:2375 is accessible"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
         with:
