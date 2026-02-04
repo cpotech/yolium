@@ -529,12 +529,26 @@ export function ItemDetailDialog({
                 onChange={e => setColumn(e.target.value as KanbanColumn)}
                 className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
               >
-                {columnOptions.map(option => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
+                {columnOptions
+                  .filter(option => {
+                    // Only agents can move items to in-progress
+                    // Allow displaying if already in that column
+                    if (option.id === 'in-progress') {
+                      return column === 'in-progress'
+                    }
+                    return true
+                  })
+                  .map(option => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
               </select>
+              {column === 'in-progress' && (
+                <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
+                  Items are moved to In Progress by agents
+                </p>
+              )}
             </div>
 
             {/* Branch */}
