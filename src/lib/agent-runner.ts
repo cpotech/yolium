@@ -114,8 +114,8 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     conversationHistory,
   });
 
-  // Update item status to running
-  updateItem(board, itemId, { agentStatus: 'running' });
+  // Update item status to running and move to in-progress column
+  updateItem(board, itemId, { agentStatus: 'running', column: 'in-progress' });
   addComment(board, itemId, 'system', `${agentName} started`);
 
   // Map model name to full model ID
@@ -242,10 +242,12 @@ export function handleAgentOutput(sessionId: string, data: string): void {
     switch (message.type) {
       case 'ask_question': {
         const q = message as AskQuestionMessage;
+        // Move back to ready column when agent needs user input
         updateItem(board, session.itemId, {
           agentStatus: 'waiting',
           agentQuestion: q.text,
           agentQuestionOptions: q.options,
+          column: 'ready',
         });
         addComment(board, session.itemId, 'agent', q.text);
         session.events.emit('question', q);
@@ -267,7 +269,8 @@ export function handleAgentOutput(sessionId: string, data: string): void {
 
       case 'complete': {
         const comp = message as CompleteMessage;
-        updateItem(board, session.itemId, { agentStatus: 'completed' });
+        // Move to done column when agent completes successfully
+        updateItem(board, session.itemId, { agentStatus: 'completed', column: 'done' });
         addComment(board, session.itemId, 'system', `Completed: ${comp.summary}`);
         session.events.emit('complete', comp.summary);
         break;
