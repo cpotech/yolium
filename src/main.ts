@@ -783,27 +783,38 @@ ipcMain.handle('agent:start', async (event, params: {
 
   // Set up event forwarding from agent to renderer
   const events = getAgentEvents(result.sessionId);
-  if (events) {
-    const win = BrowserWindow.getAllWindows().find(w => w.webContents.id === webContentsId);
+  const win = BrowserWindow.getAllWindows().find(w => w.webContents.id === webContentsId);
 
+  // Notify UI that board was updated (item moved to in-progress)
+  win?.webContents.send('kanban:board-updated', params.projectPath);
+
+  if (events) {
     events.on('output', (data: string) => {
       win?.webContents.send('agent:output', result.sessionId, data);
     });
 
     events.on('question', (question: { text: string; options?: string[] }) => {
       win?.webContents.send('agent:question', result.sessionId, question);
+      // Notify UI that board was updated (item moved back to ready)
+      win?.webContents.send('kanban:board-updated', params.projectPath);
     });
 
     events.on('itemCreated', (item: KanbanItem) => {
       win?.webContents.send('agent:item-created', result.sessionId, item);
+      // Notify UI that board was updated (new item added)
+      win?.webContents.send('kanban:board-updated', params.projectPath);
     });
 
     events.on('complete', (summary: string) => {
       win?.webContents.send('agent:complete', result.sessionId, summary);
+      // Notify UI that board was updated (item moved to done)
+      win?.webContents.send('kanban:board-updated', params.projectPath);
     });
 
     events.on('error', (message: string) => {
       win?.webContents.send('agent:error', result.sessionId, message);
+      // Notify UI that board was updated (status changed)
+      win?.webContents.send('kanban:board-updated', params.projectPath);
     });
   }
 
@@ -831,27 +842,38 @@ ipcMain.handle('agent:resume', async (event, params: {
 
   // Set up event forwarding from agent to renderer
   const events = getAgentEvents(result.sessionId);
-  if (events) {
-    const win = BrowserWindow.getAllWindows().find(w => w.webContents.id === webContentsId);
+  const win = BrowserWindow.getAllWindows().find(w => w.webContents.id === webContentsId);
 
+  // Notify UI that board was updated (item moved to in-progress)
+  win?.webContents.send('kanban:board-updated', params.projectPath);
+
+  if (events) {
     events.on('output', (data: string) => {
       win?.webContents.send('agent:output', result.sessionId, data);
     });
 
     events.on('question', (question: { text: string; options?: string[] }) => {
       win?.webContents.send('agent:question', result.sessionId, question);
+      // Notify UI that board was updated (item moved back to ready)
+      win?.webContents.send('kanban:board-updated', params.projectPath);
     });
 
     events.on('itemCreated', (item: KanbanItem) => {
       win?.webContents.send('agent:item-created', result.sessionId, item);
+      // Notify UI that board was updated (new item added)
+      win?.webContents.send('kanban:board-updated', params.projectPath);
     });
 
     events.on('complete', (summary: string) => {
       win?.webContents.send('agent:complete', result.sessionId, summary);
+      // Notify UI that board was updated (item moved to done)
+      win?.webContents.send('kanban:board-updated', params.projectPath);
     });
 
     events.on('error', (message: string) => {
       win?.webContents.send('agent:error', result.sessionId, message);
+      // Notify UI that board was updated (status changed)
+      win?.webContents.send('kanban:board-updated', params.projectPath);
     });
   }
 

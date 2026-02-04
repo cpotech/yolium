@@ -56,6 +56,17 @@ export function KanbanView({ projectPath }: KanbanViewProps): React.ReactElement
     return cleanup
   }, [projectPath, loadBoard])
 
+  // Auto-refresh every 15 seconds
+  useEffect(() => {
+    if (!projectPath) return
+
+    const intervalId = setInterval(() => {
+      loadBoard()
+    }, 15000)
+
+    return () => clearInterval(intervalId)
+  }, [projectPath, loadBoard])
+
   const handleRefresh = useCallback(() => {
     loadBoard()
   }, [loadBoard])
