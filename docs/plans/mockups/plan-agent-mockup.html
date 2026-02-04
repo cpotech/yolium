@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yolium — Plan Agent Mockup</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --color-bg-primary: #0f172a;
+    --color-bg-secondary: #1e293b;
+    --color-bg-tertiary: #334155;
+    --color-bg-hover: #475569;
+    --color-text-primary: #f8fafc;
+    --color-text-secondary: #cbd5e1;
+    --color-text-muted: #64748b;
+    --color-text-disabled: #475569;
+    --color-border-primary: #334155;
+    --color-border-secondary: #475569;
+    --color-accent-primary: #3b82f6;
+    --color-accent-hover: #60a5fa;
+    --color-status-success: #4ade80;
+    --color-status-warning: #facc15;
+    --color-status-error: #f87171;
+    --color-status-waiting: #f59e0b;
+    --color-status-interrupted: #fb923c;
+    --color-special-worktree: #c084fc;
+    --color-special-branch: #60a5fa;
+    --color-plan-agent: #a78bfa;
+  }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #0a0e1a; color: var(--color-text-primary); min-height: 100vh; }
+
+  /* Scene nav */
+  .scene-nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+    display: flex; align-items: center; gap: 4px; padding: 10px 16px;
+    background: #0d1117; border-bottom: 1px solid var(--color-border-primary); overflow-x: auto;
+  }
+  .scene-btn {
+    padding: 6px 14px; border-radius: 6px; border: 1px solid var(--color-border-primary);
+    background: var(--color-bg-secondary); color: var(--color-text-muted);
+    font-size: 11px; cursor: pointer; white-space: nowrap; transition: all 0.15s;
+  }
+  .scene-btn:hover { background: var(--color-bg-tertiary); color: var(--color-text-secondary); }
+  .scene-btn.active { background: var(--color-plan-agent); color: white; border-color: var(--color-plan-agent); }
+  .scene-label { font-size: 11px; color: var(--color-text-disabled); margin-right: 8px; }
+
+  .scene { display: none; margin-top: 52px; }
+  .scene.active { display: block; }
+  .scene-title {
+    font-size: 11px; color: var(--color-text-disabled); text-transform: uppercase;
+    letter-spacing: 0.1em; padding: 8px 16px; border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+
+  /* Dialog */
+  .overlay { display: flex; align-items: flex-start; justify-content: center; padding: 20px; }
+  .dialog {
+    background: var(--color-bg-secondary); border-radius: 10px;
+    border: 1px solid var(--color-border-primary);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6); width: 100%; max-width: 780px;
+  }
+  .dialog-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-bottom: 1px solid var(--color-border-primary);
+  }
+  .dialog-header h2 { font-size: 15px; font-weight: 600; }
+  .close-btn {
+    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; border: none; background: transparent; color: var(--color-text-muted);
+    cursor: pointer; font-size: 16px;
+  }
+  .close-btn:hover { background: var(--color-bg-tertiary); color: var(--color-text-primary); }
+
+  /* Two pane detail */
+  .detail-layout { display: flex; }
+  .detail-main { flex: 1; min-width: 0; padding: 16px 20px; max-height: 600px; overflow-y: auto; }
+  .detail-sidebar {
+    width: 210px; flex-shrink: 0; padding: 16px;
+    border-left: 1px solid var(--color-border-primary); background: rgba(0,0,0,0.12);
+  }
+
+  .detail-field { margin-bottom: 12px; }
+  .detail-field-label { font-size: 10px; color: var(--color-text-disabled); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .detail-field-value { font-size: 12px; color: var(--color-text-secondary); }
+  .detail-field-value.mono { font-family: monospace; color: var(--color-special-branch); }
+
+  /* Form */
+  .form-group { margin-bottom: 12px; }
+  .form-label { display: block; font-size: 11px; color: var(--color-text-muted); margin-bottom: 4px; font-weight: 500; }
+  .form-textarea, .form-input {
+    width: 100%; padding: 8px 10px; font-size: 12px; border-radius: 6px;
+    background: var(--color-bg-primary); border: 1px solid var(--color-border-primary);
+    color: var(--color-text-primary); font-family: inherit; line-height: 1.5;
+  }
+  .form-textarea { min-height: 70px; resize: vertical; }
+  .form-textarea:focus, .form-input:focus { outline: none; border-color: var(--color-accent-primary); }
+  .form-textarea::placeholder, .form-input::placeholder { color: var(--color-text-disabled); }
+  .form-hint { font-size: 10px; color: var(--color-text-disabled); margin-top: 2px; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 12px; border-radius: 6px; border: 1px solid var(--color-border-primary);
+    background: var(--color-bg-tertiary); color: var(--color-text-secondary);
+    font-size: 11px; cursor: pointer; font-family: inherit; transition: all 0.15s;
+  }
+  .btn:hover { background: var(--color-bg-hover); color: var(--color-text-primary); }
+  .btn-sm { padding: 4px 10px; font-size: 10px; }
+  .btn-primary { background: var(--color-accent-primary); border-color: var(--color-accent-primary); color: white; }
+  .btn-primary:hover { background: var(--color-accent-hover); }
+  .btn-plan { background: #5b21b6; border-color: #6d28d9; color: #e9d5ff; }
+  .btn-plan:hover { background: #6d28d9; }
+  .btn-warning { background: #92400e; border-color: #b45309; color: #fde68a; }
+  .btn-warning:hover { background: #a16207; }
+  .btn-success { background: #166534; border-color: #15803d; color: #86efac; }
+  .btn-success:hover { background: #15803d; }
+  .btn-ghost { background: transparent; border-color: transparent; }
+  .btn-stop { background: #7f1d1d; border-color: #991b1b; color: #fca5a5; }
+  .btn-stop:hover { background: #991b1b; }
+
+  /* Badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 2px 7px; border-radius: 4px; font-size: 10px;
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .badge-plan-agent { background: #3b1a5a; color: var(--color-plan-agent); }
+  .badge-opus { background: #1a2a3a; color: #60a5fa; }
+
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;
+  }
+  .status-running { background: rgba(250,204,21,0.15); color: var(--color-status-warning); }
+  .status-waiting { background: rgba(245,158,11,0.15); color: var(--color-status-waiting); }
+  .status-interrupted { background: rgba(251,146,60,0.15); color: var(--color-status-interrupted); }
+  .status-completed { background: rgba(74,222,128,0.15); color: var(--color-status-success); }
+
+  /* Live output panel */
+  .live-output {
+    background: #0a0a0a; border: 1px solid var(--color-border-primary);
+    border-radius: 6px; font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 11px; line-height: 1.6; overflow: hidden; margin-bottom: 12px;
+  }
+  .live-output-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 10px; background: var(--color-bg-tertiary);
+    border-bottom: 1px solid var(--color-border-primary); font-family: system-ui;
+  }
+  .live-output-header .title {
+    font-size: 11px; font-weight: 600; color: var(--color-text-secondary);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .live-output-header .controls { display: flex; align-items: center; gap: 4px; }
+  .live-output-body {
+    padding: 8px 10px; max-height: 200px; overflow-y: auto;
+    color: var(--color-text-secondary);
+  }
+  .live-output-body .t-green { color: var(--color-status-success); }
+  .live-output-body .t-yellow { color: var(--color-status-warning); }
+  .live-output-body .t-red { color: var(--color-status-error); }
+  .live-output-body .t-blue { color: var(--color-special-branch); }
+  .live-output-body .t-purple { color: var(--color-plan-agent); }
+  .live-output-body .t-muted { color: var(--color-text-muted); }
+
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--color-plan-agent); animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .live-timestamp { font-size: 9px; color: var(--color-text-disabled); font-family: monospace; }
+
+  /* Question box */
+  .question-box {
+    background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3);
+    border-radius: 8px; padding: 12px; margin-bottom: 12px;
+  }
+  .question-box-header {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+    font-size: 11px; font-weight: 600; color: var(--color-status-waiting);
+  }
+  .question-box-text {
+    font-size: 13px; color: var(--color-text-primary); margin-bottom: 10px; line-height: 1.5;
+  }
+  .question-options {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .question-option {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; background: var(--color-bg-primary);
+    border: 1px solid var(--color-border-primary); border-radius: 6px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .question-option:hover {
+    border-color: var(--color-status-waiting);
+    background: rgba(245,158,11,0.05);
+  }
+  .question-option.selected {
+    border-color: var(--color-status-waiting);
+    background: rgba(245,158,11,0.1);
+  }
+  .question-option input[type="radio"] { accent-color: var(--color-status-waiting); }
+  .question-option-label { font-size: 12px; color: var(--color-text-secondary); }
+
+  /* Comments / Activity */
+  .comments-section { margin-top: 12px; }
+  .comments-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--color-border-primary);
+  }
+  .comments-header h3 { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
+
+  .comment { display: flex; gap: 8px; margin-bottom: 10px; position: relative; }
+  .comment::before {
+    content: ''; position: absolute; left: 12px; top: 24px; bottom: -10px;
+    width: 1px; background: var(--color-border-primary);
+  }
+  .comment:last-of-type::before { display: none; }
+  .comment-avatar {
+    width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; position: relative; z-index: 1;
+  }
+  .avatar-user { background: #1e40af; color: #93c5fd; }
+  .avatar-agent { background: #3b1a5a; color: var(--color-plan-agent); }
+  .avatar-system { background: var(--color-bg-tertiary); color: var(--color-text-muted); }
+
+  .comment-body { flex: 1; min-width: 0; }
+  .comment-meta { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; font-size: 10px; }
+  .comment-author { font-weight: 600; color: var(--color-text-secondary); }
+  .comment-time { color: var(--color-text-disabled); }
+  .comment-content {
+    font-size: 11px; line-height: 1.5; color: var(--color-text-secondary);
+    background: var(--color-bg-primary); border: 1px solid var(--color-border-primary);
+    border-radius: 6px; padding: 8px 10px;
+  }
+  .comment-content code {
+    background: var(--color-bg-tertiary); padding: 1px 4px; border-radius: 3px;
+    font-family: monospace; font-size: 10px;
+  }
+  .comment-system .comment-content {
+    background: transparent; border: none; padding: 2px 0;
+    color: var(--color-text-disabled); font-size: 10px; font-style: italic;
+  }
+  .comment-question .comment-content {
+    background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.3);
+  }
+  .comment-answer .comment-content {
+    background: rgba(59,130,246,0.08); border-color: rgba(59,130,246,0.3);
+  }
+
+  .comment-composer {
+    display: flex; gap: 8px; margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid var(--color-border-primary);
+  }
+
+  /* Work items list */
+  .work-items-list { margin-top: 12px; }
+  .work-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px; background: var(--color-bg-primary);
+    border: 1px solid var(--color-border-primary); border-radius: 6px;
+    margin-bottom: 8px;
+  }
+  .work-item-order {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--color-bg-tertiary); color: var(--color-text-muted);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; flex-shrink: 0;
+  }
+  .work-item-content { flex: 1; min-width: 0; }
+  .work-item-title { font-size: 12px; font-weight: 500; margin-bottom: 4px; }
+  .work-item-meta { display: flex; align-items: center; gap: 6px; font-size: 10px; flex-wrap: wrap; }
+  .work-item-branch { font-family: monospace; color: var(--color-special-branch); }
+
+  /* Spinner */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 8px; height: 8px; border: 2px solid var(--color-border-primary);
+    border-top-color: var(--color-plan-agent); border-radius: 50%;
+    animation: spin 0.8s linear infinite; display: inline-block;
+  }
+
+  /* Info box */
+  .info-box {
+    font-size: 11px; color: var(--color-text-muted); padding: 10px 12px;
+    background: rgba(167,139,250,0.05); border: 1px dashed rgba(167,139,250,0.3);
+    border-radius: 6px; margin-top: 10px; line-height: 1.5;
+  }
+
+  /* Toolbar mini */
+  .mini-toolbar {
+    display: flex; align-items: center; gap: 8px; padding: 8px 16px;
+    border-bottom: 1px solid var(--color-border-primary); background: var(--color-bg-secondary);
+  }
+
+  .mockup-footer {
+    position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+    background: var(--color-bg-tertiary); color: var(--color-text-muted);
+    font-size: 11px; padding: 4px 14px; border-radius: 20px; z-index: 300;
+  }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--color-bg-tertiary); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="scene-nav">
+  <span class="scene-label">Plan Agent Flow:</span>
+  <button class="scene-btn active" onclick="showScene('start')">1. Decompose Goal</button>
+  <button class="scene-btn" onclick="showScene('running')">2. Agent Analyzing</button>
+  <button class="scene-btn" onclick="showScene('question')">3. Agent Asks Question</button>
+  <button class="scene-btn" onclick="showScene('answer')">4. User Answers</button>
+  <button class="scene-btn" onclick="showScene('complete')">5. Planning Complete</button>
+  <button class="scene-btn" onclick="showScene('interrupted')">6. Session Recovery</button>
+</div>
+
+<!-- ================================================ -->
+<!-- SCENE 1: Decompose Goal Dialog                   -->
+<!-- ================================================ -->
+<div class="scene active" id="scene-start">
+  <div class="scene-title">Scene 1 — User clicks "Decompose Goal" to start the Plan Agent. Enter a high-level goal.</div>
+  <div class="mini-toolbar">
+    <span style="font-size:12px;color:var(--color-text-secondary);font-weight:600">my-project</span>
+    <span style="font-family:monospace;font-size:10px;color:var(--color-special-branch)">main</span>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <button class="btn btn-sm">+ New Item</button>
+      <button class="btn btn-sm btn-plan" onclick="showScene('running')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.912 5.813a1 1 0 0 0 .95.687h6.138l-4.97 3.612a1 1 0 0 0-.364 1.118L17.578 20l-4.97-3.612a1 1 0 0 0-1.176 0L6.462 20l1.912-5.77a1 1 0 0 0-.364-1.118L3.04 9.5h6.138a1 1 0 0 0 .95-.687L12 3z"/></svg>
+        Decompose Goal
+      </button>
+    </div>
+  </div>
+  <div class="overlay">
+    <div class="dialog" style="max-width:600px">
+      <div class="dialog-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <h2>Decompose Goal</h2>
+          <span class="badge badge-plan-agent">Plan Agent</span>
+          <span class="badge badge-opus">Opus</span>
+        </div>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div style="padding:16px 20px">
+        <div class="form-group">
+          <label class="form-label">High-Level Goal</label>
+          <textarea class="form-textarea" style="min-height:100px" placeholder="Describe what you want to build...">Add user authentication to the app with OAuth2 support for Google and GitHub, JWT tokens for session management, and role-based access control for admin vs regular users.</textarea>
+          <div class="form-hint">Be specific about requirements. The Plan Agent will analyze the codebase and may ask clarifying questions.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Target Branch</label>
+          <input type="text" class="form-input" value="main" style="max-width:200px">
+          <div class="form-hint">Work items will branch from this.</div>
+        </div>
+
+        <div class="info-box">
+          <strong>What happens next:</strong><br>
+          1. Plan Agent spawns in a background container (Opus model)<br>
+          2. Analyzes your codebase structure and conventions<br>
+          3. May ask clarifying questions (you can answer anytime)<br>
+          4. Creates structured work items in Backlog<br>
+          5. You review and edit items before running other agents
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+          <button class="btn">Cancel</button>
+          <button class="btn btn-plan" onclick="showScene('running')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Start Planning
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================ -->
+<!-- SCENE 2: Plan Agent Running                      -->
+<!-- ================================================ -->
+<div class="scene" id="scene-running">
+  <div class="scene-title">Scene 2 — Plan Agent is running in the background. Analyzing codebase, exploring structure.</div>
+  <div class="overlay">
+    <div class="dialog">
+      <div class="dialog-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <h2>Add user authentication</h2>
+          <span class="status-badge status-running"><span class="spinner"></span> Planning</span>
+        </div>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="detail-layout">
+        <div class="detail-main">
+          <!-- Live output -->
+          <div class="live-output">
+            <div class="live-output-header">
+              <div class="title">
+                <div class="live-dot"></div>
+                Plan Agent Output
+                <span class="live-timestamp">updated 5s ago</span>
+              </div>
+              <div class="controls">
+                <button class="btn btn-sm" style="font-size:9px;padding:2px 6px">Expand</button>
+              </div>
+            </div>
+            <div class="live-output-body">
+              <div><span class="t-purple">plan-agent&gt;</span> Starting codebase analysis...</div>
+              <div><span class="t-muted">[glob] src/**/*.ts — 142 files</span></div>
+              <div><span class="t-muted">[glob] src/**/*.tsx — 38 files</span></div>
+              <div><span class="t-muted">[read] package.json</span></div>
+              <div><span class="t-muted">[read] src/app/layout.tsx</span></div>
+              <div style="margin-top:4px"><span class="t-purple">plan-agent&gt;</span> Found Next.js 14 app with App Router</div>
+              <div><span class="t-muted">[grep] "auth" — 12 matches</span></div>
+              <div><span class="t-muted">[read] src/lib/auth.ts</span></div>
+              <div style="margin-top:4px"><span class="t-purple">plan-agent&gt;</span> Existing auth stub found. Analyzing patterns...</div>
+              <div><span class="t-muted">[read] src/middleware.ts</span></div>
+              <div><span class="t-muted">[read] src/app/api/route.ts</span></div>
+              <div style="margin-top:4px"><span class="t-purple">plan-agent&gt;</span> Evaluating OAuth provider options...</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Goal</label>
+            <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;padding:8px 10px;background:var(--color-bg-primary);border-radius:6px;border:1px solid var(--color-border-primary)">
+              Add user authentication to the app with OAuth2 support for Google and GitHub, JWT tokens for session management, and role-based access control for admin vs regular users.
+            </div>
+          </div>
+
+          <div class="comments-section">
+            <div class="comments-header"><h3>Activity</h3></div>
+            <div class="comment comment-system">
+              <div class="comment-avatar avatar-system">S</div>
+              <div class="comment-body">
+                <div class="comment-meta"><span class="comment-author">System</span> <span class="comment-time">2 min ago</span></div>
+                <div class="comment-content">Plan Agent started — <span class="badge badge-plan-agent" style="font-size:9px">Plan Agent</span> <span class="badge badge-opus" style="font-size:9px">Opus</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-sidebar">
+          <div class="detail-field">
+            <div class="detail-field-label">Status</div>
+            <span class="status-badge status-running"><span class="spinner"></span> Running</span>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Agent</div>
+            <span class="badge badge-plan-agent">Plan Agent</span>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Model</div>
+            <span class="badge badge-opus">Opus</span>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Running for</div>
+            <div class="detail-field-value">2m 15s</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Target Branch</div>
+            <div class="detail-field-value mono">main</div>
+          </div>
+
+          <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px">
+            <button class="btn btn-sm btn-stop" style="width:100%;justify-content:center">
+              Stop Agent
+            </button>
+            <div class="form-hint" style="text-align:center">
+              Agent runs in background.<br>You can close this dialog.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================ -->
+<!-- SCENE 3: Plan Agent Asks Question                -->
+<!-- ================================================ -->
+<div class="scene" id="scene-question">
+  <div class="scene-title">Scene 3 — Plan Agent needs clarification. Posts question to comments, status changes to "Waiting".</div>
+  <div class="overlay">
+    <div class="dialog">
+      <div class="dialog-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <h2>Add user authentication</h2>
+          <span class="status-badge status-waiting">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+            Needs Input
+          </span>
+        </div>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="detail-layout">
+        <div class="detail-main">
+          <!-- Question box (prominent) -->
+          <div class="question-box">
+            <div class="question-box-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              Plan Agent is asking a question
+            </div>
+            <div class="question-box-text">
+              I found an existing auth stub in <code>src/lib/auth.ts</code>. For the OAuth implementation, which library approach do you prefer?
+            </div>
+            <div class="question-options">
+              <label class="question-option">
+                <input type="radio" name="auth-choice" value="nextauth">
+                <span class="question-option-label"><strong>NextAuth.js</strong> — Full-featured, built for Next.js, handles providers + sessions</span>
+              </label>
+              <label class="question-option">
+                <input type="radio" name="auth-choice" value="lucia">
+                <span class="question-option-label"><strong>Lucia Auth</strong> — Lightweight, more control, manual session handling</span>
+              </label>
+              <label class="question-option">
+                <input type="radio" name="auth-choice" value="custom">
+                <span class="question-option-label"><strong>Custom implementation</strong> — Direct OAuth2 flow, most flexible</span>
+              </label>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <input type="text" class="form-input" placeholder="Or type a custom answer..." style="flex:1">
+              <button class="btn btn-warning" onclick="showScene('answer')">Answer &amp; Resume</button>
+            </div>
+          </div>
+
+          <!-- Last output (frozen) -->
+          <div class="live-output" style="opacity:0.7">
+            <div class="live-output-header">
+              <div class="title" style="color:var(--color-text-disabled)">
+                <div style="width:6px;height:6px;border-radius:50%;background:var(--color-text-disabled)"></div>
+                Last Output
+                <span class="live-timestamp">paused 30s ago</span>
+              </div>
+            </div>
+            <div class="live-output-body" style="max-height:80px">
+              <div><span class="t-purple">plan-agent&gt;</span> Found Next.js 14 app with App Router</div>
+              <div><span class="t-purple">plan-agent&gt;</span> Existing auth stub in src/lib/auth.ts</div>
+              <div><span class="t-purple">plan-agent&gt;</span> Evaluating OAuth provider options...</div>
+              <div style="margin-top:4px;color:var(--color-status-waiting)">Agent paused — waiting for your input</div>
+            </div>
+          </div>
+
+          <div class="comments-section">
+            <div class="comments-header"><h3>Activity</h3></div>
+            <div class="comment comment-system">
+              <div class="comment-avatar avatar-system">S</div>
+              <div class="comment-body">
+                <div class="comment-meta"><span class="comment-author">System</span> <span class="comment-time">5 min ago</span></div>
+                <div class="comment-content">Plan Agent started</div>
+              </div>
+            </div>
+            <div class="comment comment-question">
+              <div class="comment-avatar avatar-agent">P</div>
+              <div class="comment-body">
+                <div class="comment-meta">
+                  <span class="comment-author">Plan Agent</span>
+                  <span class="badge badge-plan-agent" style="font-size:9px">Question</span>
+                  <span class="comment-time">30s ago</span>
+                </div>
+                <div class="comment-content">
+                  Which OAuth library approach do you prefer?<br>
+                  • NextAuth.js — Full-featured, built for Next.js<br>
+                  • Lucia Auth — Lightweight, more control<br>
+                  • Custom implementation — Direct OAuth2 flow
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-sidebar">
+          <div class="detail-field">
+            <div class="detail-field-label">Status</div>
+            <span class="status-badge status-waiting">Waiting</span>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Agent</div>
+            <span class="badge badge-plan-agent">Plan Agent</span>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Model</div>
+            <span class="badge badge-opus">Opus</span>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Waiting for</div>
+            <div class="detail-field-value" style="color:var(--color-status-waiting)">30s</div>
+          </div>
+
+          <div style="margin-top:16px">
+            <div class="info-box" style="background:rgba(245,158,11,0.08);border-color:rgba(245,158,11,0.3)">
+              <strong>Agent paused</strong><br>
+              Answer the question above to resume planning. The agent will continue with your input.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================ -->
+<!-- SCENE 4: User Answers, Agent Resumes             -->
+<!-- ================================================ -->
+<div class="scene" id="scene-answer">
+  <div class="scene-title">Scene 4 — User answered the question. Agent resumes with full conversation history.</div>
+  <div class="overlay">
+    <div class="dialog">
+      <div class="dialog-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <h2>Add user authentication</h2>
+          <span class="status-badge status-running"><span class="spinner"></span> Planning</span>
+        </div>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="detail-layout">
+        <div class="detail-main">
+          <!-- Live output (resumed) -->
+          <div class="live-output">
+            <div class="live-output-header">
+              <div class="title">
+                <div class="live-dot"></div>
+                Plan Agent Output
+                <span class="live-timestamp">updated 3s ago</span>
+              </div>
+            </div>
+            <div class="live-output-body">
+              <div><span class="t-purple">plan-agent&gt;</span> Resuming with user input: NextAuth.js</div>
+              <div><span class="t-muted">[read] package.json — checking existing deps</span></div>
+              <div style="margin-top:4px"><span class="t-purple">plan-agent&gt;</span> Planning NextAuth.js integration...</div>
+              <div><span class="t-purple">plan-agent&gt;</span> Breaking down into work items:</div>
+              <div style="margin-top:4px"><span class="t-green">@@YOLIUM: create_item</span> "Set up NextAuth.js configuration"</div>
+              <div><span class="t-green">@@YOLIUM: create_item</span> "Add Google OAuth provider"</div>
+              <div><span class="t-green">@@YOLIUM: create_item</span> "Add GitHub OAuth provider"</div>
+              <div><span class="t-purple">plan-agent&gt;</span> Analyzing role-based access control needs...</div>
+            </div>
+          </div>
+
+          <div class="comments-section">
+            <div class="comments-header"><h3>Activity</h3></div>
+            <div class="comment comment-system">
+              <div class="comment-avatar avatar-system">S</div>
+              <div class="comment-body">
+                <div class="comment-meta"><span class="comment-author">System</span> <span class="comment-time">8 min ago</span></div>
+                <div class="comment-content">Plan Agent started</div>
+              </div>
+            </div>
+            <div class="comment comment-question">
+              <div class="comment-avatar avatar-agent">P</div>
+              <div class="comment-body">
+                <div class="comment-meta"><span class="comment-author">Plan Agent</span> <span class="comment-time">3 min ago</span></div>
+                <div class="comment-content">Which OAuth library approach do you prefer?</div>
+              </div>
+            </div>
+            <div class="comment comment-answer">
+              <div class="comment-avatar avatar-user">U</div>
+              <div class="comment-body">
+                <div class="comment-meta"><span class="comment-author">You</span> <span class="comment-time">1 min ago</span></div>
+                <div class="comment-content"><strong>NextAuth.js</strong> — Full-featured, built for Next.js, handles providers + sessions</div>
+              </div>
+            </div>
+            <div class="comment comment-system">
+              <div class="comment-avatar avatar-system">S</div>
+              <div class="comment-body">
+                <div class="comment-meta"><span class="comment-author">System</span> <span class="comment-time">1 min ago</span></div>
+                <div class="comment-content">Agent resumed with updated context</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-sidebar">
+          <div class="detail-field">
+            <div class="detail-field-label">Status</div>
+            <span class="status-badge status-running"><span class="spinner"></span> Running</span>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Agent</div>
+            <span class="badge badge-plan-agent">Plan Agent</span>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Items Created</div>
+            <div class="detail-field-value" style="color:var(--color-status-success)">3 so far</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Running for</div>
+            <div class="detail-field-value">8m 45s</div>
+          </div>
+
+          <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px">
+            <button class="btn btn-sm btn-stop" style="width:100%;justify-content:center">
+              Stop Agent
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================ -->
+<!-- SCENE 5: Planning Complete                       -->
+<!-- ================================================ -->
+<div class="scene" id="scene-complete">
+  <div class="scene-title">Scene 5 — Plan Agent completed. Work items created in Backlog. User can review and edit.</div>
+  <div class="overlay">
+    <div class="dialog">
+      <div class="dialog-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <h2>Add user authentication</h2>
+          <span class="status-badge status-completed">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            Complete
+          </span>
+        </div>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="detail-layout">
+        <div class="detail-main">
+          <!-- Success message -->
+          <div style="padding:12px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.3);border-radius:8px;margin-bottom:12px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="16 10 11 15 8 12"/></svg>
+              <span style="font-size:13px;font-weight:600;color:var(--color-status-success)">Planning Complete</span>
+            </div>
+            <div style="font-size:12px;color:var(--color-text-secondary)">
+              Created <strong>6 work items</strong> in Backlog. Review and edit them, then move to Ready to start execution.
+            </div>
+          </div>
+
+          <!-- Work items created -->
+          <div class="work-items-list">
+            <label class="form-label">Created Work Items</label>
+
+            <div class="work-item">
+              <div class="work-item-order">1</div>
+              <div class="work-item-content">
+                <div class="work-item-title">Set up NextAuth.js configuration</div>
+                <div class="work-item-meta">
+                  <span class="badge" style="background:#1a3a1a;color:#4ade80">Claude</span>
+                  <span class="work-item-branch">feature/auth-setup</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="work-item">
+              <div class="work-item-order">2</div>
+              <div class="work-item-content">
+                <div class="work-item-title">Add Google OAuth provider</div>
+                <div class="work-item-meta">
+                  <span class="badge" style="background:#1a3a1a;color:#4ade80">Codex</span>
+                  <span class="work-item-branch">feature/auth-google</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="work-item">
+              <div class="work-item-order">3</div>
+              <div class="work-item-content">
+                <div class="work-item-title">Add GitHub OAuth provider</div>
+                <div class="work-item-meta">
+                  <span class="badge" style="background:#1a3a1a;color:#4ade80">Codex</span>
+                  <span class="work-item-branch">feature/auth-github</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="work-item">
+              <div class="work-item-order">4</div>
+              <div class="work-item-content">
+                <div class="work-item-title">Implement JWT session management</div>
+                <div class="work-item-meta">
+                  <span class="badge" style="background:#2a1a3a;color:#c084fc">Claude</span>
+                  <span class="work-item-branch">feature/auth-jwt</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="work-item">
+              <div class="work-item-order">5</div>
+              <div class="work-item-content">
+                <div class="work-item-title">Add role-based access control (RBAC)</div>
+                <div class="work-item-meta">
+                  <span class="badge" style="background:#2a1a3a;color:#c084fc">Claude</span>
+                  <span class="work-item-branch">feature/auth-rbac</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="work-item">
+              <div class="work-item-order">6</div>
+              <div class="work-item-content">
+                <div class="work-item-title">Add auth middleware and protected routes</div>
+                <div class="work-item-meta">
+                  <span class="badge" style="background:#1a3a1a;color:#4ade80">Codex</span>
+                  <span class="work-item-branch">feature/auth-middleware</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-box" style="margin-top:12px">
+            <strong>Next steps:</strong><br>
+            1. Review work items in Backlog<br>
+            2. Edit descriptions if needed<br>
+            3. Move items to Ready when you're satisfied<br>
+            4. Run agents on Ready items (future feature)
+          </div>
+        </div>
+
+        <div class="detail-sidebar">
+          <div class="detail-field">
+            <div class="detail-field-label">Status</div>
+            <span class="status-badge status-completed">Complete</span>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Agent</div>
+            <span class="badge badge-plan-agent">Plan Agent</span>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Duration</div>
+            <div class="detail-field-value">12m 34s</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Items Created</div>
+            <div class="detail-field-value" style="color:var(--color-status-success)">6</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Questions Asked</div>
+            <div class="detail-field-value">1</div>
+          </div>
+
+          <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px">
+            <button class="btn btn-sm btn-success" style="width:100%;justify-content:center">
+              View in Backlog
+            </button>
+            <button class="btn btn-sm" style="width:100%;justify-content:center">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================ -->
+<!-- SCENE 6: Interrupted (Session Recovery)          -->
+<!-- ================================================ -->
+<div class="scene" id="scene-interrupted">
+  <div class="scene-title">Scene 6 — App was closed while agent was running. On restart, agent can be resumed from conversation history.</div>
+  <div class="overlay">
+    <div class="dialog">
+      <div class="dialog-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <h2>Add user authentication</h2>
+          <span class="status-badge status-interrupted">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Interrupted
+          </span>
+        </div>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="detail-layout">
+        <div class="detail-main">
+          <!-- Interrupted notice -->
+          <div style="padding:12px;background:rgba(251,146,60,0.08);border:1px solid rgba(251,146,60,0.3);border-radius:8px;margin-bottom:12px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span style="font-size:13px;font-weight:600;color:var(--color-status-interrupted)">Agent was interrupted</span>
+            </div>
+            <div style="font-size:12px;color:var(--color-text-secondary)">
+              The app was closed while the Plan Agent was running. Click <strong>Resume</strong> to continue from where it left off. The agent will see the full conversation history.
+            </div>
+          </div>
+
+          <!-- Last output (frozen) -->
+          <div class="live-output" style="opacity:0.7">
+            <div class="live-output-header">
+              <div class="title" style="color:var(--color-text-disabled)">
+                <div style="width:6px;height:6px;border-radius:50%;background:var(--color-status-interrupted)"></div>
+                Last Output (before interruption)
+              </div>
+            </div>
+            <div class="live-output-body" style="max-height:100px">
+              <div><span class="t-purple">plan-agent&gt;</span> Resuming with user input: NextAuth.js</div>
+              <div><span class="t-green">@@YOLIUM: create_item</span> "Set up NextAuth.js configuration"</div>
+              <div><span class="t-green">@@YOLIUM: create_item</span> "Add Google OAuth provider"</div>
+              <div><span class="t-green">@@YOLIUM: create_item</span> "Add GitHub OAuth provider"</div>
+              <div><span class="t-purple">plan-agent&gt;</span> Analyzing role-based access control needs...</div>
+              <div style="margin-top:4px;color:var(--color-status-interrupted)">— Connection lost —</div>
+            </div>
+          </div>
+
+          <div class="comments-section">
+            <div class="comments-header"><h3>Activity (preserved)</h3></div>
+            <div class="comment comment-system">
+              <div class="comment-avatar avatar-system">S</div>
+              <div class="comment-body">
+                <div class="comment-meta"><span class="comment-author">System</span> <span class="comment-time">Yesterday 4:30 PM</span></div>
+                <div class="comment-content">Plan Agent started</div>
+              </div>
+            </div>
+            <div class="comment comment-question">
+              <div class="comment-avatar avatar-agent">P</div>
+              <div class="comment-body">
+                <div class="comment-meta"><span class="comment-author">Plan Agent</span> <span class="comment-time">Yesterday 4:32 PM</span></div>
+                <div class="comment-content">Which OAuth library approach do you prefer?</div>
+              </div>
+            </div>
+            <div class="comment comment-answer">
+              <div class="comment-avatar avatar-user">U</div>
+              <div class="comment-body">
+                <div class="comment-meta"><span class="comment-author">You</span> <span class="comment-time">Yesterday 4:35 PM</span></div>
+                <div class="comment-content"><strong>NextAuth.js</strong></div>
+              </div>
+            </div>
+            <div class="comment comment-system">
+              <div class="comment-avatar avatar-system">S</div>
+              <div class="comment-body">
+                <div class="comment-meta"><span class="comment-author">System</span> <span class="comment-time">Yesterday 4:35 PM</span></div>
+                <div class="comment-content">Agent resumed with updated context</div>
+              </div>
+            </div>
+            <div class="comment comment-system">
+              <div class="comment-avatar avatar-system">S</div>
+              <div class="comment-body">
+                <div class="comment-meta"><span class="comment-author">System</span> <span class="comment-time">Today 9:15 AM</span></div>
+                <div class="comment-content" style="color:var(--color-status-interrupted)">Agent was interrupted. Click Resume to continue.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-sidebar">
+          <div class="detail-field">
+            <div class="detail-field-label">Status</div>
+            <span class="status-badge status-interrupted">Interrupted</span>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Agent</div>
+            <span class="badge badge-plan-agent">Plan Agent</span>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Items Created</div>
+            <div class="detail-field-value">3 (before interruption)</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Last Active</div>
+            <div class="detail-field-value">Yesterday 4:38 PM</div>
+          </div>
+
+          <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px">
+            <button class="btn btn-sm btn-warning" style="width:100%;justify-content:center" onclick="showScene('answer')">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Resume Agent
+            </button>
+            <div class="form-hint" style="text-align:center">
+              Spawns new container.<br>Agent sees full conversation history.
+            </div>
+            <div style="height:4px"></div>
+            <button class="btn btn-sm" style="width:100%;justify-content:center">
+              View Created Items
+            </button>
+            <button class="btn btn-sm btn-ghost" style="width:100%;justify-content:center;color:var(--color-status-error)">
+              Discard &amp; Start Over
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup-footer">Mockup — Plan Agent workflow (Opus model, async questions, session recovery)</div>
+
+<script>
+  function showScene(id) {
+    document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.scene-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('scene-' + id).classList.add('active');
+    const ids = ['start','running','question','answer','complete','interrupted'];
+    const idx = ids.indexOf(id);
+    if (idx >= 0) document.querySelectorAll('.scene-btn')[idx].classList.add('active');
+  }
+</script>
+</body>
+</html>
