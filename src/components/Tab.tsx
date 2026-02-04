@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Folder } from 'lucide-react';
+import { X, Folder, LayoutGrid } from 'lucide-react';
 import type { Tab as TabType, ContainerState } from '../types/tabs';
 
 // Status indicator dot for container state
@@ -33,12 +33,15 @@ export function Tab({ tab, isActive, onClick, onClose, onContextMenu }: TabProps
     onClose(e);
   };
 
+  const isKanban = tab.type === 'kanban';
+
   return (
     <div
       role="tab"
       aria-selected={isActive}
       data-testid={`tab-${tab.id}`}
       data-active={isActive}
+      data-tab-type={tab.type}
       onClick={onClick}
       onContextMenu={onContextMenu}
       className={`
@@ -51,10 +54,16 @@ export function Tab({ tab, isActive, onClick, onClose, onContextMenu }: TabProps
         }
       `}
     >
-      {/* Icon - Folder with status indicator overlay */}
+      {/* Icon - different for terminal vs kanban */}
       <div className="relative shrink-0">
-        <Folder size={14} className="text-gray-500" />
-        <StatusDot state={tab.containerState} />
+        {isKanban ? (
+          <LayoutGrid size={14} className="text-[var(--color-accent-primary)]" />
+        ) : (
+          <>
+            <Folder size={14} className="text-gray-500" />
+            {tab.containerState && <StatusDot state={tab.containerState} />}
+          </>
+        )}
       </div>
 
       {/* Label - truncate with ellipsis */}

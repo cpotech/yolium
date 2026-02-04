@@ -85,6 +85,22 @@ export const selectors = {
   buildProgressOverlay: '[data-testid="build-progress-overlay"]',
   buildProgressText: '[data-testid="build-progress-text"]',
 
+  // Sidebar
+  sidebar: '[data-testid="sidebar"]',
+  sidebarCollapseToggle: '[data-testid="collapse-toggle"]',
+  addProjectButton: '[data-testid="add-project-button"]',
+  projectItem: (path: string) => `[data-testid="project-item-${path}"]`,
+  removeProjectButton: (path: string) => `[data-testid="remove-project-${path}"]`,
+
+  // Kanban
+  kanbanView: '[data-testid="kanban-view"]',
+  kanbanEmptyState: '[data-testid="kanban-empty-state"]',
+  kanbanColumnsContainer: '[data-testid="kanban-columns-container"]',
+  kanbanColumn: (id: string) => `[data-testid="kanban-column-${id}"]`,
+  kanbanNewItemButton: '[data-testid="new-item-button"]',
+  kanbanRefreshButton: '[data-testid="refresh-button"]',
+  projectPathDisplay: '[data-testid="project-path-display"]',
+
   // Code review dialog
   codeReviewButton: '[data-testid="code-review-button"]',
   codeReviewDialog: '[data-testid="code-review-dialog"]',

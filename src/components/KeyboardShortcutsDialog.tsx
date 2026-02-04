@@ -48,7 +48,8 @@ const shortcutGroups: ShortcutGroup[] = [
     title: 'Application',
     shortcuts: [
       { keys: 'Ctrl+?', description: 'Keyboard shortcuts' },
-      { keys: 'Ctrl+Shift+G', description: 'Git settings' },
+      { keys: 'Ctrl+Shift+S', description: 'Settings' },
+      { keys: 'Ctrl+Shift+P', description: 'New project' },
       { keys: 'Ctrl+Shift+R', description: 'Toggle recording' },
     ],
   },

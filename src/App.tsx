@@ -17,6 +17,16 @@ import { WhisperModelDialog } from './components/WhisperModelDialog';
 import { SpeechToTextButton } from './components/SpeechToTextButton';
 import type { WhisperModelSize } from './types/whisper';
 import { normalizePath } from './lib/path-utils';
+import { Sidebar } from './components/Sidebar';
+import {
+  getSidebarProjects,
+  addSidebarProject,
+  removeSidebarProject,
+  type SidebarProject,
+} from './lib/sidebar-store';
+import { KanbanView } from './components/KanbanView';
+
+type PathDialogMode = 'newTab' | 'addProject';
 
 function App(): React.ReactElement {
   const {
@@ -30,6 +40,8 @@ function App(): React.ReactElement {
     updateGitBranch,
     closeAllTabs,
     closeOtherTabs,
+    addKanbanTab,
+    closeKanbanForProject,
   } = useTabState();
 
   // Whisper speech-to-text
@@ -81,6 +93,11 @@ function App(): React.ReactElement {
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewLog, setReviewLog] = useState<string[]>([]);
 
+  // State for sidebar
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [sidebarProjects, setSidebarProjects] = useState<SidebarProject[]>(() => getSidebarProjects());
+  const [pathDialogMode, setPathDialogMode] = useState<PathDialogMode>('newTab');
+
   // Ref for auto-scrolling build progress
   const progressRef = useRef<HTMLDivElement>(null);
 
@@ -122,6 +139,10 @@ function App(): React.ReactElement {
         ? branchName
         : await window.electronAPI.getGitBranch(folderPath);
       const tabId = addTab(sessionId, folderPath, 'starting', gitBranch || undefined);
+
+      // Add project to sidebar
+      addSidebarProject(folderPath);
+      setSidebarProjects(getSidebarProjects());
 
       // Update to running once container is attached
       // For now, set running after a brief delay (proper approach: IPC state event)
@@ -171,6 +192,17 @@ function App(): React.ReactElement {
     setLastUsedPath(path);
 
     setPathDialogOpen(false);
+
+    // Handle based on mode
+    if (pathDialogMode === 'addProject') {
+      // Add project to sidebar and open its kanban tab
+      addSidebarProject(normalizedPath);
+      setSidebarProjects(getSidebarProjects());
+      addKanbanTab(normalizedPath);
+      return;
+    }
+
+    // New Tab mode: open agent dialog to select agent type
     setPendingFolderPath(normalizedPath);
 
     // Check if folder is a git repo (async, UI will show "checking...")
@@ -183,7 +215,7 @@ function App(): React.ReactElement {
     } catch {
       setPendingFolderGitStatus({ isRepo: false, hasCommits: false });
     }
-  }, []);
+  }, [pathDialogMode, addKanbanTab]);
 
   // Handle path dialog cancel
   const handlePathDialogCancel = useCallback(() => {
@@ -318,9 +350,28 @@ function App(): React.ReactElement {
       return;
     }
 
-    // Open path input dialog
+    // Set mode and open path input dialog
+    setPathDialogMode('newTab');
     setPathDialogOpen(true);
   }, []);
+
+  // Add a project to sidebar (opens path dialog, then kanban tab)
+  const handleAddProject = useCallback(() => {
+    setPathDialogMode('addProject');
+    setPathDialogOpen(true);
+  }, []);
+
+  // Click a project in sidebar - opens/focuses its kanban tab
+  const handleProjectClick = useCallback((path: string) => {
+    addKanbanTab(path);
+  }, [addKanbanTab]);
+
+  // Remove a project from sidebar (also closes its kanban tab if open)
+  const handleProjectRemove = useCallback((path: string) => {
+    removeSidebarProject(path);
+    setSidebarProjects(getSidebarProjects());
+    closeKanbanForProject(path);
+  }, [closeKanbanForProject]);
 
   // Close a tab - instant UI update, cleanup in background
   const handleCloseTab = useCallback((tabId: string) => {
@@ -483,6 +534,7 @@ function App(): React.ReactElement {
     const cleanupCloseAll = window.electronAPI.onTabCloseAll(handleCloseAllTabs);
     const cleanupShortcuts = window.electronAPI.onShortcutsShow(handleShowShortcuts);
     const cleanupGitSettings = window.electronAPI.onGitSettingsShow(handleOpenGitConfig);
+    const cleanupProjectNew = window.electronAPI.onProjectNew(handleAddProject);
     const cleanupRecording = window.electronAPI.onRecordingToggle(stableToggleRecording);
 
     return () => {
@@ -495,9 +547,10 @@ function App(): React.ReactElement {
       cleanupCloseAll();
       cleanupShortcuts();
       cleanupGitSettings();
+      cleanupProjectNew();
       cleanupRecording();
     };
-  }, [handleNewYolium, handleCloseActiveTab, handleNextTab, handlePrevTab, handleCloseTab, handleCloseOtherTabs, handleCloseAllTabs, handleShowShortcuts, handleOpenGitConfig, stableToggleRecording]);
+  }, [handleNewYolium, handleCloseActiveTab, handleNextTab, handlePrevTab, handleCloseTab, handleCloseOtherTabs, handleCloseAllTabs, handleShowShortcuts, handleOpenGitConfig, handleAddProject, stableToggleRecording]);
 
   // Listen for container exit events to update state
   useEffect(() => {
@@ -536,6 +589,7 @@ function App(): React.ReactElement {
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTabId]);
+
 
   // Show loading spinner while checking Docker status
   if (dockerReady === null) {
@@ -681,138 +735,168 @@ function App(): React.ReactElement {
       />
 
       {/* Main content area */}
-      <main className="flex-1 min-h-0 relative flex flex-col">
-        {tabs.length === 0 ? (
-          <>
-            <div className="flex-1 min-h-0">
-              <EmptyState onNewTab={handleNewYolium} />
-            </div>
-            {/* Minimal status bar for empty state */}
-            <div className="flex items-center justify-end h-7 px-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)] text-xs shrink-0 gap-2">
-              {/* Docker image info and rebuild button (only shown when image exists) */}
-              {!imageRemoved && (
-                <>
-                  <span className="flex items-center gap-1 text-[var(--color-text-muted)]">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-                      <path d="m3.3 7 8.7 5 8.7-5" />
-                      <path d="M12 22V12" />
-                    </svg>
-                    <span>yolium:latest</span>
-                  </span>
+      <main className="flex-1 min-h-0 relative flex flex-row">
+        {/* Sidebar - project list for quick kanban access */}
+        <Sidebar
+          projects={sidebarProjects}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onProjectClick={handleProjectClick}
+          onProjectRemove={handleProjectRemove}
+          onAddProject={handleAddProject}
+        />
 
-                  {/* Rebuild button */}
-                  <button
-                    onClick={handleRebuildImage}
-                    disabled={isRebuilding}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Delete Docker image"
-                  >
-                    {isRebuilding ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
-                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+        {/* Content area */}
+        <div className="flex-1 min-h-0 relative flex flex-col">
+          {tabs.length === 0 ? (
+            <>
+              <div className="flex-1 min-h-0">
+                <EmptyState onNewTab={handleNewYolium} onCreateProject={handleAddProject} />
+              </div>
+              {/* Minimal status bar for empty state */}
+              <div className="flex items-center justify-end h-7 px-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)] text-xs shrink-0 gap-2">
+                {/* Docker image info and rebuild button (only shown when image exists) */}
+                {!imageRemoved && (
+                  <>
+                    <span className="flex items-center gap-1 text-[var(--color-text-muted)]">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                        <path d="m3.3 7 8.7 5 8.7-5" />
+                        <path d="M12 22V12" />
                       </svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                        <path d="M21 3v5h-5" />
-                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                        <path d="M8 16H3v5" />
-                      </svg>
-                    )}
-                    <span>Delete</span>
-                  </button>
+                      <span>yolium:latest</span>
+                    </span>
 
-                  {/* Separator */}
-                  <span className="text-[var(--color-text-disabled)]">|</span>
-                </>
-              )}
+                    {/* Rebuild button */}
+                    <button
+                      onClick={handleRebuildImage}
+                      disabled={isRebuilding}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Delete Docker image"
+                    >
+                      {isRebuilding ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
+                          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                          <path d="M21 3v5h-5" />
+                          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                          <path d="M8 16H3v5" />
+                        </svg>
+                      )}
+                      <span>Delete</span>
+                    </button>
 
-              {/* Speech-to-text button */}
-              <SpeechToTextButton
-                recordingState={whisper.state.recordingState}
-                selectedModel={whisper.state.selectedModel}
-                onToggleRecording={whisper.toggleRecording}
-                onOpenModelDialog={whisper.openModelDialog}
-              />
-              <span className="text-[var(--color-text-disabled)]">|</span>
+                    {/* Separator */}
+                    <span className="text-[var(--color-text-disabled)]">|</span>
+                  </>
+                )}
 
-              {/* PR Review button */}
-              <button
-                data-testid="code-review-button"
-                onClick={handleOpenCodeReview}
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                title="PR Code Review"
-              >
-                <GitPullRequest size={12} />
-                <span>PR Review</span>
-              </button>
-
-              {/* Settings button */}
-              <button
-                onClick={handleOpenGitConfig}
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                title="Settings"
-              >
-                <Settings size={12} />
-              </button>
-
-              <button
-                data-testid="shortcuts-button"
-                onClick={handleShowShortcuts}
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                title="Keyboard shortcuts (Ctrl+?)"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="4" width="20" height="16" rx="2" />
-                  <path d="M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M7 16h10" />
-                </svg>
-                <span>Ctrl+?</span>
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Render all terminals with StatusBar, show only active one */}
-            {tabs.map(tab => (
-              <div
-                key={tab.id}
-                className={`absolute inset-0 flex flex-col ${tab.id === activeTabId ? '' : 'hidden'}`}
-              >
-                <div className="flex-1 min-h-0 relative">
-                  <Terminal
-                    sessionId={tab.sessionId}
-                    isVisible={tab.id === activeTabId}
-                    isContainer={true}
-                    onCwdChange={(cwd) => handleCwdChange(tab.id, cwd)}
-                    onExit={(exitCode) => {
-                      const newState = exitCode === 0 ? 'stopped' : 'crashed';
-                      updateContainerState(tab.id, newState);
-                    }}
-                    className="absolute inset-0 bg-[#0a0a0a]"
-                  />
-                </div>
-                <StatusBar
-                  folderPath={tab.cwd}
-                  containerState={tab.containerState}
-                  onStop={() => handleStopYolium(tab.id)}
-                  onShowShortcuts={handleShowShortcuts}
-                  onOpenSettings={handleOpenGitConfig}
-                  onOpenCodeReview={handleOpenCodeReview}
-                  imageName={imageRemoved ? undefined : 'yolium:latest'}
-                  onRebuild={handleRebuildImage}
-                  isRebuilding={isRebuilding}
-                  gitBranch={tab.gitBranch}
-                  worktreeName={tab.worktreeName}
-                  whisperRecordingState={whisper.state.recordingState}
-                  whisperSelectedModel={whisper.state.selectedModel}
+                {/* Speech-to-text button */}
+                <SpeechToTextButton
+                  recordingState={whisper.state.recordingState}
+                  selectedModel={whisper.state.selectedModel}
                   onToggleRecording={whisper.toggleRecording}
                   onOpenModelDialog={whisper.openModelDialog}
                 />
+                <span className="text-[var(--color-text-disabled)]">|</span>
+
+                {/* PR Review button */}
+                <button
+                  data-testid="code-review-button"
+                  onClick={handleOpenCodeReview}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                  title="PR Code Review"
+                >
+                  <GitPullRequest size={12} />
+                  <span>PR Review</span>
+                </button>
+
+                {/* Settings button */}
+                <button
+                  onClick={handleOpenGitConfig}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                  title="Settings"
+                >
+                  <Settings size={12} />
+                </button>
+
+                <button
+                  data-testid="shortcuts-button"
+                  onClick={handleShowShortcuts}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                  title="Keyboard shortcuts (Ctrl+?)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="4" width="20" height="16" rx="2" />
+                    <path d="M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M7 16h10" />
+                  </svg>
+                  <span>Ctrl+?</span>
+                </button>
               </div>
-            ))}
-          </>
-        )}
+            </>
+          ) : (
+            <>
+              {/* Render all tabs - show only active one */}
+              {tabs.map(tab => {
+                const isActive = tab.id === activeTabId;
+
+                if (tab.type === 'kanban') {
+                  // Kanban tab
+                  return (
+                    <div
+                      key={tab.id}
+                      className={`absolute inset-0 flex flex-col ${isActive ? '' : 'hidden'}`}
+                    >
+                      <KanbanView projectPath={tab.cwd} />
+                    </div>
+                  );
+                }
+
+                // Terminal tab
+                return (
+                  <div
+                    key={tab.id}
+                    className={`absolute inset-0 flex flex-col ${isActive ? '' : 'hidden'}`}
+                  >
+                    <div className="flex-1 min-h-0 relative">
+                      <Terminal
+                        sessionId={tab.sessionId}
+                        isVisible={isActive}
+                        isContainer={true}
+                        onCwdChange={(cwd) => handleCwdChange(tab.id, cwd)}
+                        onExit={(exitCode) => {
+                          const newState = exitCode === 0 ? 'stopped' : 'crashed';
+                          updateContainerState(tab.id, newState);
+                        }}
+                        className="absolute inset-0 bg-[#0a0a0a]"
+                      />
+                    </div>
+                    <StatusBar
+                      folderPath={tab.cwd}
+                      containerState={tab.containerState}
+                      onStop={() => handleStopYolium(tab.id)}
+                      onShowShortcuts={handleShowShortcuts}
+                      onOpenSettings={handleOpenGitConfig}
+                      onOpenCodeReview={handleOpenCodeReview}
+                      imageName={imageRemoved ? undefined : 'yolium:latest'}
+                      onRebuild={handleRebuildImage}
+                      isRebuilding={isRebuilding}
+                      gitBranch={tab.gitBranch}
+                      worktreeName={tab.worktreeName}
+                      whisperRecordingState={whisper.state.recordingState}
+                      whisperSelectedModel={whisper.state.selectedModel}
+                      onToggleRecording={whisper.toggleRecording}
+                      onOpenModelDialog={whisper.openModelDialog}
+                    />
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
       </main>
 
       {/* Whisper error notification */}

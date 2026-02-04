@@ -110,7 +110,7 @@ test.describe('Dialog Shortcuts', () => {
   });
 
   test.describe('Git Settings Dialog', () => {
-    test('Ctrl+Shift+G should open git settings dialog', async () => {
+    test('Ctrl+Shift+S should open settings dialog', async () => {
       ctx = await launchApp();
       const { window, app } = ctx;
 
@@ -214,7 +214,7 @@ test.describe('Dialog Shortcuts', () => {
       expect(dialogText).not.toContain('Quit');
     });
 
-    test('should show Ctrl+Shift+G for Git Settings', async () => {
+    test('should show Ctrl+Shift+S for Settings and Ctrl+Shift+P for New Project', async () => {
       ctx = await launchApp();
       const { window } = ctx;
 
@@ -222,10 +222,12 @@ test.describe('Dialog Shortcuts', () => {
       await window.click(selectors.shortcutsButton);
       await expect(window.locator(selectors.shortcutsDialog)).toBeVisible();
 
-      // Should contain git settings shortcut
+      // Should contain settings and new project shortcuts
       const dialogText = await window.locator(selectors.shortcutsDialog).textContent();
-      expect(dialogText).toContain('Ctrl+Shift+G');
-      expect(dialogText).toContain('Git');
+      expect(dialogText).toContain('Ctrl+Shift+S');
+      expect(dialogText).toContain('Settings');
+      expect(dialogText).toContain('Ctrl+Shift+P');
+      expect(dialogText).toContain('New project');
     });
   });
 });

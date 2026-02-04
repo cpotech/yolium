@@ -16,3 +16,43 @@ export interface CodeReviewJob {
   status: CodeReviewStatus;
   error?: string;
 }
+
+// Agent definition from markdown frontmatter
+export interface AgentDefinition {
+  name: string;
+  description: string;
+  model: 'opus' | 'sonnet' | 'haiku';
+  tools: string[];
+}
+
+// Protocol message types from agent stdout
+export type ProtocolMessageType = 'ask_question' | 'create_item' | 'complete' | 'error';
+
+export interface ProtocolMessage {
+  type: ProtocolMessageType;
+}
+
+export interface AskQuestionMessage extends ProtocolMessage {
+  type: 'ask_question';
+  text: string;
+  options?: string[];
+}
+
+export interface CreateItemMessage extends ProtocolMessage {
+  type: 'create_item';
+  title: string;
+  description: string;
+  branch?: string;
+  agentType: 'claude' | 'codex' | 'opencode' | 'shell';
+  order: number;
+}
+
+export interface CompleteMessage extends ProtocolMessage {
+  type: 'complete';
+  summary: string;
+}
+
+export interface ErrorMessage extends ProtocolMessage {
+  type: 'error';
+  message: string;
+}

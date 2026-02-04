@@ -44,6 +44,20 @@ import {
   isValidModelSize,
 } from './whisper-manager';
 import type { WhisperModelSize } from './types/whisper';
+import {
+  getOrCreateBoard,
+  addItem,
+  updateItem,
+  addComment,
+  deleteItem,
+} from './lib/kanban-store';
+import {
+  startAgent,
+  answerQuestion,
+  stopAgent,
+  recoverInterruptedAgents,
+} from './lib/agent-runner';
+import type { KanbanItem } from './types/kanban';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as crypto from 'node:crypto';
@@ -97,8 +111,13 @@ function createAppMenu(window: BrowserWindow): void {
         { type: 'separator' },
         {
           label: 'Settings',
-          accelerator: 'CmdOrCtrl+Shift+G',
+          accelerator: 'CmdOrCtrl+Shift+S',
           click: () => window.webContents.send('git-settings:show'),
+        },
+        {
+          label: 'New Project',
+          accelerator: 'CmdOrCtrl+Shift+P',
+          click: () => window.webContents.send('project:new'),
         },
         { type: 'separator' },
         {
@@ -707,6 +726,60 @@ ipcMain.handle('code-review:check-agent-auth', (_event, agent: string) => {
 ipcMain.handle('code-review:start', (event, repoUrl: string, branch: string, agent: string, gitConfig?: { name: string; email: string }) => {
   logger.info('IPC: code-review:start', { repoUrl, branch, agent });
   return createCodeReviewContainer(event.sender.id, repoUrl, branch, agent, gitConfig);
+});
+
+// Kanban board operations
+ipcMain.handle('kanban:get-board', (_event, projectPath: string) => {
+  return getOrCreateBoard(projectPath);
+});
+
+ipcMain.handle('kanban:add-item', (_event, projectPath: string, params: {
+  title: string;
+  description: string;
+  branch?: string;
+  agentType: 'claude' | 'codex' | 'opencode' | 'shell';
+  order: number;
+}) => {
+  const board = getOrCreateBoard(projectPath);
+  return addItem(board, params);
+});
+
+ipcMain.handle('kanban:update-item', (_event, projectPath: string, itemId: string, updates: Partial<KanbanItem>) => {
+  const board = getOrCreateBoard(projectPath);
+  return updateItem(board, itemId, updates);
+});
+
+ipcMain.handle('kanban:add-comment', (_event, projectPath: string, itemId: string, source: 'user' | 'agent' | 'system', text: string) => {
+  const board = getOrCreateBoard(projectPath);
+  return addComment(board, itemId, source, text);
+});
+
+ipcMain.handle('kanban:delete-item', (_event, projectPath: string, itemId: string) => {
+  const board = getOrCreateBoard(projectPath);
+  return deleteItem(board, itemId);
+});
+
+// Agent operations
+ipcMain.handle('agent:start', async (_event, params: {
+  agentName: string;
+  projectPath: string;
+  itemId: string;
+  goal: string;
+}) => {
+  const sessionId = await startAgent(params);
+  return sessionId;
+});
+
+ipcMain.handle('agent:answer', (_event, sessionId: string, answer: string) => {
+  answerQuestion(sessionId, answer);
+});
+
+ipcMain.handle('agent:stop', (_event, sessionId: string) => {
+  stopAgent(sessionId);
+});
+
+ipcMain.handle('agent:recover', (_event, projectPath: string) => {
+  return recoverInterruptedAgents(projectPath);
 });
 
 // This method will be called when Electron has finished

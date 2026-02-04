@@ -6,6 +6,11 @@ const initialState: TabState = {
   activeTabId: null,
 };
 
+// Generate unique tab ID
+function generateTabId(): string {
+  return `tab-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
 function tabReducer(state: TabState, action: TabAction): TabState {
   switch (action.type) {
     case 'ADD_TAB':
@@ -13,6 +18,30 @@ function tabReducer(state: TabState, action: TabAction): TabState {
         tabs: [...state.tabs, action.payload],
         activeTabId: action.payload.id,  // New tab becomes active
       };
+
+    case 'ADD_KANBAN_TAB': {
+      const { cwd } = action.payload;
+      // Check if kanban tab already exists for this project
+      const existingKanban = state.tabs.find(
+        t => t.type === 'kanban' && t.cwd === cwd
+      );
+      if (existingKanban) {
+        // Just activate the existing tab
+        return { ...state, activeTabId: existingKanban.id };
+      }
+      // Create new kanban tab
+      const label = cwd.split('/').pop() || cwd;
+      const newTab: Tab = {
+        id: generateTabId(),
+        type: 'kanban',
+        cwd,
+        label,
+      };
+      return {
+        tabs: [...state.tabs, newTab],
+        activeTabId: newTab.id,
+      };
+    }
 
     case 'CLOSE_TAB': {
       const closedIndex = state.tabs.findIndex(t => t.id === action.payload);
@@ -79,14 +108,26 @@ function tabReducer(state: TabState, action: TabAction): TabState {
       };
     }
 
+    case 'CLOSE_KANBAN_FOR_PROJECT': {
+      const projectPath = action.payload;
+      const kanbanTab = state.tabs.find(
+        t => t.type === 'kanban' && t.cwd === projectPath
+      );
+      if (!kanbanTab) return state;
+
+      // Reuse CLOSE_TAB logic
+      const closedIndex = state.tabs.findIndex(t => t.id === kanbanTab.id);
+      const newTabs = state.tabs.filter(t => t.id !== kanbanTab.id);
+      let newActiveId = state.activeTabId;
+      if (state.activeTabId === kanbanTab.id) {
+        newActiveId = newTabs[closedIndex]?.id || newTabs[closedIndex - 1]?.id || null;
+      }
+      return { tabs: newTabs, activeTabId: newActiveId };
+    }
+
     default:
       return state;
   }
-}
-
-// Generate unique tab ID
-function generateTabId(): string {
-  return `tab-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 export function useTabState() {
@@ -96,6 +137,7 @@ export function useTabState() {
     const label = cwd.split('/').pop() || cwd;
     const tab: Tab = {
       id: generateTabId(),
+      type: 'terminal',
       sessionId,
       cwd,
       label,
@@ -142,6 +184,14 @@ export function useTabState() {
     dispatch({ type: 'UPDATE_GIT_BRANCH', payload: { id: tabId, gitBranch, worktreeName } });
   }, []);
 
+  const addKanbanTab = useCallback((cwd: string) => {
+    dispatch({ type: 'ADD_KANBAN_TAB', payload: { cwd } });
+  }, []);
+
+  const closeKanbanForProject = useCallback((projectPath: string) => {
+    dispatch({ type: 'CLOSE_KANBAN_FOR_PROJECT', payload: projectPath });
+  }, []);
+
   // Helper to get active tab
   const activeTab = state.tabs.find(t => t.id === state.activeTabId) || null;
 
@@ -159,5 +209,7 @@ export function useTabState() {
     restoreSession,
     closeAllTabs,
     closeOtherTabs,
+    addKanbanTab,
+    closeKanbanForProject,
   };
 }
