@@ -2,6 +2,8 @@ name: E2E Tests
 
 on:
   push:
+    branches: [main, 'feat/**', 'feature/**']
+  pull_request:
     branches: [main]
   workflow_dispatch:
 

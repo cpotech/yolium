@@ -125,7 +125,7 @@ describe('KanbanColumn', () => {
       />
     )
 
-    expect(screen.getByTestId('kanban-column')).toHaveClass('border-t-gray-500')
+    expect(screen.getByTestId('kanban-column-backlog')).toHaveClass('border-t-gray-500')
   })
 
   it('should have blue top border for ready column', () => {
@@ -138,7 +138,7 @@ describe('KanbanColumn', () => {
       />
     )
 
-    expect(screen.getByTestId('kanban-column')).toHaveClass('border-t-blue-500')
+    expect(screen.getByTestId('kanban-column-ready')).toHaveClass('border-t-blue-500')
   })
 
   it('should have yellow top border for in-progress column', () => {
@@ -151,7 +151,7 @@ describe('KanbanColumn', () => {
       />
     )
 
-    expect(screen.getByTestId('kanban-column')).toHaveClass('border-t-yellow-500')
+    expect(screen.getByTestId('kanban-column-in-progress')).toHaveClass('border-t-yellow-500')
   })
 
   it('should have green top border for done column', () => {
@@ -164,7 +164,7 @@ describe('KanbanColumn', () => {
       />
     )
 
-    expect(screen.getByTestId('kanban-column')).toHaveClass('border-t-green-500')
+    expect(screen.getByTestId('kanban-column-done')).toHaveClass('border-t-green-500')
   })
 
   it('should have fixed width classes', () => {
@@ -177,7 +177,7 @@ describe('KanbanColumn', () => {
       />
     )
 
-    const column = screen.getByTestId('kanban-column')
+    const column = screen.getByTestId('kanban-column-backlog')
     expect(column).toHaveClass('w-72')
     expect(column).toHaveClass('min-w-72')
   })

@@ -26,7 +26,7 @@ export function KanbanColumn({
 
   return (
     <div
-      data-testid="kanban-column"
+      data-testid={`kanban-column-${columnId}`}
       className={`w-72 min-w-72 flex flex-col bg-[var(--color-bg-secondary)] rounded-md border-t-4 ${borderColor}`}
     >
       {/* Header */}

@@ -124,7 +124,7 @@ export function KanbanView({ projectPath }: KanbanViewProps): React.ReactElement
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[var(--color-bg-primary)]">
+    <div data-testid="kanban-view" className="flex-1 flex flex-col bg-[var(--color-bg-primary)]">
       {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border-primary)]">
         <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">

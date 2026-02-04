@@ -22,6 +22,7 @@ export function Sidebar({
 }: SidebarProps): React.ReactElement {
   return (
     <div
+      data-testid="sidebar"
       className={`flex flex-col bg-[var(--color-bg-secondary)] border-r border-[var(--color-border-primary)] transition-all ${
         collapsed ? 'w-10' : 'w-48'
       }`}

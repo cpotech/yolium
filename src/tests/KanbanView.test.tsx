@@ -67,8 +67,11 @@ describe('KanbanView', () => {
       expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
     })
 
-    const columns = screen.getAllByTestId('kanban-column')
-    expect(columns).toHaveLength(4)
+    // Check all 4 columns are rendered
+    expect(screen.getByTestId('kanban-column-backlog')).toBeInTheDocument()
+    expect(screen.getByTestId('kanban-column-ready')).toBeInTheDocument()
+    expect(screen.getByTestId('kanban-column-in-progress')).toBeInTheDocument()
+    expect(screen.getByTestId('kanban-column-done')).toBeInTheDocument()
 
     expect(screen.getByText('Backlog')).toBeInTheDocument()
     expect(screen.getByText('Ready')).toBeInTheDocument()

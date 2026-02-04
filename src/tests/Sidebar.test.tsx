@@ -4,87 +4,104 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { Sidebar } from '../components/Sidebar'
+import type { SidebarProject } from '../lib/sidebar-store'
 
 describe('Sidebar', () => {
-  it('should render terminal and kanban nav items', () => {
+  const mockProjects: SidebarProject[] = [
+    { path: '/home/user/project1', addedAt: Date.now() },
+    { path: '/home/user/project2', addedAt: Date.now() },
+  ]
+
+  it('should render project list when expanded', () => {
     render(
       <Sidebar
-        activeView="terminal"
-        onViewChange={vi.fn()}
-        collapsed={true}
-        onToggleCollapse={vi.fn()}
-      />
-    )
-
-    expect(screen.getByTestId('nav-terminal')).toBeInTheDocument()
-    expect(screen.getByTestId('nav-kanban')).toBeInTheDocument()
-  })
-
-  it('should highlight active view with accent border', () => {
-    render(
-      <Sidebar
-        activeView="kanban"
-        onViewChange={vi.fn()}
-        collapsed={true}
-        onToggleCollapse={vi.fn()}
-      />
-    )
-
-    const kanbanNav = screen.getByTestId('nav-kanban')
-    expect(kanbanNav).toHaveClass('border-l-2')
-  })
-
-  it('should call onViewChange when nav item clicked', () => {
-    const onViewChange = vi.fn()
-    render(
-      <Sidebar
-        activeView="terminal"
-        onViewChange={onViewChange}
-        collapsed={true}
-        onToggleCollapse={vi.fn()}
-      />
-    )
-
-    fireEvent.click(screen.getByTestId('nav-kanban'))
-    expect(onViewChange).toHaveBeenCalledWith('kanban')
-  })
-
-  it('should show labels when expanded', () => {
-    render(
-      <Sidebar
-        activeView="terminal"
-        onViewChange={vi.fn()}
+        projects={mockProjects}
         collapsed={false}
         onToggleCollapse={vi.fn()}
+        onProjectClick={vi.fn()}
+        onProjectRemove={vi.fn()}
+        onAddProject={vi.fn()}
       />
     )
 
-    expect(screen.getByText('Terminal')).toBeInTheDocument()
-    expect(screen.getByText('Kanban')).toBeInTheDocument()
+    expect(screen.getByText('project1')).toBeInTheDocument()
+    expect(screen.getByText('project2')).toBeInTheDocument()
   })
 
-  it('should hide labels when collapsed', () => {
+  it('should show add project button', () => {
     render(
       <Sidebar
-        activeView="terminal"
-        onViewChange={vi.fn()}
-        collapsed={true}
+        projects={[]}
+        collapsed={false}
         onToggleCollapse={vi.fn()}
+        onProjectClick={vi.fn()}
+        onProjectRemove={vi.fn()}
+        onAddProject={vi.fn()}
       />
     )
 
-    expect(screen.queryByText('Terminal')).not.toBeInTheDocument()
-    expect(screen.queryByText('Kanban')).not.toBeInTheDocument()
+    expect(screen.getByTestId('add-project-button')).toBeInTheDocument()
+  })
+
+  it('should call onAddProject when add button clicked', () => {
+    const onAddProject = vi.fn()
+    render(
+      <Sidebar
+        projects={[]}
+        collapsed={false}
+        onToggleCollapse={vi.fn()}
+        onProjectClick={vi.fn()}
+        onProjectRemove={vi.fn()}
+        onAddProject={onAddProject}
+      />
+    )
+
+    fireEvent.click(screen.getByTestId('add-project-button'))
+    expect(onAddProject).toHaveBeenCalled()
+  })
+
+  it('should call onProjectClick when project clicked', () => {
+    const onProjectClick = vi.fn()
+    render(
+      <Sidebar
+        projects={mockProjects}
+        collapsed={false}
+        onToggleCollapse={vi.fn()}
+        onProjectClick={onProjectClick}
+        onProjectRemove={vi.fn()}
+        onAddProject={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByText('project1'))
+    expect(onProjectClick).toHaveBeenCalledWith('/home/user/project1')
+  })
+
+  it('should show empty state when no projects', () => {
+    render(
+      <Sidebar
+        projects={[]}
+        collapsed={false}
+        onToggleCollapse={vi.fn()}
+        onProjectClick={vi.fn()}
+        onProjectRemove={vi.fn()}
+        onAddProject={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText(/No projects yet/)).toBeInTheDocument()
   })
 
   it('should toggle collapse when chevron clicked', () => {
     const onToggleCollapse = vi.fn()
     render(
       <Sidebar
-        activeView="terminal"
-        onViewChange={vi.fn()}
+        projects={[]}
         collapsed={true}
         onToggleCollapse={onToggleCollapse}
+        onProjectClick={vi.fn()}
+        onProjectRemove={vi.fn()}
+        onAddProject={vi.fn()}
       />
     )
 
@@ -95,10 +112,12 @@ describe('Sidebar', () => {
   it('should have correct width when collapsed', () => {
     const { container } = render(
       <Sidebar
-        activeView="terminal"
-        onViewChange={vi.fn()}
+        projects={[]}
         collapsed={true}
         onToggleCollapse={vi.fn()}
+        onProjectClick={vi.fn()}
+        onProjectRemove={vi.fn()}
+        onAddProject={vi.fn()}
       />
     )
 
@@ -108,13 +127,15 @@ describe('Sidebar', () => {
   it('should have correct width when expanded', () => {
     const { container } = render(
       <Sidebar
-        activeView="terminal"
-        onViewChange={vi.fn()}
+        projects={[]}
         collapsed={false}
         onToggleCollapse={vi.fn()}
+        onProjectClick={vi.fn()}
+        onProjectRemove={vi.fn()}
+        onAddProject={vi.fn()}
       />
     )
 
-    expect(container.firstChild).toHaveClass('w-40')
+    expect(container.firstChild).toHaveClass('w-48')
   })
 })

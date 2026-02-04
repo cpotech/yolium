@@ -17,8 +17,16 @@ import { WhisperModelDialog } from './components/WhisperModelDialog';
 import { SpeechToTextButton } from './components/SpeechToTextButton';
 import type { WhisperModelSize } from './types/whisper';
 import { normalizePath } from './lib/path-utils';
-import { Sidebar, ViewType } from './components/Sidebar';
+import { Sidebar } from './components/Sidebar';
+import {
+  getSidebarProjects,
+  addSidebarProject,
+  removeSidebarProject,
+  type SidebarProject,
+} from './lib/sidebar-store';
 import { KanbanView } from './components/KanbanView';
+
+type PathDialogMode = 'newTab' | 'addProject';
 
 function App(): React.ReactElement {
   const {
@@ -32,6 +40,8 @@ function App(): React.ReactElement {
     updateGitBranch,
     closeAllTabs,
     closeOtherTabs,
+    addKanbanTab,
+    closeKanbanForProject,
   } = useTabState();
 
   // Whisper speech-to-text
@@ -83,15 +93,10 @@ function App(): React.ReactElement {
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewLog, setReviewLog] = useState<string[]>([]);
 
-  // State for view switching (terminal vs kanban)
-  const [activeView, setActiveView] = useState<ViewType>('terminal');
+  // State for sidebar
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-
-  // State for kanban project (when viewing kanban without a tab)
-  const [kanbanProjectPath, setKanbanProjectPath] = useState<string | null>(null);
-
-  // State for path dialog mode ('newTab' for creating container, 'createProject' for kanban only)
-  const [pathDialogMode, setPathDialogMode] = useState<'newTab' | 'createProject'>('newTab');
+  const [sidebarProjects, setSidebarProjects] = useState<SidebarProject[]>(() => getSidebarProjects());
+  const [pathDialogMode, setPathDialogMode] = useState<PathDialogMode>('newTab');
 
   // Ref for auto-scrolling build progress
   const progressRef = useRef<HTMLDivElement>(null);
@@ -134,6 +139,10 @@ function App(): React.ReactElement {
         ? branchName
         : await window.electronAPI.getGitBranch(folderPath);
       const tabId = addTab(sessionId, folderPath, 'starting', gitBranch || undefined);
+
+      // Add project to sidebar
+      addSidebarProject(folderPath);
+      setSidebarProjects(getSidebarProjects());
 
       // Update to running once container is attached
       // For now, set running after a brief delay (proper approach: IPC state event)
@@ -185,10 +194,11 @@ function App(): React.ReactElement {
     setPathDialogOpen(false);
 
     // Handle based on mode
-    if (pathDialogMode === 'createProject') {
-      // Create Project mode: just set kanban path and switch to kanban view
-      setKanbanProjectPath(normalizedPath);
-      setActiveView('kanban');
+    if (pathDialogMode === 'addProject') {
+      // Add project to sidebar and open its kanban tab
+      addSidebarProject(normalizedPath);
+      setSidebarProjects(getSidebarProjects());
+      addKanbanTab(normalizedPath);
       return;
     }
 
@@ -205,7 +215,7 @@ function App(): React.ReactElement {
     } catch {
       setPendingFolderGitStatus({ isRepo: false, hasCommits: false });
     }
-  }, [pathDialogMode]);
+  }, [pathDialogMode, addKanbanTab]);
 
   // Handle path dialog cancel
   const handlePathDialogCancel = useCallback(() => {
@@ -345,11 +355,23 @@ function App(): React.ReactElement {
     setPathDialogOpen(true);
   }, []);
 
-  // Create a project (just kanban board, no container)
-  const handleCreateProject = useCallback(() => {
-    setPathDialogMode('createProject');
+  // Add a project to sidebar (opens path dialog, then kanban tab)
+  const handleAddProject = useCallback(() => {
+    setPathDialogMode('addProject');
     setPathDialogOpen(true);
   }, []);
+
+  // Click a project in sidebar - opens/focuses its kanban tab
+  const handleProjectClick = useCallback((path: string) => {
+    addKanbanTab(path);
+  }, [addKanbanTab]);
+
+  // Remove a project from sidebar (also closes its kanban tab if open)
+  const handleProjectRemove = useCallback((path: string) => {
+    removeSidebarProject(path);
+    setSidebarProjects(getSidebarProjects());
+    closeKanbanForProject(path);
+  }, [closeKanbanForProject]);
 
   // Close a tab - instant UI update, cleanup in background
   const handleCloseTab = useCallback((tabId: string) => {
@@ -512,7 +534,7 @@ function App(): React.ReactElement {
     const cleanupCloseAll = window.electronAPI.onTabCloseAll(handleCloseAllTabs);
     const cleanupShortcuts = window.electronAPI.onShortcutsShow(handleShowShortcuts);
     const cleanupGitSettings = window.electronAPI.onGitSettingsShow(handleOpenGitConfig);
-    const cleanupProjectNew = window.electronAPI.onProjectNew(handleCreateProject);
+    const cleanupProjectNew = window.electronAPI.onProjectNew(handleAddProject);
     const cleanupRecording = window.electronAPI.onRecordingToggle(stableToggleRecording);
 
     return () => {
@@ -528,7 +550,7 @@ function App(): React.ReactElement {
       cleanupProjectNew();
       cleanupRecording();
     };
-  }, [handleNewYolium, handleCloseActiveTab, handleNextTab, handlePrevTab, handleCloseTab, handleCloseOtherTabs, handleCloseAllTabs, handleShowShortcuts, handleOpenGitConfig, handleCreateProject, stableToggleRecording]);
+  }, [handleNewYolium, handleCloseActiveTab, handleNextTab, handlePrevTab, handleCloseTab, handleCloseOtherTabs, handleCloseAllTabs, handleShowShortcuts, handleOpenGitConfig, handleAddProject, stableToggleRecording]);
 
   // Listen for container exit events to update state
   useEffect(() => {
@@ -568,17 +590,6 @@ function App(): React.ReactElement {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTabId]);
 
-  // Switch to terminal view when tabs become empty (unless standalone kanban project)
-  useEffect(() => {
-    if (tabs.length === 0 && activeView === 'kanban' && !kanbanProjectPath) {
-      setActiveView('terminal');
-    }
-  }, [tabs.length, activeView, kanbanProjectPath]);
-
-  // Handle view change from sidebar
-  const handleViewChange = useCallback((view: ViewType) => {
-    setActiveView(view);
-  }, []);
 
   // Show loading spinner while checking Docker status
   if (dockerReady === null) {
@@ -725,24 +736,22 @@ function App(): React.ReactElement {
 
       {/* Main content area */}
       <main className="flex-1 min-h-0 relative flex flex-row">
-        {/* Sidebar - always visible */}
+        {/* Sidebar - project list for quick kanban access */}
         <Sidebar
-          activeView={activeView}
-          onViewChange={handleViewChange}
+          projects={sidebarProjects}
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onProjectClick={handleProjectClick}
+          onProjectRemove={handleProjectRemove}
+          onAddProject={handleAddProject}
         />
 
         {/* Content area */}
         <div className="flex-1 min-h-0 relative flex flex-col">
           {tabs.length === 0 ? (
-            activeView === 'kanban' && kanbanProjectPath ? (
-              // Show Kanban view for standalone project (no container)
-              <KanbanView projectPath={kanbanProjectPath} />
-            ) : (
             <>
               <div className="flex-1 min-h-0">
-                <EmptyState onNewTab={handleNewYolium} onCreateProject={handleCreateProject} />
+                <EmptyState onNewTab={handleNewYolium} onCreateProject={handleAddProject} />
               </div>
               {/* Minimal status bar for empty state */}
               <div className="flex items-center justify-end h-7 px-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)] text-xs shrink-0 gap-2">
@@ -828,54 +837,63 @@ function App(): React.ReactElement {
                 </button>
               </div>
             </>
-            )
           ) : (
             <>
-              {/* Terminal view - render all terminals, show only active one */}
-              {activeView === 'terminal' && tabs.map(tab => (
-                <div
-                  key={tab.id}
-                  className={`absolute inset-0 flex flex-col ${tab.id === activeTabId ? '' : 'hidden'}`}
-                >
-                  <div className="flex-1 min-h-0 relative">
-                    <Terminal
-                      sessionId={tab.sessionId}
-                      isVisible={tab.id === activeTabId}
-                      isContainer={true}
-                      onCwdChange={(cwd) => handleCwdChange(tab.id, cwd)}
-                      onExit={(exitCode) => {
-                        const newState = exitCode === 0 ? 'stopped' : 'crashed';
-                        updateContainerState(tab.id, newState);
-                      }}
-                      className="absolute inset-0 bg-[#0a0a0a]"
+              {/* Render all tabs - show only active one */}
+              {tabs.map(tab => {
+                const isActive = tab.id === activeTabId;
+
+                if (tab.type === 'kanban') {
+                  // Kanban tab
+                  return (
+                    <div
+                      key={tab.id}
+                      className={`absolute inset-0 flex flex-col ${isActive ? '' : 'hidden'}`}
+                    >
+                      <KanbanView projectPath={tab.cwd} />
+                    </div>
+                  );
+                }
+
+                // Terminal tab
+                return (
+                  <div
+                    key={tab.id}
+                    className={`absolute inset-0 flex flex-col ${isActive ? '' : 'hidden'}`}
+                  >
+                    <div className="flex-1 min-h-0 relative">
+                      <Terminal
+                        sessionId={tab.sessionId}
+                        isVisible={isActive}
+                        isContainer={true}
+                        onCwdChange={(cwd) => handleCwdChange(tab.id, cwd)}
+                        onExit={(exitCode) => {
+                          const newState = exitCode === 0 ? 'stopped' : 'crashed';
+                          updateContainerState(tab.id, newState);
+                        }}
+                        className="absolute inset-0 bg-[#0a0a0a]"
+                      />
+                    </div>
+                    <StatusBar
+                      folderPath={tab.cwd}
+                      containerState={tab.containerState}
+                      onStop={() => handleStopYolium(tab.id)}
+                      onShowShortcuts={handleShowShortcuts}
+                      onOpenSettings={handleOpenGitConfig}
+                      onOpenCodeReview={handleOpenCodeReview}
+                      imageName={imageRemoved ? undefined : 'yolium:latest'}
+                      onRebuild={handleRebuildImage}
+                      isRebuilding={isRebuilding}
+                      gitBranch={tab.gitBranch}
+                      worktreeName={tab.worktreeName}
+                      whisperRecordingState={whisper.state.recordingState}
+                      whisperSelectedModel={whisper.state.selectedModel}
+                      onToggleRecording={whisper.toggleRecording}
+                      onOpenModelDialog={whisper.openModelDialog}
                     />
                   </div>
-                  <StatusBar
-                    folderPath={tab.cwd}
-                    containerState={tab.containerState}
-                    onStop={() => handleStopYolium(tab.id)}
-                    onShowShortcuts={handleShowShortcuts}
-                    onOpenSettings={handleOpenGitConfig}
-                    onOpenCodeReview={handleOpenCodeReview}
-                    imageName={imageRemoved ? undefined : 'yolium:latest'}
-                    onRebuild={handleRebuildImage}
-                    isRebuilding={isRebuilding}
-                    gitBranch={tab.gitBranch}
-                    worktreeName={tab.worktreeName}
-                    whisperRecordingState={whisper.state.recordingState}
-                    whisperSelectedModel={whisper.state.selectedModel}
-                    onToggleRecording={whisper.toggleRecording}
-                    onOpenModelDialog={whisper.openModelDialog}
-                  />
-                </div>
-              ))}
-
-              {/* Kanban view - conditionally rendered */}
-              {activeView === 'kanban' && (
-                <KanbanView
-                  projectPath={kanbanProjectPath || tabs.find(t => t.id === activeTabId)?.cwd || null}
-                />
-              )}
+                );
+              })}
             </>
           )}
         </div>
