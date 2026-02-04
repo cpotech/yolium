@@ -1,5 +1,6 @@
 // src/lib/agent-loader.ts
-import matter from 'gray-matter';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const matter = require('gray-matter');
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { AgentDefinition } from '../types/agent';
