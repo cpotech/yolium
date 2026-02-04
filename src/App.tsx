@@ -575,12 +575,9 @@ function App(): React.ReactElement {
     }
   }, [tabs.length, activeView, kanbanProjectPath]);
 
-  // Handle view change from sidebar - clear standalone kanban when switching to terminal
+  // Handle view change from sidebar
   const handleViewChange = useCallback((view: ViewType) => {
     setActiveView(view);
-    if (view === 'terminal') {
-      setKanbanProjectPath(null);
-    }
   }, []);
 
   // Show loading spinner while checking Docker status
