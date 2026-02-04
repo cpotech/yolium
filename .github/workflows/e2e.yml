@@ -116,6 +116,15 @@ jobs:
             exit 1
           fi
           echo "Docker is accessible from service container"
+      - name: Test Docker daemon in service
+        run: |
+          echo "Testing Docker daemon in service container..."
+          docker -H tcp://localhost:2375 info
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Cannot connect to Docker daemon in service container"
+            exit 1
+          fi
+          echo "Docker daemon is accessible in service container"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
         with:
