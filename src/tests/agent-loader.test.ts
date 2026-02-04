@@ -60,5 +60,36 @@ Content`;
 
       expect(() => parseAgentDefinition(markdown)).toThrow('Invalid model');
     });
+
+    it('should parse code-agent definition with Bash/Write/Edit tools', () => {
+      const markdown = `---
+name: code-agent
+description: Autonomously implements code changes
+model: sonnet
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Bash
+  - Write
+  - Edit
+  - WebSearch
+  - WebFetch
+---
+
+# Code Agent
+
+You are the Code Agent...`;
+
+      const result = parseAgentDefinition(markdown);
+
+      expect(result).toEqual({
+        name: 'code-agent',
+        description: 'Autonomously implements code changes',
+        model: 'sonnet',
+        tools: ['Read', 'Glob', 'Grep', 'Bash', 'Write', 'Edit', 'WebSearch', 'WebFetch'],
+        systemPrompt: '# Code Agent\n\nYou are the Code Agent...',
+      });
+    });
   });
 });

@@ -2,6 +2,9 @@
 
 export type AgentType = 'claude' | 'opencode' | 'codex' | 'shell';
 
+// Agent types valid for Kanban work items (no shell - shell is for interactive containers only)
+export type KanbanAgentType = Exclude<AgentType, 'shell'>;
+
 // Agents that support code review (have review capabilities)
 export type ReviewAgentType = 'claude' | 'opencode' | 'codex';
 
@@ -26,7 +29,7 @@ export interface AgentDefinition {
 }
 
 // Protocol message types from agent stdout
-export type ProtocolMessageType = 'ask_question' | 'create_item' | 'complete' | 'error';
+export type ProtocolMessageType = 'ask_question' | 'create_item' | 'complete' | 'error' | 'progress';
 
 export interface ProtocolMessage {
   type: ProtocolMessageType;
@@ -43,8 +46,9 @@ export interface CreateItemMessage extends ProtocolMessage {
   title: string;
   description: string;
   branch?: string;
-  agentType: 'claude' | 'codex' | 'opencode' | 'shell';
+  agentType: KanbanAgentType;
   order: number;
+  model?: string;
 }
 
 export interface CompleteMessage extends ProtocolMessage {
@@ -55,4 +59,12 @@ export interface CompleteMessage extends ProtocolMessage {
 export interface ErrorMessage extends ProtocolMessage {
   type: 'error';
   message: string;
+}
+
+export interface ProgressMessage extends ProtocolMessage {
+  type: 'progress';
+  step: string;
+  detail: string;
+  attempt?: number;
+  maxAttempts?: number;
 }

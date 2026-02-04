@@ -92,6 +92,12 @@ export const selectors = {
   projectItem: (path: string) => `[data-testid="project-item-${path}"]`,
   removeProjectButton: (path: string) => `[data-testid="remove-project-${path}"]`,
 
+  // Kanban - Agent controls
+  runCodeAgentButton: '[data-testid="run-code-agent-button"]',
+  runPlanAgentButton: '[data-testid="run-plan-agent-button"]',
+  agentProgressDetail: '[data-testid="agent-progress-detail"]',
+  modelDisplay: '[data-testid="model-display"]',
+
   // Kanban
   kanbanView: '[data-testid="kanban-view"]',
   kanbanEmptyState: '[data-testid="kanban-empty-state"]',

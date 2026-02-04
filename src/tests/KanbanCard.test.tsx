@@ -50,11 +50,11 @@ describe('KanbanCard', () => {
     expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('OpenCode')
   })
 
-  it('should render shell agent type badge', () => {
-    const item = createMockItem({ agentType: 'shell' })
+  it('should render claude agent type badge for default', () => {
+    const item = createMockItem({ agentType: 'claude' })
     render(<KanbanCard item={item} onClick={vi.fn()} />)
 
-    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('Shell')
+    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('Claude')
   })
 
   it('should show branch when set', () => {

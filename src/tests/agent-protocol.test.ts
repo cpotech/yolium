@@ -55,6 +55,67 @@ describe('agent-protocol', () => {
     it('should return null for unknown message type', () => {
       expect(parseProtocolMessage('{"type":"unknown"}')).toBeNull();
     });
+
+    it('should parse progress message with all fields', () => {
+      const json = '{"type":"progress","step":"ci-fix","detail":"Fixing test failure","attempt":2,"maxAttempts":5}';
+      const result = parseProtocolMessage(json);
+
+      expect(result).toEqual({
+        type: 'progress',
+        step: 'ci-fix',
+        detail: 'Fixing test failure',
+        attempt: 2,
+        maxAttempts: 5,
+      });
+    });
+
+    it('should parse progress message without optional fields', () => {
+      const json = '{"type":"progress","step":"analyze","detail":"Analyzing codebase"}';
+      const result = parseProtocolMessage(json);
+
+      expect(result).toEqual({
+        type: 'progress',
+        step: 'analyze',
+        detail: 'Analyzing codebase',
+        attempt: undefined,
+        maxAttempts: undefined,
+      });
+    });
+
+    it('should reject progress missing required fields', () => {
+      expect(parseProtocolMessage('{"type":"progress","step":"analyze"}')).toBeNull();
+      expect(parseProtocolMessage('{"type":"progress","detail":"something"}')).toBeNull();
+    });
+
+    it('should parse create_item with model field', () => {
+      const json = '{"type":"create_item","title":"Task","description":"Do it","agentType":"claude","order":1,"model":"opus"}';
+      const result = parseProtocolMessage(json);
+
+      expect(result).toEqual({
+        type: 'create_item',
+        title: 'Task',
+        description: 'Do it',
+        branch: undefined,
+        agentType: 'claude',
+        order: 1,
+        model: 'opus',
+      });
+    });
+
+    it('should parse create_item without model (backward compat)', () => {
+      const json = '{"type":"create_item","title":"Task","description":"Do it","agentType":"codex","order":2}';
+      const result = parseProtocolMessage(json);
+
+      expect(result).toEqual({
+        type: 'create_item',
+        title: 'Task',
+        description: 'Do it',
+        branch: undefined,
+        agentType: 'codex',
+        order: 2,
+        model: undefined,
+      });
+    });
   });
 
   describe('extractProtocolMessages', () => {
@@ -94,6 +155,20 @@ Final line`;
       const results = extractProtocolMessages(output);
       expect(results).toHaveLength(1);
       expect(results[0].type).toBe('complete');
+    });
+
+    it('should extract progress messages from mixed output', () => {
+      const output = `Starting work...
+@@YOLIUM:{"type":"progress","step":"analyze","detail":"Reading codebase"}
+Some log output
+@@YOLIUM:{"type":"progress","step":"implement","detail":"Writing code","attempt":1,"maxAttempts":5}
+@@YOLIUM:{"type":"complete","summary":"Done"}`;
+
+      const results = extractProtocolMessages(output);
+      expect(results).toHaveLength(3);
+      expect(results[0].type).toBe('progress');
+      expect(results[1].type).toBe('progress');
+      expect(results[2].type).toBe('complete');
     });
   });
 });

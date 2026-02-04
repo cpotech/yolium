@@ -11,7 +11,7 @@ vi.mock('../lib/logger', () => ({
   })),
 }));
 
-import { buildAgentPrompt } from '../lib/agent-runner';
+import { buildAgentPrompt, resolveModel } from '../lib/agent-runner';
 
 describe('agent-runner', () => {
   describe('buildAgentPrompt', () => {
@@ -37,6 +37,29 @@ describe('agent-runner', () => {
       expect(prompt).toContain('Previous conversation:');
       expect(prompt).toContain('[agent]: Which method?');
       expect(prompt).toContain('[user]: OAuth');
+    });
+  });
+
+  describe('resolveModel', () => {
+    it('should use item model when provided', () => {
+      const result = resolveModel('opus', 'sonnet');
+      expect(result).toBe('claude-opus-4-5-20251101');
+    });
+
+    it('should fall back to agent model when item model is undefined', () => {
+      const result = resolveModel(undefined, 'sonnet');
+      expect(result).toBe('claude-sonnet-4-20250514');
+    });
+
+    it('should map short names to full model IDs', () => {
+      expect(resolveModel(undefined, 'opus')).toBe('claude-opus-4-5-20251101');
+      expect(resolveModel(undefined, 'sonnet')).toBe('claude-sonnet-4-20250514');
+      expect(resolveModel(undefined, 'haiku')).toBe('claude-haiku-3-5-20241022');
+    });
+
+    it('should pass through unknown model names as-is', () => {
+      const result = resolveModel(undefined, 'some-custom-model');
+      expect(result).toBe('some-custom-model');
     });
   });
 

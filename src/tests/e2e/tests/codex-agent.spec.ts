@@ -60,7 +60,7 @@ test.describe('Codex Agent Feature', () => {
       await expect(codexOption).toContainText('3');
     });
 
-    test('should show keyboard shortcut 4 for Shell (shifted from 3)', async () => {
+    test('should show keyboard shortcut 4 for Shell (interactive container)', async () => {
       ctx = await launchApp();
       const { window } = ctx;
 
@@ -70,7 +70,7 @@ test.describe('Codex Agent Feature', () => {
       await window.click(selectors.pathNextButton);
       await expect(window.locator(selectors.agentDialog)).toBeVisible();
 
-      // Shell option should show shortcut '4'
+      // Shell option should show shortcut '4' (shell is still available for interactive containers)
       const shellOption = window.locator(selectors.agentOption('shell'));
       await expect(shellOption).toContainText('4');
     });
