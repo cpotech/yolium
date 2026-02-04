@@ -36,15 +36,50 @@ jobs:
       - name: Rebuild native modules for Electron
         run: npx electron-rebuild --only node-pty
 
+      - name: Verify Docker service container
+        run: |
+          echo "Checking Docker service container status..."
+          docker ps --filter "name=docker*" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Cannot access Docker service container"
+            exit 1
+          fi
+          echo "Docker service container is accessible"
       - name: Verify Docker daemon connectivity
         run: |
           echo "Testing Docker daemon connectivity..."
           docker info
           if [ $? -ne 0 ]; then
             echo "ERROR: Cannot connect to Docker daemon"
+            echo "Checking if Docker service container is running..."
+            docker ps
             exit 1
           fi
           echo "Docker daemon is accessible"
+      - name: Test Docker CLI connectivity
+        run: |
+          echo "Testing Docker CLI connectivity..."
+          docker version
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Docker CLI not working"
+            exit 1
+          fi
+          echo "Docker CLI is working"
+      - name: Set Docker host environment
+        run: |
+          echo "Setting up Docker host environment..."
+          export DOCKER_HOST=tcp://localhost:2375
+          echo "DOCKER_HOST=$DOCKER_HOST" >> $GITHUB_ENV
+          echo "Docker host environment set"
+      - name: Test Buildx connectivity
+        run: |
+          echo "Testing Buildx connectivity..."
+          docker buildx ls
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Cannot connect to Buildx"
+            exit 1
+          fi
+          echo "Buildx is accessible"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
         with:
