@@ -49,6 +49,7 @@ import {
   addItem,
   updateItem,
   addComment,
+  deleteItem,
 } from './lib/kanban-store';
 import {
   startAgent,
@@ -746,6 +747,11 @@ ipcMain.handle('kanban:update-item', (_event, projectPath: string, itemId: strin
 ipcMain.handle('kanban:add-comment', (_event, projectPath: string, itemId: string, source: 'user' | 'agent' | 'system', text: string) => {
   const board = getOrCreateBoard(projectPath);
   return addComment(board, itemId, source, text);
+});
+
+ipcMain.handle('kanban:delete-item', (_event, projectPath: string, itemId: string) => {
+  const board = getOrCreateBoard(projectPath);
+  return deleteItem(board, itemId);
 });
 
 // Agent operations

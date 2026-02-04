@@ -126,6 +126,15 @@ export function buildConversationHistory(item: KanbanItem): string {
     .join('\n\n');
 }
 
+export function deleteItem(board: KanbanBoard, itemId: string): boolean {
+  const index = board.items.findIndex(i => i.id === itemId);
+  if (index === -1) return false;
+
+  board.items.splice(index, 1);
+  saveBoard(board);
+  return true;
+}
+
 export function deleteBoard(projectPath: string): boolean {
   const boardPath = getBoardPath(projectPath);
   if (fs.existsSync(boardPath)) {

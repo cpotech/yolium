@@ -230,6 +230,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('kanban:update-item', projectPath, itemId, updates),
   kanbanAddComment: (projectPath: string, itemId: string, source: string, text: string) =>
     ipcRenderer.invoke('kanban:add-comment', projectPath, itemId, source, text),
+  kanbanDeleteItem: (projectPath: string, itemId: string) =>
+    ipcRenderer.invoke('kanban:delete-item', projectPath, itemId),
   onKanbanBoardUpdated: (callback: (projectPath: string) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, projectPath: string) =>
       callback(projectPath);
@@ -436,6 +438,7 @@ declare global {
       }) => Promise<object>;
       kanbanUpdateItem: (projectPath: string, itemId: string, updates: object) => Promise<object | null>;
       kanbanAddComment: (projectPath: string, itemId: string, source: string, text: string) => Promise<object | null>;
+      kanbanDeleteItem: (projectPath: string, itemId: string) => Promise<boolean>;
       onKanbanBoardUpdated: (callback: (projectPath: string) => void) => CleanupFn;
       // Agent operations
       agentStart: (params: {
