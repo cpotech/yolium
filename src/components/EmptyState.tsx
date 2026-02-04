@@ -1,9 +1,10 @@
 import React from 'react';
-import { Plus, ShieldCheck, Layers, Terminal, Puzzle, Globe, Plug, Lock, Code, HardDrive, GitBranch, Sun, Moon } from 'lucide-react';
+import { Plus, FolderPlus, ShieldCheck, Layers, Terminal, Puzzle, Globe, Plug, Lock, Code, HardDrive, GitBranch, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../theme';
 
 interface EmptyStateProps {
   onNewTab: () => void;
+  onCreateProject?: () => void;
 }
 
 const features = [
@@ -59,7 +60,7 @@ const features = [
   },
 ];
 
-export function EmptyState({ onNewTab }: EmptyStateProps): React.ReactElement {
+export function EmptyState({ onNewTab, onCreateProject }: EmptyStateProps): React.ReactElement {
   const { theme, toggleTheme } = useTheme();
 
   return (
@@ -315,14 +316,25 @@ export function EmptyState({ onNewTab }: EmptyStateProps): React.ReactElement {
         ))}
       </div>
 
-      {/* CTA button */}
-      <button
-        onClick={onNewTab}
-        className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-accent-primary)] hover:bg-[var(--color-accent-hover)] text-white font-medium rounded-lg transition-colors"
-      >
-        <Plus size={18} />
-        New Yolium
-      </button>
+      {/* CTA buttons */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onNewTab}
+          className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-accent-primary)] hover:bg-[var(--color-accent-hover)] text-white font-medium rounded-lg transition-colors"
+        >
+          <Plus size={18} />
+          New Yolium
+        </button>
+        {onCreateProject && (
+          <button
+            onClick={onCreateProject}
+            className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] font-medium rounded-lg border border-[var(--color-border-primary)] transition-colors"
+          >
+            <FolderPlus size={18} />
+            Create Project
+          </button>
+        )}
+      </div>
 
       {/* Hint */}
       <p className="mt-4 text-xs text-[var(--color-text-disabled)]">

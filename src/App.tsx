@@ -87,6 +87,12 @@ function App(): React.ReactElement {
   const [activeView, setActiveView] = useState<ViewType>('terminal');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
+  // State for kanban project (when viewing kanban without a tab)
+  const [kanbanProjectPath, setKanbanProjectPath] = useState<string | null>(null);
+
+  // State for path dialog mode ('newTab' for creating container, 'createProject' for kanban only)
+  const [pathDialogMode, setPathDialogMode] = useState<'newTab' | 'createProject'>('newTab');
+
   // Ref for auto-scrolling build progress
   const progressRef = useRef<HTMLDivElement>(null);
 
@@ -177,6 +183,16 @@ function App(): React.ReactElement {
     setLastUsedPath(path);
 
     setPathDialogOpen(false);
+
+    // Handle based on mode
+    if (pathDialogMode === 'createProject') {
+      // Create Project mode: just set kanban path and switch to kanban view
+      setKanbanProjectPath(normalizedPath);
+      setActiveView('kanban');
+      return;
+    }
+
+    // New Tab mode: open agent dialog to select agent type
     setPendingFolderPath(normalizedPath);
 
     // Check if folder is a git repo (async, UI will show "checking...")
@@ -189,7 +205,7 @@ function App(): React.ReactElement {
     } catch {
       setPendingFolderGitStatus({ isRepo: false, hasCommits: false });
     }
-  }, []);
+  }, [pathDialogMode]);
 
   // Handle path dialog cancel
   const handlePathDialogCancel = useCallback(() => {
@@ -324,7 +340,14 @@ function App(): React.ReactElement {
       return;
     }
 
-    // Open path input dialog
+    // Set mode and open path input dialog
+    setPathDialogMode('newTab');
+    setPathDialogOpen(true);
+  }, []);
+
+  // Create a project (just kanban board, no container)
+  const handleCreateProject = useCallback(() => {
+    setPathDialogMode('createProject');
     setPathDialogOpen(true);
   }, []);
 
@@ -699,9 +722,13 @@ function App(): React.ReactElement {
         {/* Content area */}
         <div className="flex-1 min-h-0 relative flex flex-col">
           {tabs.length === 0 ? (
+            activeView === 'kanban' && kanbanProjectPath ? (
+              // Show Kanban view for standalone project (no container)
+              <KanbanView projectPath={kanbanProjectPath} />
+            ) : (
             <>
               <div className="flex-1 min-h-0">
-                <EmptyState onNewTab={handleNewYolium} />
+                <EmptyState onNewTab={handleNewYolium} onCreateProject={handleCreateProject} />
               </div>
               {/* Minimal status bar for empty state */}
               <div className="flex items-center justify-end h-7 px-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)] text-xs shrink-0 gap-2">
@@ -787,6 +814,7 @@ function App(): React.ReactElement {
                 </button>
               </div>
             </>
+            )
           ) : (
             <>
               {/* Terminal view - render all terminals, show only active one */}
@@ -831,7 +859,7 @@ function App(): React.ReactElement {
               {/* Kanban view - conditionally rendered */}
               {activeView === 'kanban' && (
                 <KanbanView
-                  projectPath={tabs.find(t => t.id === activeTabId)?.cwd || null}
+                  projectPath={kanbanProjectPath || tabs.find(t => t.id === activeTabId)?.cwd || null}
                 />
               )}
             </>
