@@ -10,6 +10,7 @@ import type { KanbanItem } from '../types/kanban'
 const mockKanbanUpdateItem = vi.fn()
 const mockKanbanDeleteItem = vi.fn()
 const mockShowConfirmOkCancel = vi.fn()
+const mockOnAgentOutput = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -19,6 +20,7 @@ beforeEach(() => {
       kanbanUpdateItem: mockKanbanUpdateItem,
       kanbanDeleteItem: mockKanbanDeleteItem,
       showConfirmOkCancel: mockShowConfirmOkCancel,
+      onAgentOutput: mockOnAgentOutput,
     },
     writable: true,
   })

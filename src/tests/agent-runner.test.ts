@@ -39,4 +39,23 @@ describe('agent-runner', () => {
       expect(prompt).toContain('[user]: OAuth');
     });
   });
+
+  describe('resumeAgent', () => {
+    it('should rebuild prompt with conversation history', () => {
+      const systemPrompt = 'You are the Plan Agent.';
+      const goal = 'Add authentication';
+      const history = '[agent]: Which method?\n\n[user]: OAuth';
+
+      const prompt = buildAgentPrompt({
+        systemPrompt,
+        goal,
+        conversationHistory: history,
+      });
+
+      expect(prompt).toContain('Previous conversation:');
+      expect(prompt).toContain('[agent]: Which method?');
+      expect(prompt).toContain('[user]: OAuth');
+      expect(prompt).toContain('Continue from where you left off');
+    });
+  });
 });

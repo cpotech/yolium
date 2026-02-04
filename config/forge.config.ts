@@ -96,7 +96,7 @@ const config: ForgeConfig = {
     // App icon (without extension - Electron picks .ico/.icns/.png based on platform)
     icon: 'assets/icon/favicon',
     // Copy docker and icon directories to resources folder for production builds
-    extraResource: ['src/docker', 'assets/icon'],
+    extraResource: ['src/docker', 'src/agents', 'assets/icon'],
   },
   rebuildConfig: {
     // Skip rebuilding node-pty as it has prebuilt binaries for Windows

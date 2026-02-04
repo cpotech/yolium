@@ -253,6 +253,7 @@ export function hasUncommittedChanges(worktreePath: string): boolean {
     const output = execFileSync('git', ['status', '--porcelain'], {
       cwd: worktreePath,
       encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'], // Suppress stderr
     });
     return output.trim().length > 0;
   } catch {
@@ -271,6 +272,7 @@ export function getWorktreeBranch(worktreePath: string): string | null {
     const output = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
       cwd: worktreePath,
       encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'], // Suppress stderr
     });
     return output.trim();
   } catch {
