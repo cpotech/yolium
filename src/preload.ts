@@ -230,8 +230,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     title: string;
     description: string;
     branch?: string;
-    agentType: 'claude' | 'codex' | 'opencode' | 'shell';
+    agentType: 'claude' | 'codex' | 'opencode';
     order: number;
+    model?: string;
   }) => ipcRenderer.invoke('kanban:add-item', projectPath, params),
   kanbanUpdateItem: (projectPath: string, itemId: string, updates: object) =>
     ipcRenderer.invoke('kanban:update-item', projectPath, itemId, updates),
@@ -294,6 +295,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
       callback(sessionId, message);
     ipcRenderer.on('agent:error', handler);
     return () => ipcRenderer.removeListener('agent:error', handler);
+  },
+  onAgentProgress: (callback: (sessionId: string, progress: { step: string; detail: string; attempt?: number; maxAttempts?: number }) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, progress: { step: string; detail: string; attempt?: number; maxAttempts?: number }) =>
+      callback(sessionId, progress);
+    ipcRenderer.on('agent:progress', handler);
+    return () => ipcRenderer.removeListener('agent:progress', handler);
   },
   onAgentExit: (callback: (sessionId: string, exitCode: number) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, sessionId: string, exitCode: number) =>
@@ -437,8 +444,9 @@ declare global {
           description: string;
           column: 'backlog' | 'ready' | 'in-progress' | 'done';
           branch?: string;
-          agentType: 'claude' | 'codex' | 'opencode' | 'shell';
+          agentType: 'claude' | 'codex' | 'opencode';
           order: number;
+          model?: string;
           agentStatus: 'idle' | 'running' | 'waiting' | 'interrupted' | 'completed' | 'failed';
           agentQuestion?: string;
           agentQuestionOptions?: string[];
@@ -453,8 +461,9 @@ declare global {
         title: string;
         description: string;
         branch?: string;
-        agentType: 'claude' | 'codex' | 'opencode' | 'shell';
+        agentType: 'claude' | 'codex' | 'opencode';
         order: number;
+        model?: string;
       }) => Promise<object>;
       kanbanUpdateItem: (projectPath: string, itemId: string, updates: object) => Promise<object | null>;
       kanbanAddComment: (projectPath: string, itemId: string, source: string, text: string) => Promise<object | null>;
@@ -481,6 +490,7 @@ declare global {
       onAgentItemCreated: (callback: (sessionId: string, item: object) => void) => CleanupFn;
       onAgentComplete: (callback: (sessionId: string, summary: string) => void) => CleanupFn;
       onAgentError: (callback: (sessionId: string, message: string) => void) => CleanupFn;
+      onAgentProgress: (callback: (sessionId: string, progress: { step: string; detail: string; attempt?: number; maxAttempts?: number }) => void) => CleanupFn;
       onAgentExit: (callback: (sessionId: string, exitCode: number) => void) => CleanupFn;
     };
   }

@@ -43,8 +43,9 @@ Communicate with Yolium by outputting JSON messages prefixed with `@@YOLIUM:`:
 - `title`: Short, descriptive title (required)
 - `description`: Detailed instructions with acceptance criteria (required)
 - `branch`: Suggested git branch name (optional)
-- `agentType`: `claude` | `codex` | `opencode` | `shell` (required)
+- `agentType`: `claude` | `codex` | `opencode` (required)
 - `order`: Suggested execution sequence, 1 = first (required)
+- `model`: `opus` | `sonnet` | `haiku` (optional, defaults to agent's own model)
 
 ### Signal Completion
 
@@ -66,9 +67,12 @@ Communicate with Yolium by outputting JSON messages prefixed with `@@YOLIUM:`:
    - `claude`: Complex reasoning, architecture, refactoring
    - `codex`: Straightforward coding tasks, boilerplate
    - `opencode`: Alternative to claude/codex
-   - `shell`: Simple scripts, file operations
-4. **Logical ordering** - Dependencies should have lower order numbers
-5. **Include context** - Reference relevant files, patterns, and conventions discovered
+4. **Right model for the complexity**:
+   - `opus`: Complex architectural work, multi-file refactoring, nuanced decisions
+   - `sonnet`: Standard implementation tasks, bug fixes, feature work (default if omitted)
+   - `haiku`: Simple tasks, boilerplate, mechanical changes, config updates
+5. **Logical ordering** - Dependencies should have lower order numbers
+6. **Include context** - Reference relevant files, patterns, and conventions discovered
 
 ## Example Work Item Description
 

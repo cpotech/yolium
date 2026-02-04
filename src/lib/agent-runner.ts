@@ -22,6 +22,7 @@ import type {
   CreateItemMessage,
   CompleteMessage,
   ErrorMessage,
+  ProgressMessage,
 } from '../types/agent';
 
 const logger = createLogger('agent-runner');
@@ -55,6 +56,21 @@ export interface AgentSession {
 
 const sessions = new Map<string, AgentSession>();
 
+const MODEL_MAP: Record<string, string> = {
+  opus: 'claude-opus-4-5-20251101',
+  sonnet: 'claude-sonnet-4-20250514',
+  haiku: 'claude-haiku-3-5-20241022',
+};
+
+/**
+ * Resolve the model to use for an agent run.
+ * Item-level model takes priority over agent-level model.
+ */
+export function resolveModel(itemModel: string | undefined, agentModel: string): string {
+  const shortName = itemModel || agentModel;
+  return MODEL_MAP[shortName] || shortName;
+}
+
 export interface StartAgentParams {
   webContentsId: number;
   agentName: string;
@@ -66,6 +82,7 @@ export interface StartAgentParams {
   onItemCreated?: (item: KanbanItem) => void;
   onComplete?: (summary: string) => void;
   onError?: (message: string) => void;
+  onProgress?: (progress: ProgressMessage) => void;
 }
 
 export interface StartAgentResult {
@@ -85,6 +102,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     onItemCreated,
     onComplete,
     onError,
+    onProgress,
   } = params;
 
   // Check if Claude is authenticated
@@ -118,13 +136,8 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
   updateItem(board, itemId, { agentStatus: 'running', column: 'in-progress' });
   addComment(board, itemId, 'system', `${agentName} started`);
 
-  // Map model name to full model ID
-  const modelMap: Record<string, string> = {
-    opus: 'claude-opus-4-5-20251101',
-    sonnet: 'claude-sonnet-4-20250514',
-    haiku: 'claude-haiku-3-5-20241022',
-  };
-  const model = modelMap[agent.model] || agent.model;
+  // Resolve model: item-level model overrides agent-level model
+  const model = resolveModel(item.model, agent.model);
 
   logger.info('Starting agent container', { agentName, projectPath, itemId, model });
 
@@ -208,6 +221,9 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     if (onError) {
       events.on('error', onError);
     }
+    if (onProgress) {
+      events.on('progress', onProgress);
+    }
 
     return { sessionId };
   } catch (err) {
@@ -262,6 +278,7 @@ export function handleAgentOutput(sessionId: string, data: string): void {
           branch: c.branch,
           agentType: c.agentType,
           order: c.order,
+          model: c.model,
         });
         session.events.emit('itemCreated', newItem);
         break;
@@ -281,6 +298,16 @@ export function handleAgentOutput(sessionId: string, data: string): void {
         updateItem(board, session.itemId, { agentStatus: 'failed' });
         addComment(board, session.itemId, 'system', `Error: ${err.message}`);
         session.events.emit('error', err.message);
+        break;
+      }
+
+      case 'progress': {
+        const prog = message as ProgressMessage;
+        const detail = prog.attempt
+          ? `[${prog.step}] ${prog.detail} (attempt ${prog.attempt}/${prog.maxAttempts || '?'})`
+          : `[${prog.step}] ${prog.detail}`;
+        addComment(board, session.itemId, 'system', detail);
+        session.events.emit('progress', prog);
         break;
       }
     }

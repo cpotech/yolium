@@ -3,12 +3,13 @@ import type {
   CreateItemMessage,
   CompleteMessage,
   ErrorMessage,
+  ProgressMessage,
 } from '../types/agent';
 
 const PROTOCOL_PREFIX = '@@YOLIUM:';
-const VALID_TYPES = ['ask_question', 'create_item', 'complete', 'error'] as const;
+const VALID_TYPES = ['ask_question', 'create_item', 'complete', 'error', 'progress'] as const;
 
-type AnyProtocolMessage = AskQuestionMessage | CreateItemMessage | CompleteMessage | ErrorMessage;
+type AnyProtocolMessage = AskQuestionMessage | CreateItemMessage | CompleteMessage | ErrorMessage | ProgressMessage;
 
 export function parseProtocolMessage(json: string): AnyProtocolMessage | null {
   try {
@@ -39,6 +40,7 @@ export function parseProtocolMessage(json: string): AnyProtocolMessage | null {
           branch: parsed.branch,
           agentType: parsed.agentType || 'claude',
           order: typeof parsed.order === 'number' ? parsed.order : 0,
+          model: typeof parsed.model === 'string' ? parsed.model : undefined,
         };
 
       case 'complete':
@@ -53,6 +55,16 @@ export function parseProtocolMessage(json: string): AnyProtocolMessage | null {
         return {
           type: 'error',
           message: parsed.message,
+        };
+
+      case 'progress':
+        if (typeof parsed.step !== 'string' || typeof parsed.detail !== 'string') return null;
+        return {
+          type: 'progress',
+          step: parsed.step,
+          detail: parsed.detail,
+          attempt: typeof parsed.attempt === 'number' ? parsed.attempt : undefined,
+          maxAttempts: typeof parsed.maxAttempts === 'number' ? parsed.maxAttempts : undefined,
         };
 
       default:

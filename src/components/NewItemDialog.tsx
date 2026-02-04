@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { X } from 'lucide-react'
-import type { AgentType } from '../types/agent'
+import type { KanbanAgentType } from '../types/agent'
 
 interface NewItemDialogProps {
   isOpen: boolean
@@ -9,11 +9,10 @@ interface NewItemDialogProps {
   onCreated: () => void
 }
 
-const agentTypeOptions: { value: AgentType; label: string }[] = [
+const agentTypeOptions: { value: KanbanAgentType; label: string }[] = [
   { value: 'claude', label: 'Claude' },
   { value: 'codex', label: 'Codex' },
   { value: 'opencode', label: 'OpenCode' },
-  { value: 'shell', label: 'Shell' },
 ]
 
 export function NewItemDialog({
@@ -25,7 +24,7 @@ export function NewItemDialog({
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [branch, setBranch] = useState('')
-  const [agentType, setAgentType] = useState<AgentType>('claude')
+  const [agentType, setAgentType] = useState<KanbanAgentType>('claude')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Reset form when dialog opens/closes
@@ -179,7 +178,7 @@ export function NewItemDialog({
               id="agentType"
               data-testid="agent-type-select"
               value={agentType}
-              onChange={e => setAgentType(e.target.value as AgentType)}
+              onChange={e => setAgentType(e.target.value as KanbanAgentType)}
               className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
             >
               {agentTypeOptions.map(option => (

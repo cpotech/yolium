@@ -9,6 +9,7 @@ import type {
   KanbanComment,
   CommentSource,
 } from '../types/kanban';
+import type { KanbanAgentType } from '../types/agent';
 
 const YOLIUM_DIR = path.join(os.homedir(), '.yolium');
 const BOARDS_DIR = path.join(YOLIUM_DIR, 'boards');
@@ -63,8 +64,9 @@ export interface NewItemParams {
   title: string;
   description: string;
   branch?: string;
-  agentType: 'claude' | 'codex' | 'opencode' | 'shell';
+  agentType: KanbanAgentType;
   order: number;
+  model?: string;
 }
 
 export function addItem(board: KanbanBoard, params: NewItemParams): KanbanItem {
@@ -76,6 +78,7 @@ export function addItem(board: KanbanBoard, params: NewItemParams): KanbanItem {
     branch: params.branch,
     agentType: params.agentType,
     order: params.order,
+    model: params.model,
     agentStatus: 'idle',
     comments: [],
     createdAt: new Date().toISOString(),

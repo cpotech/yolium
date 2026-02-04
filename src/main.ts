@@ -739,8 +739,9 @@ ipcMain.handle('kanban:add-item', (_event, projectPath: string, params: {
   title: string;
   description: string;
   branch?: string;
-  agentType: 'claude' | 'codex' | 'opencode' | 'shell';
+  agentType: 'claude' | 'codex' | 'opencode';
   order: number;
+  model?: string;
 }) => {
   const board = getOrCreateBoard(projectPath);
   return addItem(board, params);
@@ -816,6 +817,11 @@ ipcMain.handle('agent:start', async (event, params: {
       // Notify UI that board was updated (status changed)
       win?.webContents.send('kanban:board-updated', params.projectPath);
     });
+
+    events.on('progress', (progress: { step: string; detail: string; attempt?: number; maxAttempts?: number }) => {
+      win?.webContents.send('agent:progress', result.sessionId, progress);
+      win?.webContents.send('kanban:board-updated', params.projectPath);
+    });
   }
 
   return result;
@@ -873,6 +879,11 @@ ipcMain.handle('agent:resume', async (event, params: {
     events.on('error', (message: string) => {
       win?.webContents.send('agent:error', result.sessionId, message);
       // Notify UI that board was updated (status changed)
+      win?.webContents.send('kanban:board-updated', params.projectPath);
+    });
+
+    events.on('progress', (progress: { step: string; detail: string; attempt?: number; maxAttempts?: number }) => {
+      win?.webContents.send('agent:progress', result.sessionId, progress);
       win?.webContents.send('kanban:board-updated', params.projectPath);
     });
   }

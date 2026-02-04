@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
-import { X, GitBranch, Clock, Play, MessageSquare, RotateCcw, Terminal, Trash2 } from 'lucide-react'
+import { X, GitBranch, Clock, Play, MessageSquare, RotateCcw, Terminal, Trash2, Code } from 'lucide-react'
 import type { KanbanItem, KanbanColumn, AgentStatus, CommentSource } from '../types/kanban'
 
 interface ItemDetailDialogProps {
@@ -21,7 +21,6 @@ const agentTypeLabels: Record<KanbanItem['agentType'], string> = {
   claude: 'Claude',
   codex: 'Codex',
   opencode: 'OpenCode',
-  shell: 'Shell',
 }
 
 const statusColors: Record<AgentStatus, string> = {
@@ -62,6 +61,8 @@ export function ItemDetailDialog({
   const [agentOutput, setAgentOutput] = useState<string>('')
   const [showAgentLog, setShowAgentLog] = useState(false)
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const [currentStep, setCurrentStep] = useState<string | null>(null)
+  const [currentDetail, setCurrentDetail] = useState<string | null>(null)
   const logRef = useRef<HTMLPreElement>(null)
 
   // Sync local state when item changes
@@ -82,6 +83,24 @@ export function ItemDetailDialog({
       if (sessionId === currentSessionId) {
         setAgentOutput(prev => prev + data)
         setShowAgentLog(true)
+      }
+    })
+
+    return cleanup
+  }, [item?.id, currentSessionId])
+
+  // Subscribe to agent progress events
+  useEffect(() => {
+    if (!item || !currentSessionId) return
+
+    const cleanup = window.electronAPI.onAgentProgress((sessionId, progress) => {
+      if (sessionId === currentSessionId) {
+        setCurrentStep(progress.step)
+        setCurrentDetail(
+          progress.attempt
+            ? `${progress.detail} (attempt ${progress.attempt}/${progress.maxAttempts || '?'})`
+            : progress.detail
+        )
       }
     })
 
@@ -140,15 +159,21 @@ export function ItemDetailDialog({
     }
   }, [item, isDeleting, projectPath, onUpdated, onClose])
 
-  const handleStartPlanAgent = useCallback(async () => {
+  const getDefaultAgentName = useCallback((currentItem: KanbanItem): string => {
+    return currentItem.branch ? 'code-agent' : 'plan-agent'
+  }, [])
+
+  const handleStartAgent = useCallback(async (agentName: string) => {
     if (!item || isStartingAgent) return
 
     setIsStartingAgent(true)
     clearAgentOutput()
+    setCurrentStep(null)
+    setCurrentDetail(null)
     setShowAgentLog(true)
     try {
       const result = await window.electronAPI.agentStart({
-        agentName: 'plan-agent',
+        agentName,
         projectPath,
         itemId: item.id,
         goal: item.description,
@@ -184,14 +209,16 @@ export function ItemDetailDialog({
     }
   }, [item, isAnswering, answerText, projectPath, onUpdated])
 
-  const handleResumeAgent = useCallback(async () => {
+  const handleResumeAgent = useCallback(async (agentName: string) => {
     if (!item || isStartingAgent) return
 
     setIsStartingAgent(true)
+    setCurrentStep(null)
+    setCurrentDetail(null)
     setShowAgentLog(true)
     try {
       const result = await window.electronAPI.agentResume({
-        agentName: 'plan-agent',
+        agentName,
         projectPath,
         itemId: item.id,
         goal: item.description,
@@ -375,32 +402,65 @@ export function ItemDetailDialog({
               </span>
             </div>
 
-            {/* Plan Agent Controls */}
+            {/* Agent Controls */}
             <div className="mb-4 p-3 bg-[var(--color-bg-primary)] rounded-md border border-[var(--color-border-primary)]">
               <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                Plan Agent
+                Agent Controls
               </label>
 
-              {/* Idle - Show Run button */}
+              {/* Idle - Show agent buttons */}
               {item.agentStatus === 'idle' && (
-                <button
-                  data-testid="run-plan-agent-button"
-                  onClick={handleStartPlanAgent}
-                  disabled={isStartingAgent}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Play size={14} />
-                  {isStartingAgent ? 'Starting...' : 'Run Plan Agent'}
-                </button>
+                <div className="space-y-2">
+                  {item.branch ? (
+                    <>
+                      <button
+                        data-testid="run-code-agent-button"
+                        onClick={() => handleStartAgent('code-agent')}
+                        disabled={isStartingAgent}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <Code size={14} />
+                        {isStartingAgent ? 'Starting...' : 'Run Code Agent'}
+                      </button>
+                      <button
+                        data-testid="run-plan-agent-button"
+                        onClick={() => handleStartAgent('plan-agent')}
+                        disabled={isStartingAgent}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] rounded-md border border-[var(--color-border-primary)] hover:border-[var(--color-accent-primary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <Play size={14} />
+                        {isStartingAgent ? 'Starting...' : 'Run Plan Agent'}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      data-testid="run-plan-agent-button"
+                      onClick={() => handleStartAgent('plan-agent')}
+                      disabled={isStartingAgent}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Play size={14} />
+                      {isStartingAgent ? 'Starting...' : 'Run Plan Agent'}
+                    </button>
+                  )}
+                </div>
               )}
 
-              {/* Running - Show indicator */}
+              {/* Running - Show indicator with progress */}
               {item.agentStatus === 'running' && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm text-yellow-400">
                     <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
                     Agent is running...
                   </div>
+                  {currentDetail && (
+                    <p
+                      data-testid="agent-progress-detail"
+                      className="text-xs text-[var(--color-text-secondary)] pl-5"
+                    >
+                      {currentDetail}
+                    </p>
+                  )}
                   {!showAgentLog && agentOutput && (
                     <button
                       data-testid="show-log-button"
@@ -453,7 +513,7 @@ export function ItemDetailDialog({
                     </button>
                     <button
                       data-testid="resume-agent-button"
-                      onClick={handleResumeAgent}
+                      onClick={() => handleResumeAgent(getDefaultAgentName(item))}
                       disabled={isStartingAgent || !answerText.trim()}
                       className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
@@ -468,7 +528,7 @@ export function ItemDetailDialog({
               {item.agentStatus === 'interrupted' && (
                 <button
                   data-testid="resume-interrupted-button"
-                  onClick={handleResumeAgent}
+                  onClick={() => handleResumeAgent(getDefaultAgentName(item))}
                   disabled={isStartingAgent}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
@@ -490,7 +550,7 @@ export function ItemDetailDialog({
                   <div className="text-sm text-red-400">Agent failed</div>
                   <button
                     data-testid="retry-agent-button"
-                    onClick={handleStartPlanAgent}
+                    onClick={() => handleStartAgent(getDefaultAgentName(item))}
                     disabled={isStartingAgent}
                     className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
@@ -513,6 +573,21 @@ export function ItemDetailDialog({
                 {agentTypeLabels[item.agentType]}
               </span>
             </div>
+
+            {/* Model */}
+            {item.model && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                  Model
+                </label>
+                <span
+                  data-testid="model-display"
+                  className="text-sm text-[var(--color-text-primary)]"
+                >
+                  {item.model}
+                </span>
+              </div>
+            )}
 
             {/* Column Selector */}
             <div className="mb-4">

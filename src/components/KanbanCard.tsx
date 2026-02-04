@@ -11,7 +11,6 @@ const agentTypeLabels: Record<KanbanItem['agentType'], string> = {
   claude: 'Claude',
   codex: 'Codex',
   opencode: 'OpenCode',
-  shell: 'Shell',
 }
 
 interface StatusConfig {
