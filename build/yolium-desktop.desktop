@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Yolium Desktop
+Comment=AI agent desktop environment with containerized workspaces
+Exec=yolium-desktop %U
+Icon=yolium-desktop
+Type=Application
+Categories=Development;Utility;
+Terminal=false
+StartupWMClass=Yolium Desktop

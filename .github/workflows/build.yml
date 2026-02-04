@@ -51,6 +51,35 @@ jobs:
       - name: Build
         run: npm run make
 
+      - name: Build Arch Linux package
+        if: runner.os == 'Linux'
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+
+          mkdir -p arch-pkg
+
+          # Create source tarball from packaged app
+          tar czf "arch-pkg/yolium-desktop-${VERSION}.tar.gz" -C out "Yolium Desktop-linux-x64"
+
+          # Copy desktop file and icon
+          cp build/yolium-desktop.desktop arch-pkg/
+          cp assets/icon/web-app-manifest-512x512.png arch-pkg/yolium-desktop.png
+
+          # Generate PKGBUILD with version
+          sed "s/__VERSION__/${VERSION}/" build/PKGBUILD > arch-pkg/PKGBUILD
+
+          # Build package in Arch Linux container
+          docker run --rm -v "$PWD/arch-pkg:/pkg" archlinux:base-devel bash -c "
+            useradd -m builder &&
+            chown -R builder:builder /pkg &&
+            cd /pkg &&
+            su builder -c 'makepkg --noconfirm'
+          "
+
+          # Move to make output
+          mkdir -p out/make/arch/x64
+          cp arch-pkg/yolium-desktop-*.pkg.tar.zst out/make/arch/x64/
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
