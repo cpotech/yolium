@@ -109,8 +109,8 @@ test.describe('Dialog Shortcuts', () => {
     });
   });
 
-  test.describe('Git Settings Dialog', () => {
-    test('Ctrl+Shift+G should open git settings dialog', async () => {
+  test.describe('Settings Dialog', () => {
+    test('Ctrl+Shift+S should open settings dialog', async () => {
       ctx = await launchApp();
       const { window, app } = ctx;
 
@@ -119,7 +119,7 @@ test.describe('Dialog Shortcuts', () => {
         BrowserWindow.getAllWindows()[0].webContents.send('git-settings:show');
       });
 
-      // Git config dialog should open
+      // Settings dialog should open
       await expect(window.locator(selectors.gitConfigDialog)).toBeVisible();
     });
 
@@ -214,7 +214,7 @@ test.describe('Dialog Shortcuts', () => {
       expect(dialogText).not.toContain('Quit');
     });
 
-    test('should show Ctrl+Shift+G for Git Settings', async () => {
+    test('should show Ctrl+Shift+S for Settings', async () => {
       ctx = await launchApp();
       const { window } = ctx;
 
@@ -222,10 +222,24 @@ test.describe('Dialog Shortcuts', () => {
       await window.click(selectors.shortcutsButton);
       await expect(window.locator(selectors.shortcutsDialog)).toBeVisible();
 
-      // Should contain git settings shortcut
+      // Should contain settings shortcut
       const dialogText = await window.locator(selectors.shortcutsDialog).textContent();
-      expect(dialogText).toContain('Ctrl+Shift+G');
-      expect(dialogText).toContain('Git');
+      expect(dialogText).toContain('Ctrl+Shift+S');
+      expect(dialogText).toContain('Settings');
+    });
+
+    test('should show Ctrl+Shift+P for New project', async () => {
+      ctx = await launchApp();
+      const { window } = ctx;
+
+      // Open shortcuts dialog
+      await window.click(selectors.shortcutsButton);
+      await expect(window.locator(selectors.shortcutsDialog)).toBeVisible();
+
+      // Should contain new project shortcut
+      const dialogText = await window.locator(selectors.shortcutsDialog).textContent();
+      expect(dialogText).toContain('Ctrl+Shift+P');
+      expect(dialogText).toContain('New project');
     });
   });
 });
