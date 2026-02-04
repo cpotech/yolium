@@ -250,11 +250,11 @@ export function isWhisperBinaryAvailable(): boolean {
     return true;
   }
 
-  // Check if 'whisper-cpp' or 'whisper' is in PATH
+  // Check if whisper binary is in PATH
   try {
     const cmd = process.platform === 'win32'
       ? 'where whisper-cli 2>nul || where whisper 2>nul'
-      : 'which whisper-cpp 2>/dev/null || which whisper 2>/dev/null';
+      : 'which whisper-cli 2>/dev/null || which whisper-cpp 2>/dev/null || which whisper 2>/dev/null';
     execSync(cmd, { stdio: 'pipe' });
     return true;
   } catch {
@@ -274,7 +274,7 @@ export function resolveWhisperBinary(): string | null {
   try {
     const cmd = process.platform === 'win32'
       ? 'where whisper-cli 2>nul || where whisper 2>nul'
-      : 'which whisper-cpp 2>/dev/null || which whisper 2>/dev/null';
+      : 'which whisper-cli 2>/dev/null || which whisper-cpp 2>/dev/null || which whisper 2>/dev/null';
     const systemBinary = execSync(cmd, {
       stdio: 'pipe',
       encoding: 'utf-8',
