@@ -13,9 +13,6 @@ jobs:
       docker:
         image: docker:dind
         options: --privileged --userns=host
-      xvfb:
-        image: selenium/standalone-chrome
-        options: --shm-size=2g --no-sandbox --cap-add=SYS_ADMIN
     env:
       DOCKER_HOST: tcp://localhost:2375
       DISPLAY: :99
