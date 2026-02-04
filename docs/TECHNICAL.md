@@ -164,6 +164,45 @@ npm start
 npm run make
 ```
 
+### Distribution Packages
+
+`npm run make` produces platform-specific packages via Electron Forge:
+
+| Platform | Format | Output Path |
+|----------|--------|-------------|
+| Windows | Squirrel installer (`.exe`) | `out/make/squirrel.windows/x64/` |
+| Linux | Debian (`.deb`) | `out/make/deb/x64/` |
+| Linux | RPM (`.rpm`) | `out/make/rpm/x64/` |
+| Linux | Arch (`.pkg.tar.zst`) | `out/make/arch/x64/` |
+
+### Building the Arch Linux Package
+
+The Arch package is built separately from `electron-forge make` since it uses a `PKGBUILD` template (`build/PKGBUILD`) that packages the already-built Electron app.
+
+**CI pipeline** (how it works in GitHub Actions):
+
+1. `npm run make` builds the Electron app and produces the `out/Yolium Desktop-linux-x64/` directory
+2. The app directory is tarred into a source archive for `makepkg`
+3. The desktop entry (`build/yolium-desktop.desktop`) and icon are copied alongside the archive
+4. The `PKGBUILD` version placeholder (`__VERSION__`) is replaced with the version from `package.json`
+5. `makepkg` runs inside an `archlinux:base-devel` Docker container with `--nodeps` (runtime dependencies aren't needed at build time)
+
+**Local build** (on an Arch-based system):
+
+```bash
+npm run make
+VERSION=$(node -p "require('./package.json').version")
+mkdir -p arch-pkg
+tar czf "arch-pkg/yolium-desktop-${VERSION}.tar.gz" -C out "Yolium Desktop-linux-x64"
+cp build/yolium-desktop.desktop arch-pkg/
+cp assets/icon/web-app-manifest-512x512.png arch-pkg/yolium-desktop.png
+sed "s/__VERSION__/${VERSION}/" build/PKGBUILD > arch-pkg/PKGBUILD
+cd arch-pkg
+makepkg -si
+```
+
+The resulting package installs to `/opt/yolium-desktop` with a symlink at `/usr/bin/yolium-desktop`, a `.desktop` entry in `/usr/share/applications/`, and an icon in `/usr/share/pixmaps/`.
+
 ### Project Structure
 
 ```
