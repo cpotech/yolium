@@ -75,12 +75,12 @@ jobs:
           # Generate PKGBUILD with version
           sed "s/__VERSION__/${VERSION}/" build/PKGBUILD > arch-pkg/PKGBUILD
 
-          # Build package in Arch Linux container
+          # Build package in Arch Linux container (--nodeps: runtime deps not needed at build time)
           docker run --rm -v "$PWD/arch-pkg:/pkg" archlinux:base-devel bash -c "
             useradd -m builder &&
             chown -R builder:builder /pkg &&
             cd /pkg &&
-            su builder -c 'makepkg --noconfirm'
+            su builder -c 'makepkg --nodeps --noconfirm'
           "
 
           # Move to make output
