@@ -17,6 +17,8 @@ import { WhisperModelDialog } from './components/WhisperModelDialog';
 import { SpeechToTextButton } from './components/SpeechToTextButton';
 import type { WhisperModelSize } from './types/whisper';
 import { normalizePath } from './lib/path-utils';
+import { Sidebar, ViewType } from './components/Sidebar';
+import { KanbanView } from './components/KanbanView';
 
 function App(): React.ReactElement {
   const {
@@ -80,6 +82,10 @@ function App(): React.ReactElement {
   const [reviewStatus, setReviewStatus] = useState<CodeReviewStatus | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewLog, setReviewLog] = useState<string[]>([]);
+
+  // State for view switching (terminal vs kanban)
+  const [activeView, setActiveView] = useState<ViewType>('terminal');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   // Ref for auto-scrolling build progress
   const progressRef = useRef<HTMLDivElement>(null);
@@ -681,138 +687,156 @@ function App(): React.ReactElement {
       />
 
       {/* Main content area */}
-      <main className="flex-1 min-h-0 relative flex flex-col">
-        {tabs.length === 0 ? (
-          <>
-            <div className="flex-1 min-h-0">
-              <EmptyState onNewTab={handleNewYolium} />
-            </div>
-            {/* Minimal status bar for empty state */}
-            <div className="flex items-center justify-end h-7 px-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)] text-xs shrink-0 gap-2">
-              {/* Docker image info and rebuild button (only shown when image exists) */}
-              {!imageRemoved && (
-                <>
-                  <span className="flex items-center gap-1 text-[var(--color-text-muted)]">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-                      <path d="m3.3 7 8.7 5 8.7-5" />
-                      <path d="M12 22V12" />
-                    </svg>
-                    <span>yolium:latest</span>
-                  </span>
+      <main className="flex-1 min-h-0 relative flex flex-row">
+        {/* Sidebar - always visible */}
+        <Sidebar
+          activeView={activeView}
+          onViewChange={setActiveView}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
 
-                  {/* Rebuild button */}
-                  <button
-                    onClick={handleRebuildImage}
-                    disabled={isRebuilding}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Delete Docker image"
-                  >
-                    {isRebuilding ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
-                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+        {/* Content area */}
+        <div className="flex-1 min-h-0 relative flex flex-col">
+          {tabs.length === 0 ? (
+            <>
+              <div className="flex-1 min-h-0">
+                <EmptyState onNewTab={handleNewYolium} />
+              </div>
+              {/* Minimal status bar for empty state */}
+              <div className="flex items-center justify-end h-7 px-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)] text-xs shrink-0 gap-2">
+                {/* Docker image info and rebuild button (only shown when image exists) */}
+                {!imageRemoved && (
+                  <>
+                    <span className="flex items-center gap-1 text-[var(--color-text-muted)]">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                        <path d="m3.3 7 8.7 5 8.7-5" />
+                        <path d="M12 22V12" />
                       </svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                        <path d="M21 3v5h-5" />
-                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                        <path d="M8 16H3v5" />
-                      </svg>
-                    )}
-                    <span>Delete</span>
-                  </button>
+                      <span>yolium:latest</span>
+                    </span>
 
-                  {/* Separator */}
-                  <span className="text-[var(--color-text-disabled)]">|</span>
-                </>
-              )}
+                    {/* Rebuild button */}
+                    <button
+                      onClick={handleRebuildImage}
+                      disabled={isRebuilding}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Delete Docker image"
+                    >
+                      {isRebuilding ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
+                          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                          <path d="M21 3v5h-5" />
+                          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                          <path d="M8 16H3v5" />
+                        </svg>
+                      )}
+                      <span>Delete</span>
+                    </button>
 
-              {/* Speech-to-text button */}
-              <SpeechToTextButton
-                recordingState={whisper.state.recordingState}
-                selectedModel={whisper.state.selectedModel}
-                onToggleRecording={whisper.toggleRecording}
-                onOpenModelDialog={whisper.openModelDialog}
-              />
-              <span className="text-[var(--color-text-disabled)]">|</span>
+                    {/* Separator */}
+                    <span className="text-[var(--color-text-disabled)]">|</span>
+                  </>
+                )}
 
-              {/* PR Review button */}
-              <button
-                data-testid="code-review-button"
-                onClick={handleOpenCodeReview}
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                title="PR Code Review"
-              >
-                <GitPullRequest size={12} />
-                <span>PR Review</span>
-              </button>
-
-              {/* Settings button */}
-              <button
-                onClick={handleOpenGitConfig}
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                title="Settings"
-              >
-                <Settings size={12} />
-              </button>
-
-              <button
-                data-testid="shortcuts-button"
-                onClick={handleShowShortcuts}
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                title="Keyboard shortcuts (Ctrl+?)"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="4" width="20" height="16" rx="2" />
-                  <path d="M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M7 16h10" />
-                </svg>
-                <span>Ctrl+?</span>
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Render all terminals with StatusBar, show only active one */}
-            {tabs.map(tab => (
-              <div
-                key={tab.id}
-                className={`absolute inset-0 flex flex-col ${tab.id === activeTabId ? '' : 'hidden'}`}
-              >
-                <div className="flex-1 min-h-0 relative">
-                  <Terminal
-                    sessionId={tab.sessionId}
-                    isVisible={tab.id === activeTabId}
-                    isContainer={true}
-                    onCwdChange={(cwd) => handleCwdChange(tab.id, cwd)}
-                    onExit={(exitCode) => {
-                      const newState = exitCode === 0 ? 'stopped' : 'crashed';
-                      updateContainerState(tab.id, newState);
-                    }}
-                    className="absolute inset-0 bg-[#0a0a0a]"
-                  />
-                </div>
-                <StatusBar
-                  folderPath={tab.cwd}
-                  containerState={tab.containerState}
-                  onStop={() => handleStopYolium(tab.id)}
-                  onShowShortcuts={handleShowShortcuts}
-                  onOpenSettings={handleOpenGitConfig}
-                  onOpenCodeReview={handleOpenCodeReview}
-                  imageName={imageRemoved ? undefined : 'yolium:latest'}
-                  onRebuild={handleRebuildImage}
-                  isRebuilding={isRebuilding}
-                  gitBranch={tab.gitBranch}
-                  worktreeName={tab.worktreeName}
-                  whisperRecordingState={whisper.state.recordingState}
-                  whisperSelectedModel={whisper.state.selectedModel}
+                {/* Speech-to-text button */}
+                <SpeechToTextButton
+                  recordingState={whisper.state.recordingState}
+                  selectedModel={whisper.state.selectedModel}
                   onToggleRecording={whisper.toggleRecording}
                   onOpenModelDialog={whisper.openModelDialog}
                 />
+                <span className="text-[var(--color-text-disabled)]">|</span>
+
+                {/* PR Review button */}
+                <button
+                  data-testid="code-review-button"
+                  onClick={handleOpenCodeReview}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                  title="PR Code Review"
+                >
+                  <GitPullRequest size={12} />
+                  <span>PR Review</span>
+                </button>
+
+                {/* Settings button */}
+                <button
+                  onClick={handleOpenGitConfig}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                  title="Settings"
+                >
+                  <Settings size={12} />
+                </button>
+
+                <button
+                  data-testid="shortcuts-button"
+                  onClick={handleShowShortcuts}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                  title="Keyboard shortcuts (Ctrl+?)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="4" width="20" height="16" rx="2" />
+                    <path d="M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M7 16h10" />
+                  </svg>
+                  <span>Ctrl+?</span>
+                </button>
               </div>
-            ))}
-          </>
-        )}
+            </>
+          ) : (
+            <>
+              {/* Terminal view - render all terminals, show only active one */}
+              {activeView === 'terminal' && tabs.map(tab => (
+                <div
+                  key={tab.id}
+                  className={`absolute inset-0 flex flex-col ${tab.id === activeTabId ? '' : 'hidden'}`}
+                >
+                  <div className="flex-1 min-h-0 relative">
+                    <Terminal
+                      sessionId={tab.sessionId}
+                      isVisible={tab.id === activeTabId}
+                      isContainer={true}
+                      onCwdChange={(cwd) => handleCwdChange(tab.id, cwd)}
+                      onExit={(exitCode) => {
+                        const newState = exitCode === 0 ? 'stopped' : 'crashed';
+                        updateContainerState(tab.id, newState);
+                      }}
+                      className="absolute inset-0 bg-[#0a0a0a]"
+                    />
+                  </div>
+                  <StatusBar
+                    folderPath={tab.cwd}
+                    containerState={tab.containerState}
+                    onStop={() => handleStopYolium(tab.id)}
+                    onShowShortcuts={handleShowShortcuts}
+                    onOpenSettings={handleOpenGitConfig}
+                    onOpenCodeReview={handleOpenCodeReview}
+                    imageName={imageRemoved ? undefined : 'yolium:latest'}
+                    onRebuild={handleRebuildImage}
+                    isRebuilding={isRebuilding}
+                    gitBranch={tab.gitBranch}
+                    worktreeName={tab.worktreeName}
+                    whisperRecordingState={whisper.state.recordingState}
+                    whisperSelectedModel={whisper.state.selectedModel}
+                    onToggleRecording={whisper.toggleRecording}
+                    onOpenModelDialog={whisper.openModelDialog}
+                  />
+                </div>
+              ))}
+
+              {/* Kanban view - conditionally rendered */}
+              {activeView === 'kanban' && (
+                <KanbanView
+                  projectPath={tabs.find(t => t.id === activeTabId)?.cwd || null}
+                />
+              )}
+            </>
+          )}
+        </div>
       </main>
 
       {/* Whisper error notification */}
