@@ -89,6 +89,15 @@ jobs:
             exit 1
           fi
           echo "Docker socket at localhost:2375 is accessible"
+      - name: Test Docker service container connectivity
+        run: |
+          echo "Testing Docker service container connectivity..."
+          docker -H tcp://localhost:2375 ps --filter "name=docker*" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Cannot access Docker service container via socket"
+            exit 1
+          fi
+          echo "Docker service container is accessible via socket"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
         with:
