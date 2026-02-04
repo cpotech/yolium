@@ -253,8 +253,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     itemId: string;
     goal: string;
   }) => ipcRenderer.invoke('agent:start', params),
-  agentAnswer: (sessionId: string, answer: string) =>
-    ipcRenderer.invoke('agent:answer', sessionId, answer),
+  agentResume: (params: {
+    agentName: string;
+    projectPath: string;
+    itemId: string;
+    goal: string;
+  }) => ipcRenderer.invoke('agent:resume', params),
+  agentAnswer: (projectPath: string, itemId: string, answer: string) =>
+    ipcRenderer.invoke('agent:answer', projectPath, itemId, answer),
   agentStop: (sessionId: string) =>
     ipcRenderer.invoke('agent:stop', sessionId),
   agentRecover: (projectPath: string) =>
@@ -288,6 +294,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
       callback(sessionId, message);
     ipcRenderer.on('agent:error', handler);
     return () => ipcRenderer.removeListener('agent:error', handler);
+  },
+  onAgentExit: (callback: (sessionId: string, exitCode: number) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, exitCode: number) =>
+      callback(sessionId, exitCode);
+    ipcRenderer.on('agent:exit', handler);
+    return () => ipcRenderer.removeListener('agent:exit', handler);
   },
 });
 
@@ -454,8 +466,14 @@ declare global {
         projectPath: string;
         itemId: string;
         goal: string;
-      }) => Promise<string>;
-      agentAnswer: (sessionId: string, answer: string) => Promise<void>;
+      }) => Promise<{ sessionId: string; error?: string }>;
+      agentResume: (params: {
+        agentName: string;
+        projectPath: string;
+        itemId: string;
+        goal: string;
+      }) => Promise<{ sessionId: string; error?: string }>;
+      agentAnswer: (projectPath: string, itemId: string, answer: string) => Promise<void>;
       agentStop: (sessionId: string) => Promise<void>;
       agentRecover: (projectPath: string) => Promise<Array<object>>;
       onAgentOutput: (callback: (sessionId: string, data: string) => void) => CleanupFn;
@@ -463,6 +481,7 @@ declare global {
       onAgentItemCreated: (callback: (sessionId: string, item: object) => void) => CleanupFn;
       onAgentComplete: (callback: (sessionId: string, summary: string) => void) => CleanupFn;
       onAgentError: (callback: (sessionId: string, message: string) => void) => CleanupFn;
+      onAgentExit: (callback: (sessionId: string, exitCode: number) => void) => CleanupFn;
     };
   }
 }

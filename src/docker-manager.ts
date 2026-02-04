@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto';
 import { createLogger } from './lib/logger';
 import { createWorktree, deleteWorktree, generateBranchName, hasUncommittedChanges, getWorktreeBranch } from './lib/git-worktree';
 import { loadGitConfig, generateGitCredentials } from './lib/git-config';
+import { extractProtocolMessages } from './lib/agent-protocol';
 import type { ContainerSession, ProjectCacheInfo, CacheStats, CleanupResult } from './types/docker';
 import type { ReviewAgentType } from './types/agent';
 
@@ -18,6 +19,20 @@ export type { ReviewAgentType } from './types/agent';
 const logger = createLogger('docker-manager');
 
 const sessions = new Map<string, ContainerSession>();
+
+// Agent container session tracking (separate from interactive sessions)
+interface AgentContainerSession {
+  id: string;
+  containerId: string;
+  webContentsId: number;
+  projectPath: string;
+  itemId: string;
+  agentName: string;
+  state: 'running' | 'stopped' | 'crashed';
+  timeoutId?: NodeJS.Timeout;
+}
+
+const agentSessions = new Map<string, AgentContainerSession>();
 
 // On Windows, we can't use Windows paths inside Linux containers
 // Use a fixed container path and let Docker handle the host path translation
@@ -1263,6 +1278,316 @@ export async function createCodeReviewContainer(
   });
 
   return sessionId;
+}
+
+// ============================================================================
+// Agent Container Functions
+// ============================================================================
+
+export interface AgentContainerParams {
+  webContentsId: number;
+  projectPath: string;
+  agentName: string;
+  prompt: string;
+  model: string;
+  tools: string[];
+  itemId: string;
+}
+
+export interface AgentContainerCallbacks {
+  onOutput?: (data: string) => void;
+  onProtocolMessage?: (message: unknown) => void;
+  onExit?: (code: number) => void;
+}
+
+// Default timeout: 10 minutes of no output
+const AGENT_TIMEOUT_MS = 10 * 60 * 1000;
+
+/**
+ * Create a headless agent container.
+ * Encodes the prompt as base64, runs the agent, parses protocol messages from stdout.
+ *
+ * @param params - Agent container parameters
+ * @param callbacks - Optional callbacks for output, protocol messages, and exit
+ * @returns Session ID for the agent container
+ */
+export async function createAgentContainer(
+  params: AgentContainerParams,
+  callbacks: AgentContainerCallbacks = {}
+): Promise<string> {
+  const { webContentsId, projectPath, agentName, prompt, model, tools, itemId } = params;
+  const { onOutput, onProtocolMessage, onExit } = callbacks;
+
+  const sessionId = `agent-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+  // Resolve to absolute path
+  const resolvedProjectPath = path.resolve(projectPath);
+
+  logger.info('Creating agent container', {
+    sessionId,
+    projectPath: resolvedProjectPath,
+    agentName,
+    model,
+    tools,
+    itemId,
+  });
+
+  const containerProjectPath = getContainerProjectPath(resolvedProjectPath);
+
+  // Build bind mounts for the project (minimal set for headless agent)
+  const homeDir = os.homedir();
+  const claudeDir = path.join(homeDir, '.claude');
+  fs.mkdirSync(claudeDir, { recursive: true });
+
+  const binds = [
+    `${toDockerPath(resolvedProjectPath)}:${containerProjectPath}:rw`,
+    `${toDockerPath(claudeDir)}:/home/agent/.claude:rw`,
+  ];
+
+  // Add SSH keys if available
+  const sshDir = getYoliumSshDir();
+  if (sshDir) {
+    binds.push(`${toDockerPath(sshDir)}:/home/agent/.ssh:rw`);
+  }
+
+  // Add git credentials
+  const gitCredBind = getGitCredentialsBind();
+  if (gitCredBind) {
+    binds.push(gitCredBind);
+  }
+
+  logger.debug('Agent container bind mounts', { sessionId, binds });
+
+  // Encode prompt as base64 to avoid shell escaping issues
+  const promptBase64 = Buffer.from(prompt).toString('base64');
+  logger.info('Agent prompt encoded', { sessionId, promptLength: prompt.length, base64Length: promptBase64.length });
+
+  const container = await docker.createContainer({
+    Image: DEFAULT_IMAGE,
+    Tty: false,  // Headless - no TTY
+    OpenStdin: false,
+    AttachStdin: false,
+    AttachStdout: true,
+    AttachStderr: true,
+    WorkingDir: containerProjectPath,
+    Env: [
+      `PROJECT_DIR=${containerProjectPath}`,
+      'TOOL=agent',
+      `AGENT_PROMPT=${promptBase64}`,
+      `AGENT_MODEL=${model}`,
+      `AGENT_TOOLS=${tools.join(',')}`,
+      `AGENT_ITEM_ID=${itemId}`,
+      `HOST_HOME=${toContainerHomePath(os.homedir())}`,
+      'CLAUDE_CONFIG_DIR=/home/agent/.claude',
+      ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
+    ],
+    HostConfig: {
+      CapAdd: ['NET_ADMIN'],
+      Binds: binds,
+    },
+  });
+
+  // Attach before start to avoid race condition
+  const stream = await container.attach({
+    stream: true,
+    stdout: true,
+    stderr: true,
+  });
+
+  // Demux the multiplexed stream (Tty: false uses 8-byte header framing)
+  const stdout = new PassThrough();
+  const stderr = new PassThrough();
+  docker.modem.demuxStream(stream, stdout, stderr);
+
+  await container.start();
+  logger.info('Agent container started', { sessionId, containerId: container.id });
+
+  // Set up timeout tracking
+  let timeoutId: NodeJS.Timeout | undefined;
+
+  const resetTimeout = () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(async () => {
+      logger.warn('Agent container timed out (no output)', { sessionId });
+      const session = agentSessions.get(sessionId);
+      if (session && session.state === 'running') {
+        session.state = 'crashed';
+        try {
+          await container.stop({ t: 5 });
+          await container.remove({ force: true });
+        } catch {
+          // Container may already be stopped
+        }
+        onExit?.(124); // Timeout exit code
+      }
+    }, AGENT_TIMEOUT_MS);
+  };
+
+  // Start initial timeout
+  resetTimeout();
+
+  // Store session
+  agentSessions.set(sessionId, {
+    id: sessionId,
+    containerId: container.id,
+    webContentsId,
+    projectPath: resolvedProjectPath,
+    itemId,
+    agentName,
+    state: 'running',
+    timeoutId,
+  });
+
+  // Handle output
+  const handleOutput = (data: Buffer) => {
+    const dataStr = data.toString();
+
+    // Reset timeout on any output
+    resetTimeout();
+
+    // Update session timeout reference
+    const session = agentSessions.get(sessionId);
+    if (session) {
+      session.timeoutId = timeoutId;
+    }
+
+    logger.info('Agent output', { sessionId, outputLength: dataStr.length, output: dataStr.slice(0, 500) });
+
+    // Forward raw output
+    onOutput?.(dataStr);
+
+    // Send to renderer
+    const webContents = BrowserWindow.getAllWindows().find(
+      (w) => w.webContents.id === webContentsId
+    )?.webContents;
+
+    if (webContents && !webContents.isDestroyed()) {
+      webContents.send('agent:output', sessionId, dataStr);
+    }
+
+    // Parse and forward protocol messages
+    const messages = extractProtocolMessages(dataStr);
+    for (const message of messages) {
+      onProtocolMessage?.(message);
+
+      if (webContents && !webContents.isDestroyed()) {
+        webContents.send('agent:protocol-message', sessionId, message);
+      }
+    }
+  };
+
+  stdout.on('data', handleOutput);
+  stderr.on('data', handleOutput);
+
+  // Handle completion
+  stream.on('end', async () => {
+    const session = agentSessions.get(sessionId);
+    if (session) {
+      // Clear timeout
+      if (session.timeoutId) {
+        clearTimeout(session.timeoutId);
+      }
+
+      session.state = 'stopped';
+
+      let exitCode = 0;
+      try {
+        const info = await container.inspect();
+        exitCode = info.State.ExitCode;
+        logger.info('Agent container completed', { sessionId, exitCode });
+      } catch {
+        // Container may already be removed
+      }
+
+      onExit?.(exitCode);
+
+      const webContents = BrowserWindow.getAllWindows().find(
+        (w) => w.webContents.id === webContentsId
+      )?.webContents;
+
+      if (webContents && !webContents.isDestroyed()) {
+        webContents.send('agent:exit', sessionId, exitCode);
+      }
+
+      // Cleanup container
+      try {
+        await container.remove({ force: true });
+      } catch {
+        // Container may already be removed
+      }
+
+      agentSessions.delete(sessionId);
+    }
+  });
+
+  stream.on('error', (err: Error) => {
+    logger.error('Agent stream error', { sessionId, error: err.message });
+    const session = agentSessions.get(sessionId);
+    if (session) {
+      // Clear timeout
+      if (session.timeoutId) {
+        clearTimeout(session.timeoutId);
+      }
+
+      session.state = 'crashed';
+    }
+
+    onExit?.(1);
+
+    const webContents = BrowserWindow.getAllWindows().find(
+      (w) => w.webContents.id === webContentsId
+    )?.webContents;
+
+    if (webContents && !webContents.isDestroyed()) {
+      webContents.send('agent:exit', sessionId, 1);
+    }
+  });
+
+  return sessionId;
+}
+
+/**
+ * Stop and remove an agent container.
+ */
+export async function stopAgentContainer(sessionId: string): Promise<void> {
+  const session = agentSessions.get(sessionId);
+  if (!session) return;
+
+  logger.info('Stopping agent container', { sessionId, containerId: session.containerId });
+
+  // Clear timeout
+  if (session.timeoutId) {
+    clearTimeout(session.timeoutId);
+  }
+
+  try {
+    const container = docker.getContainer(session.containerId);
+    await container.stop({ t: 5 });
+    await container.remove({ force: true });
+  } catch (err) {
+    logger.error('Error stopping agent container', {
+      sessionId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  agentSessions.delete(sessionId);
+}
+
+/**
+ * Get agent session info.
+ */
+export function getAgentSession(sessionId: string): AgentContainerSession | undefined {
+  return agentSessions.get(sessionId);
+}
+
+/**
+ * Get all active agent sessions.
+ */
+export function getAllAgentSessions(): AgentContainerSession[] {
+  return Array.from(agentSessions.values());
 }
 
 // ============================================================================

@@ -1,8 +1,16 @@
 // src/tests/agent-loader.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { parseAgentDefinition, loadAgentDefinition } from '../lib/agent-loader';
+import { parseAgentDefinition, loadAgentDefinition, getAgentsDir } from '../lib/agent-loader';
 
 describe('agent-loader', () => {
+  describe('getAgentsDir', () => {
+    it('should return a valid path', () => {
+      const dir = getAgentsDir();
+      expect(typeof dir).toBe('string');
+      expect(dir.length).toBeGreaterThan(0);
+    });
+  });
+
   describe('parseAgentDefinition', () => {
     it('should parse valid agent markdown with frontmatter', () => {
       const markdown = `---

@@ -493,6 +493,49 @@ Be thorough but constructive. Focus on substantive issues, not nitpicks."
         echo "ERROR: Unknown review agent: $REVIEW_AGENT"
         exit 1
     fi
+elif [ "$TOOL" = "agent" ]; then
+    log "Starting agent mode"
+    log "AGENT_MODEL=$AGENT_MODEL"
+    log "AGENT_TOOLS=$AGENT_TOOLS"
+
+    # Validate required environment variables
+    if [ -z "$AGENT_PROMPT" ]; then
+        echo "ERROR: AGENT_PROMPT environment variable is required"
+        exit 1
+    fi
+
+    if [ -z "$AGENT_MODEL" ]; then
+        echo "ERROR: AGENT_MODEL environment variable is required"
+        exit 1
+    fi
+
+    # Decode base64 prompt
+    PROMPT=$(echo "$AGENT_PROMPT" | base64 -d)
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Failed to decode AGENT_PROMPT (invalid base64)"
+        exit 1
+    fi
+
+    log "Prompt decoded successfully (length: ${#PROMPT})"
+
+    # Map model name to full model ID
+    case "$AGENT_MODEL" in
+        opus)   MODEL_ID="claude-opus-4-5-20251101" ;;
+        sonnet) MODEL_ID="claude-sonnet-4-20250514" ;;
+        haiku)  MODEL_ID="claude-haiku-3-5-20241022" ;;
+        *)      MODEL_ID="$AGENT_MODEL" ;;
+    esac
+
+    # Build allowed tools argument
+    TOOLS_ARG=""
+    if [ -n "$AGENT_TOOLS" ]; then
+        TOOLS_ARG="--allowedTools $AGENT_TOOLS"
+    fi
+
+    log "Running Claude: model=$MODEL_ID tools=$AGENT_TOOLS"
+
+    # Run Claude with the decoded prompt (headless - no TTY)
+    exec claude --model "$MODEL_ID" -p "$PROMPT" $TOOLS_ARG --dangerously-skip-permissions
 elif [ "$TOOL" = "opencode" ]; then
     log "Starting OpenCode"
     OPENCODE_BIN=$(which opencode)
