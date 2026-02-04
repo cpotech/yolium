@@ -23,13 +23,13 @@ export interface DetectedGitConfig extends GitConfig {
  */
 function loadSystemGitConfig(): Partial<GitConfig> | null {
   try {
-    const name = execSync('git config --global user.name', { encoding: 'utf-8' }).trim();
-    const email = execSync('git config --global user.email', { encoding: 'utf-8' }).trim();
-    
+    const name = execSync('git config --global user.name', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    const email = execSync('git config --global user.email', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+
     const config: Partial<GitConfig> = {};
     if (name) config.name = name;
     if (email) config.email = email;
-    
+
     return Object.keys(config).length > 0 ? config : null;
   } catch {
     // Git not available or no global config set
