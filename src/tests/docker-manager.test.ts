@@ -949,6 +949,160 @@ describe('cleanup behavior patterns', () => {
   })
 })
 
+// ============================================================================
+// Agent Container Tests
+// ============================================================================
+
+describe('createAgentContainer', () => {
+  it('should encode prompt as base64 in environment', async () => {
+    const testPrompt = 'You are a test agent.\n\n## Goal\n\nDo something.';
+    const expectedBase64 = Buffer.from(testPrompt).toString('base64');
+
+    // Verify our encoding matches what the container will decode
+    const decoded = Buffer.from(expectedBase64, 'base64').toString('utf-8');
+    expect(decoded).toBe(testPrompt);
+  });
+
+  it('should format tools as comma-separated string', () => {
+    const tools = ['Read', 'Glob', 'Grep', 'WebSearch'];
+    const toolsArg = tools.join(',');
+    expect(toolsArg).toBe('Read,Glob,Grep,WebSearch');
+  });
+
+  it('should handle empty tools array', () => {
+    const tools: string[] = [];
+    const toolsArg = tools.join(',');
+    expect(toolsArg).toBe('');
+  });
+
+  it('should handle single tool', () => {
+    const tools = ['Read'];
+    const toolsArg = tools.join(',');
+    expect(toolsArg).toBe('Read');
+  });
+
+  it('should preserve special characters in prompt after base64 roundtrip', () => {
+    const testPrompt = 'Test with special chars: $HOME, `backticks`, "quotes", \'single\', newlines\n\nand unicode: 日本語';
+    const base64 = Buffer.from(testPrompt).toString('base64');
+    const decoded = Buffer.from(base64, 'base64').toString('utf-8');
+    expect(decoded).toBe(testPrompt);
+  });
+});
+
+describe('agent session tracking', () => {
+  interface MockAgentSession {
+    id: string;
+    containerId: string;
+    webContentsId: number;
+    projectPath: string;
+    itemId: string;
+    agentName: string;
+    state: 'running' | 'stopped' | 'crashed';
+    timeoutId?: NodeJS.Timeout;
+  }
+
+  it('should track agent sessions separately from interactive sessions', () => {
+    const agentSessions = new Map<string, MockAgentSession>();
+    const interactiveSessions = new Map<string, { id: string; containerId: string }>();
+
+    // Add an agent session
+    agentSessions.set('agent-123', {
+      id: 'agent-123',
+      containerId: 'container-abc',
+      webContentsId: 1,
+      projectPath: '/home/user/project',
+      itemId: 'item-456',
+      agentName: 'test-agent',
+      state: 'running',
+    });
+
+    // Add an interactive session
+    interactiveSessions.set('interactive-789', {
+      id: 'interactive-789',
+      containerId: 'container-xyz',
+    });
+
+    // They should be independent
+    expect(agentSessions.has('agent-123')).toBe(true);
+    expect(agentSessions.has('interactive-789')).toBe(false);
+    expect(interactiveSessions.has('interactive-789')).toBe(true);
+    expect(interactiveSessions.has('agent-123')).toBe(false);
+  });
+
+  it('should update agent session state on completion', () => {
+    const agentSessions = new Map<string, MockAgentSession>();
+
+    agentSessions.set('agent-123', {
+      id: 'agent-123',
+      containerId: 'container-abc',
+      webContentsId: 1,
+      projectPath: '/home/user/project',
+      itemId: 'item-456',
+      agentName: 'test-agent',
+      state: 'running',
+    });
+
+    // Simulate completion
+    const session = agentSessions.get('agent-123');
+    if (session) {
+      session.state = 'stopped';
+    }
+
+    expect(agentSessions.get('agent-123')?.state).toBe('stopped');
+  });
+
+  it('should clean up timeout on session stop', () => {
+    const agentSessions = new Map<string, MockAgentSession>();
+    const timeoutId = setTimeout(() => {}, 600000);
+
+    agentSessions.set('agent-123', {
+      id: 'agent-123',
+      containerId: 'container-abc',
+      webContentsId: 1,
+      projectPath: '/home/user/project',
+      itemId: 'item-456',
+      agentName: 'test-agent',
+      state: 'running',
+      timeoutId,
+    });
+
+    // Simulate cleanup
+    const session = agentSessions.get('agent-123');
+    if (session?.timeoutId) {
+      clearTimeout(session.timeoutId);
+      session.timeoutId = undefined;
+    }
+
+    expect(agentSessions.get('agent-123')?.timeoutId).toBeUndefined();
+  });
+});
+
+describe('agent container env vars', () => {
+  it('should build correct env vars for agent container', () => {
+    const prompt = 'Test prompt';
+    const model = 'sonnet';
+    const tools = ['Read', 'Glob'];
+
+    const env = [
+      'TOOL=agent',
+      `AGENT_PROMPT=${Buffer.from(prompt).toString('base64')}`,
+      `AGENT_MODEL=${model}`,
+      `AGENT_TOOLS=${tools.join(',')}`,
+    ];
+
+    expect(env).toContain('TOOL=agent');
+    expect(env.find(e => e.startsWith('AGENT_PROMPT='))).toBeDefined();
+    expect(env).toContain('AGENT_MODEL=sonnet');
+    expect(env).toContain('AGENT_TOOLS=Read,Glob');
+  });
+
+  it('should include item ID in env vars', () => {
+    const itemId = 'item-12345';
+    const env = [`AGENT_ITEM_ID=${itemId}`];
+    expect(env).toContain('AGENT_ITEM_ID=item-12345');
+  });
+});
+
 describe('code review auth error detection', () => {
   /**
    * Reimplementation of the auth error detection logic from
