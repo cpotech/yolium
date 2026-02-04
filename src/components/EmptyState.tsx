@@ -320,26 +320,27 @@ export function EmptyState({ onNewTab, onCreateProject }: EmptyStateProps): Reac
       <div className="flex items-center gap-3">
         <button
           onClick={onNewTab}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-accent-primary)] hover:bg-[var(--color-accent-hover)] text-white font-medium rounded-lg transition-colors"
+          className="flex flex-col items-center gap-1 px-5 py-2.5 bg-[var(--color-accent-primary)] hover:bg-[var(--color-accent-hover)] text-white font-medium rounded-lg transition-colors"
         >
-          <Plus size={18} />
-          New Yolium
+          <span className="flex items-center gap-2">
+            <Plus size={18} />
+            New Yolium
+          </span>
+          <kbd className="text-[10px] opacity-70 font-mono">Ctrl+Shift+T</kbd>
         </button>
         {onCreateProject && (
           <button
             onClick={onCreateProject}
-            className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] font-medium rounded-lg border border-[var(--color-border-primary)] transition-colors"
+            className="flex flex-col items-center gap-1 px-5 py-2.5 bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] font-medium rounded-lg border border-[var(--color-border-primary)] transition-colors"
           >
-            <FolderPlus size={18} />
-            Create Project
+            <span className="flex items-center gap-2">
+              <FolderPlus size={18} />
+              Create Project
+            </span>
+            <kbd className="text-[10px] text-[var(--color-text-muted)] font-mono">Ctrl+Shift+P</kbd>
           </button>
         )}
       </div>
-
-      {/* Hint */}
-      <p className="mt-4 text-xs text-[var(--color-text-disabled)]">
-        Press <kbd className="px-1.5 py-0.5 bg-[var(--color-bg-secondary)] rounded text-[var(--color-text-muted)] font-mono">Ctrl+Shift+T</kbd> to create a new tab
-      </p>
     </div>
   );
 }
