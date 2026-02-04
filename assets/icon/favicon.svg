@@ -1,77 +1,68 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <!-- Background gradient -->
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#0a1628"/>
-      <stop offset="100%" stop-color="#000810"/>
-    </linearGradient>
-
-    <!-- Hexagon chrome gradient -->
-    <linearGradient id="hexGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="30%" stop-color="#60a0d0"/>
-      <stop offset="50%" stop-color="#0088cc"/>
-      <stop offset="70%" stop-color="#004466"/>
-      <stop offset="100%" stop-color="#001830"/>
-    </linearGradient>
-
-    <!-- Inner glow -->
-    <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#00aaff" stop-opacity="0.4"/>
-      <stop offset="100%" stop-color="#00aaff" stop-opacity="0"/>
-    </radialGradient>
-
-    <!-- Red eye gradient -->
-    <radialGradient id="eyeGrad" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#ff2200"/>
-      <stop offset="50%" stop-color="#cc0000"/>
-      <stop offset="100%" stop-color="#660000"/>
+    <radialGradient id="bg3" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#2a2a2a"/>
+      <stop offset="100%" stop-color="#1a1a1a"/>
     </radialGradient>
   </defs>
 
   <!-- Background -->
-  <rect width="512" height="512" fill="url(#bgGrad)"/>
+  <rect width="512" height="512" fill="url(#bg3)"/>
 
-  <!-- Outer glow -->
-  <circle cx="256" cy="256" r="200" fill="url(#glowGrad)"/>
+  <!-- Outer ring of circles -->
+  <g fill="none" stroke="#888888" stroke-width="1.5">
+    <!-- 12 outer circles -->
+    <circle cx="256" cy="76" r="45"/>
+    <circle cx="346" cy="106" r="45"/>
+    <circle cx="406" cy="166" r="45"/>
+    <circle cx="436" cy="256" r="45"/>
+    <circle cx="406" cy="346" r="45"/>
+    <circle cx="346" cy="406" r="45"/>
+    <circle cx="256" cy="436" r="45"/>
+    <circle cx="166" cy="406" r="45"/>
+    <circle cx="106" cy="346" r="45"/>
+    <circle cx="76" cy="256" r="45"/>
+    <circle cx="106" cy="166" r="45"/>
+    <circle cx="166" cy="106" r="45"/>
+  </g>
+
+  <!-- Inner structure circles -->
+  <g fill="none" stroke="#aaaaaa" stroke-width="1.5">
+    <!-- Seed of Life - center 7 circles -->
+    <circle cx="256" cy="256" r="50"/>
+    <circle cx="256" cy="206" r="50"/>
+    <circle cx="299" cy="231" r="50"/>
+    <circle cx="299" cy="281" r="50"/>
+    <circle cx="256" cy="306" r="50"/>
+    <circle cx="213" cy="281" r="50"/>
+    <circle cx="213" cy="231" r="50"/>
+  </g>
 
   <!-- Hexagon frame -->
-  <polygon
-    points="256,56 426,130 426,382 256,456 86,382 86,130"
-    fill="none"
-    stroke="url(#hexGrad)"
-    stroke-width="8"
-  />
-
-  <!-- Inner hexagon -->
-  <polygon
-    points="256,96 386,155 386,357 256,416 126,357 126,155"
-    fill="none"
-    stroke="#0088cc"
-    stroke-width="2"
-    opacity="0.5"
-  />
-
-  <!-- Center Y letter - chrome style -->
-  <text
-    x="256"
-    y="320"
-    text-anchor="middle"
-    font-family="Impact, Arial Black, sans-serif"
-    font-size="220"
-    font-weight="bold"
-    fill="url(#hexGrad)"
-  >Y</text>
-
-  <!-- Red eye/core at top -->
-  <circle cx="256" cy="120" r="20" fill="url(#eyeGrad)"/>
-  <circle cx="256" cy="120" r="8" fill="#ffffff" opacity="0.9"/>
-
-  <!-- Scan lines overlay -->
-  <g opacity="0.1">
-    <line x1="86" y1="180" x2="426" y2="180" stroke="#00aaff" stroke-width="1"/>
-    <line x1="86" y1="230" x2="426" y2="230" stroke="#00aaff" stroke-width="1"/>
-    <line x1="86" y1="280" x2="426" y2="280" stroke="#00aaff" stroke-width="1"/>
-    <line x1="86" y1="330" x2="426" y2="330" stroke="#00aaff" stroke-width="1"/>
+  <g fill="none" stroke="#666666" stroke-width="1">
+    <polygon points="256,136 360,196 360,316 256,376 152,316 152,196"/>
+    <!-- Inner cube lines -->
+    <line x1="256" y1="136" x2="256" y2="376"/>
+    <line x1="152" y1="196" x2="360" y2="316"/>
+    <line x1="360" y1="196" x2="152" y2="316"/>
   </g>
+
+  <!-- Blue unicursal hexagram star -->
+  <g fill="none" stroke="#2288ff" stroke-width="3">
+    <!-- Star points extending beyond the circle -->
+    <polygon points="256,56 295,196 436,256 295,316 256,456 217,316 76,256 217,196"/>
+
+    <!-- Inner star connections -->
+    <line x1="256" y1="56" x2="295" y2="316"/>
+    <line x1="295" y1="316" x2="76" y2="256"/>
+    <line x1="76" y1="256" x2="295" y2="196"/>
+    <line x1="295" y1="196" x2="256" y2="456"/>
+    <line x1="256" y1="456" x2="217" y2="196"/>
+    <line x1="217" y1="196" x2="436" y2="256"/>
+    <line x1="436" y1="256" x2="217" y2="316"/>
+    <line x1="217" y1="316" x2="256" y2="56"/>
+  </g>
+
+  <!-- Center point -->
+  <circle cx="256" cy="256" r="6" fill="#ffffff"/>
 </svg>
