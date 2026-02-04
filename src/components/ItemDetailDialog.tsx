@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react'
-import { X, GitBranch, Clock } from 'lucide-react'
+import { X, GitBranch, Clock, Play, MessageSquare, RotateCcw } from 'lucide-react'
 import type { KanbanItem, KanbanColumn, AgentStatus, CommentSource } from '../types/kanban'
 
 interface ItemDetailDialogProps {
@@ -56,6 +56,9 @@ export function ItemDetailDialog({
   const [column, setColumn] = useState<KanbanColumn>('backlog')
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isStartingAgent, setIsStartingAgent] = useState(false)
+  const [answerText, setAnswerText] = useState('')
+  const [isAnswering, setIsAnswering] = useState(false)
 
   // Sync local state when item changes
   useEffect(() => {
@@ -105,6 +108,68 @@ export function ItemDetailDialog({
       setIsDeleting(false)
     }
   }, [item, isDeleting, projectPath, onUpdated, onClose])
+
+  const handleStartPlanAgent = useCallback(async () => {
+    if (!item || isStartingAgent) return
+
+    setIsStartingAgent(true)
+    try {
+      const result = await window.electronAPI.agentStart({
+        agentName: 'plan-agent',
+        projectPath,
+        itemId: item.id,
+        goal: item.description,
+      })
+
+      if (result.error) {
+        console.error('Failed to start agent:', result.error)
+        // Could show a toast/notification here
+      }
+      onUpdated()
+    } catch (error) {
+      console.error('Failed to start agent:', error)
+    } finally {
+      setIsStartingAgent(false)
+    }
+  }, [item, isStartingAgent, projectPath, onUpdated])
+
+  const handleAnswerQuestion = useCallback(async () => {
+    if (!item || isAnswering || !answerText.trim()) return
+
+    setIsAnswering(true)
+    try {
+      await window.electronAPI.agentAnswer(projectPath, item.id, answerText.trim())
+      setAnswerText('')
+      onUpdated()
+    } catch (error) {
+      console.error('Failed to answer question:', error)
+    } finally {
+      setIsAnswering(false)
+    }
+  }, [item, isAnswering, answerText, projectPath, onUpdated])
+
+  const handleResumeAgent = useCallback(async () => {
+    if (!item || isStartingAgent) return
+
+    setIsStartingAgent(true)
+    try {
+      const result = await window.electronAPI.agentResume({
+        agentName: 'plan-agent',
+        projectPath,
+        itemId: item.id,
+        goal: item.description,
+      })
+
+      if (result.error) {
+        console.error('Failed to resume agent:', result.error)
+      }
+      onUpdated()
+    } catch (error) {
+      console.error('Failed to resume agent:', error)
+    } finally {
+      setIsStartingAgent(false)
+    }
+  }, [item, isStartingAgent, projectPath, onUpdated])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -230,6 +295,120 @@ export function ItemDetailDialog({
               >
                 {item.agentStatus}
               </span>
+            </div>
+
+            {/* Plan Agent Controls */}
+            <div className="mb-4 p-3 bg-[var(--color-bg-primary)] rounded-md border border-[var(--color-border-primary)]">
+              <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                Plan Agent
+              </label>
+
+              {/* Idle - Show Run button */}
+              {item.agentStatus === 'idle' && (
+                <button
+                  data-testid="run-plan-agent-button"
+                  onClick={handleStartPlanAgent}
+                  disabled={isStartingAgent}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Play size={14} />
+                  {isStartingAgent ? 'Starting...' : 'Run Plan Agent'}
+                </button>
+              )}
+
+              {/* Running - Show indicator */}
+              {item.agentStatus === 'running' && (
+                <div className="flex items-center gap-2 text-sm text-yellow-400">
+                  <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
+                  Agent is running...
+                </div>
+              )}
+
+              {/* Waiting - Show question and answer input */}
+              {item.agentStatus === 'waiting' && item.agentQuestion && (
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2 text-sm text-orange-400">
+                    <MessageSquare size={14} className="mt-0.5 flex-shrink-0" />
+                    <span>{item.agentQuestion}</span>
+                  </div>
+                  {item.agentQuestionOptions && item.agentQuestionOptions.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {item.agentQuestionOptions.map((option, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setAnswerText(option)}
+                          className="px-2 py-1 text-xs bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] rounded border border-[var(--color-border-primary)] hover:border-[var(--color-accent-primary)] transition-colors"
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <textarea
+                    data-testid="answer-input"
+                    value={answerText}
+                    onChange={e => setAnswerText(e.target.value)}
+                    placeholder="Type your answer..."
+                    rows={2}
+                    className="w-full px-2 py-1.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)] rounded text-sm text-white placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent-primary)]"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      data-testid="submit-answer-button"
+                      onClick={handleAnswerQuestion}
+                      disabled={isAnswering || !answerText.trim()}
+                      className="flex-1 px-2 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isAnswering ? 'Sending...' : 'Submit Answer'}
+                    </button>
+                    <button
+                      data-testid="resume-agent-button"
+                      onClick={handleResumeAgent}
+                      disabled={isStartingAgent || !answerText.trim()}
+                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <RotateCcw size={12} />
+                      {isStartingAgent ? 'Resuming...' : 'Resume'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Interrupted - Show resume button */}
+              {item.agentStatus === 'interrupted' && (
+                <button
+                  data-testid="resume-interrupted-button"
+                  onClick={handleResumeAgent}
+                  disabled={isStartingAgent}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <RotateCcw size={14} />
+                  {isStartingAgent ? 'Resuming...' : 'Resume Agent'}
+                </button>
+              )}
+
+              {/* Completed */}
+              {item.agentStatus === 'completed' && (
+                <div className="text-sm text-green-400">
+                  Agent completed successfully
+                </div>
+              )}
+
+              {/* Failed */}
+              {item.agentStatus === 'failed' && (
+                <div className="space-y-2">
+                  <div className="text-sm text-red-400">Agent failed</div>
+                  <button
+                    data-testid="retry-agent-button"
+                    onClick={handleStartPlanAgent}
+                    disabled={isStartingAgent}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <RotateCcw size={14} />
+                    {isStartingAgent ? 'Retrying...' : 'Retry'}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Agent Type */}
