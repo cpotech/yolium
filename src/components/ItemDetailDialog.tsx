@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react'
-import { X, GitBranch, Clock, Play, MessageSquare, RotateCcw } from 'lucide-react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
+import { X, GitBranch, Clock, Play, MessageSquare, RotateCcw, Terminal, Trash2 } from 'lucide-react'
 import type { KanbanItem, KanbanColumn, AgentStatus, CommentSource } from '../types/kanban'
 
 interface ItemDetailDialogProps {
@@ -59,6 +59,10 @@ export function ItemDetailDialog({
   const [isStartingAgent, setIsStartingAgent] = useState(false)
   const [answerText, setAnswerText] = useState('')
   const [isAnswering, setIsAnswering] = useState(false)
+  const [agentOutput, setAgentOutput] = useState<string>('')
+  const [showAgentLog, setShowAgentLog] = useState(false)
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const logRef = useRef<HTMLPreElement>(null)
 
   // Sync local state when item changes
   useEffect(() => {
@@ -68,6 +72,33 @@ export function ItemDetailDialog({
       setColumn(item.column)
     }
   }, [item])
+
+  // Subscribe to agent output events
+  useEffect(() => {
+    if (!item || !currentSessionId) return
+
+    const cleanup = window.electronAPI.onAgentOutput((sessionId, data) => {
+      // Only capture output for this item's session
+      if (sessionId === currentSessionId) {
+        setAgentOutput(prev => prev + data)
+        setShowAgentLog(true)
+      }
+    })
+
+    return cleanup
+  }, [item?.id, currentSessionId])
+
+  // Auto-scroll agent log to bottom
+  useEffect(() => {
+    if (logRef.current && showAgentLog) {
+      logRef.current.scrollTop = logRef.current.scrollHeight
+    }
+  }, [agentOutput, showAgentLog])
+
+  // Clear output when starting a new agent run
+  const clearAgentOutput = useCallback(() => {
+    setAgentOutput('')
+  }, [])
 
   const handleSave = useCallback(async () => {
     if (!item || isSaving) return
@@ -113,6 +144,8 @@ export function ItemDetailDialog({
     if (!item || isStartingAgent) return
 
     setIsStartingAgent(true)
+    clearAgentOutput()
+    setShowAgentLog(true)
     try {
       const result = await window.electronAPI.agentStart({
         agentName: 'plan-agent',
@@ -123,15 +156,18 @@ export function ItemDetailDialog({
 
       if (result.error) {
         console.error('Failed to start agent:', result.error)
-        // Could show a toast/notification here
+        setAgentOutput(prev => prev + `\n[Error] ${result.error}\n`)
+      } else if (result.sessionId) {
+        setCurrentSessionId(result.sessionId)
       }
       onUpdated()
     } catch (error) {
       console.error('Failed to start agent:', error)
+      setAgentOutput(prev => prev + `\n[Error] ${error}\n`)
     } finally {
       setIsStartingAgent(false)
     }
-  }, [item, isStartingAgent, projectPath, onUpdated])
+  }, [item, isStartingAgent, projectPath, onUpdated, clearAgentOutput])
 
   const handleAnswerQuestion = useCallback(async () => {
     if (!item || isAnswering || !answerText.trim()) return
@@ -152,6 +188,7 @@ export function ItemDetailDialog({
     if (!item || isStartingAgent) return
 
     setIsStartingAgent(true)
+    setShowAgentLog(true)
     try {
       const result = await window.electronAPI.agentResume({
         agentName: 'plan-agent',
@@ -162,10 +199,14 @@ export function ItemDetailDialog({
 
       if (result.error) {
         console.error('Failed to resume agent:', result.error)
+        setAgentOutput(prev => prev + `\n[Error] ${result.error}\n`)
+      } else if (result.sessionId) {
+        setCurrentSessionId(result.sessionId)
       }
       onUpdated()
     } catch (error) {
       console.error('Failed to resume agent:', error)
+      setAgentOutput(prev => prev + `\n[Error] ${error}\n`)
     } finally {
       setIsStartingAgent(false)
     }
@@ -280,6 +321,43 @@ export function ItemDetailDialog({
                 </div>
               )}
             </div>
+
+            {/* Agent Output Log */}
+            {showAgentLog && (
+              <div data-testid="agent-log-section" className="mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-medium text-[var(--color-text-secondary)] flex items-center gap-2">
+                    <Terminal size={14} />
+                    Agent Output
+                  </h3>
+                  <div className="flex items-center gap-1">
+                    <button
+                      data-testid="clear-log-button"
+                      onClick={clearAgentOutput}
+                      className="p-1 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
+                      title="Clear log"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                    <button
+                      data-testid="close-log-button"
+                      onClick={() => setShowAgentLog(false)}
+                      className="p-1 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
+                      title="Hide log"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                </div>
+                <pre
+                  ref={logRef}
+                  data-testid="agent-log-content"
+                  className="bg-[var(--color-bg-primary)] rounded-md p-3 border border-[var(--color-border-primary)] text-xs text-[var(--color-text-primary)] font-mono whitespace-pre-wrap break-words overflow-y-auto max-h-64"
+                >
+                  {agentOutput || 'Waiting for agent output...'}
+                </pre>
+              </div>
+            )}
           </div>
 
           {/* Right pane - Status, Agent Type, Column, Branch, Timestamps, Actions */}
@@ -318,9 +396,21 @@ export function ItemDetailDialog({
 
               {/* Running - Show indicator */}
               {item.agentStatus === 'running' && (
-                <div className="flex items-center gap-2 text-sm text-yellow-400">
-                  <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
-                  Agent is running...
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-yellow-400">
+                    <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
+                    Agent is running...
+                  </div>
+                  {!showAgentLog && agentOutput && (
+                    <button
+                      data-testid="show-log-button"
+                      onClick={() => setShowAgentLog(true)}
+                      className="w-full flex items-center justify-center gap-2 px-2 py-1.5 text-xs bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] rounded border border-[var(--color-border-primary)] hover:border-[var(--color-accent-primary)] transition-colors"
+                    >
+                      <Terminal size={12} />
+                      Show Log
+                    </button>
+                  )}
                 </div>
               )}
 
