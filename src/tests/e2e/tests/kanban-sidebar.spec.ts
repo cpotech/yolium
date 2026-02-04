@@ -107,8 +107,9 @@ test.describe('Kanban Sidebar Integration', () => {
     // Kanban view should be visible (it opens as a tab)
     await expect(window.locator(selectors.kanbanView)).toBeVisible({ timeout: 5000 });
 
-    // Project path should be displayed
-    await expect(window.locator(selectors.projectPathDisplay)).toContainText('kanban-test');
+    // Project path should be displayed (folder name from the test repo)
+    const projectName = path.basename(testRepoPath);
+    await expect(window.locator(selectors.projectPathDisplay)).toContainText(projectName);
   });
 
   test('should show project in sidebar after adding', async () => {
@@ -132,9 +133,8 @@ test.describe('Kanban Sidebar Integration', () => {
     // Wait for kanban to load
     await expect(window.locator(selectors.kanbanView)).toBeVisible({ timeout: 5000 });
 
-    // Project should appear in sidebar (folder name is displayed)
-    const projectName = path.basename(testRepoPath);
-    await expect(window.locator(`text=${projectName}`)).toBeVisible();
+    // Project should appear in sidebar (use specific project item selector)
+    await expect(window.locator(selectors.projectItem(testRepoPath))).toBeVisible();
   });
 
   test('should focus existing kanban tab when clicking project in sidebar', async () => {
@@ -158,9 +158,8 @@ test.describe('Kanban Sidebar Integration', () => {
     await window.click(selectors.sidebarCollapseToggle);
     await window.waitForTimeout(300);
 
-    // Click the project in sidebar
-    const projectName = path.basename(testRepoPath);
-    await window.click(`text=${projectName}`);
+    // Click the project in sidebar (use specific project item selector)
+    await window.click(selectors.projectItem(testRepoPath));
 
     // Kanban view should be visible again (focused)
     await expect(window.locator(selectors.kanbanView)).toBeVisible();
