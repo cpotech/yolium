@@ -89,6 +89,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('git-settings:show', handler);
   },
 
+  // New project event (main -> renderer, Ctrl+Shift+P)
+  onProjectNew: (callback: () => void): CleanupFn => {
+    const handler = () => callback();
+    ipcRenderer.on('project:new', handler);
+    return () => ipcRenderer.removeListener('project:new', handler);
+  },
+
   // Recording toggle event (main -> renderer, Ctrl+Shift+R)
   onRecordingToggle: (callback: () => void): CleanupFn => {
     const handler = () => callback();
@@ -309,6 +316,7 @@ declare global {
       onTabCloseAll: (callback: () => void) => CleanupFn;
       onShortcutsShow: (callback: () => void) => CleanupFn;
       onGitSettingsShow: (callback: () => void) => CleanupFn;
+      onProjectNew: (callback: () => void) => CleanupFn;
       onRecordingToggle: (callback: () => void) => CleanupFn;
       showTabContextMenu: (tabId: string, x: number, y: number) => Promise<void>;
       showConfirmClose: (message: string) => Promise<boolean>;
