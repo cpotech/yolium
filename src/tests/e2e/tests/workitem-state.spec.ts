@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { launchApp, closeApp, createTestRepo, cleanupTestRepo } from '../helpers/app';
+import { launchApp, closeApp, createTestRepo, cleanupTestRepo, type AppContext } from '../helpers/app';
 import { selectors } from '../helpers/selectors';
 import * as os from 'os';
 
@@ -7,19 +7,19 @@ test.describe('Work Item State Updates', () => {
   let ctx: AppContext;
   let testRepoPath: string;
 
-  test.beforeAll(async () => {
+  test.beforeEach(async () => {
+    // Each test gets a unique repo to avoid board state leakage
     testRepoPath = await createTestRepo(os.tmpdir());
-  });
-
-  test.afterAll(async () => {
-    if (testRepoPath) {
-      await cleanupTestRepo(testRepoPath);
-    }
   });
 
   test.afterEach(async () => {
     if (ctx) {
       await closeApp(ctx);
+      ctx = undefined as unknown as AppContext;
+    }
+    if (testRepoPath) {
+      await cleanupTestRepo(testRepoPath);
+      testRepoPath = '';
     }
   });
 
@@ -30,6 +30,19 @@ test.describe('Work Item State Updates', () => {
   async function setupProjectWithItem(): Promise<{ id: string }> {
     ctx = await launchApp();
     const { window } = ctx;
+
+    // Clear stale sidebar projects and kanban tabs from previous test runs
+    // to prevent duplicate kanban-view elements accumulating across launches
+    await window.evaluate(() => {
+      localStorage.removeItem('yolium-sidebar-projects');
+      localStorage.removeItem('yolium-open-kanban-tabs');
+    });
+    await window.reload();
+    await window.waitForLoadState('domcontentloaded');
+    await window.waitForSelector(
+      '[data-testid="empty-state"], [data-testid="docker-setup-dialog"], [data-testid="tab-bar"]',
+      { timeout: 30000 }
+    );
 
     // Add project via sidebar
     await window.click(selectors.addProjectButton);
