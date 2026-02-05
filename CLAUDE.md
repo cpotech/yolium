@@ -1,5 +1,195 @@
 # Yolium Project Instructions
 
+## What Is Yolium
+
+Yolium Desktop is an Electron app that orchestrates AI coding agents (Claude Code, OpenCode, Codex) running in isolated Docker containers. Users manage work items on a kanban board, assign them to agents, and each agent gets its own git worktree branch for conflict-free parallel work.
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Renderer (React 19)                                    │
+│  ┌──────────┐ ┌──────────┐ ┌────────────┐ ┌──────────┐ │
+│  │ Terminal  │ │ Kanban   │ │ Dialogs    │ │ Sidebar  │ │
+│  │ (xterm)  │ │ Board    │ │            │ │          │ │
+│  └──────────┘ └──────────┘ └────────────┘ └──────────┘ │
+│       │             │             │             │       │
+│       └─────────────┴──────┬──────┴─────────────┘       │
+│                            │ IPC (namespaced)            │
+├────────────────────────────┼────────────────────────────┤
+│  Main Process (Electron)   │                            │
+│  ┌──────────┐ ┌────────────┴───┐ ┌───────────────────┐  │
+│  │ IPC      │ │ Agent Runner   │ │ Docker            │  │
+│  │ Handlers │ │ (orchestrator) │ │ (containers, pty) │  │
+│  └──────────┘ └────────────────┘ └───────────────────┘  │
+│       │               │                  │              │
+│  ┌────┴────┐    ┌─────┴──────┐    ┌─────┴──────┐       │
+│  │ Stores  │    │ Git        │    │ Dockerfile │       │
+│  │ (JSON)  │    │ Worktrees  │    │ (dev env)  │       │
+│  └─────────┘    └────────────┘    └────────────┘       │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Codebase Map
+
+### Entry Points
+- `src/main.ts` — Electron main process: window creation, menu, app lifecycle
+- `src/main.tsx` — React entry point: renders `<App />`
+- `src/App.tsx` — Root component: tab management, dialog orchestration, keyboard shortcuts
+- `src/preload.ts` — IPC bridge: exposes `window.electronAPI.*` namespaces to renderer
+
+### IPC Layer (`src/ipc/`)
+Each file registers handlers for one namespace. All aggregated in `src/ipc/index.ts`.
+
+| File | Namespace | Purpose |
+|------|-----------|---------|
+| `app-handlers.ts` | `app:*` | Version, home dir, quit lifecycle |
+| `terminal-handlers.ts` | `terminal:*` | PTY creation, write, resize, close |
+| `tab-handlers.ts` | `tab:*` | Context menus, tab navigation events |
+| `dialog-handlers.ts` | `dialog:*` | Native confirm/close dialogs |
+| `filesystem-handlers.ts` | `fs:*` | Directory listing and creation |
+| `git-handlers.ts` | `git:*`, `git-config:*` | Repo detection, branch, config, PAT |
+| `docker-handlers.ts` | `docker:*` | Image build, Docker state detection |
+| `container-handlers.ts` | `yolium:*`, `container:*` | Interactive container sessions |
+| `kanban-handlers.ts` | `kanban:*` | Board CRUD, item updates |
+| `agent-handlers.ts` | `agent:*` | Headless agent start/stop/resume |
+| `cache-handlers.ts` | `cache:*` | Project cache management |
+| `whisper-handlers.ts` | `whisper:*` | Speech-to-text model management |
+| `code-review-handlers.ts` | `code-review:*` | PR review sessions |
+
+### Business Logic (`src/lib/`)
+- `agent-runner.ts` — Agent orchestration: start, stop, resume, protocol message routing
+- `agent-loader.ts` — Parse agent definitions from `src/agents/*.md` (YAML frontmatter + system prompt)
+- `agent-protocol.ts` — Extract `@@YOLIUM:{type,data}` protocol messages from agent stdout
+- `git-worktree.ts` — Create/delete git worktrees for branch isolation
+- `kanban-store.ts` — Persist kanban boards (JSON via electron-store)
+- `session-store.ts` — Persist tab/session state across restarts
+- `sidebar-store.ts` — Persist sidebar project list
+- `git-config.ts` — Git credential storage (name, email, PAT)
+- `logger.ts` — Structured logging with module context
+- `focus-trap.ts` — Focus trap utility for dialogs
+- `path-utils.ts` — Path normalization helpers
+- `audio-utils.ts` — Audio format conversion for Whisper
+
+### Docker (`src/lib/docker/`)
+- `agent-container.ts` — Create headless agent containers (non-interactive, prompt-driven)
+- `container-lifecycle.ts` — Create/stop interactive containers (user-facing terminal)
+- `image-builder.ts` — Build `yolium:latest` Docker image
+- `project-registry.ts` — Track project cache directories (`~/.yolium/project-registry.json`)
+- `cache-manager.ts` — Cache cleanup (orphaned, stale)
+- `code-review.ts` — PR review container creation
+- `path-utils.ts` — Docker-specific path normalization
+- `shared.ts` — Shared Docker client instance (dockerode)
+
+### React Components (`src/components/`)
+- **Terminal**: `Terminal.tsx` (xterm.js rendering)
+- **Tabs**: `TabBar.tsx`, `Tab.tsx`
+- **Kanban**: `KanbanView.tsx`, `KanbanColumn.tsx`, `KanbanCard.tsx`, `NewItemDialog.tsx`, `ItemDetailDialog.tsx`
+- **Agent UI**: `AgentSelectDialog.tsx`, `AgentControls.tsx`, `AgentLogPanel.tsx`, `AgentStatusBanner.tsx`
+- **Settings**: `GitConfigDialog.tsx`, `KeyboardShortcutsDialog.tsx`, `WhisperModelDialog.tsx`
+- **Navigation**: `Sidebar.tsx`, `ProjectList.tsx`, `DirectoryListing.tsx`, `FavoritesList.tsx`
+- **Other**: `DockerSetupDialog.tsx`, `CodeReviewDialog.tsx`, `SpeechToTextButton.tsx`, `StatusBar.tsx`, `EmptyState.tsx`
+
+### Custom Hooks (`src/hooks/`)
+- `useTabState.ts` — Tab CRUD, reducer-based state management
+- `useAgentCreation.ts` — Agent session creation flow (container + worktree)
+- `useAgentSession.ts` — Agent event listeners (output, questions, completion)
+- `useDockerState.ts` — Docker availability detection and image building
+- `useDialogState.ts` — Dialog open/close state management
+- `useDirectoryNavigation.ts` — Folder browsing for project selection
+- `useFavoriteFolders.ts` — Favorite folders persistence
+- `useGitBranchPolling.ts` — Poll git branch for active tabs
+- `useKeyboardShortcuts.ts` — Global keyboard shortcut registration
+- `useCodeReview.ts` — Code review session management
+- `useWhisper.ts` — Speech-to-text recording and transcription
+- `useTerminalCwd.ts` — Track terminal working directory
+
+### Type Definitions (`src/types/`)
+- `agent.ts` — `AgentType`, `KanbanAgentType`, `ProtocolMessage` variants, `AgentDefinition`
+- `kanban.ts` — `KanbanBoard`, `KanbanItem`, `KanbanColumn`, `AgentStatus`
+- `tabs.ts` — `Tab`, `TabState`, `TabAction` (reducer actions)
+- `docker.ts` — `ContainerSession`, `ProjectCacheInfo`, `DockerState`
+- `git.ts` — Git-related types
+- `whisper.ts` — Whisper model types
+- `theme.ts` — Theme types
+
+### Agent Definitions (`src/agents/`)
+- `plan-agent.md` — Planning agent: decomposes goals into kanban items
+- `code-agent.md` — Code execution agent: implements work items
+- `_protocol.md` — Protocol reference for `@@YOLIUM:{...}` messages
+
+### Tests (`src/tests/`)
+- Unit tests: `*.test.ts` (Vitest)
+- E2E tests: `e2e/tests/*.spec.ts` (Playwright)
+- E2E helpers: `e2e/helpers/app.ts`, `e2e/helpers/selectors.ts`
+
+## Key Design Decisions
+
+- **Docker isolation**: Each agent runs in a container to prevent conflicts and provide a consistent dev environment
+- **Git worktrees**: Agents work on isolated branches without switching the main repo's checkout, enabling true parallel work
+- **Namespaced IPC**: All IPC channels follow `domain:action` naming (e.g., `kanban:add-item`) to avoid collisions and improve discoverability
+- **Agent protocol**: Agents communicate via `@@YOLIUM:{type,data}` JSON messages embedded in stdout — no separate control channel needed
+- **electron-store for persistence**: Kanban boards, session state, and settings use JSON files via electron-store — no database needed at this scale
+
+## Common Patterns
+
+### Adding a new IPC handler
+
+1. Create `src/ipc/foo-handlers.ts`:
+```typescript
+import type { IpcMain } from 'electron';
+
+export function registerFooHandlers(ipcMain: IpcMain): void {
+  ipcMain.handle('foo:do-thing', (_event, arg: string) => {
+    return doThing(arg);
+  });
+}
+```
+
+2. Register in `src/ipc/index.ts`:
+```typescript
+import { registerFooHandlers } from './foo-handlers';
+// Inside registerAllHandlers():
+registerFooHandlers(ipcMain);
+```
+
+3. Expose in `src/preload.ts`:
+```typescript
+const foo = {
+  doThing: (arg: string) => ipcRenderer.invoke('foo:do-thing', arg),
+};
+// Add to contextBridge.exposeInMainWorld and declare global types
+```
+
+### Adding a new React component
+
+- Place in `src/components/FooDialog.tsx`
+- Use `data-testid` attributes on interactive elements for E2E tests
+- Follow existing dialog patterns (see `NewItemDialog.tsx` for a clean example)
+- Wire into `App.tsx` if it needs global state or dialog management
+
+### Adding a new custom hook
+
+- Place in `src/hooks/useFoo.ts`
+- Keep hooks focused on one concern
+- Access IPC via `window.electronAPI.namespace.method()`
+- Return cleanup functions from `useEffect` for event listeners
+
+### Adding a new agent definition
+
+- Create `src/agents/foo-agent.md` with YAML frontmatter:
+```yaml
+---
+name: foo-agent
+description: What this agent does
+model: sonnet
+tools: [Read, Write, Edit, Bash, Glob, Grep]
+timeout: 30
+---
+```
+- Below the frontmatter, write the system prompt
+- The agent communicates back via `@@YOLIUM:{...}` protocol messages (see `src/agents/_protocol.md`)
+
 ## Git Rules
 
 - Never commit `.planning/` directory (GSD planning artifacts are local-only)
