@@ -29,6 +29,14 @@ export function KanbanView({ projectPath }: KanbanViewProps): React.ReactElement
     try {
       const result = await window.electronAPI.kanbanGetBoard(projectPath)
       setBoard(result)
+      // Sync selectedItem with refreshed board data so the detail dialog shows live state
+      if (result) {
+        setSelectedItem(prev => {
+          if (!prev) return prev
+          const updated = result.items.find(i => i.id === prev.id)
+          return updated || null
+        })
+      }
     } catch (error) {
       console.error('Failed to load kanban board:', error)
     } finally {
@@ -93,7 +101,6 @@ export function KanbanView({ projectPath }: KanbanViewProps): React.ReactElement
   }, [])
 
   const handleDetailUpdated = useCallback(() => {
-    setSelectedItem(null)
     loadBoard()
   }, [loadBoard])
 

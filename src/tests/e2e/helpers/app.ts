@@ -34,6 +34,14 @@ export async function launchApp(options: {
     },
   });
 
+  // Mock ensureImage to prevent the build-progress-overlay from blocking
+  // all pointer events. In CI, ensureImage() hangs even with a pre-built
+  // image, causing every test that clicks the UI to time out.
+  await app.evaluate(({ ipcMain }) => {
+    ipcMain.removeHandler('docker:ensure-image');
+    ipcMain.handle('docker:ensure-image', () => Promise.resolve());
+  });
+
   const window = await app.firstWindow();
 
   // Wait for app to be ready (either shows main UI or Docker setup)
