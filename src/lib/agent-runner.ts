@@ -1,9 +1,17 @@
 // src/lib/agent-runner.ts
 import { ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
+import * as path from 'node:path';
 import { createLogger } from './logger';
 import { loadAgentDefinition, ParsedAgent } from './agent-loader';
 import { extractProtocolMessages } from './agent-protocol';
+import {
+  createWorktree,
+  deleteWorktree,
+  generateBranchName,
+  hasCommits,
+  isGitRepo,
+} from './git-worktree';
 import {
   getOrCreateBoard,
   addItem,
@@ -136,10 +144,42 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
   updateItem(board, itemId, { agentStatus: 'running', column: 'in-progress' });
   addComment(board, itemId, 'system', `${agentName} started`);
 
+  // Create worktree for branch isolation (best-effort, graceful fallback)
+  const resolvedProjectPath = path.resolve(projectPath);
+  let worktreePath: string | undefined;
+  let worktreeOriginalPath: string | undefined;
+  let branchName: string | undefined;
+
+  try {
+    if (isGitRepo(resolvedProjectPath) && hasCommits(resolvedProjectPath)) {
+      branchName = item.branch || generateBranchName();
+
+      // Persist auto-generated branch name to kanban item
+      if (!item.branch) {
+        updateItem(board, itemId, { branch: branchName });
+      }
+
+      worktreePath = createWorktree(resolvedProjectPath, branchName);
+      worktreeOriginalPath = resolvedProjectPath;
+      logger.info('Created agent worktree', { agentName, branchName, worktreePath });
+    } else {
+      logger.info('Skipping worktree: not a git repo or no commits', { projectPath });
+    }
+  } catch (err) {
+    logger.warn('Failed to create worktree, running without isolation', {
+      agentName,
+      projectPath,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    worktreePath = undefined;
+    worktreeOriginalPath = undefined;
+    branchName = undefined;
+  }
+
   // Resolve model: item-level model overrides agent-level model
   const model = resolveModel(item.model, agent.model);
 
-  logger.info('Starting agent container', { agentName, projectPath, itemId, model });
+  logger.info('Starting agent container', { agentName, projectPath, itemId, model, branchName });
 
   // Create EventEmitter early so callbacks are wired before container output arrives
   const events = new EventEmitter();
@@ -164,6 +204,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
         model,
         tools: agent.tools,
         itemId,
+        ...(worktreePath && { worktreePath, originalPath: worktreeOriginalPath, branchName }),
       },
       {
         onOutput: (data: string) => {
@@ -235,6 +276,19 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     logger.error('Failed to create agent container', { agentName, projectPath, error: errorMessage });
+
+    // Clean up worktree if container creation failed
+    if (worktreePath && worktreeOriginalPath) {
+      try {
+        deleteWorktree(worktreeOriginalPath, worktreePath);
+        logger.info('Cleaned up worktree after container creation failure', { worktreePath });
+      } catch (cleanupErr) {
+        logger.error('Failed to clean up worktree after error', {
+          worktreePath,
+          error: cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr),
+        });
+      }
+    }
 
     // Revert status on failure
     updateItem(board, itemId, { agentStatus: 'failed' });

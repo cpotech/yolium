@@ -30,6 +30,9 @@ interface AgentContainerSession {
   agentName: string;
   state: 'running' | 'stopped' | 'crashed';
   timeoutId?: NodeJS.Timeout;
+  worktreePath?: string;
+  originalPath?: string;
+  branchName?: string;
 }
 
 const agentSessions = new Map<string, AgentContainerSession>();
@@ -860,6 +863,54 @@ export async function closeAllContainers(): Promise<void> {
   }));
 
   sessions.clear();
+
+  // Also clean up all agent sessions
+  const agentSessionIds = Array.from(agentSessions.keys());
+  await Promise.all(agentSessionIds.map(async (sessionId) => {
+    const session = agentSessions.get(sessionId);
+    if (!session) return;
+
+    try {
+      // Clean up worktree first
+      if (session.worktreePath && session.originalPath) {
+        try {
+          deleteWorktree(session.originalPath, session.worktreePath);
+          logger.info('Agent worktree deleted on shutdown', { sessionId, worktreePath: session.worktreePath });
+        } catch (err) {
+          logger.error('Failed to delete agent worktree on shutdown', {
+            sessionId,
+            worktreePath: session.worktreePath,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
+      // Clear timeout
+      if (session.timeoutId) {
+        clearTimeout(session.timeoutId);
+      }
+
+      // Stop and remove container
+      const container = docker.getContainer(session.containerId);
+      try {
+        await container.stop({ t: 2 });
+      } catch {
+        // Container may already be stopped
+      }
+      try {
+        await container.remove();
+      } catch {
+        // Container may already be removed
+      }
+    } catch (err) {
+      logger.error('Error during agent container cleanup', {
+        sessionId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }));
+
+  agentSessions.clear();
 }
 
 /**
@@ -885,6 +936,7 @@ export async function removeAllYoliumContainers(): Promise<number> {
 
   // Clear local session tracking
   sessions.clear();
+  agentSessions.clear();
 
   return containers.length;
 }
@@ -1292,6 +1344,9 @@ export interface AgentContainerParams {
   model: string;
   tools: string[];
   itemId: string;
+  worktreePath?: string;
+  originalPath?: string;
+  branchName?: string;
 }
 
 export interface AgentContainerCallbacks {
@@ -1315,13 +1370,16 @@ export async function createAgentContainer(
   params: AgentContainerParams,
   callbacks: AgentContainerCallbacks = {}
 ): Promise<string> {
-  const { webContentsId, projectPath, agentName, prompt, model, tools, itemId } = params;
+  const { webContentsId, projectPath, agentName, prompt, model, tools, itemId, worktreePath, originalPath, branchName } = params;
   const { onOutput, onProtocolMessage, onExit } = callbacks;
 
   const sessionId = `agent-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
   // Resolve to absolute path
   const resolvedProjectPath = path.resolve(projectPath);
+
+  // Use worktree as mount path if available, otherwise use project path directly
+  const mountPath = worktreePath || resolvedProjectPath;
 
   logger.info('Creating agent container', {
     sessionId,
@@ -1330,9 +1388,10 @@ export async function createAgentContainer(
     model,
     tools,
     itemId,
+    ...(worktreePath && { worktreePath, branchName }),
   });
 
-  const containerProjectPath = getContainerProjectPath(resolvedProjectPath);
+  const containerProjectPath = getContainerProjectPath(mountPath);
 
   // Build bind mounts for the project (minimal set for headless agent)
   const homeDir = os.homedir();
@@ -1340,9 +1399,19 @@ export async function createAgentContainer(
   fs.mkdirSync(claudeDir, { recursive: true });
 
   const binds = [
-    `${toDockerPath(resolvedProjectPath)}:${containerProjectPath}:rw`,
+    `${toDockerPath(mountPath)}:${containerProjectPath}:rw`,
     `${toDockerPath(claudeDir)}:/home/agent/.claude:rw`,
   ];
+
+  // For worktrees, mount the original repo's .git directory so git commands work
+  if (worktreePath && originalPath) {
+    const mainGitDir = path.join(originalPath, '.git');
+    if (fs.existsSync(mainGitDir) && fs.statSync(mainGitDir).isDirectory()) {
+      const dockerGitDir = toDockerPath(mainGitDir);
+      const containerGitDir = toContainerHomePath(mainGitDir);
+      binds.push(`${dockerGitDir}:${containerGitDir}:rw`);
+    }
+  }
 
   // Add SSH keys if available
   const sshDir = getYoliumSshDir();
@@ -1380,6 +1449,7 @@ export async function createAgentContainer(
       `HOST_HOME=${toContainerHomePath(os.homedir())}`,
       'CLAUDE_CONFIG_DIR=/home/agent/.claude',
       ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
+      ...(worktreePath && originalPath ? [`WORKTREE_REPO_PATH=${toDockerPath(originalPath)}`] : []),
     ],
     HostConfig: {
       CapAdd: ['NET_ADMIN'],
@@ -1428,7 +1498,7 @@ export async function createAgentContainer(
   // Start initial timeout
   resetTimeout();
 
-  // Store session
+  // Store session (include worktree info if applicable)
   agentSessions.set(sessionId, {
     id: sessionId,
     containerId: container.id,
@@ -1438,6 +1508,7 @@ export async function createAgentContainer(
     agentName,
     state: 'running',
     timeoutId,
+    ...(worktreePath && { worktreePath, originalPath, branchName }),
   });
 
   // Handle output
@@ -1518,6 +1589,20 @@ export async function createAgentContainer(
         // Container may already be removed
       }
 
+      // Clean up worktree if this agent had one
+      if (session.worktreePath && session.originalPath) {
+        try {
+          deleteWorktree(session.originalPath, session.worktreePath);
+          logger.info('Agent worktree deleted on exit', { sessionId, worktreePath: session.worktreePath });
+        } catch (err) {
+          logger.error('Failed to clean up agent worktree on exit', {
+            sessionId,
+            worktreePath: session.worktreePath,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
       agentSessions.delete(sessionId);
     }
   });
@@ -1571,6 +1656,20 @@ export async function stopAgentContainer(sessionId: string): Promise<void> {
       sessionId,
       error: err instanceof Error ? err.message : String(err),
     });
+  }
+
+  // Clean up worktree if this agent had one
+  if (session.worktreePath && session.originalPath) {
+    try {
+      deleteWorktree(session.originalPath, session.worktreePath);
+      logger.info('Agent worktree deleted on stop', { sessionId, worktreePath: session.worktreePath });
+    } catch (err) {
+      logger.error('Failed to delete agent worktree', {
+        sessionId,
+        worktreePath: session.worktreePath,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
   agentSessions.delete(sessionId);

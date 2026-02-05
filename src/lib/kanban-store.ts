@@ -148,7 +148,7 @@ export function addItem(board: KanbanBoard, params: NewItemParams): KanbanItem {
 export function updateItem(
   board: KanbanBoard,
   itemId: string,
-  updates: Partial<Pick<KanbanItem, 'title' | 'description' | 'column' | 'agentStatus' | 'agentQuestion' | 'agentQuestionOptions'>>
+  updates: Partial<Pick<KanbanItem, 'title' | 'description' | 'column' | 'branch' | 'agentStatus' | 'agentQuestion' | 'agentQuestionOptions'>>
 ): KanbanItem | null {
   const item = board.items.find(i => i.id === itemId);
   if (!item) return null;

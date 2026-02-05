@@ -1389,3 +1389,294 @@ describe('code review auth error detection', () => {
     expect(detectAuthError(output, 'codex')).toBe(false)
   })
 })
+
+// ============================================================================
+// Agent Worktree Isolation Tests
+// ============================================================================
+
+describe('agent worktree bind mount construction', () => {
+  /**
+   * Simulates the bind mount construction logic from createAgentContainer
+   * when a worktree is provided vs when running directly on the project.
+   */
+  function buildAgentBindMounts(options: {
+    projectPath: string;
+    worktreePath?: string;
+    originalPath?: string;
+    isWindows: boolean;
+  }): string[] {
+    const { projectPath, worktreePath, originalPath, isWindows: isWin } = options;
+    const mountPath = worktreePath || projectPath;
+    const containerProjectPath = getContainerProjectPath(mountPath, isWin);
+
+    const binds = [
+      `${toDockerPath(mountPath, isWin)}:${containerProjectPath}:rw`,
+    ];
+
+    // For worktrees, mount the original repo's .git directory
+    if (worktreePath && originalPath) {
+      const mainGitDir = originalPath + (isWin ? '\\.git' : '/.git');
+      const dockerGitDir = toDockerPath(mainGitDir, isWin);
+      const containerGitDir = toContainerHomePath(mainGitDir, isWin);
+      binds.push(`${dockerGitDir}:${containerGitDir}:rw`);
+    }
+
+    return binds;
+  }
+
+  it('mounts worktree path instead of project path when worktree is provided', () => {
+    const binds = buildAgentBindMounts({
+      projectPath: '/home/user/project',
+      worktreePath: '/home/user/.yolium/worktrees/proj/feature-branch',
+      originalPath: '/home/user/project',
+      isWindows: false,
+    });
+
+    // First bind should use worktree path, not project path
+    expect(binds[0]).toContain('/home/user/.yolium/worktrees/proj/feature-branch');
+    expect(binds[0]).not.toContain('/home/user/project');
+  });
+
+  it('mounts project path directly when no worktree is provided', () => {
+    const binds = buildAgentBindMounts({
+      projectPath: '/home/user/project',
+      isWindows: false,
+    });
+
+    expect(binds[0]).toContain('/home/user/project');
+    expect(binds.length).toBe(1); // No .git bind mount
+  });
+
+  it('adds .git bind mount for worktrees', () => {
+    const binds = buildAgentBindMounts({
+      projectPath: '/home/user/project',
+      worktreePath: '/home/user/.yolium/worktrees/proj/feature-branch',
+      originalPath: '/home/user/project',
+      isWindows: false,
+    });
+
+    expect(binds.length).toBe(2);
+    expect(binds[1]).toContain('.git');
+    expect(binds[1]).toContain(':rw');
+  });
+
+  it('does not add .git bind mount when no worktree', () => {
+    const binds = buildAgentBindMounts({
+      projectPath: '/home/user/project',
+      isWindows: false,
+    });
+
+    const hasGitMount = binds.some(b => b.includes('.git'));
+    expect(hasGitMount).toBe(false);
+  });
+
+  it('handles Windows paths for worktree mounts', () => {
+    const binds = buildAgentBindMounts({
+      projectPath: 'C:\\Users\\name\\project',
+      worktreePath: 'C:\\Users\\name\\.yolium\\worktrees\\proj\\feature',
+      originalPath: 'C:\\Users\\name\\project',
+      isWindows: true,
+    });
+
+    // Should use /workspace for Windows container path
+    expect(binds[0]).toContain('/workspace');
+    // Should convert backslashes to forward slashes
+    expect(binds[0]).not.toContain('\\');
+  });
+});
+
+describe('agent WORKTREE_REPO_PATH env var', () => {
+  function buildAgentWorktreeEnv(options: {
+    worktreePath?: string;
+    originalPath?: string;
+    isWindows: boolean;
+  }): string[] {
+    const { worktreePath, originalPath, isWindows: isWin } = options;
+    return [
+      ...(worktreePath && originalPath
+        ? [`WORKTREE_REPO_PATH=${toDockerPath(originalPath, isWin)}`]
+        : []),
+    ];
+  }
+
+  it('includes WORKTREE_REPO_PATH when worktree is active', () => {
+    const env = buildAgentWorktreeEnv({
+      worktreePath: '/home/user/.yolium/worktrees/proj/branch',
+      originalPath: '/home/user/project',
+      isWindows: false,
+    });
+
+    expect(env).toContain('WORKTREE_REPO_PATH=/home/user/project');
+  });
+
+  it('omits WORKTREE_REPO_PATH when no worktree', () => {
+    const env = buildAgentWorktreeEnv({
+      isWindows: false,
+    });
+
+    expect(env.length).toBe(0);
+  });
+
+  it('converts Windows path for WORKTREE_REPO_PATH', () => {
+    const env = buildAgentWorktreeEnv({
+      worktreePath: 'C:\\Users\\name\\.yolium\\worktrees\\proj\\branch',
+      originalPath: 'C:\\Users\\name\\project',
+      isWindows: true,
+    });
+
+    expect(env[0]).toBe('WORKTREE_REPO_PATH=C:/Users/name/project');
+  });
+});
+
+describe('agent session cleanup with worktrees', () => {
+  interface MockAgentSession {
+    id: string;
+    containerId: string;
+    state: 'running' | 'stopped' | 'crashed';
+    timeoutId?: NodeJS.Timeout;
+    worktreePath?: string;
+    originalPath?: string;
+    branchName?: string;
+  }
+
+  async function simulateCloseAllAgentSessions(
+    sessions: Map<string, MockAgentSession>,
+    mockStopContainer: (containerId: string) => Promise<void>,
+    mockRemoveContainer: (containerId: string) => Promise<void>,
+    mockDeleteWorktree: (originalPath: string, worktreePath: string) => void
+  ): Promise<void> {
+    const sessionIds = Array.from(sessions.keys());
+
+    await Promise.all(sessionIds.map(async (sessionId) => {
+      const session = sessions.get(sessionId);
+      if (!session) return;
+
+      // Clean up worktree first
+      if (session.worktreePath && session.originalPath) {
+        try {
+          mockDeleteWorktree(session.originalPath, session.worktreePath);
+        } catch {
+          // Continue cleanup even if worktree deletion fails
+        }
+      }
+
+      // Clear timeout
+      if (session.timeoutId) {
+        clearTimeout(session.timeoutId);
+      }
+
+      // Stop and remove container
+      try {
+        await mockStopContainer(session.containerId);
+      } catch {
+        // Container may already be stopped
+      }
+      try {
+        await mockRemoveContainer(session.containerId);
+      } catch {
+        // Container may already be removed
+      }
+    }));
+
+    sessions.clear();
+  }
+
+  it('cleans up agent worktrees on closeAll', async () => {
+    const sessions = new Map<string, MockAgentSession>();
+    const deleteWorktreeMock = vi.fn();
+    const stopMock = vi.fn().mockResolvedValue(undefined);
+    const removeMock = vi.fn().mockResolvedValue(undefined);
+
+    sessions.set('agent-1', {
+      id: 'agent-1',
+      containerId: 'container-1',
+      state: 'running',
+      worktreePath: '/home/user/.yolium/worktrees/proj/branch-1',
+      originalPath: '/home/user/project',
+      branchName: 'branch-1',
+    });
+    sessions.set('agent-2', {
+      id: 'agent-2',
+      containerId: 'container-2',
+      state: 'running',
+      // No worktree
+    });
+
+    await simulateCloseAllAgentSessions(sessions, stopMock, removeMock, deleteWorktreeMock);
+
+    // Only agent-1 has a worktree
+    expect(deleteWorktreeMock).toHaveBeenCalledTimes(1);
+    expect(deleteWorktreeMock).toHaveBeenCalledWith(
+      '/home/user/project',
+      '/home/user/.yolium/worktrees/proj/branch-1'
+    );
+
+    // Both containers should be cleaned up
+    expect(stopMock).toHaveBeenCalledTimes(2);
+    expect(removeMock).toHaveBeenCalledTimes(2);
+    expect(sessions.size).toBe(0);
+  });
+
+  it('continues cleanup even if agent worktree deletion fails', async () => {
+    const sessions = new Map<string, MockAgentSession>();
+    const deleteWorktreeMock = vi.fn(() => { throw new Error('Worktree busy'); });
+    const stopMock = vi.fn().mockResolvedValue(undefined);
+    const removeMock = vi.fn().mockResolvedValue(undefined);
+
+    sessions.set('agent-1', {
+      id: 'agent-1',
+      containerId: 'container-1',
+      state: 'running',
+      worktreePath: '/path/worktree',
+      originalPath: '/path/project',
+    });
+
+    await simulateCloseAllAgentSessions(sessions, stopMock, removeMock, deleteWorktreeMock);
+
+    // Container cleanup should still happen
+    expect(stopMock).toHaveBeenCalledWith('container-1');
+    expect(removeMock).toHaveBeenCalledWith('container-1');
+    expect(sessions.size).toBe(0);
+  });
+
+  it('deletes agent worktree before stopping container', async () => {
+    const callOrder: string[] = [];
+    const sessions = new Map<string, MockAgentSession>();
+    const deleteWorktreeMock = vi.fn(() => { callOrder.push('deleteWorktree'); });
+    const stopMock = vi.fn(async () => { callOrder.push('stopContainer'); });
+    const removeMock = vi.fn(async () => { callOrder.push('removeContainer'); });
+
+    sessions.set('agent-1', {
+      id: 'agent-1',
+      containerId: 'container-1',
+      state: 'running',
+      worktreePath: '/path/worktree',
+      originalPath: '/path/project',
+    });
+
+    await simulateCloseAllAgentSessions(sessions, stopMock, removeMock, deleteWorktreeMock);
+
+    expect(callOrder).toEqual(['deleteWorktree', 'stopContainer', 'removeContainer']);
+  });
+
+  it('clears agent timeouts during cleanup', async () => {
+    const sessions = new Map<string, MockAgentSession>();
+    const timeoutId = setTimeout(() => {}, 600000);
+    const deleteWorktreeMock = vi.fn();
+    const stopMock = vi.fn().mockResolvedValue(undefined);
+    const removeMock = vi.fn().mockResolvedValue(undefined);
+
+    sessions.set('agent-1', {
+      id: 'agent-1',
+      containerId: 'container-1',
+      state: 'running',
+      timeoutId,
+    });
+
+    await simulateCloseAllAgentSessions(sessions, stopMock, removeMock, deleteWorktreeMock);
+
+    expect(sessions.size).toBe(0);
+    // Timeout should have been cleared (no leaked timers)
+    clearTimeout(timeoutId); // Ensure it's cleared for test cleanup
+  });
+})

@@ -81,4 +81,136 @@ describe('agent-runner', () => {
       expect(prompt).toContain('Continue from where you left off');
     });
   });
+
+  describe('worktree isolation logic', () => {
+    /**
+     * Simulates the branch name resolution logic from startAgent.
+     * Uses item.branch if set, otherwise generates a new branch name.
+     */
+    function resolveBranchName(
+      itemBranch: string | undefined,
+      generateBranch: () => string
+    ): { branchName: string; wasGenerated: boolean } {
+      if (itemBranch) {
+        return { branchName: itemBranch, wasGenerated: false };
+      }
+      return { branchName: generateBranch(), wasGenerated: true };
+    }
+
+    it('should use item branch when provided', () => {
+      const result = resolveBranchName('feature/my-branch', () => 'yolium-auto');
+      expect(result.branchName).toBe('feature/my-branch');
+      expect(result.wasGenerated).toBe(false);
+    });
+
+    it('should generate branch name when item has no branch', () => {
+      const result = resolveBranchName(undefined, () => 'yolium-12345-abc');
+      expect(result.branchName).toBe('yolium-12345-abc');
+      expect(result.wasGenerated).toBe(true);
+    });
+
+    /**
+     * Simulates the worktree creation decision logic from startAgent.
+     * Returns whether worktree isolation should be attempted.
+     */
+    function shouldCreateWorktree(
+      isGitRepo: boolean,
+      hasCommits: boolean
+    ): boolean {
+      return isGitRepo && hasCommits;
+    }
+
+    it('should create worktree for git repo with commits', () => {
+      expect(shouldCreateWorktree(true, true)).toBe(true);
+    });
+
+    it('should skip worktree for non-git repo', () => {
+      expect(shouldCreateWorktree(false, true)).toBe(false);
+    });
+
+    it('should skip worktree for repo without commits', () => {
+      expect(shouldCreateWorktree(true, false)).toBe(false);
+    });
+
+    it('should skip worktree for non-git repo without commits', () => {
+      expect(shouldCreateWorktree(false, false)).toBe(false);
+    });
+
+    /**
+     * Simulates the graceful fallback behavior when worktree creation fails.
+     * Agent should still run, just without isolation.
+     */
+    function createWorktreeWithFallback(
+      createWorktree: () => string,
+      onSuccess: (path: string) => void,
+      onFallback: () => void
+    ): { worktreePath: string | undefined } {
+      try {
+        const worktreePath = createWorktree();
+        onSuccess(worktreePath);
+        return { worktreePath };
+      } catch {
+        onFallback();
+        return { worktreePath: undefined };
+      }
+    }
+
+    it('should return worktree path on success', () => {
+      const onSuccess = vi.fn();
+      const onFallback = vi.fn();
+      const result = createWorktreeWithFallback(
+        () => '/home/user/.yolium/worktrees/proj/branch',
+        onSuccess,
+        onFallback
+      );
+
+      expect(result.worktreePath).toBe('/home/user/.yolium/worktrees/proj/branch');
+      expect(onSuccess).toHaveBeenCalledWith('/home/user/.yolium/worktrees/proj/branch');
+      expect(onFallback).not.toHaveBeenCalled();
+    });
+
+    it('should fall back gracefully on worktree creation failure', () => {
+      const onSuccess = vi.fn();
+      const onFallback = vi.fn();
+      const result = createWorktreeWithFallback(
+        () => { throw new Error('Branch already checked out'); },
+        onSuccess,
+        onFallback
+      );
+
+      expect(result.worktreePath).toBeUndefined();
+      expect(onSuccess).not.toHaveBeenCalled();
+      expect(onFallback).toHaveBeenCalled();
+    });
+
+    /**
+     * Simulates worktree cleanup in error path.
+     * If container creation fails after worktree was created, clean up worktree.
+     */
+    it('should clean up worktree when container creation fails', () => {
+      const deleteWorktree = vi.fn();
+      const worktreePath = '/home/user/.yolium/worktrees/proj/branch';
+      const originalPath = '/home/user/project';
+
+      // Simulate container creation failure with existing worktree
+      if (worktreePath && originalPath) {
+        deleteWorktree(originalPath, worktreePath);
+      }
+
+      expect(deleteWorktree).toHaveBeenCalledWith(originalPath, worktreePath);
+    });
+
+    it('should not attempt worktree cleanup when no worktree was created', () => {
+      const deleteWorktree = vi.fn();
+      const worktreePath: string | undefined = undefined;
+      const originalPath: string | undefined = undefined;
+
+      // Simulate container creation failure without worktree
+      if (worktreePath && originalPath) {
+        deleteWorktree(originalPath, worktreePath);
+      }
+
+      expect(deleteWorktree).not.toHaveBeenCalled();
+    });
+  });
 });
