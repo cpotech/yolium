@@ -24,11 +24,35 @@ test.describe('Work Item State Updates', () => {
   });
 
   /**
+   * Launch the app with Docker image check mocked out to prevent the
+   * build-progress-overlay from blocking interactions in CI.
+   */
+  async function launchWithMockedDocker(): Promise<AppContext> {
+    ctx = await launchApp();
+
+    // Mock ensureImage to resolve immediately — the overlay blocks all clicks
+    await ctx.app.evaluate(({ ipcMain }) => {
+      ipcMain.removeHandler('docker:ensure-image');
+      ipcMain.handle('docker:ensure-image', () => Promise.resolve());
+    });
+
+    // Reload so the app re-mounts without the blocking overlay
+    const { window } = ctx;
+    await window.reload();
+    await window.waitForSelector(
+      '[data-testid="empty-state"], [data-testid="docker-setup-dialog"], [data-testid="tab-bar"]',
+      { timeout: 30000 },
+    );
+
+    return ctx;
+  }
+
+  /**
    * Launch app, add a project to the sidebar, create a work item via IPC,
    * and return its ID so tests can manipulate it.
    */
   async function setupProjectWithItem(): Promise<{ id: string }> {
-    ctx = await launchApp();
+    await launchWithMockedDocker();
     const { window } = ctx;
 
     // Add project via sidebar
