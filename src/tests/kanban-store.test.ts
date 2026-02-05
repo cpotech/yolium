@@ -1,5 +1,6 @@
 // src/tests/kanban-store.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import * as path from 'node:path';
 import {
   createBoard,
   getBoard,
@@ -21,6 +22,16 @@ vi.mock('node:fs', () => ({
 vi.mock('node:os', () => ({
   homedir: vi.fn(() => '/home/test'),
 }));
+
+// Mock path.resolve to return input as-is by default (platform-independent tests).
+// Individual tests can override to simulate Windows drive-letter resolution.
+vi.mock('node:path', async () => {
+  const actual = await vi.importActual<typeof import('node:path')>('node:path');
+  return {
+    ...actual,
+    resolve: vi.fn((...args: string[]) => args[args.length - 1]),
+  };
+});
 
 describe('kanban-store', () => {
   beforeEach(() => {
@@ -50,6 +61,19 @@ describe('kanban-store', () => {
 
     it('should handle mixed separators', () => {
       expect(normalizeForHash('C:\\Users/gaming\\project')).toBe('C:/Users/gaming/project');
+    });
+
+    it('should resolve drive-letter-less paths to the same hash as drive-letter paths', () => {
+      // Simulate Windows: path.resolve('/Users/gaming/project') → 'C:\\Users\\gaming\\project'
+      vi.mocked(path.resolve).mockReturnValueOnce('C:\\Users\\gaming\\project');
+      const hash1 = normalizeForHash('/Users/gaming/project');
+
+      vi.mocked(path.resolve).mockReturnValueOnce('C:\\Users\\gaming\\project');
+      const hash2 = normalizeForHash('C:\\Users\\gaming\\project');
+
+      expect(hash1).toBe('C:/Users/gaming/project');
+      expect(hash2).toBe('C:/Users/gaming/project');
+      expect(hash1).toBe(hash2);
     });
   });
 
