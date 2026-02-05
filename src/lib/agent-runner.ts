@@ -141,6 +141,18 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
 
   logger.info('Starting agent container', { agentName, projectPath, itemId, model });
 
+  // Create EventEmitter early so callbacks are wired before container output arrives
+  const events = new EventEmitter();
+  if (onQuestion) events.on('question', onQuestion);
+  if (onItemCreated) events.on('itemCreated', onItemCreated);
+  if (onComplete) events.on('complete', onComplete);
+  if (onError) events.on('error', onError);
+  if (onProgress) events.on('progress', onProgress);
+
+  // Buffer output received before session is registered in the map
+  let outputBuffer: string[] = [];
+  let sessionReady = false;
+
   try {
     // Create the agent container
     const sessionId = await createAgentContainer(
@@ -157,47 +169,51 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
         onOutput: (data: string) => {
           // Forward raw output
           onOutput?.(data);
-          // Also process via handleAgentOutput for protocol messages
-          handleAgentOutput(sessionId, data);
+          // Buffer protocol messages until session is registered
+          if (sessionReady) {
+            handleAgentOutput(sessionId, data);
+          } else {
+            outputBuffer.push(data);
+          }
         },
         onProtocolMessage: (message: unknown) => {
           // Protocol messages are handled in handleAgentOutput
           // This callback can be used for additional processing
         },
         onExit: (code: number) => {
-          const session = sessions.get(sessionId);
-          if (session) {
-            const exitBoard = getOrCreateBoard(session.projectPath);
-            const exitItem = exitBoard.items.find(i => i.id === session.itemId);
+          // Use closure variables directly to avoid race with session registration
+          const exitBoard = getOrCreateBoard(projectPath);
+          const exitItem = exitBoard.items.find(i => i.id === itemId);
 
-            if (code === 0) {
-              // Success - check if already marked as completed
-              if (exitItem && exitItem.agentStatus === 'running') {
-                updateItem(exitBoard, session.itemId, { agentStatus: 'completed' });
-                addComment(exitBoard, session.itemId, 'system', 'Agent finished successfully');
-              }
-            } else if (code === 124) {
-              // Timeout
-              updateItem(exitBoard, session.itemId, { agentStatus: 'failed' });
-              addComment(exitBoard, session.itemId, 'system', 'Agent timed out (no activity for 10 minutes)');
-              onError?.('Agent timed out');
-            } else {
-              // Non-zero exit that wasn't handled by protocol
-              if (exitItem && exitItem.agentStatus === 'running') {
-                updateItem(exitBoard, session.itemId, { agentStatus: 'failed' });
-                addComment(exitBoard, session.itemId, 'system', `Agent exited with code ${code}`);
-                onError?.(`Agent exited with code ${code}`);
-              }
+          if (code === 0) {
+            // Success - check if already marked as completed
+            if (exitItem && exitItem.agentStatus === 'running') {
+              updateItem(exitBoard, itemId, { agentStatus: 'completed' });
+              addComment(exitBoard, itemId, 'system', 'Agent finished successfully');
+              events.emit('complete', 'Agent finished successfully');
             }
-
-            sessions.delete(sessionId);
+          } else if (code === 124) {
+            // Timeout
+            updateItem(exitBoard, itemId, { agentStatus: 'failed' });
+            addComment(exitBoard, itemId, 'system', 'Agent timed out (no activity for 10 minutes)');
+            events.emit('error', 'Agent timed out');
+            onError?.('Agent timed out');
+          } else {
+            // Non-zero exit that wasn't handled by protocol
+            if (exitItem && exitItem.agentStatus === 'running') {
+              updateItem(exitBoard, itemId, { agentStatus: 'failed' });
+              addComment(exitBoard, itemId, 'system', `Agent exited with code ${code}`);
+              events.emit('error', `Agent exited with code ${code}`);
+              onError?.(`Agent exited with code ${code}`);
+            }
           }
+
+          sessions.delete(sessionId);
         },
       }
     );
 
-    // Store session for tracking
-    const events = new EventEmitter();
+    // Register session immediately after getting sessionId
     const session: AgentSession = {
       id: sessionId,
       agentName,
@@ -207,23 +223,13 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
       events,
     };
     sessions.set(sessionId, session);
+    sessionReady = true;
 
-    // Wire up event listeners for callbacks
-    if (onQuestion) {
-      events.on('question', onQuestion);
+    // Process any output that arrived before session registration
+    for (const buffered of outputBuffer) {
+      handleAgentOutput(sessionId, buffered);
     }
-    if (onItemCreated) {
-      events.on('itemCreated', onItemCreated);
-    }
-    if (onComplete) {
-      events.on('complete', onComplete);
-    }
-    if (onError) {
-      events.on('error', onError);
-    }
-    if (onProgress) {
-      events.on('progress', onProgress);
-    }
+    outputBuffer = [];
 
     return { sessionId };
   } catch (err) {
