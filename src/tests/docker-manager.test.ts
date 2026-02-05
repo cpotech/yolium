@@ -1103,6 +1103,264 @@ describe('agent container env vars', () => {
   });
 });
 
+// ============================================================================
+// Startup Auto-Build and Cancel Behavior Tests
+// ============================================================================
+
+describe('startup auto-build behavior', () => {
+  /**
+   * Simulates the startup auto-build flow as a pure function.
+   * Mirrors the useEffect in App.tsx that triggers when dockerReady becomes true.
+   */
+  async function simulateStartupAutoBuild(
+    dockerReady: boolean,
+    ensureImage: () => Promise<void>,
+    setBuildProgress: (value: string[] | null) => void,
+    setBuildError: (value: string | null) => void,
+    onProgress: (callback: (message: string) => void) => (() => void),
+    isCancelled: () => boolean,
+    setImageRemoved: (value: boolean) => void,
+  ): Promise<'skipped' | 'success' | 'error' | 'cancelled'> {
+    if (!dockerReady) return 'skipped'
+
+    const cleanupProgress = onProgress((message) => {
+      setBuildProgress([message])
+    })
+
+    setBuildError(null)
+    setBuildProgress(['Checking Yolium image...'])
+
+    try {
+      await ensureImage()
+      cleanupProgress()
+      if (isCancelled()) return 'cancelled'
+      setBuildProgress(null)
+      setImageRemoved(false)
+      return 'success'
+    } catch (err) {
+      cleanupProgress()
+      if (isCancelled()) return 'cancelled'
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      setBuildError(message)
+      return 'error'
+    }
+  }
+
+  it('calls ensureImage when docker is ready', async () => {
+    const ensureImage = vi.fn().mockResolvedValue(undefined)
+    const setBuildProgress = vi.fn()
+    const setBuildError = vi.fn()
+    const onProgress = vi.fn(() => vi.fn())
+    const setImageRemoved = vi.fn()
+
+    await simulateStartupAutoBuild(true, ensureImage, setBuildProgress, setBuildError, onProgress, () => false, setImageRemoved)
+
+    expect(ensureImage).toHaveBeenCalledTimes(1)
+  })
+
+  it('skips when docker is not ready', async () => {
+    const ensureImage = vi.fn().mockResolvedValue(undefined)
+    const setBuildProgress = vi.fn()
+    const setBuildError = vi.fn()
+    const onProgress = vi.fn(() => vi.fn())
+    const setImageRemoved = vi.fn()
+
+    const result = await simulateStartupAutoBuild(false, ensureImage, setBuildProgress, setBuildError, onProgress, () => false, setImageRemoved)
+
+    expect(result).toBe('skipped')
+    expect(ensureImage).not.toHaveBeenCalled()
+  })
+
+  it('clears progress on success', async () => {
+    const ensureImage = vi.fn().mockResolvedValue(undefined)
+    const setBuildProgress = vi.fn()
+    const setBuildError = vi.fn()
+    const onProgress = vi.fn(() => vi.fn())
+    const setImageRemoved = vi.fn()
+
+    await simulateStartupAutoBuild(true, ensureImage, setBuildProgress, setBuildError, onProgress, () => false, setImageRemoved)
+
+    // Should set progress to null after success
+    expect(setBuildProgress).toHaveBeenLastCalledWith(null)
+  })
+
+  it('sets error on failure', async () => {
+    const ensureImage = vi.fn().mockRejectedValue(new Error('Build failed'))
+    const setBuildProgress = vi.fn()
+    const setBuildError = vi.fn()
+    const onProgress = vi.fn(() => vi.fn())
+    const setImageRemoved = vi.fn()
+
+    const result = await simulateStartupAutoBuild(true, ensureImage, setBuildProgress, setBuildError, onProgress, () => false, setImageRemoved)
+
+    expect(result).toBe('error')
+    expect(setBuildError).toHaveBeenCalledWith('Build failed')
+  })
+
+  it('returns cancelled when flag is set during success', async () => {
+    const ensureImage = vi.fn().mockResolvedValue(undefined)
+    const setBuildProgress = vi.fn()
+    const setBuildError = vi.fn()
+    const onProgress = vi.fn(() => vi.fn())
+    const setImageRemoved = vi.fn()
+
+    const result = await simulateStartupAutoBuild(true, ensureImage, setBuildProgress, setBuildError, onProgress, () => true, setImageRemoved)
+
+    expect(result).toBe('cancelled')
+    // Should not clear progress or set imageRemoved when cancelled
+    expect(setBuildProgress).not.toHaveBeenCalledWith(null)
+    expect(setImageRemoved).not.toHaveBeenCalled()
+  })
+
+  it('returns cancelled when flag is set during error', async () => {
+    const ensureImage = vi.fn().mockRejectedValue(new Error('Build failed'))
+    const setBuildProgress = vi.fn()
+    const setBuildError = vi.fn()
+    const onProgress = vi.fn(() => vi.fn())
+    const setImageRemoved = vi.fn()
+
+    const result = await simulateStartupAutoBuild(true, ensureImage, setBuildProgress, setBuildError, onProgress, () => true, setImageRemoved)
+
+    expect(result).toBe('cancelled')
+    // Should not set error when cancelled
+    expect(setBuildError).not.toHaveBeenCalledWith('Build failed')
+  })
+
+  it('cleans up listener on success', async () => {
+    const ensureImage = vi.fn().mockResolvedValue(undefined)
+    const setBuildProgress = vi.fn()
+    const setBuildError = vi.fn()
+    const cleanupFn = vi.fn()
+    const onProgress = vi.fn(() => cleanupFn)
+    const setImageRemoved = vi.fn()
+
+    await simulateStartupAutoBuild(true, ensureImage, setBuildProgress, setBuildError, onProgress, () => false, setImageRemoved)
+
+    expect(cleanupFn).toHaveBeenCalled()
+  })
+
+  it('cleans up listener on error', async () => {
+    const ensureImage = vi.fn().mockRejectedValue(new Error('fail'))
+    const setBuildProgress = vi.fn()
+    const setBuildError = vi.fn()
+    const cleanupFn = vi.fn()
+    const onProgress = vi.fn(() => cleanupFn)
+    const setImageRemoved = vi.fn()
+
+    await simulateStartupAutoBuild(true, ensureImage, setBuildProgress, setBuildError, onProgress, () => false, setImageRemoved)
+
+    expect(cleanupFn).toHaveBeenCalled()
+  })
+
+  it('sets imageRemoved to false on success', async () => {
+    const ensureImage = vi.fn().mockResolvedValue(undefined)
+    const setBuildProgress = vi.fn()
+    const setBuildError = vi.fn()
+    const onProgress = vi.fn(() => vi.fn())
+    const setImageRemoved = vi.fn()
+
+    await simulateStartupAutoBuild(true, ensureImage, setBuildProgress, setBuildError, onProgress, () => false, setImageRemoved)
+
+    expect(setImageRemoved).toHaveBeenCalledWith(false)
+  })
+})
+
+describe('build cancel behavior', () => {
+  /**
+   * Simulates tab creation with cancel support.
+   * Mirrors createYoliumWithAgent in App.tsx with the cancel ref check.
+   */
+  async function simulateTabCreationWithCancel(
+    ensureImage: () => Promise<void>,
+    createContainer: () => Promise<string>,
+    isCancelled: () => boolean,
+    setBuildProgress: (value: string[] | null) => void,
+    setBuildError: (value: string | null) => void,
+    onProgress: (callback: (message: string) => void) => (() => void),
+  ): Promise<'success' | 'cancelled' | 'build-error' | 'container-error'> {
+    const cleanupProgress = onProgress((message) => {
+      setBuildProgress([message])
+    })
+
+    setBuildError(null)
+    setBuildProgress(['Checking Yolium image...'])
+
+    try {
+      await ensureImage()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      setBuildError(message)
+      cleanupProgress()
+      return 'build-error'
+    }
+
+    cleanupProgress()
+
+    // Check cancel after build completes
+    if (isCancelled()) {
+      return 'cancelled'
+    }
+
+    setBuildProgress(null)
+
+    try {
+      await createContainer()
+      return 'success'
+    } catch {
+      return 'container-error'
+    }
+  }
+
+  it('creates container when not cancelled', async () => {
+    const ensureImage = vi.fn().mockResolvedValue(undefined)
+    const createContainer = vi.fn().mockResolvedValue('session-123')
+    const setBuildProgress = vi.fn()
+    const setBuildError = vi.fn()
+    const onProgress = vi.fn(() => vi.fn())
+
+    const result = await simulateTabCreationWithCancel(
+      ensureImage, createContainer, () => false,
+      setBuildProgress, setBuildError, onProgress
+    )
+
+    expect(result).toBe('success')
+    expect(createContainer).toHaveBeenCalled()
+  })
+
+  it('skips container when cancelled', async () => {
+    const ensureImage = vi.fn().mockResolvedValue(undefined)
+    const createContainer = vi.fn().mockResolvedValue('session-123')
+    const setBuildProgress = vi.fn()
+    const setBuildError = vi.fn()
+    const onProgress = vi.fn(() => vi.fn())
+
+    const result = await simulateTabCreationWithCancel(
+      ensureImage, createContainer, () => true,
+      setBuildProgress, setBuildError, onProgress
+    )
+
+    expect(result).toBe('cancelled')
+    expect(createContainer).not.toHaveBeenCalled()
+  })
+
+  it('still reports error if build fails', async () => {
+    const ensureImage = vi.fn().mockRejectedValue(new Error('Docker build failed'))
+    const createContainer = vi.fn().mockResolvedValue('session-123')
+    const setBuildProgress = vi.fn()
+    const setBuildError = vi.fn()
+    const onProgress = vi.fn(() => vi.fn())
+
+    const result = await simulateTabCreationWithCancel(
+      ensureImage, createContainer, () => false,
+      setBuildProgress, setBuildError, onProgress
+    )
+
+    expect(result).toBe('build-error')
+    expect(setBuildError).toHaveBeenCalledWith('Docker build failed')
+    expect(createContainer).not.toHaveBeenCalled()
+  })
+})
+
 describe('code review auth error detection', () => {
   /**
    * Reimplementation of the auth error detection logic from

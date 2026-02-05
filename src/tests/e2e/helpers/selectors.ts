@@ -84,6 +84,7 @@ export const selectors = {
   // Build progress overlay
   buildProgressOverlay: '[data-testid="build-progress-overlay"]',
   buildProgressText: '[data-testid="build-progress-text"]',
+  buildCancelButton: '[data-testid="build-cancel-button"]',
 
   // Sidebar
   sidebar: '[data-testid="sidebar"]',
