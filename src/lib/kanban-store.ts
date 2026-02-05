@@ -30,7 +30,8 @@ function generateId(): string {
  * so that the same physical path always produces the same hash.
  */
 export function normalizeForHash(projectPath: string): string {
-  let normalized = projectPath.replace(/\\/g, '/');
+  // Resolve to absolute path so drive-letter-less paths get the drive prefix on Windows
+  let normalized = path.resolve(projectPath).replace(/\\/g, '/');
   if (normalized.endsWith('/') && normalized.length > 1) {
     normalized = normalized.slice(0, -1);
   }
