@@ -11,6 +11,7 @@ const mockKanbanUpdateItem = vi.fn()
 const mockKanbanDeleteItem = vi.fn()
 const mockShowConfirmOkCancel = vi.fn()
 const mockOnAgentOutput = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
+const mockOnAgentProgress = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -21,6 +22,7 @@ beforeEach(() => {
       kanbanDeleteItem: mockKanbanDeleteItem,
       showConfirmOkCancel: mockShowConfirmOkCancel,
       onAgentOutput: mockOnAgentOutput,
+      onAgentProgress: mockOnAgentProgress,
     },
     writable: true,
   })

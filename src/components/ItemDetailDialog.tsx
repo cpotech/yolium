@@ -58,19 +58,22 @@ export function ItemDetailDialog({
   const [isStartingAgent, setIsStartingAgent] = useState(false)
   const [answerText, setAnswerText] = useState('')
   const [isAnswering, setIsAnswering] = useState(false)
-  const [agentOutput, setAgentOutput] = useState<string>('')
+  const [agentOutputLines, setAgentOutputLines] = useState<string[]>([])
   const [showAgentLog, setShowAgentLog] = useState(false)
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const sessionIdRef = useRef<string | null>(null)
   const [currentStep, setCurrentStep] = useState<string | null>(null)
   const [currentDetail, setCurrentDetail] = useState<string | null>(null)
-  const logRef = useRef<HTMLPreElement>(null)
+  const logEndRef = useRef<HTMLDivElement>(null)
+  const logContainerRef = useRef<HTMLDivElement>(null)
 
   // Reset agent output state when switching to a different item
   // Use item.id (not the object ref) so refreshes of the same item don't clear output
   useEffect(() => {
-    setAgentOutput('')
+    setAgentOutputLines([])
     setShowAgentLog(false)
     setCurrentSessionId(null)
+    sessionIdRef.current = null
     setCurrentStep(null)
     setCurrentDetail(null)
   }, [item?.id])
@@ -84,27 +87,30 @@ export function ItemDetailDialog({
     }
   }, [item])
 
-  // Subscribe to agent output events
+  // Subscribe to agent output events (uses ref to capture output before state update)
   useEffect(() => {
-    if (!item || !currentSessionId) return
+    if (!item) return
 
     const cleanup = window.electronAPI.onAgentOutput((sessionId, data) => {
-      // Only capture output for this item's session
-      if (sessionId === currentSessionId) {
-        setAgentOutput(prev => prev + data)
-        setShowAgentLog(true)
+      // Use ref for immediate session tracking (avoids race with setState)
+      if (sessionId === sessionIdRef.current) {
+        const lines = data.split('\n').filter(Boolean)
+        if (lines.length > 0) {
+          setAgentOutputLines(prev => [...prev, ...lines])
+          setShowAgentLog(true)
+        }
       }
     })
 
     return cleanup
-  }, [item?.id, currentSessionId])
+  }, [item?.id])
 
-  // Subscribe to agent progress events
+  // Subscribe to agent progress events (uses ref for immediate tracking)
   useEffect(() => {
-    if (!item || !currentSessionId) return
+    if (!item) return
 
     const cleanup = window.electronAPI.onAgentProgress((sessionId, progress) => {
-      if (sessionId === currentSessionId) {
+      if (sessionId === sessionIdRef.current) {
         setCurrentStep(progress.step)
         setCurrentDetail(
           progress.attempt
@@ -115,18 +121,18 @@ export function ItemDetailDialog({
     })
 
     return cleanup
-  }, [item?.id, currentSessionId])
+  }, [item?.id])
 
   // Auto-scroll agent log to bottom
   useEffect(() => {
-    if (logRef.current && showAgentLog) {
-      logRef.current.scrollTop = logRef.current.scrollHeight
+    if (logEndRef.current && showAgentLog) {
+      logEndRef.current.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [agentOutput, showAgentLog])
+  }, [agentOutputLines, showAgentLog])
 
   // Clear output when starting a new agent run
   const clearAgentOutput = useCallback(() => {
-    setAgentOutput('')
+    setAgentOutputLines([])
   }, [])
 
   const handleSave = useCallback(async () => {
@@ -191,14 +197,16 @@ export function ItemDetailDialog({
 
       if (result.error) {
         console.error('Failed to start agent:', result.error)
-        setAgentOutput(prev => prev + `\n[Error] ${result.error}\n`)
+        setAgentOutputLines(prev => [...prev, `[Error] ${result.error}`])
       } else if (result.sessionId) {
+        // Set ref immediately so output events are captured before state renders
+        sessionIdRef.current = result.sessionId
         setCurrentSessionId(result.sessionId)
       }
       onUpdated()
     } catch (error) {
       console.error('Failed to start agent:', error)
-      setAgentOutput(prev => prev + `\n[Error] ${error}\n`)
+      setAgentOutputLines(prev => [...prev, `[Error] ${error}`])
     } finally {
       setIsStartingAgent(false)
     }
@@ -236,14 +244,16 @@ export function ItemDetailDialog({
 
       if (result.error) {
         console.error('Failed to resume agent:', result.error)
-        setAgentOutput(prev => prev + `\n[Error] ${result.error}\n`)
+        setAgentOutputLines(prev => [...prev, `[Error] ${result.error}`])
       } else if (result.sessionId) {
+        // Set ref immediately so output events are captured before state renders
+        sessionIdRef.current = result.sessionId
         setCurrentSessionId(result.sessionId)
       }
       onUpdated()
     } catch (error) {
       console.error('Failed to resume agent:', error)
-      setAgentOutput(prev => prev + `\n[Error] ${error}\n`)
+      setAgentOutputLines(prev => [...prev, `[Error] ${error}`])
     } finally {
       setIsStartingAgent(false)
     }
@@ -386,13 +396,22 @@ export function ItemDetailDialog({
                     </button>
                   </div>
                 </div>
-                <pre
-                  ref={logRef}
+                <div
+                  ref={logContainerRef}
                   data-testid="agent-log-content"
-                  className="bg-[var(--color-bg-primary)] rounded-md p-3 border border-[var(--color-border-primary)] text-xs text-[var(--color-text-primary)] font-mono whitespace-pre-wrap break-words overflow-y-auto max-h-64"
+                  className="bg-[var(--color-bg-primary)] rounded-md p-3 border border-[var(--color-border-primary)] text-xs text-[var(--color-text-primary)] font-mono overflow-y-auto max-h-96"
                 >
-                  {agentOutput || 'Waiting for agent output...'}
-                </pre>
+                  {agentOutputLines.length === 0 ? (
+                    <span className="text-[var(--color-text-tertiary)]">Waiting for agent output...</span>
+                  ) : (
+                    agentOutputLines.map((line, idx) => (
+                      <div key={idx} className="whitespace-pre-wrap break-words leading-5">
+                        {line}
+                      </div>
+                    ))
+                  )}
+                  <div ref={logEndRef} />
+                </div>
               </div>
             )}
           </div>
@@ -471,7 +490,7 @@ export function ItemDetailDialog({
                       {currentDetail}
                     </p>
                   )}
-                  {!showAgentLog && agentOutput && (
+                  {!showAgentLog && agentOutputLines.length > 0 && (
                     <button
                       data-testid="show-log-button"
                       onClick={() => setShowAgentLog(true)}

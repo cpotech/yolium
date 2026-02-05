@@ -61,6 +61,65 @@ Content`;
       expect(() => parseAgentDefinition(markdown)).toThrow('Invalid model');
     });
 
+    it('should parse optional timeout field', () => {
+      const markdown = `---
+name: code-agent
+description: Implements code
+model: sonnet
+tools:
+  - Read
+timeout: 60
+---
+
+# Code Agent`;
+
+      const result = parseAgentDefinition(markdown);
+      expect(result.timeout).toBe(60);
+    });
+
+    it('should ignore timeout when not present', () => {
+      const markdown = `---
+name: plan-agent
+description: Plans work
+model: opus
+tools:
+  - Read
+---
+
+# Plan Agent`;
+
+      const result = parseAgentDefinition(markdown);
+      expect(result.timeout).toBeUndefined();
+    });
+
+    it('should ignore zero or negative timeout', () => {
+      const zeroMarkdown = `---
+name: test-agent
+description: Test
+model: haiku
+tools:
+  - Read
+timeout: 0
+---
+
+Content`;
+
+      expect(parseAgentDefinition(zeroMarkdown).timeout).toBeUndefined();
+
+      const negativeMarkdown = `---
+name: test-agent
+description: Test
+model: haiku
+tools:
+  - Read
+timeout: -5
+---
+
+Content`;
+
+      expect(parseAgentDefinition(negativeMarkdown).timeout).toBeUndefined();
+    });
+
     it('should parse code-agent definition with Bash/Write/Edit tools', () => {
       const markdown = `---
 name: code-agent

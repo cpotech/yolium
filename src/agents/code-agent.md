@@ -2,6 +2,7 @@
 name: code-agent
 description: Autonomously implements code changes, writes tests, pushes branches, and monitors CI
 model: sonnet
+timeout: 60
 tools:
   - Read
   - Glob

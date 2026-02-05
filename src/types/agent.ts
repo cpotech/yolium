@@ -26,6 +26,7 @@ export interface AgentDefinition {
   description: string;
   model: 'opus' | 'sonnet' | 'haiku';
   tools: string[];
+  timeout?: number; // Inactivity timeout in minutes (default: 30)
 }
 
 // Protocol message types from agent stdout

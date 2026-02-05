@@ -205,6 +205,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
         tools: agent.tools,
         itemId,
         ...(worktreePath && { worktreePath, originalPath: worktreeOriginalPath, branchName }),
+        ...(agent.timeout && { timeoutMs: agent.timeout * 60 * 1000 }),
       },
       {
         onOutput: (data: string) => {
@@ -235,8 +236,9 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
             }
           } else if (code === 124) {
             // Timeout
+            const timeoutMinutes = agent.timeout || 30;
             updateItem(exitBoard, itemId, { agentStatus: 'failed' });
-            addComment(exitBoard, itemId, 'system', 'Agent timed out (no activity for 10 minutes)');
+            addComment(exitBoard, itemId, 'system', `Agent timed out (no activity for ${timeoutMinutes} minutes)`);
             events.emit('error', 'Agent timed out');
             onError?.('Agent timed out');
           } else {
