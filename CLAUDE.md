@@ -40,6 +40,7 @@ Yolium Desktop is an Electron app that orchestrates AI coding agents (Claude Cod
 
 ### IPC Layer (`src/ipc/`)
 Each file registers handlers for one namespace. All aggregated in `src/ipc/index.ts`.
+Full API reference with types: [docs/IPC.md](docs/IPC.md).
 
 | File | Namespace | Purpose |
 |------|-----------|---------|
