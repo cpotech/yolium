@@ -521,8 +521,8 @@ elif [ "$TOOL" = "agent" ]; then
     # Map model name to full model ID
     case "$AGENT_MODEL" in
         opus)   MODEL_ID="claude-opus-4-5-20251101" ;;
-        sonnet) MODEL_ID="claude-sonnet-4-20250514" ;;
-        haiku)  MODEL_ID="claude-haiku-3-5-20241022" ;;
+        sonnet) MODEL_ID="claude-sonnet-4-5-20250929" ;;
+        haiku)  MODEL_ID="claude-haiku-4-5-20251001" ;;
         *)      MODEL_ID="$AGENT_MODEL" ;;
     esac
 

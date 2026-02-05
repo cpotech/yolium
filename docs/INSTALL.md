@@ -33,6 +33,7 @@ When you go to the [Releases page](https://github.com/yolium-ai/yolium/releases)
 | **`Yolium.Desktop-0.1.5.Setup.exe`** | Windows | Standard Windows installer. Double-click to install like any other app. |
 | **`yolium-desktop_0.1.5_amd64.deb`** | Linux (Ubuntu, Debian, Mint, Pop!_OS) | Debian package. Install with `dpkg` or your package manager. |
 | **`yolium-desktop-0.1.5-1.x86_64.rpm`** | Linux (Fedora, RHEL, openSUSE) | RPM package. Install with `dnf` or `rpm`. |
+| **`yolium-desktop-0.1.5-1-x86_64.pkg.tar.zst`** | Linux (Arch, Manjaro, EndeavourOS) | Arch Linux package. Install with `pacman`. |
 
 ### Other Files
 
@@ -89,6 +90,8 @@ cfc1400713eedfee28db70ce3bec1a24a6055f1f540f1703ff0c1310e062f62f  yolium-desktop
 5111285082008cb023e1a01e09c944972b5ef488ddb64f6ceb5e3708cd957b41  Yolium.Desktop-0.1.5.Setup.exe
 ```
 
+> **Arch Linux users:** The `.pkg.tar.zst` checksum is also included in `checksums-sha256.txt` on the release page. Verify it the same way using `sha256sum`.
+
 > If the checksums don't match, delete the file and download it again. If the problem persists, report it as an issue.
 
 ---
@@ -138,6 +141,48 @@ Then launch from your application menu or run:
 yolium-desktop
 ```
 
+### Linux (Arch / Manjaro / EndeavourOS)
+
+#### From the release package
+
+```bash
+sudo pacman -U yolium-desktop-0.1.5-1-x86_64.pkg.tar.zst
+```
+
+#### Building from the PKGBUILD
+
+If you prefer to build from source, the repository includes a `PKGBUILD` in the `build/` directory:
+
+```bash
+git clone https://github.com/yolium-ai/yolium.git
+cd yolium
+
+# Install dependencies and build the Electron app
+npm ci
+npx electron-rebuild --only node-pty
+npm run make
+
+# Prepare the Arch package sources
+VERSION=$(node -p "require('./package.json').version")
+mkdir -p arch-pkg
+tar czf "arch-pkg/yolium-desktop-${VERSION}.tar.gz" -C out "Yolium Desktop-linux-x64"
+cp build/yolium-desktop.desktop arch-pkg/
+cp assets/icon/web-app-manifest-512x512.png arch-pkg/yolium-desktop.png
+sed "s/__VERSION__/${VERSION}/" build/PKGBUILD > arch-pkg/PKGBUILD
+
+# Build and install
+cd arch-pkg
+makepkg -si
+```
+
+Then launch from your application menu or run:
+
+```bash
+yolium-desktop
+```
+
+> **Note:** The PKGBUILD installs binaries to `/opt/yolium-desktop` and creates a symlink at `/usr/bin/yolium-desktop`. Runtime dependencies (`gtk3`, `nss`, `alsa-lib`, `libxss`, `libxtst`) are installed automatically by `pacman`.
+
 ---
 
 ## Step 4: First Launch
@@ -166,6 +211,12 @@ sudo apt remove yolium-desktop
 sudo dnf remove yolium-desktop
 ```
 
+### Linux (Arch/Manjaro)
+
+```bash
+sudo pacman -Rns yolium-desktop
+```
+
 ---
 
 ## Troubleshooting
@@ -174,7 +225,8 @@ sudo dnf remove yolium-desktop
 |---------|----------|
 | Installer won't run on Windows | Right-click > **Run as administrator** |
 | "Docker not found" on first launch | Make sure Docker is installed and running. On Linux, ensure your user is in the `docker` group: `sudo usermod -aG docker $USER` (then log out and back in). |
-| Dependency errors on Linux | Run `sudo apt-get install -f` (Debian/Ubuntu) after installing the `.deb` package. |
+| Dependency errors on Linux (Debian/Ubuntu) | Run `sudo apt-get install -f` after installing the `.deb` package. |
+| Dependency errors on Linux (Arch) | Ensure `gtk3`, `nss`, `alsa-lib`, `libxss`, and `libxtst` are installed: `sudo pacman -S gtk3 nss alsa-lib libxss libxtst`. |
 | Checksum doesn't match | Delete the file and re-download. If it still doesn't match, open an issue on GitHub. |
 
 ---

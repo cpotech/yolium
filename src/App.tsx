@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState, useRef } from 'react';
+import React, { useEffect, useCallback, useState, useRef, useMemo } from 'react';
 import { Loader2, GitPullRequest, Settings } from 'lucide-react';
 import { useTabState } from './hooks/useTabState';
 import { useWhisper } from './hooks/useWhisper';
@@ -22,6 +22,8 @@ import {
   getSidebarProjects,
   addSidebarProject,
   removeSidebarProject,
+  getOpenKanbanPaths,
+  saveOpenKanbanPaths,
   type SidebarProject,
 } from './lib/sidebar-store';
 import { KanbanView } from './components/KanbanView';
@@ -29,6 +31,8 @@ import { KanbanView } from './components/KanbanView';
 type PathDialogMode = 'newTab' | 'addProject';
 
 function App(): React.ReactElement {
+  // Restore kanban tabs that were open in the previous session
+  const savedKanbanPaths = useMemo(() => getOpenKanbanPaths(), []);
   const {
     tabs,
     activeTabId,
@@ -42,7 +46,7 @@ function App(): React.ReactElement {
     closeOtherTabs,
     addKanbanTab,
     closeKanbanForProject,
-  } = useTabState();
+  } = useTabState(savedKanbanPaths);
 
   // Whisper speech-to-text
   const whisper = useWhisper();
@@ -100,9 +104,12 @@ function App(): React.ReactElement {
 
   // Ref for auto-scrolling build progress
   const progressRef = useRef<HTMLDivElement>(null);
+  const buildCancelledRef = useRef<boolean>(false);
 
   // Create yolium with selected agent
   const createYoliumWithAgent = useCallback(async (folderPath: string, agent: AgentType, gsdEnabled: boolean, worktreeEnabled: boolean = false, branchName: string | null = null) => {
+    buildCancelledRef.current = false;
+
     // Set up progress listener before starting
     const cleanupProgress = window.electronAPI.onDockerBuildProgress((message) => {
       setBuildProgress(prev => {
@@ -118,6 +125,10 @@ function App(): React.ReactElement {
       setBuildError(null);
       setBuildProgress(['Checking Yolium image...']);
       await window.electronAPI.ensureImage();
+      if (buildCancelledRef.current) {
+        cleanupProgress();
+        return;
+      }
       setBuildProgress(null);
       setImageRemoved(false); // Image now exists
     } catch (err) {
@@ -306,6 +317,12 @@ function App(): React.ReactElement {
     }
   }, [gitConfig]);
 
+  // Persist open kanban tab paths so they restore on next launch
+  useEffect(() => {
+    const kanbanPaths = tabs.filter(t => t.type === 'kanban').map(t => t.cwd);
+    saveOpenKanbanPaths(kanbanPaths);
+  }, [tabs]);
+
   // Check Docker state on app launch
   useEffect(() => {
     window.electronAPI.detectDockerState().then((state) => {
@@ -318,6 +335,40 @@ function App(): React.ReactElement {
       setDockerReady(false);
     });
   }, []);
+
+  // Auto-check/build Docker image on startup when Docker is ready
+  useEffect(() => {
+    if (!dockerReady) return;
+    buildCancelledRef.current = false;
+
+    const cleanupProgress = window.electronAPI.onDockerBuildProgress((message) => {
+      setBuildProgress(prev => {
+        const lines = prev || [];
+        return [...lines, message].slice(-50);
+      });
+    });
+
+    setBuildError(null);
+    setBuildProgress(['Checking Yolium image...']);
+
+    window.electronAPI.ensureImage()
+      .then(() => {
+        cleanupProgress();
+        if (!buildCancelledRef.current) {
+          setBuildProgress(null);
+          setImageRemoved(false);
+        }
+      })
+      .catch((err) => {
+        cleanupProgress();
+        if (!buildCancelledRef.current) {
+          const message = err instanceof Error ? err.message : 'Unknown error';
+          setBuildError(message);
+        }
+      });
+
+    return () => { cleanupProgress(); };
+  }, [dockerReady]);
 
   // Load git config on mount
   useEffect(() => {
@@ -715,11 +766,20 @@ function App(): React.ReactElement {
               >
                 Close
               </button>
-            ) : !isRebuilding && (
-              <p className="mt-3 text-xs text-[var(--color-text-muted)]">
-                This only happens once. Future launches will be instant.
-              </p>
-            )}
+            ) : !isRebuilding ? (
+              <div className="mt-3 flex items-center justify-between">
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  This only happens once. Future launches will be instant.
+                </p>
+                <button
+                  data-testid="build-cancel-button"
+                  onClick={() => { buildCancelledRef.current = true; setBuildProgress(null); }}
+                  className="ml-4 px-3 py-1.5 text-sm text-[var(--color-text-secondary)] hover:text-white rounded transition-colors border border-[var(--color-border-primary)] hover:bg-[var(--color-bg-tertiary)]"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       )}

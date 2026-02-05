@@ -297,8 +297,8 @@ Output: @@YOLIUM:{"type":"complete","summary":"done"}`;
       expect(entrypointContent).toContain('sonnet)');
       expect(entrypointContent).toContain('haiku)');
       expect(entrypointContent).toContain('claude-opus-4-5-20251101');
-      expect(entrypointContent).toContain('claude-sonnet-4-20250514');
-      expect(entrypointContent).toContain('claude-haiku-3-5-20241022');
+      expect(entrypointContent).toContain('claude-sonnet-4-5-20250929');
+      expect(entrypointContent).toContain('claude-haiku-4-5-20251001');
     });
 
     it('should support optional AGENT_TOOLS for allowed tools', () => {

@@ -7,6 +7,7 @@ import {
   updateItem,
   addComment,
   buildConversationHistory,
+  normalizeForHash,
 } from '../lib/kanban-store';
 
 // Mock fs
@@ -26,6 +27,32 @@ describe('kanban-store', () => {
     vi.clearAllMocks();
   });
 
+  describe('normalizeForHash', () => {
+    it('should convert backslashes to forward slashes', () => {
+      expect(normalizeForHash('C:\\Users\\gaming\\project')).toBe('C:/Users/gaming/project');
+    });
+
+    it('should remove trailing slash', () => {
+      expect(normalizeForHash('/path/to/project/')).toBe('/path/to/project');
+    });
+
+    it('should remove trailing backslash (after conversion)', () => {
+      expect(normalizeForHash('C:\\Users\\gaming\\project\\')).toBe('C:/Users/gaming/project');
+    });
+
+    it('should leave already normalized paths unchanged', () => {
+      expect(normalizeForHash('C:/Users/gaming/project')).toBe('C:/Users/gaming/project');
+    });
+
+    it('should preserve root slash', () => {
+      expect(normalizeForHash('/')).toBe('/');
+    });
+
+    it('should handle mixed separators', () => {
+      expect(normalizeForHash('C:\\Users/gaming\\project')).toBe('C:/Users/gaming/project');
+    });
+  });
+
   describe('createBoard', () => {
     it('should create a new board for a project', () => {
       const board = createBoard('/path/to/project');
@@ -33,6 +60,28 @@ describe('kanban-store', () => {
       expect(board.projectPath).toBe('/path/to/project');
       expect(board.items).toEqual([]);
       expect(board.id).toBeDefined();
+    });
+
+    it('should normalize backslash paths in projectPath', () => {
+      const board = createBoard('C:\\Users\\gaming\\project');
+
+      expect(board.projectPath).toBe('C:/Users/gaming/project');
+    });
+
+    it('should produce the same board for equivalent paths', async () => {
+      const fs = await import('node:fs');
+      const writeFileSync = vi.mocked(fs.writeFileSync);
+
+      createBoard('C:\\Users\\gaming\\project');
+      const path1 = writeFileSync.mock.calls[0][0] as string;
+
+      writeFileSync.mockClear();
+
+      createBoard('C:/Users/gaming/project');
+      const path2 = writeFileSync.mock.calls[0][0] as string;
+
+      // Both should write to the same file path (same hash)
+      expect(path1).toBe(path2);
     });
   });
 

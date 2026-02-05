@@ -1,10 +1,5 @@
 import { useReducer, useCallback } from 'react';
-import type { Tab, TabState, TabAction, ContainerState } from '../types/tabs';
-
-const initialState: TabState = {
-  tabs: [],
-  activeTabId: null,
-};
+import type { Tab, TabState, TabAction, ContainerState, TabType } from '../types/tabs';
 
 // Generate unique tab ID
 function generateTabId(): string {
@@ -130,8 +125,21 @@ function tabReducer(state: TabState, action: TabAction): TabState {
   }
 }
 
-export function useTabState() {
-  const [state, dispatch] = useReducer(tabReducer, initialState);
+function buildInitialState(kanbanPaths?: string[]): TabState {
+  if (!kanbanPaths || kanbanPaths.length === 0) {
+    return { tabs: [], activeTabId: null };
+  }
+  const tabs: Tab[] = kanbanPaths.map(cwd => ({
+    id: generateTabId(),
+    type: 'kanban' as TabType,
+    cwd,
+    label: cwd.split('/').pop() || cwd,
+  }));
+  return { tabs, activeTabId: tabs[0]?.id ?? null };
+}
+
+export function useTabState(initialKanbanPaths?: string[]) {
+  const [state, dispatch] = useReducer(tabReducer, initialKanbanPaths, buildInitialState);
 
   const addTab = useCallback((sessionId: string, cwd: string, containerState: ContainerState = 'starting', gitBranch?: string) => {
     const label = cwd.split('/').pop() || cwd;
