@@ -264,6 +264,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('agent:answer', projectPath, itemId, answer),
   agentStop: (sessionId: string) =>
     ipcRenderer.invoke('agent:stop', sessionId),
+  agentGetActiveSession: (projectPath: string, itemId: string) =>
+    ipcRenderer.invoke('agent:get-active-session', projectPath, itemId),
   agentRecover: (projectPath: string) =>
     ipcRenderer.invoke('agent:recover', projectPath),
   onAgentOutput: (callback: (sessionId: string, data: string) => void): CleanupFn => {
@@ -484,6 +486,7 @@ declare global {
       }) => Promise<{ sessionId: string; error?: string }>;
       agentAnswer: (projectPath: string, itemId: string, answer: string) => Promise<void>;
       agentStop: (sessionId: string) => Promise<void>;
+      agentGetActiveSession: (projectPath: string, itemId: string) => Promise<{ sessionId: string } | null>;
       agentRecover: (projectPath: string) => Promise<Array<object>>;
       onAgentOutput: (callback: (sessionId: string, data: string) => void) => CleanupFn;
       onAgentQuestion: (callback: (sessionId: string, question: { text: string; options?: string[] }) => void) => CleanupFn;

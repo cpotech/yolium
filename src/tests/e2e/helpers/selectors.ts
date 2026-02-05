@@ -96,6 +96,7 @@ export const selectors = {
   // Kanban - Agent controls
   runCodeAgentButton: '[data-testid="run-code-agent-button"]',
   runPlanAgentButton: '[data-testid="run-plan-agent-button"]',
+  stopAgentButton: '[data-testid="stop-agent-button"]',
   agentProgressDetail: '[data-testid="agent-progress-detail"]',
   modelDisplay: '[data-testid="model-display"]',
 
@@ -104,9 +105,35 @@ export const selectors = {
   kanbanEmptyState: '[data-testid="kanban-empty-state"]',
   kanbanColumnsContainer: '[data-testid="kanban-columns-container"]',
   kanbanColumn: (id: string) => `[data-testid="kanban-column-${id}"]`,
+  kanbanCard: '[data-testid="kanban-card"]',
   kanbanNewItemButton: '[data-testid="new-item-button"]',
   kanbanRefreshButton: '[data-testid="refresh-button"]',
   projectPathDisplay: '[data-testid="project-path-display"]',
+  columnEmptyState: '[data-testid="column-empty-state"]',
+
+  // New Item Dialog
+  newItemDialog: '[data-testid="new-item-dialog"]',
+  newItemTitle: '[data-testid="new-item-dialog"] [data-testid="title-input"]',
+  newItemDescription: '[data-testid="new-item-dialog"] [data-testid="description-input"]',
+  newItemBranch: '[data-testid="new-item-dialog"] [data-testid="branch-input"]',
+  newItemAgentType: '[data-testid="new-item-dialog"] [data-testid="agent-type-select"]',
+  newItemCreate: '[data-testid="new-item-dialog"] [data-testid="create-button"]',
+  newItemCancel: '[data-testid="new-item-dialog"] [data-testid="cancel-button"]',
+
+  // Item Detail Dialog
+  itemDetailDialog: '[data-testid="item-detail-dialog"]',
+  detailTitle: '[data-testid="item-detail-dialog"] [data-testid="title-input"]',
+  detailDescription: '[data-testid="item-detail-dialog"] [data-testid="description-input"]',
+  detailColumnSelect: '[data-testid="item-detail-dialog"] [data-testid="column-select"]',
+  detailStatusBadge: '[data-testid="item-detail-dialog"] [data-testid="status-badge"]',
+  detailSaveButton: '[data-testid="item-detail-dialog"] [data-testid="save-button"]',
+  detailDeleteButton: '[data-testid="item-detail-dialog"] [data-testid="delete-button"]',
+  detailCloseButton: '[data-testid="item-detail-dialog"] [data-testid="close-button"]',
+  detailBranchDisplay: '[data-testid="item-detail-dialog"] [data-testid="branch-display"]',
+  detailAgentType: '[data-testid="item-detail-dialog"] [data-testid="agent-type-display"]',
+  detailCreatedAt: '[data-testid="item-detail-dialog"] [data-testid="created-at"]',
+  detailCommentsSection: '[data-testid="item-detail-dialog"] [data-testid="comments-section"]',
+  detailNoComments: '[data-testid="item-detail-dialog"] [data-testid="no-comments"]',
 
   // Code review dialog
   codeReviewButton: '[data-testid="code-review-button"]',

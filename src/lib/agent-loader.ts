@@ -64,11 +64,17 @@ export function parseAgentDefinition(markdown: string): ParsedAgent {
     throw new Error('tools must be an array');
   }
 
+  // Parse optional timeout (must be a positive number if present)
+  const timeout = data.timeout != null && typeof data.timeout === 'number' && data.timeout > 0
+    ? data.timeout
+    : undefined;
+
   return {
     name: data.name,
     description: data.description,
     model: data.model,
     tools: data.tools,
+    timeout,
     systemPrompt: content.trim(),
   };
 }

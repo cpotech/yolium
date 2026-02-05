@@ -1347,6 +1347,7 @@ export interface AgentContainerParams {
   worktreePath?: string;
   originalPath?: string;
   branchName?: string;
+  timeoutMs?: number; // Inactivity timeout in milliseconds (default: 30 min)
 }
 
 export interface AgentContainerCallbacks {
@@ -1355,8 +1356,8 @@ export interface AgentContainerCallbacks {
   onExit?: (code: number) => void;
 }
 
-// Default timeout: 10 minutes of no output
-const AGENT_TIMEOUT_MS = 10 * 60 * 1000;
+// Default timeout: 30 minutes of no output
+const DEFAULT_AGENT_TIMEOUT_MS = 30 * 60 * 1000;
 
 /**
  * Create a headless agent container.
@@ -1370,7 +1371,7 @@ export async function createAgentContainer(
   params: AgentContainerParams,
   callbacks: AgentContainerCallbacks = {}
 ): Promise<string> {
-  const { webContentsId, projectPath, agentName, prompt, model, tools, itemId, worktreePath, originalPath, branchName } = params;
+  const { webContentsId, projectPath, agentName, prompt, model, tools, itemId, worktreePath, originalPath, branchName, timeoutMs } = params;
   const { onOutput, onProtocolMessage, onExit } = callbacks;
 
   const sessionId = `agent-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -1475,12 +1476,14 @@ export async function createAgentContainer(
   // Set up timeout tracking
   let timeoutId: NodeJS.Timeout | undefined;
 
+  const effectiveTimeoutMs = timeoutMs ?? DEFAULT_AGENT_TIMEOUT_MS;
+
   const resetTimeout = () => {
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
     timeoutId = setTimeout(async () => {
-      logger.warn('Agent container timed out (no output)', { sessionId });
+      logger.warn('Agent container timed out (no output)', { sessionId, timeoutMs: effectiveTimeoutMs });
       const session = agentSessions.get(sessionId);
       if (session && session.state === 'running') {
         session.state = 'crashed';
@@ -1492,7 +1495,7 @@ export async function createAgentContainer(
         }
         onExit?.(124); // Timeout exit code
       }
-    }, AGENT_TIMEOUT_MS);
+    }, effectiveTimeoutMs);
   };
 
   // Start initial timeout
@@ -1526,25 +1529,22 @@ export async function createAgentContainer(
 
     logger.info('Agent output', { sessionId, outputLength: dataStr.length, output: dataStr.slice(0, 500) });
 
-    // Forward raw output
+    // Forward raw output (flows through agent-runner events → main.ts → renderer IPC)
     onOutput?.(dataStr);
-
-    // Send to renderer
-    const webContents = BrowserWindow.getAllWindows().find(
-      (w) => w.webContents.id === webContentsId
-    )?.webContents;
-
-    if (webContents && !webContents.isDestroyed()) {
-      webContents.send('agent:output', sessionId, dataStr);
-    }
 
     // Parse and forward protocol messages
     const messages = extractProtocolMessages(dataStr);
-    for (const message of messages) {
-      onProtocolMessage?.(message);
+    if (messages.length > 0) {
+      const webContents = BrowserWindow.getAllWindows().find(
+        (w) => w.webContents.id === webContentsId
+      )?.webContents;
 
-      if (webContents && !webContents.isDestroyed()) {
-        webContents.send('agent:protocol-message', sessionId, message);
+      for (const message of messages) {
+        onProtocolMessage?.(message);
+
+        if (webContents && !webContents.isDestroyed()) {
+          webContents.send('agent:protocol-message', sessionId, message);
+        }
       }
     }
   };

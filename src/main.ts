@@ -57,7 +57,9 @@ import {
   stopAgent,
   answerAgentQuestion,
   getAgentEvents,
+  getSessionByItemId,
   recoverInterruptedAgents,
+  clearSessions,
 } from './lib/agent-runner';
 import type { KanbanItem } from './types/kanban';
 import * as fs from 'node:fs';
@@ -735,7 +737,7 @@ ipcMain.handle('kanban:get-board', (_event, projectPath: string) => {
   return getOrCreateBoard(projectPath);
 });
 
-ipcMain.handle('kanban:add-item', (_event, projectPath: string, params: {
+ipcMain.handle('kanban:add-item', (event, projectPath: string, params: {
   title: string;
   description: string;
   branch?: string;
@@ -744,22 +746,36 @@ ipcMain.handle('kanban:add-item', (_event, projectPath: string, params: {
   model?: string;
 }) => {
   const board = getOrCreateBoard(projectPath);
-  return addItem(board, params);
+  const result = addItem(board, params);
+  event.sender.send('kanban:board-updated', projectPath);
+  return result;
 });
 
-ipcMain.handle('kanban:update-item', (_event, projectPath: string, itemId: string, updates: Partial<KanbanItem>) => {
+ipcMain.handle('kanban:update-item', (event, projectPath: string, itemId: string, updates: Partial<KanbanItem>) => {
   const board = getOrCreateBoard(projectPath);
-  return updateItem(board, itemId, updates);
+  const result = updateItem(board, itemId, updates);
+  if (!result) {
+    throw new Error(`Failed to update item ${itemId}: item not found or invalid update`);
+  }
+  event.sender.send('kanban:board-updated', projectPath);
+  return result;
 });
 
-ipcMain.handle('kanban:add-comment', (_event, projectPath: string, itemId: string, source: 'user' | 'agent' | 'system', text: string) => {
+ipcMain.handle('kanban:add-comment', (event, projectPath: string, itemId: string, source: 'user' | 'agent' | 'system', text: string) => {
   const board = getOrCreateBoard(projectPath);
-  return addComment(board, itemId, source, text);
+  const result = addComment(board, itemId, source, text);
+  if (!result) {
+    throw new Error(`Failed to add comment to item ${itemId}: item not found`);
+  }
+  event.sender.send('kanban:board-updated', projectPath);
+  return result;
 });
 
-ipcMain.handle('kanban:delete-item', (_event, projectPath: string, itemId: string) => {
+ipcMain.handle('kanban:delete-item', (event, projectPath: string, itemId: string) => {
   const board = getOrCreateBoard(projectPath);
-  return deleteItem(board, itemId);
+  const result = deleteItem(board, itemId);
+  event.sender.send('kanban:board-updated', projectPath);
+  return result;
 });
 
 // Agent operations
@@ -770,11 +786,24 @@ ipcMain.handle('agent:start', async (event, params: {
   goal: string;
 }) => {
   const webContentsId = event.sender.id;
+  const win = BrowserWindow.getAllWindows().find(w => w.webContents.id === webContentsId);
   logger.info('IPC: agent:start', { ...params, webContentsId });
+
+  // Buffer output that arrives before we have the sessionId
+  let resolvedSessionId: string | null = null;
+  const outputBuffer: string[] = [];
 
   const result = await startAgent({
     webContentsId,
     ...params,
+    // Direct callback ensures output is captured immediately (no event timing gap)
+    onOutput: (data: string) => {
+      if (resolvedSessionId) {
+        win?.webContents.send('agent:output', resolvedSessionId, data);
+      } else {
+        outputBuffer.push(data);
+      }
+    },
   });
 
   if (result.error) {
@@ -782,39 +811,39 @@ ipcMain.handle('agent:start', async (event, params: {
     return result;
   }
 
-  // Set up event forwarding from agent to renderer
+  resolvedSessionId = result.sessionId;
+
+  // Flush buffered output that arrived during startup
+  for (const data of outputBuffer) {
+    win?.webContents.send('agent:output', result.sessionId, data);
+  }
+
+  // Set up event forwarding for non-output events
   const events = getAgentEvents(result.sessionId);
-  const win = BrowserWindow.getAllWindows().find(w => w.webContents.id === webContentsId);
 
   // Notify UI that board was updated (item moved to in-progress)
   win?.webContents.send('kanban:board-updated', params.projectPath);
 
   if (events) {
-    events.on('output', (data: string) => {
-      win?.webContents.send('agent:output', result.sessionId, data);
-    });
+    // NOTE: 'output' is handled via onOutput callback above (not events) to avoid timing gap
 
     events.on('question', (question: { text: string; options?: string[] }) => {
       win?.webContents.send('agent:question', result.sessionId, question);
-      // Notify UI that board was updated (item moved back to ready)
       win?.webContents.send('kanban:board-updated', params.projectPath);
     });
 
     events.on('itemCreated', (item: KanbanItem) => {
       win?.webContents.send('agent:item-created', result.sessionId, item);
-      // Notify UI that board was updated (new item added)
       win?.webContents.send('kanban:board-updated', params.projectPath);
     });
 
     events.on('complete', (summary: string) => {
       win?.webContents.send('agent:complete', result.sessionId, summary);
-      // Notify UI that board was updated (item moved to done)
       win?.webContents.send('kanban:board-updated', params.projectPath);
     });
 
     events.on('error', (message: string) => {
       win?.webContents.send('agent:error', result.sessionId, message);
-      // Notify UI that board was updated (status changed)
       win?.webContents.send('kanban:board-updated', params.projectPath);
     });
 
@@ -834,11 +863,23 @@ ipcMain.handle('agent:resume', async (event, params: {
   goal: string;
 }) => {
   const webContentsId = event.sender.id;
+  const win = BrowserWindow.getAllWindows().find(w => w.webContents.id === webContentsId);
   logger.info('IPC: agent:resume', { ...params, webContentsId });
+
+  // Buffer output that arrives before we have the sessionId
+  let resolvedSessionId: string | null = null;
+  const outputBuffer: string[] = [];
 
   const result = await resumeAgent({
     webContentsId,
     ...params,
+    onOutput: (data: string) => {
+      if (resolvedSessionId) {
+        win?.webContents.send('agent:output', resolvedSessionId, data);
+      } else {
+        outputBuffer.push(data);
+      }
+    },
   });
 
   if (result.error) {
@@ -846,39 +887,37 @@ ipcMain.handle('agent:resume', async (event, params: {
     return result;
   }
 
-  // Set up event forwarding from agent to renderer
+  resolvedSessionId = result.sessionId;
+
+  // Flush buffered output that arrived during startup
+  for (const data of outputBuffer) {
+    win?.webContents.send('agent:output', result.sessionId, data);
+  }
+
+  // Set up event forwarding for non-output events
   const events = getAgentEvents(result.sessionId);
-  const win = BrowserWindow.getAllWindows().find(w => w.webContents.id === webContentsId);
 
   // Notify UI that board was updated (item moved to in-progress)
   win?.webContents.send('kanban:board-updated', params.projectPath);
 
   if (events) {
-    events.on('output', (data: string) => {
-      win?.webContents.send('agent:output', result.sessionId, data);
-    });
-
     events.on('question', (question: { text: string; options?: string[] }) => {
       win?.webContents.send('agent:question', result.sessionId, question);
-      // Notify UI that board was updated (item moved back to ready)
       win?.webContents.send('kanban:board-updated', params.projectPath);
     });
 
     events.on('itemCreated', (item: KanbanItem) => {
       win?.webContents.send('agent:item-created', result.sessionId, item);
-      // Notify UI that board was updated (new item added)
       win?.webContents.send('kanban:board-updated', params.projectPath);
     });
 
     events.on('complete', (summary: string) => {
       win?.webContents.send('agent:complete', result.sessionId, summary);
-      // Notify UI that board was updated (item moved to done)
       win?.webContents.send('kanban:board-updated', params.projectPath);
     });
 
     events.on('error', (message: string) => {
       win?.webContents.send('agent:error', result.sessionId, message);
-      // Notify UI that board was updated (status changed)
       win?.webContents.send('kanban:board-updated', params.projectPath);
     });
 
@@ -901,6 +940,11 @@ ipcMain.handle('agent:stop', async (_event, sessionId: string) => {
   await stopAgent(sessionId);
 });
 
+ipcMain.handle('agent:get-active-session', (_event, projectPath: string, itemId: string) => {
+  const session = getSessionByItemId(projectPath, itemId);
+  return session ? { sessionId: session.id } : null;
+});
+
 ipcMain.handle('agent:recover', (_event, projectPath: string) => {
   logger.info('IPC: agent:recover', { projectPath });
   return recoverInterruptedAgents(projectPath);
@@ -915,6 +959,8 @@ app.on('ready', () => {
     isPackaged: app.isPackaged,
     logPath: getLogPath(),
   });
+  // Clear stale agent sessions from any previous crash
+  clearSessions();
   createWindow();
 });
 

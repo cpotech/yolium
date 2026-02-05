@@ -1,7 +1,8 @@
 ---
 name: code-agent
 description: Autonomously implements code changes, writes tests, pushes branches, and monitors CI
-model: sonnet
+model: opus
+timeout: 60
 tools:
   - Read
   - Glob

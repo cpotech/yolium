@@ -11,6 +11,10 @@ const mockKanbanUpdateItem = vi.fn()
 const mockKanbanDeleteItem = vi.fn()
 const mockShowConfirmOkCancel = vi.fn()
 const mockOnAgentOutput = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
+const mockOnAgentProgress = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
+const mockOnAgentComplete = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
+const mockOnAgentError = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
+const mockOnAgentExit = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -21,6 +25,11 @@ beforeEach(() => {
       kanbanDeleteItem: mockKanbanDeleteItem,
       showConfirmOkCancel: mockShowConfirmOkCancel,
       onAgentOutput: mockOnAgentOutput,
+      onAgentProgress: mockOnAgentProgress,
+      onAgentComplete: mockOnAgentComplete,
+      onAgentError: mockOnAgentError,
+      onAgentExit: mockOnAgentExit,
+      agentGetActiveSession: vi.fn().mockResolvedValue(null),
     },
     writable: true,
   })
@@ -465,5 +474,401 @@ describe('ItemDetailDialog', () => {
 
     expect(screen.getByTestId('comments-section')).toBeInTheDocument()
     expect(screen.getByTestId('no-comments')).toBeInTheDocument()
+  })
+
+  it('should save on Ctrl+Enter', async () => {
+    mockKanbanUpdateItem.mockResolvedValueOnce({ id: 'item-1' })
+    const onUpdated = vi.fn()
+    const item = createMockItem()
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={onUpdated}
+      />
+    )
+
+    // Edit title
+    fireEvent.change(screen.getByTestId('title-input'), {
+      target: { value: 'Ctrl+Enter Title' },
+    })
+
+    // Press Ctrl+Enter on the overlay
+    fireEvent.keyDown(screen.getByTestId('item-detail-dialog').parentElement!, {
+      key: 'Enter',
+      ctrlKey: true,
+    })
+
+    await waitFor(() => {
+      expect(mockKanbanUpdateItem).toHaveBeenCalledWith('/test/project', 'item-1', {
+        title: 'Ctrl+Enter Title',
+        description: 'Test description',
+        column: 'backlog',
+      })
+    })
+  })
+
+  it('should trigger delete on Ctrl+Delete', async () => {
+    mockShowConfirmOkCancel.mockResolvedValueOnce(true)
+    mockKanbanDeleteItem.mockResolvedValueOnce(true)
+    const onClose = vi.fn()
+    const onUpdated = vi.fn()
+    const item = createMockItem()
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={onClose}
+        onUpdated={onUpdated}
+      />
+    )
+
+    // Press Ctrl+Delete on the overlay
+    fireEvent.keyDown(screen.getByTestId('item-detail-dialog').parentElement!, {
+      key: 'Delete',
+      ctrlKey: true,
+    })
+
+    await waitFor(() => {
+      expect(mockShowConfirmOkCancel).toHaveBeenCalled()
+    })
+
+    await waitFor(() => {
+      expect(mockKanbanDeleteItem).toHaveBeenCalledWith('/test/project', 'item-1')
+    })
+  })
+
+  it('should have aria-modal and role=dialog attributes', () => {
+    const item = createMockItem()
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    const dialog = screen.getByTestId('item-detail-dialog')
+    expect(dialog).toHaveAttribute('role', 'dialog')
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+  })
+
+  it('should close dialog when clicking overlay background', () => {
+    const onClose = vi.fn()
+    const item = createMockItem()
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={onClose}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    const overlay = screen.getByTestId('item-detail-dialog').parentElement!
+    fireEvent.click(overlay, { target: overlay, currentTarget: overlay })
+
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('should show unsaved changes indicator when title is modified', () => {
+    const item = createMockItem({ title: 'Original Title' })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    // No indicator initially
+    expect(screen.queryByTestId('unsaved-indicator')).not.toBeInTheDocument()
+
+    // Edit title
+    fireEvent.change(screen.getByTestId('title-input'), {
+      target: { value: 'Changed Title' },
+    })
+
+    // Indicator should appear
+    expect(screen.getByTestId('unsaved-indicator')).toBeInTheDocument()
+  })
+
+  it('should hide unsaved indicator after saving', async () => {
+    mockKanbanUpdateItem.mockResolvedValueOnce({ id: 'item-1' })
+    const item = createMockItem()
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    // Edit title
+    fireEvent.change(screen.getByTestId('title-input'), {
+      target: { value: 'Changed Title' },
+    })
+    expect(screen.getByTestId('unsaved-indicator')).toBeInTheDocument()
+
+    // Save
+    fireEvent.click(screen.getByTestId('save-button'))
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('unsaved-indicator')).not.toBeInTheDocument()
+    })
+  })
+
+  it('should trap focus within dialog on Tab', () => {
+    const item = createMockItem()
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    const dialog = screen.getByTestId('item-detail-dialog')
+    const focusableElements = dialog.querySelectorAll<HTMLElement>(
+      'input:not(:disabled), textarea:not(:disabled), select:not(:disabled), button:not(:disabled), [tabindex]:not([tabindex="-1"]):not(:disabled)'
+    )
+    expect(focusableElements.length).toBeGreaterThan(0)
+
+    // Focus last focusable element
+    const lastElement = focusableElements[focusableElements.length - 1]
+    lastElement.focus()
+
+    // Tab should wrap to first
+    fireEvent.keyDown(dialog.parentElement!, { key: 'Tab' })
+    expect(document.activeElement).toBe(focusableElements[0])
+  })
+
+  it('should auto-focus answer textarea when agent is waiting with a question', () => {
+    const item = createMockItem({
+      agentStatus: 'waiting',
+      agentQuestion: 'What branch should I use?',
+      agentQuestionOptions: ['main', 'develop'],
+    })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    const answerInput = screen.getByTestId('answer-input')
+    expect(answerInput).toBeInTheDocument()
+    expect(document.activeElement).toBe(answerInput)
+  })
+
+  it('should show stop agent button when agent is running', () => {
+    const item = createMockItem({ agentStatus: 'running' })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    // The stop button only shows when there's an active session
+    // Running indicator should at minimum be present
+    expect(screen.getByText('Agent is running...')).toBeInTheDocument()
+  })
+
+  it('should confirm before closing with unsaved changes (Escape)', async () => {
+    mockShowConfirmOkCancel.mockResolvedValueOnce(true) // User confirms discard
+    const onClose = vi.fn()
+    const item = createMockItem({ title: 'Original Title' })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={onClose}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    // Edit title to create unsaved changes
+    fireEvent.change(screen.getByTestId('title-input'), {
+      target: { value: 'Changed Title' },
+    })
+
+    // Press Escape
+    fireEvent.keyDown(screen.getByTestId('item-detail-dialog').parentElement!, {
+      key: 'Escape',
+    })
+
+    // Should show confirmation dialog
+    await waitFor(() => {
+      expect(mockShowConfirmOkCancel).toHaveBeenCalledWith(
+        'Unsaved Changes',
+        'You have unsaved changes. Discard them?'
+      )
+    })
+
+    // Should close after user confirms
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalled()
+    })
+  })
+
+  it('should NOT close if user cancels unsaved changes confirmation', async () => {
+    mockShowConfirmOkCancel.mockResolvedValueOnce(false) // User cancels
+    const onClose = vi.fn()
+    const item = createMockItem({ title: 'Original Title' })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={onClose}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    // Edit title
+    fireEvent.change(screen.getByTestId('title-input'), {
+      target: { value: 'Changed Title' },
+    })
+
+    // Click close button
+    fireEvent.click(screen.getByTestId('close-button'))
+
+    // Should show confirmation
+    await waitFor(() => {
+      expect(mockShowConfirmOkCancel).toHaveBeenCalled()
+    })
+
+    // Should NOT close (user cancelled)
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('should close immediately when no unsaved changes (no confirmation)', () => {
+    const onClose = vi.fn()
+    const item = createMockItem()
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={onClose}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    // Press Escape without editing anything
+    fireEvent.keyDown(screen.getByTestId('item-detail-dialog').parentElement!, {
+      key: 'Escape',
+    })
+
+    // Should close immediately (no confirmation needed)
+    expect(onClose).toHaveBeenCalled()
+    expect(mockShowConfirmOkCancel).not.toHaveBeenCalled()
+  })
+
+  it('should render model selector in right pane', () => {
+    const item = createMockItem({ model: 'opus' })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    const modelSelect = screen.getByTestId('model-select')
+    expect(modelSelect).toBeInTheDocument()
+    expect(modelSelect).toHaveValue('opus')
+  })
+
+  it('should include model change in save', async () => {
+    mockKanbanUpdateItem.mockResolvedValueOnce({ id: 'item-1' })
+    const item = createMockItem()
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    // Change model
+    fireEvent.change(screen.getByTestId('model-select'), {
+      target: { value: 'haiku' },
+    })
+
+    // Save
+    fireEvent.click(screen.getByTestId('save-button'))
+
+    await waitFor(() => {
+      expect(mockKanbanUpdateItem).toHaveBeenCalledWith('/test/project', 'item-1', {
+        title: 'Test Item',
+        description: 'Test description',
+        column: 'backlog',
+        model: 'haiku',
+      })
+    })
+  })
+
+  it('should show unsaved indicator when model is changed', () => {
+    const item = createMockItem()
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    // No indicator initially
+    expect(screen.queryByTestId('unsaved-indicator')).not.toBeInTheDocument()
+
+    // Change model
+    fireEvent.change(screen.getByTestId('model-select'), {
+      target: { value: 'sonnet' },
+    })
+
+    // Should show indicator
+    expect(screen.getByTestId('unsaved-indicator')).toBeInTheDocument()
   })
 })

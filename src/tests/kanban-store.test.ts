@@ -17,6 +17,7 @@ vi.mock('node:fs', () => ({
   mkdirSync: vi.fn(),
   writeFileSync: vi.fn(),
   readFileSync: vi.fn(() => '{}'),
+  readdirSync: vi.fn(() => []),
 }));
 
 vi.mock('node:os', () => ({
@@ -142,6 +143,83 @@ describe('kanban-store', () => {
       expect(updated.comments).toHaveLength(1);
       expect(updated.comments[0].source).toBe('user');
       expect(updated.comments[0].text).toBe('This is my answer');
+    });
+  });
+
+  describe('getBoard', () => {
+    it('should return null and not crash when board JSON is corrupted', async () => {
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue('not valid json{{{');
+
+      const board = getBoard('/path/to/project');
+      expect(board).toBeNull();
+    });
+
+    it('should return null when board file does not exist', async () => {
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+      // Also mock readdirSync to return empty array for migration search
+      vi.mocked(fs.readdirSync as unknown as () => string[]).mockReturnValue([]);
+
+      const board = getBoard('/path/to/project');
+      expect(board).toBeNull();
+    });
+  });
+
+  describe('updateItem', () => {
+    it('should reject invalid column values', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentType: 'claude',
+        order: 0,
+      });
+
+      const result = updateItem(board, item.id, { column: 'invalid-column' as never });
+      expect(result).toBeNull();
+    });
+
+    it('should reject invalid agentStatus values', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentType: 'claude',
+        order: 0,
+      });
+
+      const result = updateItem(board, item.id, { agentStatus: 'hacked' as never });
+      expect(result).toBeNull();
+    });
+
+    it('should accept valid column values', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentType: 'claude',
+        order: 0,
+      });
+
+      const result = updateItem(board, item.id, { column: 'ready' });
+      expect(result).not.toBeNull();
+      expect(result!.column).toBe('ready');
+    });
+
+    it('should accept valid agentStatus values', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentType: 'claude',
+        order: 0,
+      });
+
+      const result = updateItem(board, item.id, { agentStatus: 'running' });
+      expect(result).not.toBeNull();
+      expect(result!.agentStatus).toBe('running');
     });
   });
 
