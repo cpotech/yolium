@@ -284,4 +284,229 @@ describe('NewItemDialog', () => {
     expect(options[1]).toHaveValue('codex')
     expect(options[2]).toHaveValue('opencode')
   })
+
+  it('should submit form on Ctrl+Enter when valid', async () => {
+    mockKanbanAddItem.mockResolvedValueOnce({ id: 'new-item-1' })
+    const onCreated = vi.fn()
+
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={onCreated}
+      />
+    )
+
+    fireEvent.change(screen.getByTestId('title-input'), {
+      target: { value: 'Shortcut Task' },
+    })
+    fireEvent.change(screen.getByTestId('description-input'), {
+      target: { value: 'Created via shortcut' },
+    })
+
+    // Press Ctrl+Enter on the dialog overlay
+    fireEvent.keyDown(screen.getByTestId('new-item-dialog').parentElement!, {
+      key: 'Enter',
+      ctrlKey: true,
+    })
+
+    await waitFor(() => {
+      expect(mockKanbanAddItem).toHaveBeenCalledWith('/test/project', {
+        title: 'Shortcut Task',
+        description: 'Created via shortcut',
+        branch: undefined,
+        agentType: 'claude',
+        order: 0,
+      })
+    })
+  })
+
+  it('should not submit form on Ctrl+Enter when invalid', () => {
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    // Press Ctrl+Enter with empty form
+    fireEvent.keyDown(screen.getByTestId('new-item-dialog').parentElement!, {
+      key: 'Enter',
+      ctrlKey: true,
+    })
+
+    expect(mockKanbanAddItem).not.toHaveBeenCalled()
+  })
+
+  it('should have aria-modal and role=dialog attributes', () => {
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    const dialog = screen.getByTestId('new-item-dialog')
+    expect(dialog).toHaveAttribute('role', 'dialog')
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+  })
+
+  it('should trap focus within dialog on Tab', () => {
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    const dialog = screen.getByTestId('new-item-dialog')
+    const focusableElements = dialog.querySelectorAll<HTMLElement>(
+      'input:not(:disabled), textarea:not(:disabled), select:not(:disabled), button:not(:disabled), [tabindex]:not([tabindex="-1"]):not(:disabled)'
+    )
+    expect(focusableElements.length).toBeGreaterThan(0)
+
+    // Focus last element
+    const lastElement = focusableElements[focusableElements.length - 1]
+    lastElement.focus()
+    expect(document.activeElement).toBe(lastElement)
+
+    // Tab should wrap to first element
+    fireEvent.keyDown(dialog.parentElement!, { key: 'Tab' })
+    expect(document.activeElement).toBe(focusableElements[0])
+  })
+
+  it('should trap focus within dialog on Shift+Tab', () => {
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    const dialog = screen.getByTestId('new-item-dialog')
+    const focusableElements = dialog.querySelectorAll<HTMLElement>(
+      'input:not(:disabled), textarea:not(:disabled), select:not(:disabled), button:not(:disabled), [tabindex]:not([tabindex="-1"]):not(:disabled)'
+    )
+
+    // Focus first element
+    const firstElement = focusableElements[0]
+    firstElement.focus()
+    expect(document.activeElement).toBe(firstElement)
+
+    // Shift+Tab should wrap to last element
+    fireEvent.keyDown(dialog.parentElement!, { key: 'Tab', shiftKey: true })
+    expect(document.activeElement).toBe(focusableElements[focusableElements.length - 1])
+  })
+
+  it('should close dialog when clicking overlay background', () => {
+    const onClose = vi.fn()
+
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={onClose}
+        onCreated={vi.fn()}
+      />
+    )
+
+    // Click directly on the overlay (parent of dialog)
+    const overlay = screen.getByTestId('new-item-dialog').parentElement!
+    fireEvent.click(overlay, { target: overlay, currentTarget: overlay })
+
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('should render model selector with default empty option', () => {
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    const modelSelect = screen.getByTestId('model-select')
+    expect(modelSelect).toBeInTheDocument()
+    expect(modelSelect).toHaveValue('') // Default is "Agent default"
+  })
+
+  it('should include model in kanbanAddItem when selected', async () => {
+    mockKanbanAddItem.mockResolvedValueOnce({ id: 'new-item-1' })
+    const onCreated = vi.fn()
+
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={onCreated}
+      />
+    )
+
+    fireEvent.change(screen.getByTestId('title-input'), {
+      target: { value: 'Model Task' },
+    })
+    fireEvent.change(screen.getByTestId('description-input'), {
+      target: { value: 'Testing model selection' },
+    })
+    fireEvent.change(screen.getByTestId('model-select'), {
+      target: { value: 'opus' },
+    })
+
+    fireEvent.click(screen.getByTestId('create-button'))
+
+    await waitFor(() => {
+      expect(mockKanbanAddItem).toHaveBeenCalledWith('/test/project', {
+        title: 'Model Task',
+        description: 'Testing model selection',
+        branch: undefined,
+        agentType: 'claude',
+        order: 0,
+        model: 'opus',
+      })
+    })
+  })
+
+  it('should not include model when default option is selected', async () => {
+    mockKanbanAddItem.mockResolvedValueOnce({ id: 'new-item-1' })
+
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    fireEvent.change(screen.getByTestId('title-input'), {
+      target: { value: 'No Model' },
+    })
+    fireEvent.change(screen.getByTestId('description-input'), {
+      target: { value: 'Uses agent default' },
+    })
+
+    fireEvent.click(screen.getByTestId('create-button'))
+
+    await waitFor(() => {
+      expect(mockKanbanAddItem).toHaveBeenCalledWith('/test/project', {
+        title: 'No Model',
+        description: 'Uses agent default',
+        branch: undefined,
+        agentType: 'claude',
+        order: 0,
+      })
+    })
+  })
 })

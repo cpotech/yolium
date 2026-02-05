@@ -198,4 +198,90 @@ describe('KanbanColumn', () => {
     screen.getByTestId('kanban-card').click()
     expect(onCardClick).toHaveBeenCalledWith(item)
   })
+
+  it('should show column empty state with data-testid', () => {
+    render(
+      <KanbanColumn
+        columnId="backlog"
+        title="Backlog"
+        items={[]}
+        onCardClick={vi.fn()}
+      />
+    )
+
+    expect(screen.getByTestId('column-empty-state')).toBeInTheDocument()
+  })
+
+  it('should show running count badge when items are running', () => {
+    const items = [
+      createMockItem({ id: '1', title: 'Task 1', agentStatus: 'running' }),
+      createMockItem({ id: '2', title: 'Task 2', agentStatus: 'idle' }),
+      createMockItem({ id: '3', title: 'Task 3', agentStatus: 'running' }),
+    ]
+
+    render(
+      <KanbanColumn
+        columnId="in-progress"
+        title="In Progress"
+        items={items}
+        onCardClick={vi.fn()}
+      />
+    )
+
+    expect(screen.getByTestId('running-count')).toHaveTextContent('2 running')
+  })
+
+  it('should have aria-label with column name and item count', () => {
+    const items = [
+      createMockItem({ id: '1', title: 'Task 1' }),
+      createMockItem({ id: '2', title: 'Task 2' }),
+    ]
+
+    render(
+      <KanbanColumn
+        columnId="backlog"
+        title="Backlog"
+        items={items}
+        onCardClick={vi.fn()}
+      />
+    )
+
+    expect(screen.getByTestId('kanban-column-backlog')).toHaveAttribute(
+      'aria-label',
+      'Backlog column, 2 items'
+    )
+  })
+
+  it('should have aria-label for empty column', () => {
+    render(
+      <KanbanColumn
+        columnId="ready"
+        title="Ready"
+        items={[]}
+        onCardClick={vi.fn()}
+      />
+    )
+
+    expect(screen.getByTestId('kanban-column-ready')).toHaveAttribute(
+      'aria-label',
+      'Ready column, 0 items'
+    )
+  })
+
+  it('should not show running count badge when no items are running', () => {
+    const items = [
+      createMockItem({ id: '1', title: 'Task 1', agentStatus: 'idle' }),
+    ]
+
+    render(
+      <KanbanColumn
+        columnId="backlog"
+        title="Backlog"
+        items={items}
+        onCardClick={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByTestId('running-count')).not.toBeInTheDocument()
+  })
 })

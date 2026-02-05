@@ -105,7 +105,11 @@ function findAndMigrateBoard(projectPath: string): KanbanBoard | null {
 export function getBoard(projectPath: string): KanbanBoard | null {
   const boardPath = getBoardPath(projectPath);
   if (fs.existsSync(boardPath)) {
-    return JSON.parse(fs.readFileSync(boardPath, 'utf-8'));
+    try {
+      return JSON.parse(fs.readFileSync(boardPath, 'utf-8'));
+    } catch {
+      return null;
+    }
   }
 
   // Migration: look for board saved with non-normalized path (e.g., backslashes on Windows)
@@ -145,6 +149,9 @@ export function addItem(board: KanbanBoard, params: NewItemParams): KanbanItem {
   return item;
 }
 
+const VALID_COLUMNS = new Set(['backlog', 'ready', 'in-progress', 'done']);
+const VALID_AGENT_STATUSES = new Set(['idle', 'running', 'waiting', 'interrupted', 'completed', 'failed']);
+
 export function updateItem(
   board: KanbanBoard,
   itemId: string,
@@ -152,6 +159,9 @@ export function updateItem(
 ): KanbanItem | null {
   const item = board.items.find(i => i.id === itemId);
   if (!item) return null;
+
+  if (updates.column !== undefined && !VALID_COLUMNS.has(updates.column)) return null;
+  if (updates.agentStatus !== undefined && !VALID_AGENT_STATUSES.has(updates.agentStatus)) return null;
 
   Object.assign(item, updates, { updatedAt: new Date().toISOString() });
   saveBoard(board);

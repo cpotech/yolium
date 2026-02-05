@@ -83,13 +83,17 @@ test.describe('Work Item State Updates', () => {
       { path: testRepoPath, id: itemId, updates }
     );
 
-    // Notify the renderer that the board changed
+    // Notify the renderer that the board changed.
+    // The projectPath stored in the board is normalized to forward slashes,
+    // so we must send the notification with the normalized path for the
+    // KanbanView listener comparison to match.
+    const normalizedPath = testRepoPath.replace(/\\/g, '/');
     await ctx.app.evaluate(({ BrowserWindow }, projectPath: string) => {
       const win = BrowserWindow.getAllWindows()[0];
       if (win) {
         win.webContents.send('kanban:board-updated', projectPath);
       }
-    }, testRepoPath);
+    }, normalizedPath);
   }
 
   test('detail dialog reflects running state after board refresh', async () => {

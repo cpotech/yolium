@@ -1,10 +1,11 @@
-import React from 'react'
-import { GitBranch, Loader2, AlertCircle, CheckCircle, XCircle } from 'lucide-react'
+import React, { useState } from 'react'
+import { GitBranch, Loader2, AlertCircle, CheckCircle, XCircle, MessageSquare } from 'lucide-react'
 import type { KanbanItem, AgentStatus } from '../types/kanban'
 
 interface KanbanCardProps {
   item: KanbanItem
   onClick: (item: KanbanItem) => void
+  onDragStart?: (item: KanbanItem) => void
 }
 
 const agentTypeLabels: Record<KanbanItem['agentType'], string> = {
@@ -58,18 +59,41 @@ function getStatusConfig(status: AgentStatus): StatusConfig | null {
   }
 }
 
-export function KanbanCard({ item, onClick }: KanbanCardProps): React.ReactElement {
+export function KanbanCard({ item, onClick, onDragStart }: KanbanCardProps): React.ReactElement {
   const statusConfig = getStatusConfig(item.agentStatus)
+  const [isDragging, setIsDragging] = useState(false)
+  const isRunning = item.agentStatus === 'running'
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onClick(item)
+    }
+  }
 
   return (
     <div
       data-testid="kanban-card"
+      role="button"
+      tabIndex={0}
+      aria-label={`${item.title} - ${item.agentStatus}`}
+      draggable
       onClick={() => onClick(item)}
-      className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md p-3 cursor-pointer transition-all hover:border-[var(--color-accent-primary)]"
+      onKeyDown={handleKeyDown}
+      onDragStart={(e) => {
+        e.dataTransfer.setData('text/plain', item.id)
+        e.dataTransfer.effectAllowed = 'move'
+        setIsDragging(true)
+        onDragStart?.(item)
+      }}
+      onDragEnd={() => setIsDragging(false)}
+      className={`bg-[var(--color-bg-primary)] rounded-md p-3 cursor-pointer transition-all hover:border-[var(--color-accent-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] ${
+        isRunning ? 'border border-yellow-500/50 shadow-[0_0_8px_rgba(234,179,8,0.15)]' : 'border border-[var(--color-border-primary)]'
+      } ${isDragging ? 'opacity-50' : ''}`}
     >
       {/* Header: Title and Agent Badge */}
       <div className="flex items-start justify-between gap-2 mb-2">
-        <h3 className="font-bold text-[13px] text-white leading-tight">{item.title}</h3>
+        <h3 className="font-bold text-[13px] text-white leading-tight line-clamp-2">{item.title}</h3>
         <span
           data-testid="agent-type-badge"
           className="flex-shrink-0 px-1.5 py-0.5 text-[10px] font-medium rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
@@ -90,20 +114,34 @@ export function KanbanCard({ item, onClick }: KanbanCardProps): React.ReactEleme
       )}
 
       {/* Description */}
-      <p className="text-[12px] text-[var(--color-text-secondary)] line-clamp-2 mb-2">
+      <p
+        title={item.description}
+        className="text-[12px] text-[var(--color-text-secondary)] line-clamp-2 mb-2"
+      >
         {item.description}
       </p>
 
-      {/* Status indicator */}
-      {statusConfig && (
-        <div
-          data-testid="status-indicator"
-          className={`flex items-center gap-1 text-[11px] ${statusConfig.colorClass}`}
-        >
-          {statusConfig.icon}
-          <span>{statusConfig.text}</span>
-        </div>
-      )}
+      {/* Footer: Status indicator and comment count */}
+      <div className="flex items-center justify-between">
+        {statusConfig ? (
+          <div
+            data-testid="status-indicator"
+            className={`flex items-center gap-1 text-[11px] ${statusConfig.colorClass}`}
+          >
+            {statusConfig.icon}
+            <span>{statusConfig.text}</span>
+          </div>
+        ) : <div />}
+        {item.comments.length > 0 && (
+          <div
+            data-testid="comment-count"
+            className="flex items-center gap-1 text-[11px] text-[var(--color-text-tertiary)]"
+          >
+            <MessageSquare size={11} />
+            <span>{item.comments.length}</span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

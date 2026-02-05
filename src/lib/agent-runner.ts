@@ -64,6 +64,17 @@ export interface AgentSession {
 
 const sessions = new Map<string, AgentSession>();
 
+/**
+ * Clear all sessions from memory. Call on app startup to prevent
+ * stale sessions from accumulating after crashes.
+ */
+export function clearSessions(): void {
+  for (const session of sessions.values()) {
+    session.events.removeAllListeners();
+  }
+  sessions.clear();
+}
+
 const MODEL_MAP: Record<string, string> = {
   opus: 'claude-opus-4-5-20251101',
   sonnet: 'claude-sonnet-4-20250514',
@@ -122,7 +133,15 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     };
   }
 
-  const agent = loadAgentDefinition(agentName);
+  let agent: ParsedAgent;
+  try {
+    agent = loadAgentDefinition(agentName);
+  } catch {
+    return {
+      sessionId: '',
+      error: `Unknown agent: ${agentName}. Valid agents: code-agent, plan-agent`,
+    };
+  }
   const board = getOrCreateBoard(projectPath);
   const item = board.items.find(i => i.id === itemId);
 
@@ -393,6 +412,15 @@ export function answerQuestion(sessionId: string, answer: string): void {
 
 export function getSession(sessionId: string): AgentSession | undefined {
   return sessions.get(sessionId);
+}
+
+export function getSessionByItemId(projectPath: string, itemId: string): AgentSession | undefined {
+  for (const session of sessions.values()) {
+    if (session.projectPath === projectPath && session.itemId === itemId) {
+      return session;
+    }
+  }
+  return undefined;
 }
 
 export async function stopAgent(sessionId: string): Promise<void> {

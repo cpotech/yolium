@@ -141,4 +141,102 @@ describe('KanbanCard', () => {
 
     expect(screen.getByTestId('kanban-card')).toHaveClass('cursor-pointer')
   })
+
+  it('should have role=button and tabIndex for accessibility', () => {
+    const item = createMockItem()
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    const card = screen.getByTestId('kanban-card')
+    expect(card).toHaveAttribute('role', 'button')
+    expect(card).toHaveAttribute('tabindex', '0')
+  })
+
+  it('should have aria-label with title and status', () => {
+    const item = createMockItem({ title: 'My Task', agentStatus: 'running' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    const card = screen.getByTestId('kanban-card')
+    expect(card).toHaveAttribute('aria-label', 'My Task - running')
+  })
+
+  it('should open on Enter keypress', () => {
+    const item = createMockItem()
+    const onClick = vi.fn()
+    render(<KanbanCard item={item} onClick={onClick} />)
+
+    fireEvent.keyDown(screen.getByTestId('kanban-card'), { key: 'Enter' })
+    expect(onClick).toHaveBeenCalledWith(item)
+  })
+
+  it('should open on Space keypress', () => {
+    const item = createMockItem()
+    const onClick = vi.fn()
+    render(<KanbanCard item={item} onClick={onClick} />)
+
+    fireEvent.keyDown(screen.getByTestId('kanban-card'), { key: ' ' })
+    expect(onClick).toHaveBeenCalledWith(item)
+  })
+
+  it('should have pulsing border for running agent cards', () => {
+    const item = createMockItem({ agentStatus: 'running' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    const card = screen.getByTestId('kanban-card')
+    expect(card).toHaveClass('border-yellow-500/50')
+  })
+
+  it('should not have pulsing border for idle cards', () => {
+    const item = createMockItem({ agentStatus: 'idle' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    const card = screen.getByTestId('kanban-card')
+    expect(card).not.toHaveClass('border-yellow-500/50')
+  })
+
+  it('should show comment count when card has comments', () => {
+    const item = createMockItem({
+      comments: [
+        { id: 'c1', source: 'user', text: 'First comment', timestamp: '2024-01-01T00:00:00Z' },
+        { id: 'c2', source: 'agent', text: 'Second comment', timestamp: '2024-01-01T01:00:00Z' },
+      ],
+    })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    const badge = screen.getByTestId('comment-count')
+    expect(badge).toHaveTextContent('2')
+  })
+
+  it('should not show comment count when card has no comments', () => {
+    const item = createMockItem({ comments: [] })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.queryByTestId('comment-count')).not.toBeInTheDocument()
+  })
+
+  it('should reduce opacity while dragging', () => {
+    const item = createMockItem()
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    const card = screen.getByTestId('kanban-card')
+
+    // Start dragging
+    fireEvent.dragStart(card, {
+      dataTransfer: { setData: vi.fn(), effectAllowed: 'move' },
+    })
+
+    expect(card).toHaveClass('opacity-50')
+
+    // End dragging
+    fireEvent.dragEnd(card)
+
+    expect(card).not.toHaveClass('opacity-50')
+  })
+
+  it('should be draggable', () => {
+    const item = createMockItem()
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    const card = screen.getByTestId('kanban-card')
+    expect(card).toHaveAttribute('draggable', 'true')
+  })
 })
