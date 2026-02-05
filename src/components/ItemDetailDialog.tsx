@@ -65,7 +65,17 @@ export function ItemDetailDialog({
   const [currentDetail, setCurrentDetail] = useState<string | null>(null)
   const logRef = useRef<HTMLPreElement>(null)
 
-  // Sync local state when item changes
+  // Reset agent output state when switching to a different item
+  // Use item.id (not the object ref) so refreshes of the same item don't clear output
+  useEffect(() => {
+    setAgentOutput('')
+    setShowAgentLog(false)
+    setCurrentSessionId(null)
+    setCurrentStep(null)
+    setCurrentDetail(null)
+  }, [item?.id])
+
+  // Sync editable fields when item data changes (including refreshes)
   useEffect(() => {
     if (item) {
       setTitle(item.title)
