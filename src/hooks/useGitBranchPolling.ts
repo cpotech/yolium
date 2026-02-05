@@ -4,7 +4,7 @@
  */
 
 import { useEffect } from 'react'
-import type { Tab } from './useTabState'
+import type { Tab } from '../types/tabs'
 
 export interface UseGitBranchPollingOptions {
   activeTabId: string | null

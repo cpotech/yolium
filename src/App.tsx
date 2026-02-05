@@ -61,6 +61,10 @@ function App(): React.ReactElement {
   // Dialog state management
   const dialogs = useDialogState();
 
+  // State for sidebar (must be declared before useAgentCreation which uses setSidebarProjects)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [sidebarProjects, setSidebarProjects] = useState<SidebarProject[]>(() => getSidebarProjects());
+
   // Agent creation flow
   const agentCreation = useAgentCreation({
     gitConfig: dialogs.gitConfig,
@@ -79,10 +83,6 @@ function App(): React.ReactElement {
 
   // Code review functionality
   const codeReview = useCodeReview({ gitConfig: dialogs.gitConfig });
-
-  // State for sidebar
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-  const [sidebarProjects, setSidebarProjects] = useState<SidebarProject[]>(() => getSidebarProjects());
 
   // Handle Back button in agent dialog (returns to path dialog)
   const handleAgentDialogBack = useCallback(() => {
