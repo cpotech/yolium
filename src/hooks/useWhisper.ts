@@ -124,14 +124,14 @@ export function useWhisper(): UseWhisperReturn {
 
   // Load saved model preference on mount
   useEffect(() => {
-    window.electronAPI.whisperGetSelectedModel().then((model) => {
+    window.electronAPI.whisper.getSelectedModel().then((model) => {
       dispatch({ type: 'SET_MODEL', payload: model });
     });
   }, []);
 
   // Listen for download progress from main process
   useEffect(() => {
-    const cleanup = window.electronAPI.onWhisperDownloadProgress((progress: WhisperDownloadProgress) => {
+    const cleanup = window.electronAPI.whisper.onDownloadProgress((progress: WhisperDownloadProgress) => {
       dispatch({ type: 'SET_DOWNLOAD_PROGRESS', payload: { progress: progress.percent, model: null } });
     });
     return cleanup;
@@ -185,7 +185,7 @@ export function useWhisper(): UseWhisperReturn {
 
     try {
       // Send audio to main process for transcription
-      const result = await window.electronAPI.whisperTranscribe(
+      const result = await window.electronAPI.whisper.transcribe(
         Array.from(audioData),
         state.selectedModel
       );
@@ -209,7 +209,7 @@ export function useWhisper(): UseWhisperReturn {
 
   const setModel = useCallback((model: WhisperModelSize) => {
     dispatch({ type: 'SET_MODEL', payload: model });
-    window.electronAPI.whisperSaveSelectedModel(model);
+    window.electronAPI.whisper.saveSelectedModel(model);
   }, []);
 
   const openModelDialog = useCallback(() => {
@@ -227,7 +227,7 @@ export function useWhisper(): UseWhisperReturn {
   const downloadModelFn = useCallback(async (modelSize: WhisperModelSize) => {
     dispatch({ type: 'SET_DOWNLOAD_PROGRESS', payload: { progress: 0, model: modelSize } });
     try {
-      await window.electronAPI.whisperDownloadModel(modelSize);
+      await window.electronAPI.whisper.downloadModel(modelSize);
       dispatch({ type: 'SET_DOWNLOAD_PROGRESS', payload: { progress: null, model: null } });
     } catch (err) {
       dispatch({ type: 'SET_DOWNLOAD_PROGRESS', payload: { progress: null, model: null } });

@@ -96,9 +96,9 @@ export function Terminal({
       fitAddon.fit();
       const { cols, rows } = terminal;
       if (isContainer) {
-        window.electronAPI.resizeYolium(sessionId, cols, rows);
+        window.electronAPI.container.resize(sessionId, cols, rows);
       } else {
-        window.electronAPI.resizeTerminal(sessionId, cols, rows);
+        window.electronAPI.terminal.resize(sessionId, cols, rows);
       }
     }
 
@@ -108,9 +108,9 @@ export function Terminal({
     // Handle user input -> PTY or container
     const onDataDisposable = terminal.onData((data) => {
       if (isContainer) {
-        window.electronAPI.writeYolium(sessionId, data);
+        window.electronAPI.container.write(sessionId, data);
       } else {
-        window.electronAPI.writeTerminal(sessionId, data);
+        window.electronAPI.terminal.write(sessionId, data);
       }
     });
 
@@ -160,9 +160,9 @@ export function Terminal({
             response = `\x1b[?${mode};0$y`; // Default: not recognized
         }
         if (isContainer) {
-          window.electronAPI.writeYolium(sessionId, response);
+          window.electronAPI.container.write(sessionId, response);
         } else {
-          window.electronAPI.writeTerminal(sessionId, response);
+          window.electronAPI.terminal.write(sessionId, response);
         }
       }
 
@@ -170,20 +170,20 @@ export function Terminal({
       if (hasDAQuery || hasXTVersion) {
         const daResponse = '\x1b[?1;2c';
         if (isContainer) {
-          window.electronAPI.writeYolium(sessionId, daResponse);
+          window.electronAPI.container.write(sessionId, daResponse);
         } else {
-          window.electronAPI.writeTerminal(sessionId, daResponse);
+          window.electronAPI.terminal.write(sessionId, daResponse);
         }
       }
     };
 
     const cleanupData = isContainer
-      ? window.electronAPI.onContainerData((sid, data) => {
+      ? window.electronAPI.container.onData((sid, data) => {
           if (sid === sessionId && mountedRef.current) {
             handleDataWithQueryResponses(data);
           }
         })
-      : window.electronAPI.onTerminalData((sid, data) => {
+      : window.electronAPI.terminal.onData((sid, data) => {
           if (sid === sessionId && mountedRef.current) {
             terminal.write(data);
           }
@@ -191,13 +191,13 @@ export function Terminal({
 
     // Handle exit (from PTY or container)
     const cleanupExit = isContainer
-      ? window.electronAPI.onContainerExit((sid, exitCode) => {
+      ? window.electronAPI.container.onExit((sid, exitCode) => {
           if (sid === sessionId && mountedRef.current) {
             terminal.write(`\r\n\x1b[90m[Container exited with code ${exitCode}]\x1b[0m\r\n`);
             onExit?.(exitCode);
           }
         })
-      : window.electronAPI.onTerminalExit((sid, exitCode) => {
+      : window.electronAPI.terminal.onExit((sid, exitCode) => {
           if (sid === sessionId && mountedRef.current) {
             terminal.write(`\r\n\x1b[90m[Process exited with code ${exitCode}]\x1b[0m\r\n`);
             onExit?.(exitCode);
@@ -212,9 +212,9 @@ export function Terminal({
       fitAddon.fit();
       const { cols, rows } = terminal;
       if (isContainer) {
-        window.electronAPI.resizeYolium(sessionId, cols, rows);
+        window.electronAPI.container.resize(sessionId, cols, rows);
       } else {
-        window.electronAPI.resizeTerminal(sessionId, cols, rows);
+        window.electronAPI.terminal.resize(sessionId, cols, rows);
       }
     };
 
@@ -282,9 +282,9 @@ export function Terminal({
           fitAddonRef.current?.fit();
           const { cols, rows } = terminalRef.current!;
           if (isContainer) {
-            window.electronAPI.resizeYolium(sessionId, cols, rows);
+            window.electronAPI.container.resize(sessionId, cols, rows);
           } else {
-            window.electronAPI.resizeTerminal(sessionId, cols, rows);
+            window.electronAPI.terminal.resize(sessionId, cols, rows);
           }
           // Focus the terminal when it becomes visible
           terminalRef.current?.focus();

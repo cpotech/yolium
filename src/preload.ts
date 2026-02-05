@@ -1,9 +1,14 @@
+/**
+ * @module src/preload
+ * Electron preload script exposing namespaced IPC API to renderer process.
+ */
+
 import { contextBridge, ipcRenderer } from 'electron';
 
 type CleanupFn = () => void;
 
-contextBridge.exposeInMainWorld('electronAPI', {
-  // App info
+// App namespace
+const app = {
   getVersion: () => ipcRenderer.invoke('app:get-version'),
   getHomeDir: () => ipcRenderer.invoke('app:get-home-dir'),
   openExternal: (url: string) => ipcRenderer.invoke('app:open-external', url),
@@ -13,220 +18,174 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('app:quit-request', handler);
     return () => ipcRenderer.removeListener('app:quit-request', handler);
   },
+};
 
-  // Terminal operations
-  createTerminal: (cwd?: string) => ipcRenderer.invoke('terminal:create', cwd),
-  writeTerminal: (sessionId: string, data: string) =>
+// Terminal namespace
+const terminal = {
+  create: (cwd?: string) => ipcRenderer.invoke('terminal:create', cwd),
+  write: (sessionId: string, data: string) =>
     ipcRenderer.send('terminal:write', sessionId, data),
-  resizeTerminal: (sessionId: string, cols: number, rows: number) =>
+  resize: (sessionId: string, cols: number, rows: number) =>
     ipcRenderer.send('terminal:resize', sessionId, cols, rows),
-  closeTerminal: (sessionId: string) => ipcRenderer.invoke('terminal:close', sessionId),
+  close: (sessionId: string) => ipcRenderer.invoke('terminal:close', sessionId),
   hasRunningChildren: (sessionId: string) =>
     ipcRenderer.invoke('terminal:has-running-children', sessionId),
-
-  // Terminal events (main -> renderer)
-  onTerminalData: (callback: (sessionId: string, data: string) => void): CleanupFn => {
+  onData: (callback: (sessionId: string, data: string) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, sessionId: string, data: string) =>
       callback(sessionId, data);
     ipcRenderer.on('terminal:data', handler);
     return () => ipcRenderer.removeListener('terminal:data', handler);
   },
-  onTerminalExit: (callback: (sessionId: string, exitCode: number) => void): CleanupFn => {
+  onExit: (callback: (sessionId: string, exitCode: number) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, sessionId: string, exitCode: number) =>
       callback(sessionId, exitCode);
     ipcRenderer.on('terminal:exit', handler);
     return () => ipcRenderer.removeListener('terminal:exit', handler);
   },
+};
 
-  // Tab events (main -> renderer, triggered by menu accelerators)
-  onTabNew: (callback: () => void): CleanupFn => {
+// Tabs namespace
+const tabs = {
+  showContextMenu: (tabId: string, x: number, y: number) =>
+    ipcRenderer.invoke('tab:context-menu', tabId, x, y),
+  onNew: (callback: () => void): CleanupFn => {
     const handler = () => callback();
     ipcRenderer.on('tab:new', handler);
     return () => ipcRenderer.removeListener('tab:new', handler);
   },
-  onTabClose: (callback: () => void): CleanupFn => {
+  onClose: (callback: () => void): CleanupFn => {
     const handler = () => callback();
     ipcRenderer.on('tab:close', handler);
     return () => ipcRenderer.removeListener('tab:close', handler);
   },
-  onTabNext: (callback: () => void): CleanupFn => {
+  onNext: (callback: () => void): CleanupFn => {
     const handler = () => callback();
     ipcRenderer.on('tab:next', handler);
     return () => ipcRenderer.removeListener('tab:next', handler);
   },
-  onTabPrev: (callback: () => void): CleanupFn => {
+  onPrev: (callback: () => void): CleanupFn => {
     const handler = () => callback();
     ipcRenderer.on('tab:prev', handler);
     return () => ipcRenderer.removeListener('tab:prev', handler);
   },
-  onTabCloseSpecific: (callback: (tabId: string) => void): CleanupFn => {
+  onCloseSpecific: (callback: (tabId: string) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, tabId: string) => callback(tabId);
     ipcRenderer.on('tab:close-specific', handler);
     return () => ipcRenderer.removeListener('tab:close-specific', handler);
   },
-  onTabCloseOthers: (callback: (keepTabId: string) => void): CleanupFn => {
+  onCloseOthers: (callback: (keepTabId: string) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, tabId: string) => callback(tabId);
     ipcRenderer.on('tab:close-others', handler);
     return () => ipcRenderer.removeListener('tab:close-others', handler);
   },
-  onTabCloseAll: (callback: () => void): CleanupFn => {
+  onCloseAll: (callback: () => void): CleanupFn => {
     const handler = () => callback();
     ipcRenderer.on('tab:close-all', handler);
     return () => ipcRenderer.removeListener('tab:close-all', handler);
   },
+};
 
-  // Shortcuts dialog event (main -> renderer)
+// Events namespace (menu-triggered events)
+const events = {
   onShortcutsShow: (callback: () => void): CleanupFn => {
     const handler = () => callback();
     ipcRenderer.on('shortcuts:show', handler);
     return () => ipcRenderer.removeListener('shortcuts:show', handler);
   },
-
-  // Git settings dialog event (main -> renderer)
   onGitSettingsShow: (callback: () => void): CleanupFn => {
     const handler = () => callback();
     ipcRenderer.on('git-settings:show', handler);
     return () => ipcRenderer.removeListener('git-settings:show', handler);
   },
-
-  // New project event (main -> renderer, Ctrl+Shift+P)
   onProjectNew: (callback: () => void): CleanupFn => {
     const handler = () => callback();
     ipcRenderer.on('project:new', handler);
     return () => ipcRenderer.removeListener('project:new', handler);
   },
-
-  // Recording toggle event (main -> renderer, Ctrl+Shift+R)
   onRecordingToggle: (callback: () => void): CleanupFn => {
     const handler = () => callback();
     ipcRenderer.on('recording:toggle', handler);
     return () => ipcRenderer.removeListener('recording:toggle', handler);
   },
+};
 
-  // Tab context menu
-  showTabContextMenu: (tabId: string, x: number, y: number) =>
-    ipcRenderer.invoke('tab:context-menu', tabId, x, y),
-
-  // Dialogs
-  showConfirmClose: (message: string) =>
+// Dialog namespace
+const dialog = {
+  confirmClose: (message: string) =>
     ipcRenderer.invoke('dialog:confirm-close', message),
-  showConfirmOkCancel: (title: string, message: string) =>
+  confirmOkCancel: (title: string, message: string) =>
     ipcRenderer.invoke('dialog:confirm-ok-cancel', title, message),
-  showConfirmCloseMultiple: (count: number) =>
+  confirmCloseMultiple: (count: number) =>
     ipcRenderer.invoke('dialog:confirm-close-multiple', count),
-  showWorktreeCleanupDialog: (branchName: string, hasUncommittedChanges: boolean) =>
+  worktreeCleanup: (branchName: string, hasUncommittedChanges: boolean) =>
     ipcRenderer.invoke('dialog:worktree-cleanup', branchName, hasUncommittedChanges),
-
-  // Folder selection
   selectFolder: () => ipcRenderer.invoke('dialog:select-folder'),
+};
 
-  // Directory listing for path autocomplete
+// Filesystem namespace
+const fs = {
   listDirectory: (path: string) => ipcRenderer.invoke('fs:list-directory', path),
   createDirectory: (parentPath: string, folderName: string) =>
     ipcRenderer.invoke('fs:create-directory', parentPath, folderName),
+};
 
-  // Git config operations
-  loadGitConfig: () => ipcRenderer.invoke('git-config:load'),
-  saveGitConfig: (config: { name: string; email: string; githubPat?: string; openaiApiKey?: string }) =>
+// Git namespace
+const git = {
+  loadConfig: () => ipcRenderer.invoke('git-config:load'),
+  saveConfig: (config: { name: string; email: string; githubPat?: string; openaiApiKey?: string }) =>
     ipcRenderer.invoke('git-config:save', config),
+  isRepo: (folderPath: string) => ipcRenderer.invoke('git:is-repo', folderPath),
+  getBranch: (folderPath: string) => ipcRenderer.invoke('git:get-branch', folderPath),
+  init: (folderPath: string) => ipcRenderer.invoke('git:init', folderPath),
+  validateBranch: (branchName: string) => ipcRenderer.invoke('git:validate-branch', branchName),
+};
 
-  // Git worktree operations
-  checkGitRepo: (folderPath: string) => ipcRenderer.invoke('git:is-repo', folderPath),
-  getGitBranch: (folderPath: string) => ipcRenderer.invoke('git:get-branch', folderPath),
-  initGitRepo: (folderPath: string) => ipcRenderer.invoke('git:init', folderPath),
-  validateBranchName: (branchName: string) => ipcRenderer.invoke('git:validate-branch', branchName),
-
-  // Docker operations
-  isDockerAvailable: () => ipcRenderer.invoke('docker:available'),
+// Docker namespace
+const docker = {
+  isAvailable: () => ipcRenderer.invoke('docker:available'),
   ensureImage: (imageName?: string) => ipcRenderer.invoke('docker:ensure-image', imageName),
-  onDockerBuildProgress: (callback: (message: string) => void): CleanupFn => {
+  detectState: () => ipcRenderer.invoke('docker:detect-state'),
+  startDesktop: () => ipcRenderer.invoke('docker:start-desktop'),
+  startEngine: () => ipcRenderer.invoke('docker:start-engine'),
+  removeAllContainers: () => ipcRenderer.invoke('docker:remove-all-containers'),
+  removeImage: () => ipcRenderer.invoke('docker:remove-image'),
+  onBuildProgress: (callback: (message: string) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, message: string) =>
       callback(message);
     ipcRenderer.on('docker:build-progress', handler);
     return () => ipcRenderer.removeListener('docker:build-progress', handler);
   },
+};
 
-  // Docker setup operations
-  detectDockerState: () => ipcRenderer.invoke('docker:detect-state'),
-  startDockerDesktop: () => ipcRenderer.invoke('docker:start-desktop'),
-  startDockerEngine: () => ipcRenderer.invoke('docker:start-engine'),
-
-  // Docker rebuild operations
-  removeAllContainers: () => ipcRenderer.invoke('docker:remove-all-containers'),
-  removeImage: () => ipcRenderer.invoke('docker:remove-image'),
-
-  // Cache management operations
-  listProjectCaches: () => ipcRenderer.invoke('cache:list'),
-  getProjectCacheStats: () => ipcRenderer.invoke('cache:stats'),
-  deleteProjectCache: (dirName: string) => ipcRenderer.invoke('cache:delete', dirName),
-  cleanupOrphanedCaches: () => ipcRenderer.invoke('cache:cleanup-orphaned'),
-  cleanupStaleCaches: (maxAgeDays?: number) => ipcRenderer.invoke('cache:cleanup-stale', maxAgeDays),
-
-  // Yolium operations
-  createYolium: (folderPath: string, agent: string = 'claude', gsdEnabled: boolean = true, gitConfig?: { name: string; email: string }, worktreeEnabled: boolean = false, branchName?: string) =>
+// Container namespace (Yolium containers)
+const container = {
+  create: (folderPath: string, agent: string = 'claude', gsdEnabled: boolean = true, gitConfig?: { name: string; email: string }, worktreeEnabled: boolean = false, branchName?: string) =>
     ipcRenderer.invoke('yolium:create', folderPath, agent, gsdEnabled, gitConfig, worktreeEnabled, branchName),
-  writeYolium: (sessionId: string, data: string) =>
+  write: (sessionId: string, data: string) =>
     ipcRenderer.send('yolium:write', sessionId, data),
-  resizeYolium: (sessionId: string, cols: number, rows: number) =>
+  resize: (sessionId: string, cols: number, rows: number) =>
     ipcRenderer.send('yolium:resize', sessionId, cols, rows),
-  stopYolium: (sessionId: string, deleteWorktree?: boolean) => ipcRenderer.invoke('yolium:stop', sessionId, deleteWorktree),
+  stop: (sessionId: string, deleteWorktree?: boolean) => ipcRenderer.invoke('yolium:stop', sessionId, deleteWorktree),
   getWorktreeInfo: (sessionId: string) => ipcRenderer.invoke('yolium:get-worktree-info', sessionId),
-
-  // Container events (main -> renderer)
-  onContainerData: (callback: (sessionId: string, data: string) => void): CleanupFn => {
+  onData: (callback: (sessionId: string, data: string) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, sessionId: string, data: string) =>
       callback(sessionId, data);
     ipcRenderer.on('container:data', handler);
     return () => ipcRenderer.removeListener('container:data', handler);
   },
-  onContainerExit: (callback: (sessionId: string, exitCode: number) => void): CleanupFn => {
+  onExit: (callback: (sessionId: string, exitCode: number) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, sessionId: string, exitCode: number) =>
       callback(sessionId, exitCode);
     ipcRenderer.on('container:exit', handler);
     return () => ipcRenderer.removeListener('container:exit', handler);
   },
+};
 
-  // Whisper speech-to-text operations
-  whisperListModels: () => ipcRenderer.invoke('whisper:list-models'),
-  whisperIsModelDownloaded: (modelSize: string) => ipcRenderer.invoke('whisper:is-model-downloaded', modelSize),
-  whisperDownloadModel: (modelSize: string) => ipcRenderer.invoke('whisper:download-model', modelSize),
-  whisperDeleteModel: (modelSize: string) => ipcRenderer.invoke('whisper:delete-model', modelSize),
-  whisperIsBinaryAvailable: () => ipcRenderer.invoke('whisper:is-binary-available'),
-  whisperTranscribe: (audioData: number[], modelSize: string) =>
-    ipcRenderer.invoke('whisper:transcribe', audioData, modelSize),
-  whisperGetSelectedModel: () => ipcRenderer.invoke('whisper:get-selected-model'),
-  whisperSaveSelectedModel: (modelSize: string) => ipcRenderer.invoke('whisper:save-selected-model', modelSize),
-  onWhisperDownloadProgress: (callback: (progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) =>
-      callback(progress);
-    ipcRenderer.on('whisper:download-progress', handler);
-    return () => ipcRenderer.removeListener('whisper:download-progress', handler);
-  },
-
-  // Code review operations
-  listRemoteBranches: (repoUrl: string) =>
-    ipcRenderer.invoke('code-review:list-branches', repoUrl),
-  checkAgentAuth: (agent: string) =>
-    ipcRenderer.invoke('code-review:check-agent-auth', agent),
-  startCodeReview: (repoUrl: string, branch: string, agent: string, gitConfig?: { name: string; email: string }) =>
-    ipcRenderer.invoke('code-review:start', repoUrl, branch, agent, gitConfig),
-  onCodeReviewOutput: (callback: (sessionId: string, data: string) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, data: string) =>
-      callback(sessionId, data);
-    ipcRenderer.on('code-review:output', handler);
-    return () => ipcRenderer.removeListener('code-review:output', handler);
-  },
-  onCodeReviewComplete: (callback: (sessionId: string, exitCode: number, authError?: boolean) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, exitCode: number, authError?: boolean) =>
-      callback(sessionId, exitCode, authError);
-    ipcRenderer.on('code-review:complete', handler);
-    return () => ipcRenderer.removeListener('code-review:complete', handler);
-  },
-
-  // Kanban board operations
-  kanbanGetBoard: (projectPath: string) =>
+// Kanban namespace
+const kanban = {
+  getBoard: (projectPath: string) =>
     ipcRenderer.invoke('kanban:get-board', projectPath),
-  kanbanAddItem: (projectPath: string, params: {
+  addItem: (projectPath: string, params: {
     title: string;
     description: string;
     branch?: string;
@@ -234,267 +193,354 @@ contextBridge.exposeInMainWorld('electronAPI', {
     order: number;
     model?: string;
   }) => ipcRenderer.invoke('kanban:add-item', projectPath, params),
-  kanbanUpdateItem: (projectPath: string, itemId: string, updates: object) =>
+  updateItem: (projectPath: string, itemId: string, updates: object) =>
     ipcRenderer.invoke('kanban:update-item', projectPath, itemId, updates),
-  kanbanAddComment: (projectPath: string, itemId: string, source: string, text: string) =>
+  addComment: (projectPath: string, itemId: string, source: string, text: string) =>
     ipcRenderer.invoke('kanban:add-comment', projectPath, itemId, source, text),
-  kanbanDeleteItem: (projectPath: string, itemId: string) =>
+  deleteItem: (projectPath: string, itemId: string) =>
     ipcRenderer.invoke('kanban:delete-item', projectPath, itemId),
-  onKanbanBoardUpdated: (callback: (projectPath: string) => void): CleanupFn => {
+  onBoardUpdated: (callback: (projectPath: string) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, projectPath: string) =>
       callback(projectPath);
     ipcRenderer.on('kanban:board-updated', handler);
     return () => ipcRenderer.removeListener('kanban:board-updated', handler);
   },
+};
 
-  // Agent operations
-  agentStart: (params: {
+// Agent namespace
+const agent = {
+  start: (params: {
     agentName: string;
     projectPath: string;
     itemId: string;
     goal: string;
   }) => ipcRenderer.invoke('agent:start', params),
-  agentResume: (params: {
+  resume: (params: {
     agentName: string;
     projectPath: string;
     itemId: string;
     goal: string;
   }) => ipcRenderer.invoke('agent:resume', params),
-  agentAnswer: (projectPath: string, itemId: string, answer: string) =>
+  answer: (projectPath: string, itemId: string, answer: string) =>
     ipcRenderer.invoke('agent:answer', projectPath, itemId, answer),
-  agentStop: (sessionId: string) =>
+  stop: (sessionId: string) =>
     ipcRenderer.invoke('agent:stop', sessionId),
-  agentGetActiveSession: (projectPath: string, itemId: string) =>
+  getActiveSession: (projectPath: string, itemId: string) =>
     ipcRenderer.invoke('agent:get-active-session', projectPath, itemId),
-  agentRecover: (projectPath: string) =>
+  recover: (projectPath: string) =>
     ipcRenderer.invoke('agent:recover', projectPath),
-  onAgentOutput: (callback: (sessionId: string, data: string) => void): CleanupFn => {
+  onOutput: (callback: (sessionId: string, data: string) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, sessionId: string, data: string) =>
       callback(sessionId, data);
     ipcRenderer.on('agent:output', handler);
     return () => ipcRenderer.removeListener('agent:output', handler);
   },
-  onAgentQuestion: (callback: (sessionId: string, question: { text: string; options?: string[] }) => void): CleanupFn => {
+  onQuestion: (callback: (sessionId: string, question: { text: string; options?: string[] }) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, sessionId: string, question: { text: string; options?: string[] }) =>
       callback(sessionId, question);
     ipcRenderer.on('agent:question', handler);
     return () => ipcRenderer.removeListener('agent:question', handler);
   },
-  onAgentItemCreated: (callback: (sessionId: string, item: object) => void): CleanupFn => {
+  onItemCreated: (callback: (sessionId: string, item: object) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, sessionId: string, item: object) =>
       callback(sessionId, item);
     ipcRenderer.on('agent:item-created', handler);
     return () => ipcRenderer.removeListener('agent:item-created', handler);
   },
-  onAgentComplete: (callback: (sessionId: string, summary: string) => void): CleanupFn => {
+  onComplete: (callback: (sessionId: string, summary: string) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, sessionId: string, summary: string) =>
       callback(sessionId, summary);
     ipcRenderer.on('agent:complete', handler);
     return () => ipcRenderer.removeListener('agent:complete', handler);
   },
-  onAgentError: (callback: (sessionId: string, message: string) => void): CleanupFn => {
+  onError: (callback: (sessionId: string, message: string) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, sessionId: string, message: string) =>
       callback(sessionId, message);
     ipcRenderer.on('agent:error', handler);
     return () => ipcRenderer.removeListener('agent:error', handler);
   },
-  onAgentProgress: (callback: (sessionId: string, progress: { step: string; detail: string; attempt?: number; maxAttempts?: number }) => void): CleanupFn => {
+  onProgress: (callback: (sessionId: string, progress: { step: string; detail: string; attempt?: number; maxAttempts?: number }) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, sessionId: string, progress: { step: string; detail: string; attempt?: number; maxAttempts?: number }) =>
       callback(sessionId, progress);
     ipcRenderer.on('agent:progress', handler);
     return () => ipcRenderer.removeListener('agent:progress', handler);
   },
-  onAgentExit: (callback: (sessionId: string, exitCode: number) => void): CleanupFn => {
+  onExit: (callback: (sessionId: string, exitCode: number) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, sessionId: string, exitCode: number) =>
       callback(sessionId, exitCode);
     ipcRenderer.on('agent:exit', handler);
     return () => ipcRenderer.removeListener('agent:exit', handler);
   },
+};
+
+// Cache namespace
+const cache = {
+  list: () => ipcRenderer.invoke('cache:list'),
+  stats: () => ipcRenderer.invoke('cache:stats'),
+  delete: (dirName: string) => ipcRenderer.invoke('cache:delete', dirName),
+  cleanupOrphaned: () => ipcRenderer.invoke('cache:cleanup-orphaned'),
+  cleanupStale: (maxAgeDays?: number) => ipcRenderer.invoke('cache:cleanup-stale', maxAgeDays),
+};
+
+// Whisper namespace
+const whisper = {
+  listModels: () => ipcRenderer.invoke('whisper:list-models'),
+  isModelDownloaded: (modelSize: string) => ipcRenderer.invoke('whisper:is-model-downloaded', modelSize),
+  downloadModel: (modelSize: string) => ipcRenderer.invoke('whisper:download-model', modelSize),
+  deleteModel: (modelSize: string) => ipcRenderer.invoke('whisper:delete-model', modelSize),
+  isBinaryAvailable: () => ipcRenderer.invoke('whisper:is-binary-available'),
+  transcribe: (audioData: number[], modelSize: string) =>
+    ipcRenderer.invoke('whisper:transcribe', audioData, modelSize),
+  getSelectedModel: () => ipcRenderer.invoke('whisper:get-selected-model'),
+  saveSelectedModel: (modelSize: string) => ipcRenderer.invoke('whisper:save-selected-model', modelSize),
+  onDownloadProgress: (callback: (progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) =>
+      callback(progress);
+    ipcRenderer.on('whisper:download-progress', handler);
+    return () => ipcRenderer.removeListener('whisper:download-progress', handler);
+  },
+};
+
+// Code Review namespace
+const codeReview = {
+  listBranches: (repoUrl: string) =>
+    ipcRenderer.invoke('code-review:list-branches', repoUrl),
+  checkAuth: (agent: string) =>
+    ipcRenderer.invoke('code-review:check-agent-auth', agent),
+  start: (repoUrl: string, branch: string, agent: string, gitConfig?: { name: string; email: string }) =>
+    ipcRenderer.invoke('code-review:start', repoUrl, branch, agent, gitConfig),
+  onOutput: (callback: (sessionId: string, data: string) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, data: string) =>
+      callback(sessionId, data);
+    ipcRenderer.on('code-review:output', handler);
+    return () => ipcRenderer.removeListener('code-review:output', handler);
+  },
+  onComplete: (callback: (sessionId: string, exitCode: number, authError?: boolean) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, exitCode: number, authError?: boolean) =>
+      callback(sessionId, exitCode, authError);
+    ipcRenderer.on('code-review:complete', handler);
+    return () => ipcRenderer.removeListener('code-review:complete', handler);
+  },
+};
+
+// Expose all namespaces to renderer
+contextBridge.exposeInMainWorld('electronAPI', {
+  app,
+  terminal,
+  tabs,
+  events,
+  dialog,
+  fs,
+  git,
+  docker,
+  container,
+  kanban,
+  agent,
+  cache,
+  whisper,
+  codeReview,
 });
 
-// Type declaration for TypeScript
+// Type declarations for TypeScript
+type CleanupFunction = () => void;
+
 declare global {
   interface Window {
     electronAPI: {
-      getVersion: () => Promise<string>;
-      getHomeDir: () => Promise<string>;
-      openExternal: (url: string) => Promise<void>;
-      forceQuit: () => Promise<void>;
-      onQuitRequest: (callback: () => void) => CleanupFn;
-      createTerminal: (cwd?: string) => Promise<string>;
-      writeTerminal: (sessionId: string, data: string) => void;
-      resizeTerminal: (sessionId: string, cols: number, rows: number) => void;
-      closeTerminal: (sessionId: string) => Promise<void>;
-      hasRunningChildren: (sessionId: string) => Promise<boolean>;
-      onTerminalData: (callback: (sessionId: string, data: string) => void) => CleanupFn;
-      onTerminalExit: (callback: (sessionId: string, exitCode: number) => void) => CleanupFn;
-      onTabNew: (callback: () => void) => CleanupFn;
-      onTabClose: (callback: () => void) => CleanupFn;
-      onTabNext: (callback: () => void) => CleanupFn;
-      onTabPrev: (callback: () => void) => CleanupFn;
-      onTabCloseSpecific: (callback: (tabId: string) => void) => CleanupFn;
-      onTabCloseOthers: (callback: (keepTabId: string) => void) => CleanupFn;
-      onTabCloseAll: (callback: () => void) => CleanupFn;
-      onShortcutsShow: (callback: () => void) => CleanupFn;
-      onGitSettingsShow: (callback: () => void) => CleanupFn;
-      onProjectNew: (callback: () => void) => CleanupFn;
-      onRecordingToggle: (callback: () => void) => CleanupFn;
-      showTabContextMenu: (tabId: string, x: number, y: number) => Promise<void>;
-      showConfirmClose: (message: string) => Promise<boolean>;
-      showConfirmOkCancel: (title: string, message: string) => Promise<boolean>;
-      showConfirmCloseMultiple: (count: number) => Promise<boolean>;
-      showWorktreeCleanupDialog: (branchName: string, hasUncommittedChanges: boolean) => Promise<{ response: number }>;
-      // Folder selection
-      selectFolder: () => Promise<string | null>;
-      // Directory listing for path autocomplete
-      listDirectory: (path: string) => Promise<{
-        success: boolean;
-        basePath: string;
-        entries: Array<{ name: string; path: string; isHidden: boolean }>;
-        error: string | null;
-      }>;
-      createDirectory: (parentPath: string, folderName: string) => Promise<{
-        success: boolean;
-        path: string | null;
-        error: string | null;
-      }>;
-      // Git config operations
-      loadGitConfig: () => Promise<{ name: string; email: string; hasPat?: boolean; hasOpenaiKey?: boolean } | null>;
-      saveGitConfig: (config: { name: string; email: string; githubPat?: string; openaiApiKey?: string }) => Promise<void>;
-      // Git worktree operations
-      checkGitRepo: (folderPath: string) => Promise<{ isRepo: boolean; hasCommits: boolean }>;
-      getGitBranch: (folderPath: string) => Promise<string | null>;
-      initGitRepo: (folderPath: string) => Promise<{ success: boolean; initialized?: boolean; error?: string }>;
-      validateBranchName: (branchName: string) => Promise<{ valid: boolean; error: string | null }>;
-      // Docker operations
-      isDockerAvailable: () => Promise<boolean>;
-      ensureImage: (imageName?: string) => Promise<void>;
-      onDockerBuildProgress: (callback: (message: string) => void) => CleanupFn;
-      // Docker setup operations
-      detectDockerState: () => Promise<{ installed: boolean; running: boolean; desktopPath: string | null }>;
-      startDockerDesktop: () => Promise<boolean>;
-      startDockerEngine: () => Promise<boolean>;
-      // Docker rebuild operations
-      removeAllContainers: () => Promise<number>;
-      removeImage: () => Promise<void>;
-      // Cache management operations
-      listProjectCaches: () => Promise<Array<{
-        dirName: string;
-        path: string;
-        folderName: string;
-        lastAccessed: string;
-        createdAt: string;
-        exists: boolean;
-        cacheSizeBytes: number;
-        historySizeBytes: number;
-      }>>;
-      getProjectCacheStats: () => Promise<{
-        totalProjects: number;
-        existingProjects: number;
-        orphanedProjects: number;
-        totalCacheSizeBytes: number;
-        totalHistorySizeBytes: number;
-        oldestAccess: string | null;
-        newestAccess: string | null;
-      }>;
-      deleteProjectCache: (dirName: string) => Promise<{ deleted: boolean; error?: string }>;
-      cleanupOrphanedCaches: () => Promise<{ deletedCount: number; freedBytes: number; errors: string[] }>;
-      cleanupStaleCaches: (maxAgeDays?: number) => Promise<{ deletedCount: number; freedBytes: number; errors: string[] }>;
-      // Yolium operations
-      createYolium: (folderPath: string, agent?: string, gsdEnabled?: boolean, gitConfig?: { name: string; email: string }, worktreeEnabled?: boolean, branchName?: string) => Promise<string>;
-      writeYolium: (sessionId: string, data: string) => void;
-      resizeYolium: (sessionId: string, cols: number, rows: number) => void;
-      stopYolium: (sessionId: string, deleteWorktree?: boolean) => Promise<void>;
-      getWorktreeInfo: (sessionId: string) => Promise<{
-        worktreePath: string;
-        originalPath: string;
-        branchName: string;
-        hasUncommittedChanges: boolean;
-      } | null>;
-      onContainerData: (callback: (sessionId: string, data: string) => void) => CleanupFn;
-      onContainerExit: (callback: (sessionId: string, exitCode: number) => void) => CleanupFn;
-      // Whisper speech-to-text operations
-      whisperListModels: () => Promise<Array<{
-        size: string;
-        name: string;
-        fileName: string;
-        sizeBytes: number;
-        downloaded: boolean;
-        path?: string;
-      }>>;
-      whisperIsModelDownloaded: (modelSize: string) => Promise<boolean>;
-      whisperDownloadModel: (modelSize: string) => Promise<string>;
-      whisperDeleteModel: (modelSize: string) => Promise<boolean>;
-      whisperIsBinaryAvailable: () => Promise<boolean>;
-      whisperTranscribe: (audioData: number[], modelSize: string) => Promise<{ text: string; durationSeconds: number }>;
-      whisperGetSelectedModel: () => Promise<string>;
-      whisperSaveSelectedModel: (modelSize: string) => Promise<void>;
-      onWhisperDownloadProgress: (callback: (progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) => void) => CleanupFn;
-      // Code review operations
-      listRemoteBranches: (repoUrl: string) => Promise<{ branches: string[]; error?: string }>;
-      checkAgentAuth: (agent: string) => Promise<{ authenticated: boolean }>;
-      startCodeReview: (repoUrl: string, branch: string, agent: string, gitConfig?: { name: string; email: string }) => Promise<string>;
-      onCodeReviewOutput: (callback: (sessionId: string, data: string) => void) => CleanupFn;
-      onCodeReviewComplete: (callback: (sessionId: string, exitCode: number, authError?: boolean) => void) => CleanupFn;
-      // Kanban board operations
-      kanbanGetBoard: (projectPath: string) => Promise<{
-        id: string;
-        projectPath: string;
-        items: Array<{
+      app: {
+        getVersion: () => Promise<string>;
+        getHomeDir: () => Promise<string>;
+        openExternal: (url: string) => Promise<void>;
+        forceQuit: () => Promise<void>;
+        onQuitRequest: (callback: () => void) => CleanupFunction;
+      };
+      terminal: {
+        create: (cwd?: string) => Promise<string>;
+        write: (sessionId: string, data: string) => void;
+        resize: (sessionId: string, cols: number, rows: number) => void;
+        close: (sessionId: string) => Promise<void>;
+        hasRunningChildren: (sessionId: string) => Promise<boolean>;
+        onData: (callback: (sessionId: string, data: string) => void) => CleanupFunction;
+        onExit: (callback: (sessionId: string, exitCode: number) => void) => CleanupFunction;
+      };
+      tabs: {
+        showContextMenu: (tabId: string, x: number, y: number) => Promise<void>;
+        onNew: (callback: () => void) => CleanupFunction;
+        onClose: (callback: () => void) => CleanupFunction;
+        onNext: (callback: () => void) => CleanupFunction;
+        onPrev: (callback: () => void) => CleanupFunction;
+        onCloseSpecific: (callback: (tabId: string) => void) => CleanupFunction;
+        onCloseOthers: (callback: (keepTabId: string) => void) => CleanupFunction;
+        onCloseAll: (callback: () => void) => CleanupFunction;
+      };
+      events: {
+        onShortcutsShow: (callback: () => void) => CleanupFunction;
+        onGitSettingsShow: (callback: () => void) => CleanupFunction;
+        onProjectNew: (callback: () => void) => CleanupFunction;
+        onRecordingToggle: (callback: () => void) => CleanupFunction;
+      };
+      dialog: {
+        confirmClose: (message: string) => Promise<boolean>;
+        confirmOkCancel: (title: string, message: string) => Promise<boolean>;
+        confirmCloseMultiple: (count: number) => Promise<boolean>;
+        worktreeCleanup: (branchName: string, hasUncommittedChanges: boolean) => Promise<{ response: number }>;
+        selectFolder: () => Promise<string | null>;
+      };
+      fs: {
+        listDirectory: (path: string) => Promise<{
+          success: boolean;
+          basePath: string;
+          entries: Array<{ name: string; path: string; isHidden: boolean }>;
+          error: string | null;
+        }>;
+        createDirectory: (parentPath: string, folderName: string) => Promise<{
+          success: boolean;
+          path: string | null;
+          error: string | null;
+        }>;
+      };
+      git: {
+        loadConfig: () => Promise<{ name: string; email: string; hasPat?: boolean; hasOpenaiKey?: boolean } | null>;
+        saveConfig: (config: { name: string; email: string; githubPat?: string; openaiApiKey?: string }) => Promise<void>;
+        isRepo: (folderPath: string) => Promise<{ isRepo: boolean; hasCommits: boolean }>;
+        getBranch: (folderPath: string) => Promise<string | null>;
+        init: (folderPath: string) => Promise<{ success: boolean; initialized?: boolean; error?: string }>;
+        validateBranch: (branchName: string) => Promise<{ valid: boolean; error: string | null }>;
+      };
+      docker: {
+        isAvailable: () => Promise<boolean>;
+        ensureImage: (imageName?: string) => Promise<void>;
+        detectState: () => Promise<{ installed: boolean; running: boolean; desktopPath: string | null }>;
+        startDesktop: () => Promise<boolean>;
+        startEngine: () => Promise<boolean>;
+        removeAllContainers: () => Promise<number>;
+        removeImage: () => Promise<void>;
+        onBuildProgress: (callback: (message: string) => void) => CleanupFunction;
+      };
+      container: {
+        create: (folderPath: string, agent?: string, gsdEnabled?: boolean, gitConfig?: { name: string; email: string }, worktreeEnabled?: boolean, branchName?: string) => Promise<string>;
+        write: (sessionId: string, data: string) => void;
+        resize: (sessionId: string, cols: number, rows: number) => void;
+        stop: (sessionId: string, deleteWorktree?: boolean) => Promise<void>;
+        getWorktreeInfo: (sessionId: string) => Promise<{
+          worktreePath: string;
+          originalPath: string;
+          branchName: string;
+          hasUncommittedChanges: boolean;
+        } | null>;
+        onData: (callback: (sessionId: string, data: string) => void) => CleanupFunction;
+        onExit: (callback: (sessionId: string, exitCode: number) => void) => CleanupFunction;
+      };
+      kanban: {
+        getBoard: (projectPath: string) => Promise<{
           id: string;
+          projectPath: string;
+          items: Array<{
+            id: string;
+            title: string;
+            description: string;
+            column: 'backlog' | 'ready' | 'in-progress' | 'done';
+            branch?: string;
+            agentType: 'claude' | 'codex' | 'opencode';
+            order: number;
+            model?: string;
+            agentStatus: 'idle' | 'running' | 'waiting' | 'interrupted' | 'completed' | 'failed';
+            agentQuestion?: string;
+            agentQuestionOptions?: string[];
+            comments: Array<{ id: string; source: 'user' | 'agent' | 'system'; text: string; timestamp: string }>;
+            createdAt: string;
+            updatedAt: string;
+          }>;
+          createdAt: string;
+          updatedAt: string;
+        }>;
+        addItem: (projectPath: string, params: {
           title: string;
           description: string;
-          column: 'backlog' | 'ready' | 'in-progress' | 'done';
           branch?: string;
           agentType: 'claude' | 'codex' | 'opencode';
           order: number;
           model?: string;
-          agentStatus: 'idle' | 'running' | 'waiting' | 'interrupted' | 'completed' | 'failed';
-          agentQuestion?: string;
-          agentQuestionOptions?: string[];
-          comments: Array<{ id: string; source: 'user' | 'agent' | 'system'; text: string; timestamp: string }>;
+        }) => Promise<object>;
+        updateItem: (projectPath: string, itemId: string, updates: object) => Promise<object | null>;
+        addComment: (projectPath: string, itemId: string, source: string, text: string) => Promise<object | null>;
+        deleteItem: (projectPath: string, itemId: string) => Promise<boolean>;
+        onBoardUpdated: (callback: (projectPath: string) => void) => CleanupFunction;
+      };
+      agent: {
+        start: (params: {
+          agentName: string;
+          projectPath: string;
+          itemId: string;
+          goal: string;
+        }) => Promise<{ sessionId: string; error?: string }>;
+        resume: (params: {
+          agentName: string;
+          projectPath: string;
+          itemId: string;
+          goal: string;
+        }) => Promise<{ sessionId: string; error?: string }>;
+        answer: (projectPath: string, itemId: string, answer: string) => Promise<void>;
+        stop: (sessionId: string) => Promise<void>;
+        getActiveSession: (projectPath: string, itemId: string) => Promise<{ sessionId: string } | null>;
+        recover: (projectPath: string) => Promise<Array<object>>;
+        onOutput: (callback: (sessionId: string, data: string) => void) => CleanupFunction;
+        onQuestion: (callback: (sessionId: string, question: { text: string; options?: string[] }) => void) => CleanupFunction;
+        onItemCreated: (callback: (sessionId: string, item: object) => void) => CleanupFunction;
+        onComplete: (callback: (sessionId: string, summary: string) => void) => CleanupFunction;
+        onError: (callback: (sessionId: string, message: string) => void) => CleanupFunction;
+        onProgress: (callback: (sessionId: string, progress: { step: string; detail: string; attempt?: number; maxAttempts?: number }) => void) => CleanupFunction;
+        onExit: (callback: (sessionId: string, exitCode: number) => void) => CleanupFunction;
+      };
+      cache: {
+        list: () => Promise<Array<{
+          dirName: string;
+          path: string;
+          folderName: string;
+          lastAccessed: string;
           createdAt: string;
-          updatedAt: string;
+          exists: boolean;
+          cacheSizeBytes: number;
+          historySizeBytes: number;
+        }>>;
+        stats: () => Promise<{
+          totalProjects: number;
+          existingProjects: number;
+          orphanedProjects: number;
+          totalCacheSizeBytes: number;
+          totalHistorySizeBytes: number;
+          oldestAccess: string | null;
+          newestAccess: string | null;
         }>;
-        createdAt: string;
-        updatedAt: string;
-      }>;
-      kanbanAddItem: (projectPath: string, params: {
-        title: string;
-        description: string;
-        branch?: string;
-        agentType: 'claude' | 'codex' | 'opencode';
-        order: number;
-        model?: string;
-      }) => Promise<object>;
-      kanbanUpdateItem: (projectPath: string, itemId: string, updates: object) => Promise<object | null>;
-      kanbanAddComment: (projectPath: string, itemId: string, source: string, text: string) => Promise<object | null>;
-      kanbanDeleteItem: (projectPath: string, itemId: string) => Promise<boolean>;
-      onKanbanBoardUpdated: (callback: (projectPath: string) => void) => CleanupFn;
-      // Agent operations
-      agentStart: (params: {
-        agentName: string;
-        projectPath: string;
-        itemId: string;
-        goal: string;
-      }) => Promise<{ sessionId: string; error?: string }>;
-      agentResume: (params: {
-        agentName: string;
-        projectPath: string;
-        itemId: string;
-        goal: string;
-      }) => Promise<{ sessionId: string; error?: string }>;
-      agentAnswer: (projectPath: string, itemId: string, answer: string) => Promise<void>;
-      agentStop: (sessionId: string) => Promise<void>;
-      agentGetActiveSession: (projectPath: string, itemId: string) => Promise<{ sessionId: string } | null>;
-      agentRecover: (projectPath: string) => Promise<Array<object>>;
-      onAgentOutput: (callback: (sessionId: string, data: string) => void) => CleanupFn;
-      onAgentQuestion: (callback: (sessionId: string, question: { text: string; options?: string[] }) => void) => CleanupFn;
-      onAgentItemCreated: (callback: (sessionId: string, item: object) => void) => CleanupFn;
-      onAgentComplete: (callback: (sessionId: string, summary: string) => void) => CleanupFn;
-      onAgentError: (callback: (sessionId: string, message: string) => void) => CleanupFn;
-      onAgentProgress: (callback: (sessionId: string, progress: { step: string; detail: string; attempt?: number; maxAttempts?: number }) => void) => CleanupFn;
-      onAgentExit: (callback: (sessionId: string, exitCode: number) => void) => CleanupFn;
+        delete: (dirName: string) => Promise<{ deleted: boolean; error?: string }>;
+        cleanupOrphaned: () => Promise<{ deletedCount: number; freedBytes: number; errors: string[] }>;
+        cleanupStale: (maxAgeDays?: number) => Promise<{ deletedCount: number; freedBytes: number; errors: string[] }>;
+      };
+      whisper: {
+        listModels: () => Promise<Array<{
+          size: string;
+          name: string;
+          fileName: string;
+          sizeBytes: number;
+          downloaded: boolean;
+          path?: string;
+        }>>;
+        isModelDownloaded: (modelSize: string) => Promise<boolean>;
+        downloadModel: (modelSize: string) => Promise<string>;
+        deleteModel: (modelSize: string) => Promise<boolean>;
+        isBinaryAvailable: () => Promise<boolean>;
+        transcribe: (audioData: number[], modelSize: string) => Promise<{ text: string; durationSeconds: number }>;
+        getSelectedModel: () => Promise<string>;
+        saveSelectedModel: (modelSize: string) => Promise<void>;
+        onDownloadProgress: (callback: (progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) => void) => CleanupFunction;
+      };
+      codeReview: {
+        listBranches: (repoUrl: string) => Promise<{ branches: string[]; error?: string }>;
+        checkAuth: (agent: string) => Promise<{ authenticated: boolean }>;
+        start: (repoUrl: string, branch: string, agent: string, gitConfig?: { name: string; email: string }) => Promise<string>;
+        onOutput: (callback: (sessionId: string, data: string) => void) => CleanupFunction;
+        onComplete: (callback: (sessionId: string, exitCode: number, authError?: boolean) => void) => CleanupFunction;
+      };
     };
   }
 }

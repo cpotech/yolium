@@ -15,8 +15,10 @@ beforeEach(() => {
   // Setup the mock on window.electronAPI
   Object.defineProperty(window, 'electronAPI', {
     value: {
-      kanbanGetBoard: mockKanbanGetBoard,
-      onKanbanBoardUpdated: mockOnKanbanBoardUpdated,
+      kanban: {
+        getBoard: mockKanbanGetBoard,
+        onBoardUpdated: mockOnKanbanBoardUpdated,
+      },
     },
     writable: true,
   })
@@ -217,11 +219,14 @@ describe('KanbanView', () => {
     const board = createMockBoard([])
     mockKanbanGetBoard.mockResolvedValue(board)
 
-    // Add kanbanAddItem mock for NewItemDialog
+    // Add kanban.addItem mock for NewItemDialog
     Object.defineProperty(window, 'electronAPI', {
       value: {
         ...window.electronAPI,
-        kanbanAddItem: vi.fn().mockResolvedValue({}),
+        kanban: {
+          ...(window.electronAPI as any).kanban,
+          addItem: vi.fn().mockResolvedValue({}),
+        },
       },
       writable: true,
     })
@@ -291,12 +296,15 @@ describe('KanbanView', () => {
     ]
     const board = createMockBoard(items)
 
-    // Add kanbanUpdateItem mock
+    // Add kanban.updateItem mock
     const mockUpdateItem = vi.fn().mockResolvedValue({})
     Object.defineProperty(window, 'electronAPI', {
       value: {
         ...window.electronAPI,
-        kanbanUpdateItem: mockUpdateItem,
+        kanban: {
+          ...(window.electronAPI as any).kanban,
+          updateItem: mockUpdateItem,
+        },
       },
       writable: true,
     })

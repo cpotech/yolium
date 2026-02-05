@@ -52,7 +52,7 @@ test.describe('Work Item State Updates', () => {
 
     // Create a work item directly via IPC
     const item = await window.evaluate(async (repoPath: string) => {
-      return window.electronAPI.kanbanAddItem(repoPath, {
+      return window.electronAPI.kanban.addItem(repoPath, {
         title: 'Test work item',
         description: 'E2E test item for state updates',
         agentType: 'claude' as const,
@@ -78,7 +78,7 @@ test.describe('Work Item State Updates', () => {
 
     await window.evaluate(
       async (params: { path: string; id: string; updates: Record<string, unknown> }) => {
-        await window.electronAPI.kanbanUpdateItem(params.path, params.id, params.updates);
+        await window.electronAPI.kanban.updateItem(params.path, params.id, params.updates);
       },
       { path: testRepoPath, id: itemId, updates }
     );

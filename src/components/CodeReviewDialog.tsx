@@ -72,7 +72,7 @@ export function CodeReviewDialog({
 
   const checkAgentAuth = useCallback(async (agent: ReviewAgentType) => {
     try {
-      const result = await window.electronAPI.checkAgentAuth(agent);
+      const result = await window.electronAPI.codeReview.checkAgentAuth(agent);
       if (!result.authenticated) {
         const agentName = agent === 'claude' ? 'Claude Code' : agent === 'opencode' ? 'OpenCode' : 'Codex CLI';
         setAgentAuthWarning(
@@ -95,7 +95,7 @@ export function CodeReviewDialog({
     setBranch('');
 
     try {
-      const result = await window.electronAPI.listRemoteBranches(repoUrl.trim());
+      const result = await window.electronAPI.codeReview.listRemoteBranches(repoUrl.trim());
       if (result.error) {
         setBranchError(result.error);
       } else {

@@ -71,7 +71,7 @@ export function WhisperModelDialog({
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
-    window.electronAPI.whisperListModels().then((modelList) => {
+    window.electronAPI.whisper.listModels().then((modelList) => {
       const infos: ModelInfo[] = modelList.map((m) => ({
         size: m.size as WhisperModelSize,
         name: m.name,
@@ -91,7 +91,7 @@ export function WhisperModelDialog({
     const wasDownloading = prevDownloadProgressRef.current !== null;
     prevDownloadProgressRef.current = downloadProgress;
     if (isOpen && wasDownloading && downloadProgress === null) {
-      window.electronAPI.whisperListModels().then((modelList) => {
+      window.electronAPI.whisper.listModels().then((modelList) => {
         const infos: ModelInfo[] = modelList.map((m) => ({
           size: m.size as WhisperModelSize,
           name: m.name,

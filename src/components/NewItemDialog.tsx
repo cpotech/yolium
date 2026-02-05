@@ -58,7 +58,7 @@ export function NewItemDialog({
 
     setIsSubmitting(true)
     try {
-      await window.electronAPI.kanbanAddItem(projectPath, {
+      await window.electronAPI.kanban.addItem(projectPath, {
         title: title.trim(),
         description: description.trim(),
         branch: branch.trim() || undefined,

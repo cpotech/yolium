@@ -21,15 +21,21 @@ beforeEach(() => {
   // Setup the mock on window.electronAPI
   Object.defineProperty(window, 'electronAPI', {
     value: {
-      kanbanUpdateItem: mockKanbanUpdateItem,
-      kanbanDeleteItem: mockKanbanDeleteItem,
-      showConfirmOkCancel: mockShowConfirmOkCancel,
-      onAgentOutput: mockOnAgentOutput,
-      onAgentProgress: mockOnAgentProgress,
-      onAgentComplete: mockOnAgentComplete,
-      onAgentError: mockOnAgentError,
-      onAgentExit: mockOnAgentExit,
-      agentGetActiveSession: vi.fn().mockResolvedValue(null),
+      kanban: {
+        updateItem: mockKanbanUpdateItem,
+        deleteItem: mockKanbanDeleteItem,
+      },
+      dialog: {
+        confirmOkCancel: mockShowConfirmOkCancel,
+      },
+      agent: {
+        onOutput: mockOnAgentOutput,
+        onProgress: mockOnAgentProgress,
+        onComplete: mockOnAgentComplete,
+        onError: mockOnAgentError,
+        onExit: mockOnAgentExit,
+        getActiveSession: vi.fn().mockResolvedValue(null),
+      },
     },
     writable: true,
   })

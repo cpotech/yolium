@@ -13,7 +13,9 @@ beforeEach(() => {
   // Setup the mock on window.electronAPI
   Object.defineProperty(window, 'electronAPI', {
     value: {
-      kanbanAddItem: mockKanbanAddItem,
+      kanban: {
+        addItem: mockKanbanAddItem,
+      },
     },
     writable: true,
   })

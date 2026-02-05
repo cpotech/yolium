@@ -32,7 +32,7 @@ export function KanbanView({ projectPath }: KanbanViewProps): React.ReactElement
 
     setIsLoading(true)
     try {
-      const result = await window.electronAPI.kanbanGetBoard(projectPath)
+      const result = await window.electronAPI.kanban.getBoard(projectPath)
       setBoard(result)
       setErrorMessage(null)
       // Sync selectedItem with refreshed board data so the detail dialog shows live state
@@ -62,7 +62,7 @@ export function KanbanView({ projectPath }: KanbanViewProps): React.ReactElement
 
   // Subscribe to board updates
   useEffect(() => {
-    const cleanup = window.electronAPI.onKanbanBoardUpdated((updatedPath) => {
+    const cleanup = window.electronAPI.kanban.onBoardUpdated((updatedPath) => {
       // Normalize both paths for comparison (Windows backslash vs forward slash)
       const normalize = (p: string) => p.replace(/\\/g, '/')
       if (projectPath && normalize(updatedPath) === normalize(projectPath)) {
@@ -170,7 +170,7 @@ export function KanbanView({ projectPath }: KanbanViewProps): React.ReactElement
     })
 
     try {
-      await window.electronAPI.kanbanUpdateItem(projectPath, itemId, { column: targetColumn })
+      await window.electronAPI.kanban.updateItem(projectPath, itemId, { column: targetColumn })
       loadBoard()
     } catch (error) {
       console.error('Failed to move item:', error)

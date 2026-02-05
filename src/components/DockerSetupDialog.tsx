@@ -58,7 +58,7 @@ export function DockerSetupDialog({
       if (abortRef.current) return false;
 
       try {
-        const dockerState = await window.electronAPI.detectDockerState();
+        const dockerState = await window.electronAPI.docker.detectState();
         if (dockerState.running) {
           return true;
         }
@@ -84,7 +84,7 @@ export function DockerSetupDialog({
     });
 
     try {
-      const dockerState = await window.electronAPI.detectDockerState();
+      const dockerState = await window.electronAPI.docker.detectState();
 
       if (dockerState.running) {
         // Docker is already running
@@ -108,7 +108,7 @@ export function DockerSetupDialog({
         });
 
         try {
-          const engineStarted = await window.electronAPI.startDockerEngine();
+          const engineStarted = await window.electronAPI.docker.startEngine();
           if (engineStarted) {
             setState({ stage: 'ready', message: 'Docker is ready!', error: null });
             setTimeout(() => {
@@ -130,7 +130,7 @@ export function DockerSetupDialog({
         });
 
         try {
-          await window.electronAPI.startDockerDesktop();
+          await window.electronAPI.docker.startDesktop();
         } catch {
           // Start command may return even if Docker is still launching
         }
@@ -193,11 +193,11 @@ export function DockerSetupDialog({
 
   // Open download link in external browser
   const handleOpenDockerDesktop = useCallback(() => {
-    window.electronAPI.openExternal(getDockerDesktopUrl());
+    window.electronAPI.app.openExternal(getDockerDesktopUrl());
   }, []);
 
   const handleOpenDockerEngine = useCallback(() => {
-    window.electronAPI.openExternal(DOCKER_ENGINE_DOCS);
+    window.electronAPI.app.openExternal(DOCKER_ENGINE_DOCS);
   }, []);
 
   // Render manual instructions based on platform

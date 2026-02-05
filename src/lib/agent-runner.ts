@@ -23,7 +23,7 @@ import {
   createAgentContainer,
   stopAgentContainer,
   checkAgentAuth,
-} from '../docker-manager';
+} from './docker';
 import type { KanbanBoard, KanbanItem } from '../types/kanban';
 import type {
   AskQuestionMessage,

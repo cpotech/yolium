@@ -68,7 +68,7 @@ test.describe('Kanban Board', () => {
     const { window } = ctx;
     const item = await window.evaluate(
       async (params: { path: string; title: string; desc: string; branch?: string; agentType?: string }) => {
-        return window.electronAPI.kanbanAddItem(params.path, {
+        return window.electronAPI.kanban.addItem(params.path, {
           title: params.title,
           description: params.desc,
           branch: params.branch,
@@ -365,11 +365,11 @@ test.describe('Kanban Board', () => {
 
     // Create multiple items via IPC
     await window.evaluate(async (repoPath: string) => {
-      await window.electronAPI.kanbanAddItem(repoPath, {
+      await window.electronAPI.kanban.addItem(repoPath, {
         title: 'Backlog Item 1', description: 'Desc 1',
         agentType: 'claude', order: 0,
       });
-      await window.electronAPI.kanbanAddItem(repoPath, {
+      await window.electronAPI.kanban.addItem(repoPath, {
         title: 'Backlog Item 2', description: 'Desc 2',
         agentType: 'claude', order: 1,
       });
@@ -384,13 +384,13 @@ test.describe('Kanban Board', () => {
 
     // Move one to ready via IPC
     const board = await window.evaluate(async (repoPath: string) => {
-      return window.electronAPI.kanbanGetBoard(repoPath);
+      return window.electronAPI.kanban.getBoard(repoPath);
     }, testRepoPath);
 
     const firstItem = (board as { items: Array<{ id: string }> }).items[0];
     await window.evaluate(
       async (params: { path: string; id: string }) => {
-        await window.electronAPI.kanbanUpdateItem(params.path, params.id, { column: 'ready' });
+        await window.electronAPI.kanban.updateItem(params.path, params.id, { column: 'ready' });
       },
       { path: testRepoPath, id: firstItem.id }
     );
@@ -413,13 +413,13 @@ test.describe('Kanban Board', () => {
 
     // Create 3 items
     await window.evaluate(async (repoPath: string) => {
-      await window.electronAPI.kanbanAddItem(repoPath, {
+      await window.electronAPI.kanban.addItem(repoPath, {
         title: 'Item 1', description: 'D', agentType: 'claude', order: 0,
       });
-      await window.electronAPI.kanbanAddItem(repoPath, {
+      await window.electronAPI.kanban.addItem(repoPath, {
         title: 'Item 2', description: 'D', agentType: 'claude', order: 1,
       });
-      await window.electronAPI.kanbanAddItem(repoPath, {
+      await window.electronAPI.kanban.addItem(repoPath, {
         title: 'Item 3', description: 'D', agentType: 'claude', order: 2,
       });
     }, testRepoPath);

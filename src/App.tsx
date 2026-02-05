@@ -111,7 +111,7 @@ function App(): React.ReactElement {
     buildCancelledRef.current = false;
 
     // Set up progress listener before starting
-    const cleanupProgress = window.electronAPI.onDockerBuildProgress((message) => {
+    const cleanupProgress = window.electronAPI.docker.onBuildProgress((message) => {
       setBuildProgress(prev => {
         const lines = prev || [];
         // Keep last 50 lines to prevent memory issues
@@ -124,7 +124,7 @@ function App(): React.ReactElement {
     try {
       setBuildError(null);
       setBuildProgress(['Checking Yolium image...']);
-      await window.electronAPI.ensureImage();
+      await window.electronAPI.docker.ensureImage();
       if (buildCancelledRef.current) {
         cleanupProgress();
         return;
@@ -143,12 +143,12 @@ function App(): React.ReactElement {
 
     // Create yolium container with selected agent
     try {
-      const sessionId = await window.electronAPI.createYolium(folderPath, agent, gsdEnabled, gitConfig || undefined, worktreeEnabled, branchName || undefined);
+      const sessionId = await window.electronAPI.container.create(folderPath, agent, gsdEnabled, gitConfig || undefined, worktreeEnabled, branchName || undefined);
 
       // Use worktree branch name if enabled, otherwise fetch from folder
       const gitBranch = worktreeEnabled && branchName
         ? branchName
-        : await window.electronAPI.getGitBranch(folderPath);
+        : await window.electronAPI.git.getBranch(folderPath);
       const tabId = addTab(sessionId, folderPath, 'starting', gitBranch || undefined);
 
       // Add project to sidebar
@@ -221,7 +221,7 @@ function App(): React.ReactElement {
     setAgentDialogOpen(true);
 
     try {
-      const gitStatus = await window.electronAPI.checkGitRepo(normalizedPath);
+      const gitStatus = await window.electronAPI.git.isRepo(normalizedPath);
       setPendingFolderGitStatus(gitStatus);
     } catch {
       setPendingFolderGitStatus({ isRepo: false, hasCommits: false });
@@ -245,7 +245,7 @@ function App(): React.ReactElement {
   // Git config dialog handlers
   const handleOpenGitConfig = useCallback(async () => {
     // Fetch latest config values before opening dialog
-    const config = await window.electronAPI.loadGitConfig();
+    const config = await window.electronAPI.git.loadConfig();
     if (config) {
       setGitConfig(config);
     }
@@ -257,9 +257,9 @@ function App(): React.ReactElement {
   }, []);
 
   const handleSaveGitConfig = useCallback(async (config: GitConfig) => {
-    await window.electronAPI.saveGitConfig(config);
+    await window.electronAPI.git.saveConfig(config);
     // Reload from IPC to get sanitized form with hasPat/hasOpenaiKey flags
-    const reloaded = await window.electronAPI.loadGitConfig();
+    const reloaded = await window.electronAPI.git.loadConfig();
     setGitConfig(reloaded);
     setGitConfigDialogOpen(false);
   }, []);
@@ -283,7 +283,7 @@ function App(): React.ReactElement {
 
     try {
       // Set up output listener to capture container logs
-      const cleanupOutput = window.electronAPI.onCodeReviewOutput((_sessionId, data) => {
+      const cleanupOutput = window.electronAPI.codeReview.onOutput((_sessionId, data) => {
         const lines = data.split('\n').filter((line: string) => line.trim() !== '');
         if (lines.length > 0) {
           setReviewLog(prev => [...prev, ...lines]);
@@ -291,7 +291,7 @@ function App(): React.ReactElement {
       });
 
       // Set up completion listener
-      const cleanupComplete = window.electronAPI.onCodeReviewComplete((_sessionId, exitCode, authError) => {
+      const cleanupComplete = window.electronAPI.codeReview.onComplete((_sessionId, exitCode, authError) => {
         if (exitCode === 0) {
           setReviewStatus('completed');
         } else if (exitCode === 2) {
@@ -308,8 +308,8 @@ function App(): React.ReactElement {
         cleanupComplete();
       });
 
-      await window.electronAPI.ensureImage();
-      await window.electronAPI.startCodeReview(repoUrl, branch, agent, gitConfig || undefined);
+      await window.electronAPI.docker.ensureImage();
+      await window.electronAPI.codeReview.start(repoUrl, branch, agent, gitConfig || undefined);
       setReviewStatus('running');
     } catch (err) {
       setReviewStatus('failed');
@@ -325,7 +325,7 @@ function App(): React.ReactElement {
 
   // Check Docker state on app launch
   useEffect(() => {
-    window.electronAPI.detectDockerState().then((state) => {
+    window.electronAPI.docker.detectState().then((state) => {
       if (state.running) {
         setDockerReady(true);
       } else {
@@ -341,7 +341,7 @@ function App(): React.ReactElement {
     if (!dockerReady) return;
     buildCancelledRef.current = false;
 
-    const cleanupProgress = window.electronAPI.onDockerBuildProgress((message) => {
+    const cleanupProgress = window.electronAPI.docker.onBuildProgress((message) => {
       setBuildProgress(prev => {
         const lines = prev || [];
         return [...lines, message].slice(-50);
@@ -351,7 +351,7 @@ function App(): React.ReactElement {
     setBuildError(null);
     setBuildProgress(['Checking Yolium image...']);
 
-    window.electronAPI.ensureImage()
+    window.electronAPI.docker.ensureImage()
       .then(() => {
         cleanupProgress();
         if (!buildCancelledRef.current) {
@@ -372,7 +372,7 @@ function App(): React.ReactElement {
 
   // Load git config on mount
   useEffect(() => {
-    window.electronAPI.loadGitConfig().then((config) => {
+    window.electronAPI.git.loadConfig().then((config) => {
       if (config) {
         setGitConfig(config);
       }
@@ -394,7 +394,7 @@ function App(): React.ReactElement {
   // Create a new yolium tab
   const handleNewYolium = useCallback(async () => {
     // Check Docker availability first
-    const dockerOk = await window.electronAPI.isDockerAvailable();
+    const dockerOk = await window.electronAPI.docker.isAvailable();
     if (!dockerOk) {
       // TODO: Show inline error in UI (for now, alert)
       alert('Docker is not running. Please start Docker Desktop and try again.');
@@ -433,7 +433,7 @@ function App(): React.ReactElement {
     closeTab(tabId);
 
     // Cleanup container and worktree in background (always delete worktree)
-    window.electronAPI.stopYolium(tab.sessionId, true).catch((err) => {
+    window.electronAPI.container.stop(tab.sessionId, true).catch((err) => {
       console.error('Failed to cleanup container:', err);
     });
   }, [tabs, closeTab]);
@@ -471,7 +471,7 @@ function App(): React.ReactElement {
 
     // Cleanup containers and worktrees in background (always delete worktrees)
     sessionIds.forEach(sessionId => {
-      window.electronAPI.stopYolium(sessionId, true).catch((err) => {
+      window.electronAPI.container.stop(sessionId, true).catch((err) => {
         console.error('Failed to cleanup container:', err);
       });
     });
@@ -489,7 +489,7 @@ function App(): React.ReactElement {
 
     // Cleanup containers and worktrees in background (always delete worktrees)
     sessionIds.forEach(sessionId => {
-      window.electronAPI.stopYolium(sessionId, true).catch((err) => {
+      window.electronAPI.container.stop(sessionId, true).catch((err) => {
         console.error('Failed to cleanup container:', err);
       });
     });
@@ -497,7 +497,7 @@ function App(): React.ReactElement {
 
   // Stop yolium from StatusBar (per CONTEXT.md: "After stopping, tab closes automatically")
   const handleStopYolium = useCallback(async (tabId: string) => {
-    const confirmed = await window.electronAPI.showConfirmOkCancel(
+    const confirmed = await window.electronAPI.dialog.confirmOkCancel(
       'Stop Container',
       'Stop this yolium container?'
     );
@@ -509,7 +509,7 @@ function App(): React.ReactElement {
   // Rebuild Docker image
   const handleRebuildImage = useCallback(async () => {
     // Show confirmation dialog
-    const confirmed = await window.electronAPI.showConfirmOkCancel(
+    const confirmed = await window.electronAPI.dialog.confirmOkCancel(
       'Delete Docker Image',
       'This will:\n\u2022 End all active terminals\n\u2022 Remove all yolium containers\n\u2022 Remove the Docker image\n\nThe image will be rebuilt automatically when you start a new terminal.\n\nContinue?'
     );
@@ -519,14 +519,14 @@ function App(): React.ReactElement {
 
     try {
       // Close all tabs (which stops all containers)
-      await Promise.all(tabs.map(t => window.electronAPI.stopYolium(t.sessionId)));
+      await Promise.all(tabs.map(t => window.electronAPI.container.stop(t.sessionId)));
       closeAllTabs();
 
       // Remove any remaining containers
-      await window.electronAPI.removeAllContainers();
+      await window.electronAPI.docker.removeAllContainers();
 
       // Remove the image
-      await window.electronAPI.removeImage();
+      await window.electronAPI.docker.removeImage();
 
       // Mark image as removed
       setImageRemoved(true);
@@ -549,7 +549,7 @@ function App(): React.ReactElement {
     if (whisper.state.transcribedText && activeTabId) {
       const activeTab = tabs.find(t => t.id === activeTabId);
       if (activeTab) {
-        window.electronAPI.writeYolium(activeTab.sessionId, whisper.state.transcribedText);
+        window.electronAPI.container.write(activeTab.sessionId, whisper.state.transcribedText);
         clearTranscriptionRef.current();
       }
     }
@@ -557,7 +557,7 @@ function App(): React.ReactElement {
 
   // Handle whisper model deletion (refresh model list by closing and reopening dialog synchronously)
   const handleDeleteWhisperModel = useCallback(async (modelSize: WhisperModelSize) => {
-    await window.electronAPI.whisperDeleteModel(modelSize);
+    await window.electronAPI.whisper.deleteModel(modelSize);
     // Close and re-open to force the dialog to re-fetch model list
     whisper.closeModelDialog();
     // Use requestAnimationFrame to wait for React to process the close before reopening
@@ -566,7 +566,7 @@ function App(): React.ReactElement {
 
   // Handle context menu
   const handleTabContextMenu = useCallback((tabId: string, x: number, y: number) => {
-    window.electronAPI.showTabContextMenu(tabId, x, y);
+    window.electronAPI.tabs.showContextMenu(tabId, x, y);
   }, []);
 
   // Handle CWD change from terminal
@@ -576,17 +576,17 @@ function App(): React.ReactElement {
 
   // Register keyboard shortcut listeners
   useEffect(() => {
-    const cleanupNew = window.electronAPI.onTabNew(handleNewYolium);
-    const cleanupClose = window.electronAPI.onTabClose(handleCloseActiveTab);
-    const cleanupNext = window.electronAPI.onTabNext(handleNextTab);
-    const cleanupPrev = window.electronAPI.onTabPrev(handlePrevTab);
-    const cleanupCloseSpecific = window.electronAPI.onTabCloseSpecific(handleCloseTab);
-    const cleanupCloseOthers = window.electronAPI.onTabCloseOthers(handleCloseOtherTabs);
-    const cleanupCloseAll = window.electronAPI.onTabCloseAll(handleCloseAllTabs);
-    const cleanupShortcuts = window.electronAPI.onShortcutsShow(handleShowShortcuts);
-    const cleanupGitSettings = window.electronAPI.onGitSettingsShow(handleOpenGitConfig);
-    const cleanupProjectNew = window.electronAPI.onProjectNew(handleAddProject);
-    const cleanupRecording = window.electronAPI.onRecordingToggle(stableToggleRecording);
+    const cleanupNew = window.electronAPI.tabs.onNew(handleNewYolium);
+    const cleanupClose = window.electronAPI.tabs.onClose(handleCloseActiveTab);
+    const cleanupNext = window.electronAPI.tabs.onNext(handleNextTab);
+    const cleanupPrev = window.electronAPI.tabs.onPrev(handlePrevTab);
+    const cleanupCloseSpecific = window.electronAPI.tabs.onCloseSpecific(handleCloseTab);
+    const cleanupCloseOthers = window.electronAPI.tabs.onCloseOthers(handleCloseOtherTabs);
+    const cleanupCloseAll = window.electronAPI.tabs.onCloseAll(handleCloseAllTabs);
+    const cleanupShortcuts = window.electronAPI.events.onShortcutsShow(handleShowShortcuts);
+    const cleanupGitSettings = window.electronAPI.events.onGitSettingsShow(handleOpenGitConfig);
+    const cleanupProjectNew = window.electronAPI.events.onProjectNew(handleAddProject);
+    const cleanupRecording = window.electronAPI.events.onRecordingToggle(stableToggleRecording);
 
     return () => {
       cleanupNew();
@@ -605,7 +605,7 @@ function App(): React.ReactElement {
 
   // Listen for container exit events to update state
   useEffect(() => {
-    const cleanup = window.electronAPI.onContainerExit((sessionId, exitCode) => {
+    const cleanup = window.electronAPI.container.onExit((sessionId, exitCode) => {
       const tab = tabs.find(t => t.sessionId === sessionId);
       if (tab) {
         // Update state based on exit code
@@ -625,10 +625,10 @@ function App(): React.ReactElement {
       if (!activeTab?.cwd) return;
 
       // Check if session uses a worktree to get the correct path
-      const worktreeInfo = await window.electronAPI.getWorktreeInfo(activeTab.sessionId);
+      const worktreeInfo = await window.electronAPI.container.getWorktreeInfo(activeTab.sessionId);
       // Use worktree path if available, otherwise use the tab's cwd
       const gitPath = worktreeInfo?.worktreePath || activeTab.cwd;
-      const branch = await window.electronAPI.getGitBranch(gitPath);
+      const branch = await window.electronAPI.git.getBranch(gitPath);
       // Pass worktree name (extracted from path) if this is a worktree session
       const worktreeName = worktreeInfo ? worktreeInfo.worktreePath.split('/').pop() : undefined;
       updateGitBranch(activeTabId, branch || undefined, worktreeName);
@@ -681,7 +681,7 @@ function App(): React.ReactElement {
         onCancel={handleAgentDialogCancel}
         onGitInit={async () => {
           if (pendingFolderPath) {
-            const gitStatus = await window.electronAPI.checkGitRepo(pendingFolderPath);
+            const gitStatus = await window.electronAPI.git.isRepo(pendingFolderPath);
             setPendingFolderGitStatus(gitStatus);
           }
         }}

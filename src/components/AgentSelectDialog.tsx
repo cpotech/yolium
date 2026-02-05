@@ -37,7 +37,7 @@ export function AgentSelectDialog({
     setIsInitializing(true);
     setInitError(null);
     try {
-      const result = await window.electronAPI.initGitRepo(folderPath);
+      const result = await window.electronAPI.git.initRepo(folderPath);
       if (result.success) {
         onGitInit?.();
       } else {
@@ -85,7 +85,7 @@ export function AgentSelectDialog({
       setBranchError(error);
       if (error) return;
       if (branchName.trim()) {
-        const result = await window.electronAPI.validateBranchName(branchName);
+        const result = await window.electronAPI.git.validateBranchName(branchName);
         if (!result.valid) {
           setBranchError(result.error || 'Invalid branch name');
           return;
