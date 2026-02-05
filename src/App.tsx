@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState, useRef } from 'react';
+import React, { useEffect, useCallback, useState, useRef, useMemo } from 'react';
 import { Loader2, GitPullRequest, Settings } from 'lucide-react';
 import { useTabState } from './hooks/useTabState';
 import { useWhisper } from './hooks/useWhisper';
@@ -22,6 +22,8 @@ import {
   getSidebarProjects,
   addSidebarProject,
   removeSidebarProject,
+  getOpenKanbanPaths,
+  saveOpenKanbanPaths,
   type SidebarProject,
 } from './lib/sidebar-store';
 import { KanbanView } from './components/KanbanView';
@@ -29,6 +31,8 @@ import { KanbanView } from './components/KanbanView';
 type PathDialogMode = 'newTab' | 'addProject';
 
 function App(): React.ReactElement {
+  // Restore kanban tabs that were open in the previous session
+  const savedKanbanPaths = useMemo(() => getOpenKanbanPaths(), []);
   const {
     tabs,
     activeTabId,
@@ -42,7 +46,7 @@ function App(): React.ReactElement {
     closeOtherTabs,
     addKanbanTab,
     closeKanbanForProject,
-  } = useTabState();
+  } = useTabState(savedKanbanPaths);
 
   // Whisper speech-to-text
   const whisper = useWhisper();
@@ -312,6 +316,12 @@ function App(): React.ReactElement {
       setReviewError(err instanceof Error ? err.message : 'Failed to start code review');
     }
   }, [gitConfig]);
+
+  // Persist open kanban tab paths so they restore on next launch
+  useEffect(() => {
+    const kanbanPaths = tabs.filter(t => t.type === 'kanban').map(t => t.cwd);
+    saveOpenKanbanPaths(kanbanPaths);
+  }, [tabs]);
 
   // Check Docker state on app launch
   useEffect(() => {
