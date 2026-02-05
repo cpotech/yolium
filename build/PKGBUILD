@@ -1,0 +1,33 @@
+# Maintainer: Yolium Team
+pkgname=yolium-desktop
+pkgver=__VERSION__
+pkgrel=1
+pkgdesc='AI agent desktop environment with containerized workspaces'
+arch=('x86_64')
+url='https://github.com/yolium-ai/yolium'
+license=('custom')
+depends=('gtk3' 'nss' 'alsa-lib' 'libxss' 'libxtst')
+optdepends=('docker: container-based agent workspaces'
+            'git: repository and worktree management')
+options=('!strip' '!debug')
+source=("yolium-desktop-${pkgver}.tar.gz"
+        "yolium-desktop.desktop"
+        "yolium-desktop.png")
+sha256sums=('SKIP' 'SKIP' 'SKIP')
+
+package() {
+    install -dm755 "${pkgdir}/opt/${pkgname}"
+    cp -r "${srcdir}/Yolium Desktop-linux-x64/"* "${pkgdir}/opt/${pkgname}/"
+
+    # Executable symlink
+    install -dm755 "${pkgdir}/usr/bin"
+    ln -s "/opt/${pkgname}/yolium-desktop" "${pkgdir}/usr/bin/yolium-desktop"
+
+    # Desktop entry
+    install -Dm644 "${srcdir}/yolium-desktop.desktop" \
+        "${pkgdir}/usr/share/applications/${pkgname}.desktop"
+
+    # Icon
+    install -Dm644 "${srcdir}/yolium-desktop.png" \
+        "${pkgdir}/usr/share/pixmaps/${pkgname}.png"
+}

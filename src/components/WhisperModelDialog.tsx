@@ -65,6 +65,8 @@ export function WhisperModelDialog({
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const prevDownloadProgressRef = useRef<number | null>(null);
+
   // Load model status on open
   useEffect(() => {
     if (!isOpen) return;
@@ -83,6 +85,26 @@ export function WhisperModelDialog({
       setLoading(false);
     });
   }, [isOpen]);
+
+  // Re-fetch models when a download completes (progress transitions from non-null to null)
+  useEffect(() => {
+    const wasDownloading = prevDownloadProgressRef.current !== null;
+    prevDownloadProgressRef.current = downloadProgress;
+    if (isOpen && wasDownloading && downloadProgress === null) {
+      window.electronAPI.whisperListModels().then((modelList) => {
+        const infos: ModelInfo[] = modelList.map((m) => ({
+          size: m.size as WhisperModelSize,
+          name: m.name,
+          fileName: m.fileName,
+          sizeBytes: m.sizeBytes,
+          downloaded: m.downloaded,
+          description: WHISPER_MODELS[m.size as WhisperModelSize]?.description || '',
+          path: m.path,
+        }));
+        setModels(infos);
+      });
+    }
+  }, [downloadProgress, isOpen]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

@@ -8,7 +8,8 @@ export default defineConfig({
       // They must be loaded at runtime from node_modules
       // - node-pty: pseudo-terminal for shell spawning
       // - dockerode: Docker API client (depends on ssh2 with native crypto)
-      external: ['node-pty', 'dockerode', 'ssh2'],
+      // - gray-matter: YAML frontmatter parser (has complex dependencies)
+      external: ['node-pty', 'dockerode', 'ssh2', 'gray-matter'],
     },
   },
   resolve: {

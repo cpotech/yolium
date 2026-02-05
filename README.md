@@ -35,6 +35,19 @@
 - **macOS**: [Docker Desktop](https://www.docker.com/products/docker-desktop/) or [Colima](https://github.com/abiosoft/colima) *(currently untested)*
 - **Linux**: [Docker Engine](https://docs.docker.com/engine/install/) only - no Desktop needed
 
+### 📦 Downloads
+
+Download the latest release from the [Releases page](https://github.com/yolium-ai/yolium/releases/latest):
+
+| Platform | Package |
+|----------|---------|
+| Windows | `.exe` installer |
+| Debian / Ubuntu | `.deb` |
+| Fedora / RHEL | `.rpm` |
+| Arch / Manjaro | `.pkg.tar.zst` |
+
+> **[📖 Full installation guide](docs/INSTALL.md)** -- step-by-step instructions, checksum verification, building from PKGBUILD, and troubleshooting.
+
 ### 🚀 Quick Start
 
 1. Download the latest release for your platform
