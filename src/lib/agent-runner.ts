@@ -58,8 +58,8 @@ const sessions = new Map<string, AgentSession>();
 
 const MODEL_MAP: Record<string, string> = {
   opus: 'claude-opus-4-5-20251101',
-  sonnet: 'claude-sonnet-4-5-20250929',
-  haiku: 'claude-haiku-4-5-20251001',
+  sonnet: 'claude-sonnet-4-20250514',
+  haiku: 'claude-haiku-3-5-20241022',
 };
 
 /**
