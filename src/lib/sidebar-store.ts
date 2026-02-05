@@ -38,3 +38,22 @@ export function removeSidebarProject(path: string): void {
 export function clearSidebarProjects(): void {
   localStorage.removeItem(STORAGE_KEY);
 }
+
+// Kanban tab persistence: remember which kanban tabs were open across restarts
+
+const KANBAN_TABS_KEY = 'yolium-open-kanban-tabs';
+
+export function getOpenKanbanPaths(): string[] {
+  try {
+    const stored = localStorage.getItem(KANBAN_TABS_KEY);
+    if (!stored) return [];
+    const paths = JSON.parse(stored);
+    return Array.isArray(paths) ? paths : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveOpenKanbanPaths(paths: string[]): void {
+  localStorage.setItem(KANBAN_TABS_KEY, JSON.stringify(paths));
+}

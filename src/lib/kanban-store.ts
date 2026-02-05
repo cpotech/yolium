@@ -24,9 +24,23 @@ function generateId(): string {
   return crypto.randomBytes(8).toString('hex');
 }
 
+/**
+ * Normalize a project path for consistent hashing.
+ * Converts backslashes to forward slashes and removes trailing slashes
+ * so that the same physical path always produces the same hash.
+ */
+export function normalizeForHash(projectPath: string): string {
+  let normalized = projectPath.replace(/\\/g, '/');
+  if (normalized.endsWith('/') && normalized.length > 1) {
+    normalized = normalized.slice(0, -1);
+  }
+  return normalized;
+}
+
 function getBoardPath(projectPath: string): string {
-  const hash = crypto.createHash('sha256').update(projectPath).digest('hex').slice(0, 12);
-  const safeName = path.basename(projectPath).replace(/[^a-zA-Z0-9-_]/g, '_');
+  const normalized = normalizeForHash(projectPath);
+  const hash = crypto.createHash('sha256').update(normalized).digest('hex').slice(0, 12);
+  const safeName = path.basename(normalized).replace(/[^a-zA-Z0-9-_]/g, '_');
   return path.join(BOARDS_DIR, `${safeName}-${hash}.json`);
 }
 
@@ -39,7 +53,7 @@ function saveBoard(board: KanbanBoard): void {
 export function createBoard(projectPath: string): KanbanBoard {
   const board: KanbanBoard = {
     id: generateId(),
-    projectPath,
+    projectPath: normalizeForHash(projectPath),
     items: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -48,12 +62,53 @@ export function createBoard(projectPath: string): KanbanBoard {
   return board;
 }
 
+/**
+ * Search for an existing board file that was saved with a different
+ * (non-normalized) path variant. If found, migrate it to the normalized path.
+ */
+function findAndMigrateBoard(projectPath: string): KanbanBoard | null {
+  ensureDir(BOARDS_DIR);
+  const normalized = normalizeForHash(projectPath);
+  const safeName = path.basename(normalized).replace(/[^a-zA-Z0-9-_]/g, '_');
+
+  try {
+    const files = fs.readdirSync(BOARDS_DIR);
+    for (const file of files) {
+      if (!file.startsWith(safeName + '-') || !file.endsWith('.json')) continue;
+
+      const filePath = path.join(BOARDS_DIR, file);
+      try {
+        const board = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as KanbanBoard;
+        if (normalizeForHash(board.projectPath) === normalized) {
+          // Migrate: update projectPath and save at new normalized location
+          board.projectPath = normalized;
+          saveBoard(board);
+          // Remove old file if it differs from the new path
+          const newBoardPath = getBoardPath(normalized);
+          if (filePath !== newBoardPath) {
+            fs.unlinkSync(filePath);
+          }
+          return board;
+        }
+      } catch {
+        // Skip unreadable files
+      }
+    }
+  } catch {
+    // Directory doesn't exist or can't be read
+  }
+
+  return null;
+}
+
 export function getBoard(projectPath: string): KanbanBoard | null {
   const boardPath = getBoardPath(projectPath);
-  if (!fs.existsSync(boardPath)) {
-    return null;
+  if (fs.existsSync(boardPath)) {
+    return JSON.parse(fs.readFileSync(boardPath, 'utf-8'));
   }
-  return JSON.parse(fs.readFileSync(boardPath, 'utf-8'));
+
+  // Migration: look for board saved with non-normalized path (e.g., backslashes on Windows)
+  return findAndMigrateBoard(projectPath);
 }
 
 export function getOrCreateBoard(projectPath: string): KanbanBoard {
