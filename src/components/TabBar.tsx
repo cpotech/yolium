@@ -66,14 +66,14 @@ export function TabBar({
   return (
     <div
       data-testid="tab-bar"
-      className="flex items-center h-9 bg-gray-800 border-b border-gray-700 shrink-0"
+      className="flex items-center h-9 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border-primary)] shrink-0"
       role="tablist"
     >
       {/* Left scroll arrow */}
       {showLeftArrow && (
         <button
           onClick={() => scroll('left')}
-          className="px-1.5 h-full hover:bg-gray-700 text-gray-400 hover:text-white"
+          className="px-1.5 h-full hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
           aria-label="Scroll tabs left"
         >
           <ChevronLeft size={16} />
@@ -101,7 +101,7 @@ export function TabBar({
       {showRightArrow && (
         <button
           onClick={() => scroll('right')}
-          className="px-1.5 h-full hover:bg-gray-700 text-gray-400 hover:text-white"
+          className="px-1.5 h-full hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
           aria-label="Scroll tabs right"
         >
           <ChevronRight size={16} />
@@ -112,7 +112,7 @@ export function TabBar({
       <button
         data-testid="new-tab-button"
         onClick={onNewTab}
-        className="px-3 h-full hover:bg-gray-700 text-gray-400 hover:text-white border-l border-gray-700"
+        className="px-3 h-full hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] border-l border-[var(--color-border-primary)]"
         aria-label="New Yolium"
         title="New Yolium"
       >

@@ -5,15 +5,15 @@ import type { Tab as TabType, ContainerState } from '../types/tabs';
 // Status indicator dot for container state
 function StatusDot({ state }: { state: ContainerState }): React.ReactElement {
   const colors: Record<ContainerState, string> = {
-    starting: 'bg-yellow-400 animate-pulse',
-    running: 'bg-green-400',
-    stopped: 'bg-gray-400',
-    crashed: 'bg-red-400',
+    starting: 'bg-[var(--color-status-warning)] animate-pulse',
+    running: 'bg-[var(--color-status-success)]',
+    stopped: 'bg-[var(--color-status-stopped)]',
+    crashed: 'bg-[var(--color-status-error)]',
   };
 
   return (
     <span
-      className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-gray-800 ${colors[state]}`}
+      className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-[var(--color-bg-secondary)] ${colors[state]}`}
       title={state.charAt(0).toUpperCase() + state.slice(1)}
     />
   );
@@ -47,10 +47,10 @@ export function Tab({ tab, isActive, onClick, onClose, onContextMenu }: TabProps
       className={`
         group flex items-center gap-2 px-3 py-1.5 min-w-[120px] max-w-[200px]
         cursor-pointer select-none shrink-0
-        border-r border-gray-700
+        border-r border-[var(--color-border-primary)]
         ${isActive
-          ? 'bg-gray-700 text-white'
-          : 'bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-200'
+          ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]'
+          : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-secondary)]'
         }
       `}
     >
@@ -60,7 +60,7 @@ export function Tab({ tab, isActive, onClick, onClose, onContextMenu }: TabProps
           <LayoutGrid size={14} className="text-[var(--color-accent-primary)]" />
         ) : (
           <>
-            <Folder size={14} className="text-gray-500" />
+            <Folder size={14} className="text-[var(--color-text-muted)]" />
             {tab.containerState && <StatusDot state={tab.containerState} />}
           </>
         )}
@@ -78,7 +78,7 @@ export function Tab({ tab, isActive, onClick, onClose, onContextMenu }: TabProps
         className={`
           p-0.5 rounded
           opacity-0 group-hover:opacity-100
-          hover:bg-gray-600
+          hover:bg-[var(--color-bg-hover)]
           ${isActive ? 'opacity-100' : ''}
         `}
         aria-label={`Close ${tab.label}`}

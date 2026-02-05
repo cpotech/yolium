@@ -3,58 +3,58 @@ import type { ThemeTokens } from '../../types/theme';
 export const lightTheme: ThemeTokens = {
   colors: {
     bg: {
-      primary: '#f8fafc',     // slate-50 - Main background
-      secondary: '#e2e8f0',   // slate-200 - Panels, status bar
-      tertiary: '#cbd5e1',    // slate-300 - Cards, active tabs
-      hover: '#94a3b8',       // slate-400 - Hover states
-      terminal: '#1e293b',    // slate-800 - Terminal (keep dark)
-      overlay: 'rgba(0, 0, 0, 0.5)', // Modal overlays
+      primary: '#E8E9ED',     // Light blue-grey - Main background
+      secondary: '#D5D7DD',   // Slightly deeper - Panels, status bar
+      tertiary: '#C4C6CE',    // Mid-tone - Elevated cards, active tabs
+      hover: '#B5B7C0',       // Hover states
+      terminal: '#11121D',    // tokyodark bg0 - Terminal stays dark
+      overlay: 'rgba(17, 18, 29, 0.5)', // Based on tokyodark bg0
     },
     text: {
-      primary: '#0f172a',     // slate-900 - Primary text
-      secondary: '#475569',   // slate-600 - Secondary labels
-      muted: '#94a3b8',       // slate-400 - Placeholders, hints
-      disabled: '#cbd5e1',    // slate-300 - Disabled text
+      primary: '#11121D',     // tokyodark bg0 - Primary text
+      secondary: '#353945',   // tokyodark bg3 - Secondary labels
+      muted: '#6B6F7B',       // Medium grey - Placeholders, hints
+      disabled: '#B5B7C0',    // Light grey - Disabled text
     },
     border: {
-      primary: '#cbd5e1',     // slate-300 - Primary borders
-      secondary: '#94a3b8',   // slate-400 - Secondary/hover
-      focus: '#3b82f6',       // blue-500 - Focus rings
+      primary: '#C4C6CE',     // Mid-tone - Primary borders
+      secondary: '#B5B7C0',   // Hover tone - Secondary/hover
+      focus: '#7199EE',       // tokyodark blue - Focus rings
     },
     accent: {
-      primary: '#2563eb',     // blue-600 - Primary actions
-      hover: '#3b82f6',       // blue-500 - Hover on accent
+      primary: '#5A7FD4',     // Deeper blue for contrast on light bg
+      hover: '#7199EE',       // tokyodark blue - Hover on accent
     },
     status: {
-      success: '#22c55e',     // green-500 - Running, success
-      warning: '#eab308',     // yellow-500 - Starting, warning
-      error: '#ef4444',       // red-500 - Crashed, error
-      stopped: '#64748b',     // slate-500 - Stopped state
+      success: '#6FA040',     // Darker green for light bg contrast
+      warning: '#B8883F',     // Darker yellow for light bg contrast
+      error: '#D05070',       // Darker red for light bg contrast
+      stopped: '#6B6F7B',     // Medium grey - Stopped state
     },
     special: {
-      worktree: '#a855f7',    // purple-500 - Worktree indicator
-      branch: '#3b82f6',      // blue-500 - Git branch
+      worktree: '#8B6BBE',    // Deeper purple for light bg
+      branch: '#5A7FD4',      // Deeper blue for light bg
     },
   },
   terminal: {
-    background: '#1e293b',    // Keep terminal dark for readability
-    foreground: '#f8fafc',
-    cursor: '#f8fafc',
-    black: '#1e293b',
-    red: '#f87171',
-    green: '#4ade80',
-    yellow: '#facc15',
-    blue: '#60a5fa',
-    magenta: '#c084fc',
-    cyan: '#22d3ee',
-    white: '#f8fafc',
-    brightBlack: '#475569',
-    brightRed: '#fca5a5',
-    brightGreen: '#86efac',
-    brightYellow: '#fde047',
-    brightBlue: '#93c5fd',
-    brightMagenta: '#d8b4fe',
-    brightCyan: '#67e8f9',
-    brightWhite: '#ffffff',
+    background: '#11121D',    // tokyodark bg0 - Terminal stays dark
+    foreground: '#A0A8CD',    // tokyodark fg
+    cursor: '#A0A8CD',        // tokyodark fg
+    black: '#1A1B2A',         // tokyodark bg1
+    red: '#EE6D85',           // tokyodark red
+    green: '#95C561',         // tokyodark green
+    yellow: '#D7A65F',        // tokyodark yellow
+    blue: '#7199EE',          // tokyodark blue
+    magenta: '#A485DD',       // tokyodark purple
+    cyan: '#38A89D',          // tokyodark cyan
+    white: '#A0A8CD',         // tokyodark fg
+    brightBlack: '#4A5057',   // tokyodark bg4
+    brightRed: '#FE6D85',     // tokyodark bg_red
+    brightGreen: '#98C379',   // tokyodark bg_green
+    brightYellow: '#F6955B',  // tokyodark orange
+    brightBlue: '#9FBBF3',    // tokyodark bg_blue
+    brightMagenta: '#BDA5E8', // Lighter purple
+    brightCyan: '#5BC0B0',    // Lighter cyan
+    brightWhite: '#D5D8DF',   // Brighter fg
   },
 };

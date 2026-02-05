@@ -1,39 +1,39 @@
 @import "tailwindcss";
 
-/* Theme CSS custom properties - default dark theme */
+/* Theme CSS custom properties - default dark theme (tokyodark) */
 :root {
   /* Surface colors */
-  --color-bg-primary: #0f172a;
-  --color-bg-secondary: #1e293b;
-  --color-bg-tertiary: #334155;
-  --color-bg-hover: #475569;
-  --color-bg-terminal: #0a0a0a;
-  --color-bg-overlay: rgba(0, 0, 0, 0.7);
+  --color-bg-primary: #11121D;
+  --color-bg-secondary: #1A1B2A;
+  --color-bg-tertiary: #212234;
+  --color-bg-hover: #353945;
+  --color-bg-terminal: #06080A;
+  --color-bg-overlay: rgba(6, 8, 10, 0.7);
 
   /* Text colors */
-  --color-text-primary: #f8fafc;
-  --color-text-secondary: #cbd5e1;
-  --color-text-muted: #64748b;
-  --color-text-disabled: #475569;
+  --color-text-primary: #A0A8CD;
+  --color-text-secondary: #717CB4;
+  --color-text-muted: #4A5057;
+  --color-text-disabled: #353945;
 
   /* Border colors */
-  --color-border-primary: #334155;
-  --color-border-secondary: #475569;
-  --color-border-focus: #3b82f6;
+  --color-border-primary: #282C34;
+  --color-border-secondary: #353945;
+  --color-border-focus: #7199EE;
 
   /* Accent colors */
-  --color-accent-primary: #3b82f6;
-  --color-accent-hover: #60a5fa;
+  --color-accent-primary: #7199EE;
+  --color-accent-hover: #9FBBF3;
 
   /* Status colors */
-  --color-status-success: #4ade80;
-  --color-status-warning: #facc15;
-  --color-status-error: #f87171;
-  --color-status-stopped: #94a3b8;
+  --color-status-success: #95C561;
+  --color-status-warning: #D7A65F;
+  --color-status-error: #EE6D85;
+  --color-status-stopped: #4A5057;
 
   /* Special colors */
-  --color-special-worktree: #c084fc;
-  --color-special-branch: #60a5fa;
+  --color-special-worktree: #A485DD;
+  --color-special-branch: #7199EE;
 }
 
 /* Extend Tailwind with theme tokens using @theme */
