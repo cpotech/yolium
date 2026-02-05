@@ -48,13 +48,13 @@ describe('agent-runner', () => {
 
     it('should fall back to agent model when item model is undefined', () => {
       const result = resolveModel(undefined, 'sonnet');
-      expect(result).toBe('claude-sonnet-4-20250514');
+      expect(result).toBe('claude-sonnet-4-5-20250929');
     });
 
     it('should map short names to full model IDs', () => {
       expect(resolveModel(undefined, 'opus')).toBe('claude-opus-4-5-20251101');
-      expect(resolveModel(undefined, 'sonnet')).toBe('claude-sonnet-4-20250514');
-      expect(resolveModel(undefined, 'haiku')).toBe('claude-haiku-3-5-20241022');
+      expect(resolveModel(undefined, 'sonnet')).toBe('claude-sonnet-4-5-20250929');
+      expect(resolveModel(undefined, 'haiku')).toBe('claude-haiku-4-5-20251001');
     });
 
     it('should pass through unknown model names as-is', () => {
