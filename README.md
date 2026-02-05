@@ -12,6 +12,8 @@
 
 ## ✨ Features
 
+- **📋 Kanban Board** - Built-in project board with Backlog, Ready, In Progress, and Done columns. Track work items, assign agents, and monitor progress — all persisted across sessions
+- **🤖 Agent Orchestration** - Plan and Code agents work autonomously: decompose goals into tasks, implement changes, run tests, push branches, and monitor CI — with interactive pauses when they need input
 - **🔀 Parallel Agents** - Each agent gets its own git worktree and branch. Zero conflicts, clean branches ready for PR. ([details](docs/TECHNICAL.md#git-worktrees))
 - **📑 Multi-Tab Terminal** - Run multiple concurrent sessions with a tabbed interface
 - **🐳 Docker Isolation** - Each session runs in its own container, isolated from your host
