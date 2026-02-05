@@ -6,7 +6,11 @@ tools:
   - Read
   - Glob
   - Grep
+  - Bash
+  - Write
+  - Edit
   - WebSearch
+  - WebFetch
 ---
 
 # Plan Agent
