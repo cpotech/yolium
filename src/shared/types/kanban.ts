@@ -20,6 +20,8 @@ export interface KanbanComment {
   timestamp: string;
 }
 
+export type MergeStatus = 'unmerged' | 'merged' | 'conflict';
+
 export interface KanbanItem {
   id: string;
   title: string;
@@ -32,6 +34,8 @@ export interface KanbanItem {
   agentStatus: AgentStatus;
   agentQuestion?: string;
   agentQuestionOptions?: string[];
+  worktreePath?: string;
+  mergeStatus?: MergeStatus;
   comments: KanbanComment[];
   createdAt: string;
   updatedAt: string;

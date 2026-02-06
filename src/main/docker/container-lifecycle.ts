@@ -353,33 +353,19 @@ export async function closeAllContainers(): Promise<void> {
 
   sessions.clear();
 
-  // Also clean up all agent sessions
+  // Also clean up all agent sessions (containers only — worktrees persist with kanban items)
   const agentSessionIds = Array.from(agentSessions.keys());
   await Promise.all(agentSessionIds.map(async (sessionId) => {
     const session = agentSessions.get(sessionId);
     if (!session) return;
 
     try {
-      // Clean up worktree first
-      if (session.worktreePath && session.originalPath) {
-        try {
-          deleteWorktree(session.originalPath, session.worktreePath);
-          logger.info('Agent worktree deleted on shutdown', { sessionId, worktreePath: session.worktreePath });
-        } catch (err) {
-          logger.error('Failed to delete agent worktree on shutdown', {
-            sessionId,
-            worktreePath: session.worktreePath,
-            error: err instanceof Error ? err.message : String(err),
-          });
-        }
-      }
-
       // Clear timeout
       if (session.timeoutId) {
         clearTimeout(session.timeoutId);
       }
 
-      // Stop and remove container
+      // Stop and remove container (worktree is NOT deleted — persists with kanban item)
       const container = docker.getContainer(session.containerId);
       try {
         await container.stop({ t: 2 });

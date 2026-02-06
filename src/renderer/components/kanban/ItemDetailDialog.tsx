@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react'
-import { X, GitBranch, Clock } from 'lucide-react'
+import { X, GitBranch, Clock, FolderOpen, GitMerge, Check, AlertTriangle } from 'lucide-react'
 import type { KanbanItem, KanbanColumn } from '@shared/types/kanban'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
@@ -77,6 +77,7 @@ export function ItemDetailDialog({
   const [answerText, setAnswerText] = useState('')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isAnswering, setIsAnswering] = useState(false)
+  const [isMerging, setIsMerging] = useState(false)
 
   // Refs
   const answerInputRef = useRef<HTMLTextAreaElement>(null)
@@ -267,6 +268,55 @@ export function ItemDetailDialog({
       onUpdated()
     }
   }, [agentSession.currentSessionId, onUpdated])
+
+  const handleMerge = useCallback(async () => {
+    if (!item || !item.branch || !item.worktreePath || isMerging) return
+
+    setIsMerging(true)
+    try {
+      // Get diff stats for confirmation
+      const stats = await window.electronAPI.git.worktreeDiffStats(projectPath, item.branch)
+      const statsMsg = stats.filesChanged > 0
+        ? `${stats.filesChanged} file${stats.filesChanged !== 1 ? 's' : ''} changed, +${stats.insertions} -${stats.deletions}`
+        : 'No changes detected'
+
+      const confirmed = await window.electronAPI.dialog.confirmOkCancel(
+        'Merge to Main',
+        `Merge branch "${item.branch}"?\n\n${statsMsg}`
+      )
+      if (!confirmed) {
+        setIsMerging(false)
+        return
+      }
+
+      // Perform the merge
+      const result = await window.electronAPI.git.mergeBranch(projectPath, item.branch)
+
+      if (result.success) {
+        // Clean up worktree and branch
+        await window.electronAPI.git.cleanupWorktree(projectPath, item.worktreePath, item.branch)
+        // Update item: mark as merged, clear worktree path
+        await window.electronAPI.kanban.updateItem(projectPath, item.id, {
+          mergeStatus: 'merged',
+          worktreePath: undefined,
+        })
+        onUpdated()
+      } else if (result.conflict) {
+        await window.electronAPI.kanban.updateItem(projectPath, item.id, {
+          mergeStatus: 'conflict',
+        })
+        setErrorMessage('Merge conflict detected. Please resolve manually.')
+        onUpdated()
+      } else {
+        setErrorMessage(result.error || 'Merge failed')
+      }
+    } catch (error) {
+      console.error('Failed to merge:', error)
+      setErrorMessage('Failed to merge branch. Please try again.')
+    } finally {
+      setIsMerging(false)
+    }
+  }, [item, isMerging, projectPath, onUpdated])
 
   const handleClose = useCallback(async () => {
     if (hasUnsavedChanges) {
@@ -506,6 +556,75 @@ export function ItemDetailDialog({
                 <span>{item.branch || 'N/A'}</span>
               </div>
             </div>
+
+            {/* Worktree Path */}
+            {item.worktreePath && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                  Worktree
+                </label>
+                <div
+                  data-testid="worktree-path-display"
+                  className="flex items-center gap-1 text-xs text-[var(--color-text-tertiary)]"
+                  title={item.worktreePath}
+                >
+                  <FolderOpen size={12} className="flex-shrink-0" />
+                  <span className="font-mono truncate">{item.worktreePath}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Merge Status & Actions */}
+            {item.mergeStatus && item.branch && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                  Merge Status
+                </label>
+                {item.mergeStatus === 'merged' && (
+                  <div
+                    data-testid="merge-status-merged"
+                    className="flex items-center gap-1 text-sm text-green-400"
+                  >
+                    <Check size={14} />
+                    <span>Merged</span>
+                  </div>
+                )}
+                {item.mergeStatus === 'conflict' && (
+                  <div data-testid="merge-status-conflict">
+                    <div className="flex items-center gap-1 text-sm text-red-400 mb-2">
+                      <AlertTriangle size={14} />
+                      <span>Merge Conflict</span>
+                    </div>
+                    <button
+                      data-testid="retry-merge-button"
+                      onClick={handleMerge}
+                      disabled={isMerging}
+                      className="w-full px-3 py-1.5 text-xs bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isMerging ? 'Merging...' : 'Retry Merge'}
+                    </button>
+                  </div>
+                )}
+                {item.mergeStatus === 'unmerged' && (
+                  <div data-testid="merge-status-unmerged">
+                    <button
+                      data-testid="merge-button"
+                      onClick={handleMerge}
+                      disabled={isMerging || (item.agentStatus !== 'completed' && item.column !== 'done')}
+                      className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <GitMerge size={12} />
+                      {isMerging ? 'Merging...' : 'Merge to Main'}
+                    </button>
+                    {item.agentStatus !== 'completed' && item.column !== 'done' && (
+                      <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
+                        Available when agent completes or item is in Done
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Timestamps */}
             <div className="mb-4">

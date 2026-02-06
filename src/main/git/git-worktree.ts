@@ -279,3 +279,178 @@ export function getWorktreeBranch(worktreePath: string): string | null {
     return null;
   }
 }
+
+/**
+ * Detect the default branch of a repository (main, master, etc.).
+ *
+ * @param projectPath - The repository path
+ * @returns The default branch name
+ */
+export function getDefaultBranch(projectPath: string): string {
+  // Try symbolic-ref first (works when origin is configured)
+  try {
+    const output = execFileSync('git', ['symbolic-ref', 'refs/remotes/origin/HEAD'], {
+      cwd: projectPath,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+    // Output is like "refs/remotes/origin/main"
+    const parts = output.trim().split('/');
+    return parts[parts.length - 1];
+  } catch {
+    // Fall through
+  }
+
+  // Check if 'main' branch exists
+  try {
+    execFileSync('git', ['rev-parse', '--verify', 'main'], {
+      cwd: projectPath,
+      stdio: 'ignore',
+    });
+    return 'main';
+  } catch {
+    // Fall through
+  }
+
+  // Check if 'master' branch exists
+  try {
+    execFileSync('git', ['rev-parse', '--verify', 'master'], {
+      cwd: projectPath,
+      stdio: 'ignore',
+    });
+    return 'master';
+  } catch {
+    // Fall through
+  }
+
+  // Default to 'main'
+  return 'main';
+}
+
+/**
+ * Merge a branch into the default branch using --no-ff.
+ *
+ * @param projectPath - The repository path (main worktree)
+ * @param branchName - The branch to merge
+ * @throws Error with 'conflict' in message if merge conflicts occur
+ */
+export function mergeWorktreeBranch(projectPath: string, branchName: string): void {
+  validateBranchName(branchName);
+
+  const defaultBranch = getDefaultBranch(projectPath);
+
+  // Ensure we're on the default branch
+  try {
+    execFileSync('git', ['checkout', defaultBranch], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch (err) {
+    const error = err as { stderr?: Buffer; message?: string };
+    const stderr = error.stderr?.toString() || error.message || 'Unknown error';
+    throw new Error(`Failed to checkout ${defaultBranch}: ${stderr}`);
+  }
+
+  // Attempt the merge
+  try {
+    execFileSync('git', ['merge', branchName, '--no-ff', '-m', `Merge branch '${branchName}'`], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch (err) {
+    const error = err as { stderr?: Buffer; stdout?: Buffer; message?: string };
+    const stderr = error.stderr?.toString() || '';
+    const stdout = error.stdout?.toString() || '';
+    const output = stderr + stdout;
+
+    // Check if it's a merge conflict
+    if (output.includes('CONFLICT') || output.includes('Automatic merge failed')) {
+      // Abort the merge to leave the repo clean
+      try {
+        execFileSync('git', ['merge', '--abort'], {
+          cwd: projectPath,
+          stdio: 'ignore',
+        });
+      } catch {
+        // Ignore abort errors
+      }
+      throw new Error('conflict: Merge conflicts detected. Please resolve manually.');
+    }
+
+    throw new Error(`Failed to merge branch: ${output || error.message || 'Unknown error'}`);
+  }
+}
+
+/**
+ * Get diff statistics between the default branch and a feature branch.
+ *
+ * @param projectPath - The repository path
+ * @param branchName - The feature branch to compare
+ * @returns Diff statistics
+ */
+export function getWorktreeDiffStats(projectPath: string, branchName: string): {
+  filesChanged: number;
+  insertions: number;
+  deletions: number;
+} {
+  validateBranchName(branchName);
+
+  const defaultBranch = getDefaultBranch(projectPath);
+
+  try {
+    const output = execFileSync('git', ['diff', `${defaultBranch}...${branchName}`, '--stat', '--stat-width=999'], {
+      cwd: projectPath,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+
+    // Parse the last line: " N files changed, M insertions(+), D deletions(-)"
+    const lines = output.trim().split('\n');
+    const summaryLine = lines[lines.length - 1] || '';
+
+    const filesMatch = summaryLine.match(/(\d+) files? changed/);
+    const insertionsMatch = summaryLine.match(/(\d+) insertions?\(\+\)/);
+    const deletionsMatch = summaryLine.match(/(\d+) deletions?\(-\)/);
+
+    return {
+      filesChanged: filesMatch ? parseInt(filesMatch[1], 10) : 0,
+      insertions: insertionsMatch ? parseInt(insertionsMatch[1], 10) : 0,
+      deletions: deletionsMatch ? parseInt(deletionsMatch[1], 10) : 0,
+    };
+  } catch {
+    return { filesChanged: 0, insertions: 0, deletions: 0 };
+  }
+}
+
+/**
+ * Clean up a worktree and optionally delete its branch.
+ *
+ * @param projectPath - The original project repository path
+ * @param worktreePath - The path to the worktree to remove
+ * @param branchName - The branch to delete after worktree removal
+ */
+export function cleanupWorktreeAndBranch(projectPath: string, worktreePath: string, branchName: string): void {
+  validateBranchName(branchName);
+
+  // Delete the worktree
+  deleteWorktree(projectPath, worktreePath);
+
+  // Delete the branch (use -d for safe delete — only deletes if fully merged)
+  try {
+    execFileSync('git', ['branch', '-d', branchName], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch {
+    // Branch may already be deleted or not fully merged — that's OK
+    // Force delete if needed (branch was merged via --no-ff so -d should work)
+    try {
+      execFileSync('git', ['branch', '-D', branchName], {
+        cwd: projectPath,
+        stdio: 'pipe',
+      });
+    } catch {
+      // Ignore — branch cleanup is best-effort
+    }
+  }
+}
