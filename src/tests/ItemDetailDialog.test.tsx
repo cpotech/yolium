@@ -877,4 +877,113 @@ describe('ItemDetailDialog', () => {
     // Should show indicator
     expect(screen.getByTestId('unsaved-indicator')).toBeInTheDocument()
   })
+
+  it('should NOT reset form fields when same item updates (preserve user input)', () => {
+    const item = createMockItem({ id: 'item-1', title: 'Original Title' })
+
+    const { rerender } = render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    // Edit title
+    fireEvent.change(screen.getByTestId('title-input'), {
+      target: { value: 'User is typing...' },
+    })
+
+    // Verify user input is present
+    expect(screen.getByTestId('title-input')).toHaveValue('User is typing...')
+
+    // Re-render with updated item (same ID, different title from backend)
+    rerender(
+      <ItemDetailDialog
+        isOpen={true}
+        item={{ ...item, title: 'Backend Update' }}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    // User input should be preserved (NOT overwritten)
+    expect(screen.getByTestId('title-input')).toHaveValue('User is typing...')
+  })
+
+  it('should reset form fields when item ID changes (different item selected)', () => {
+    const item1 = createMockItem({ id: 'item-1', title: 'First Item' })
+    const item2 = createMockItem({ id: 'item-2', title: 'Second Item' })
+
+    const { rerender } = render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item1}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    // Edit title of first item
+    fireEvent.change(screen.getByTestId('title-input'), {
+      target: { value: 'Editing first item' },
+    })
+
+    // Verify edits
+    expect(screen.getByTestId('title-input')).toHaveValue('Editing first item')
+
+    // Switch to different item (different ID)
+    rerender(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item2}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    // Form should reset to new item's values
+    expect(screen.getByTestId('title-input')).toHaveValue('Second Item')
+  })
+
+  it('should preserve description input when same item updates', () => {
+    const item = createMockItem({ id: 'item-1', description: 'Original description' })
+
+    const { rerender } = render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    // Edit description
+    fireEvent.change(screen.getByTestId('description-input'), {
+      target: { value: 'User is writing a long description...' },
+    })
+
+    // Verify user input
+    expect(screen.getByTestId('description-input')).toHaveValue('User is writing a long description...')
+
+    // Re-render with updated item (same ID)
+    rerender(
+      <ItemDetailDialog
+        isOpen={true}
+        item={{ ...item, description: 'Backend updated description' }}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    // User input should be preserved
+    expect(screen.getByTestId('description-input')).toHaveValue('User is writing a long description...')
+  })
 })
