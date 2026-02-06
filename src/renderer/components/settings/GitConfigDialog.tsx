@@ -8,6 +8,10 @@ interface GitConfigDialogProps {
   onClose: () => void;
   onSave: (config: GitConfig) => void;
   initialConfig?: GitConfigWithPat | null;
+  onDeleteImage?: () => void;
+  onBuildImage?: () => void;
+  imageRemoved?: boolean;
+  isRebuilding?: boolean;
 }
 
 /**
@@ -33,6 +37,10 @@ export function GitConfigDialog({
   onClose,
   onSave,
   initialConfig,
+  onDeleteImage,
+  onBuildImage,
+  imageRemoved = false,
+  isRebuilding = false,
 }: GitConfigDialogProps): React.ReactElement | null {
   const dialogRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -347,8 +355,8 @@ export function GitConfigDialog({
               GitHub Authentication
               {initialConfig?.hasPat && !githubPat && !patCleared && (
                 <span className="ml-2 text-xs text-green-400">
-                  {initialConfig?.sources?.githubPat 
-                    ? getSourceDisplay(initialConfig.sources.githubPat).text 
+                  {initialConfig?.sources?.githubPat
+                    ? getSourceDisplay(initialConfig.sources.githubPat).text
                     : '(configured)'}
                 </span>
               )}
@@ -425,6 +433,52 @@ export function GitConfigDialog({
               </div>
             )}
           </div>
+
+          {/* Docker Image Management */}
+          {(onDeleteImage || onBuildImage) && (
+            <div className="border-t border-gray-700 pt-4">
+              <p className="text-sm font-medium text-gray-300 mb-3">Docker Image</p>
+              <div className="flex gap-2">
+                {onBuildImage && (
+                  <button
+                    type="button"
+                    onClick={() => { onClose(); onBuildImage(); }}
+                    disabled={isRebuilding}
+                    data-testid="build-image-button"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                      <path d="m3.3 7 8.7 5 8.7-5" />
+                      <path d="M12 22V12" />
+                    </svg>
+                    Build Image
+                  </button>
+                )}
+                {onDeleteImage && !imageRemoved && (
+                  <button
+                    type="button"
+                    onClick={() => { onClose(); onDeleteImage(); }}
+                    disabled={isRebuilding}
+                    data-testid="delete-image-button"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-400 border border-red-400/30 rounded-md hover:bg-red-400/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18" />
+                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                    </svg>
+                    Delete Image
+                  </button>
+                )}
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                {imageRemoved
+                  ? 'Image has been removed. Click "Build Image" to rebuild it.'
+                  : 'Delete removes the Docker image. It will rebuild automatically on next terminal start.'}
+              </p>
+            </div>
+          )}
 
         </div>
 
