@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react'
-import { X, GitBranch, Clock, FolderOpen, GitMerge, Check, AlertTriangle } from 'lucide-react'
+import { X, GitBranch, Clock, FolderOpen, GitMerge, Check, AlertTriangle, Save, Trash2 } from 'lucide-react'
 import type { KanbanItem, KanbanColumn } from '@shared/types/kanban'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
@@ -354,9 +354,8 @@ export function ItemDetailDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      className="fixed inset-0 z-50 flex flex-col bg-[var(--color-bg-secondary)]"
       onKeyDown={handleKeyDown}
-      onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}
     >
       <div
         ref={dialogRef}
@@ -364,23 +363,24 @@ export function ItemDetailDialog({
         role="dialog"
         aria-modal="true"
         aria-label={`Item details: ${item.title}`}
-        className="bg-[var(--color-bg-secondary)] rounded-lg shadow-xl border border-[var(--color-border-primary)] w-full max-w-3xl mx-4 max-h-[90vh] overflow-hidden flex flex-col"
+        className="flex flex-col h-full"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[var(--color-border-primary)]">
-          <h2 className="text-lg font-semibold text-white">Item Details</h2>
+        <div className="flex items-center justify-between px-6 py-3 border-b border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
+          <h2 className="text-base font-semibold text-white truncate min-w-0">{item.title || 'Untitled Item'}</h2>
           <button
             data-testid="close-button"
             onClick={handleClose}
-            className="p-1 text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-tertiary)] rounded transition-colors"
+            className="p-1.5 text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-primary)] rounded transition-colors flex-shrink-0"
+            title="Esc to close"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
         {/* Error banner */}
         {errorMessage && (
-          <div className="flex items-center justify-between px-4 py-2 bg-red-900/30 border-b border-red-700/50 text-red-300 text-sm">
+          <div className="flex items-center justify-between px-6 py-2 bg-red-900/30 border-b border-red-700/50 text-red-300 text-sm">
             <span>{errorMessage}</span>
             <button
               onClick={() => setErrorMessage(null)}
@@ -392,302 +392,301 @@ export function ItemDetailDialog({
         )}
 
         {/* Content - Two pane layout */}
-        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-          {/* Left pane - Title, Description, Comments */}
-          <div className="flex-1 p-4 overflow-y-auto md:border-r border-[var(--color-border-primary)]">
-            {/* Title */}
-            <div className="mb-4">
-              <label
-                htmlFor="detail-title"
-                className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1"
-              >
-                Title
-              </label>
-              <input
-                id="detail-title"
-                data-testid="title-input"
-                type="text"
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left pane - Title, Description, Comments, Agent Output */}
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="max-w-3xl">
+              {/* Title */}
+              <div className="mb-5">
+                <label
+                  htmlFor="detail-title"
+                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
+                >
+                  Title
+                </label>
+                <input
+                  id="detail-title"
+                  data-testid="title-input"
+                  type="text"
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+                />
+              </div>
+
+              {/* Description */}
+              <div className="mb-5">
+                <label
+                  htmlFor="detail-description"
+                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
+                >
+                  Description
+                </label>
+                <textarea
+                  id="detail-description"
+                  data-testid="description-input"
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  rows={10}
+                  className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
+                />
+              </div>
+
+              {/* Live Agent Status Banner */}
+              <AgentStatusBanner
+                status={agentSession.liveStatus}
+                detail={agentSession.currentDetail}
+                message={agentSession.liveStatusMessage}
               />
+
+              {/* Comments */}
+              <CommentsList comments={item.comments} />
             </div>
-
-            {/* Description */}
-            <div className="mb-4">
-              <label
-                htmlFor="detail-description"
-                className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1"
-              >
-                Description
-              </label>
-              <textarea
-                id="detail-description"
-                data-testid="description-input"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                rows={6}
-                className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-none"
-              />
-            </div>
-
-            {/* Comments */}
-            <CommentsList comments={item.comments} />
-
-            {/* Live Agent Status Banner */}
-            <AgentStatusBanner
-              status={agentSession.liveStatus}
-              detail={agentSession.currentDetail}
-              message={agentSession.liveStatusMessage}
-            />
-
-            {/* Agent Output Log */}
-            {agentSession.showAgentLog && (
-              <AgentLogPanel
-                outputLines={agentSession.agentOutputLines}
-                onClear={agentSession.clearAgentOutput}
-                onClose={() => agentSession.setShowAgentLog(false)}
-              />
-            )}
           </div>
 
-          {/* Right pane - Status, Agent Type, Column, Branch, Timestamps, Actions */}
-          <div className="w-full md:w-64 p-4 overflow-y-auto bg-[var(--color-bg-tertiary)] border-t md:border-t-0 border-[var(--color-border-primary)]">
+          {/* Right pane - Sidebar */}
+          <div className="w-72 overflow-y-auto border-l border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
             {/* Agent Controls */}
-            <AgentControls
-              item={item}
-              isStartingAgent={isStartingAgent}
-              isAnswering={isAnswering}
-              answerText={answerText}
-              currentSessionId={agentSession.currentSessionId}
-              currentDetail={agentSession.currentDetail}
-              showAgentLog={agentSession.showAgentLog}
-              agentOutputLines={agentSession.agentOutputLines}
-              answerInputRef={answerInputRef}
-              onStartAgent={handleStartAgent}
-              onResumeAgent={handleResumeAgent}
-              onStopAgent={handleStopAgent}
-              onAnswerQuestion={handleAnswerQuestion}
-              onSetAnswerText={setAnswerText}
-              onShowLog={() => agentSession.setShowAgentLog(true)}
-              onUpdated={onUpdated}
-            />
-
-            {/* Agent Type */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
-                Agent Type
-              </label>
-              <span
-                data-testid="agent-type-display"
-                className="text-sm text-[var(--color-text-primary)]"
-              >
-                {agentTypeLabels[item.agentType]}
-              </span>
+            <div className="p-4 border-b border-[var(--color-border-primary)]">
+              <AgentControls
+                item={item}
+                isStartingAgent={isStartingAgent}
+                isAnswering={isAnswering}
+                answerText={answerText}
+                currentSessionId={agentSession.currentSessionId}
+                currentDetail={agentSession.currentDetail}
+                answerInputRef={answerInputRef}
+                onStartAgent={handleStartAgent}
+                onResumeAgent={handleResumeAgent}
+                onStopAgent={handleStopAgent}
+                onAnswerQuestion={handleAnswerQuestion}
+                onSetAnswerText={setAnswerText}
+                onUpdated={onUpdated}
+              />
             </div>
 
-            {/* Model */}
-            <div className="mb-4">
-              <label
-                htmlFor="detail-model"
-                className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1"
-              >
-                Model
-              </label>
-              <select
-                id="detail-model"
-                data-testid="model-select"
-                value={model}
-                onChange={e => setModel(e.target.value)}
-                className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
-              >
-                <option value="">Agent default</option>
-                <option value="opus">Opus (most capable)</option>
-                <option value="sonnet">Sonnet (balanced)</option>
-                <option value="haiku">Haiku (fastest)</option>
-              </select>
-            </div>
+            {/* Properties */}
+            <div className="p-4 space-y-4">
+              {/* Agent Type */}
+              <div>
+                <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
+                  Agent Type
+                </label>
+                <span
+                  data-testid="agent-type-display"
+                  className="text-sm text-[var(--color-text-primary)]"
+                >
+                  {agentTypeLabels[item.agentType]}
+                </span>
+              </div>
 
-            {/* Column Selector */}
-            <div className="mb-4">
-              <label
-                htmlFor="detail-column"
-                className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1"
-              >
-                Column
-              </label>
-              <select
-                id="detail-column"
-                data-testid="column-select"
-                value={column}
-                onChange={e => setColumn(e.target.value as KanbanColumn)}
-                className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
-              >
-                {columnOptions
-                  .filter(option => {
-                    if (option.id === 'in-progress') {
-                      return column === 'in-progress'
-                    }
-                    return true
-                  })
-                  .map(option => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-              </select>
-              {column === 'in-progress' && (
-                <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
-                  Items are moved to In Progress by agents
-                </p>
+              {/* Model */}
+              <div>
+                <label
+                  htmlFor="detail-model"
+                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
+                >
+                  Model
+                </label>
+                <select
+                  id="detail-model"
+                  data-testid="model-select"
+                  value={model}
+                  onChange={e => setModel(e.target.value)}
+                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+                >
+                  <option value="">Agent default</option>
+                  <option value="opus">Opus (most capable)</option>
+                  <option value="sonnet">Sonnet (balanced)</option>
+                  <option value="haiku">Haiku (fastest)</option>
+                </select>
+              </div>
+
+              {/* Column Selector */}
+              <div>
+                <label
+                  htmlFor="detail-column"
+                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
+                >
+                  Column
+                </label>
+                <select
+                  id="detail-column"
+                  data-testid="column-select"
+                  value={column}
+                  onChange={e => setColumn(e.target.value as KanbanColumn)}
+                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+                >
+                  {columnOptions
+                    .filter(option => {
+                      if (option.id === 'in-progress') {
+                        return column === 'in-progress'
+                      }
+                      return true
+                    })
+                    .map(option => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                </select>
+                {column === 'in-progress' && (
+                  <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
+                    Items are moved to In Progress by agents
+                  </p>
+                )}
+              </div>
+
+              {/* Branch */}
+              <div>
+                <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
+                  Branch
+                </label>
+                <div
+                  data-testid="branch-display"
+                  className="flex items-center gap-1.5 text-sm text-[var(--color-text-primary)]"
+                >
+                  <GitBranch size={14} className="text-[var(--color-text-secondary)] flex-shrink-0" />
+                  <span className="truncate">{item.branch || 'N/A'}</span>
+                </div>
+              </div>
+
+              {/* Worktree Path */}
+              {item.worktreePath && (
+                <div>
+                  <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
+                    Worktree
+                  </label>
+                  <div
+                    data-testid="worktree-path-display"
+                    className="flex items-center gap-1 text-xs text-[var(--color-text-tertiary)]"
+                    title={item.worktreePath}
+                  >
+                    <FolderOpen size={12} className="flex-shrink-0" />
+                    <span className="font-mono truncate">{item.worktreePath}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Merge Status & Actions */}
+              {item.mergeStatus && item.branch && (
+                <div>
+                  <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
+                    Merge Status
+                  </label>
+                  {item.mergeStatus === 'merged' && (
+                    <div
+                      data-testid="merge-status-merged"
+                      className="flex items-center gap-1 text-sm text-green-400"
+                    >
+                      <Check size={14} />
+                      <span>Merged</span>
+                    </div>
+                  )}
+                  {item.mergeStatus === 'conflict' && (
+                    <div data-testid="merge-status-conflict">
+                      <div className="flex items-center gap-1 text-sm text-red-400 mb-2">
+                        <AlertTriangle size={14} />
+                        <span>Merge Conflict</span>
+                      </div>
+                      <button
+                        data-testid="retry-merge-button"
+                        onClick={handleMerge}
+                        disabled={isMerging}
+                        className="w-full px-3 py-1.5 text-xs bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isMerging ? 'Merging...' : 'Retry Merge'}
+                      </button>
+                    </div>
+                  )}
+                  {item.mergeStatus === 'unmerged' && (
+                    <div data-testid="merge-status-unmerged">
+                      <button
+                        data-testid="merge-button"
+                        onClick={handleMerge}
+                        disabled={isMerging || (item.agentStatus !== 'completed' && item.column !== 'done')}
+                        className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <GitMerge size={12} />
+                        {isMerging ? 'Merging...' : 'Merge to Main'}
+                      </button>
+                      {item.agentStatus !== 'completed' && item.column !== 'done' && (
+                        <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
+                          Available when agent completes or item is in Done
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
-            {/* Branch */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
-                Branch
-              </label>
-              <div
-                data-testid="branch-display"
-                className="flex items-center gap-1 text-sm text-[var(--color-text-primary)]"
-              >
-                <GitBranch size={14} className="text-[var(--color-text-secondary)]" />
-                <span>{item.branch || 'N/A'}</span>
-              </div>
-            </div>
-
-            {/* Worktree Path */}
-            {item.worktreePath && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
-                  Worktree
-                </label>
-                <div
-                  data-testid="worktree-path-display"
-                  className="flex items-center gap-1 text-xs text-[var(--color-text-tertiary)]"
-                  title={item.worktreePath}
-                >
-                  <FolderOpen size={12} className="flex-shrink-0" />
-                  <span className="font-mono truncate">{item.worktreePath}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Merge Status & Actions */}
-            {item.mergeStatus && item.branch && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
-                  Merge Status
-                </label>
-                {item.mergeStatus === 'merged' && (
-                  <div
-                    data-testid="merge-status-merged"
-                    className="flex items-center gap-1 text-sm text-green-400"
-                  >
-                    <Check size={14} />
-                    <span>Merged</span>
-                  </div>
-                )}
-                {item.mergeStatus === 'conflict' && (
-                  <div data-testid="merge-status-conflict">
-                    <div className="flex items-center gap-1 text-sm text-red-400 mb-2">
-                      <AlertTriangle size={14} />
-                      <span>Merge Conflict</span>
-                    </div>
-                    <button
-                      data-testid="retry-merge-button"
-                      onClick={handleMerge}
-                      disabled={isMerging}
-                      className="w-full px-3 py-1.5 text-xs bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {isMerging ? 'Merging...' : 'Retry Merge'}
-                    </button>
-                  </div>
-                )}
-                {item.mergeStatus === 'unmerged' && (
-                  <div data-testid="merge-status-unmerged">
-                    <button
-                      data-testid="merge-button"
-                      onClick={handleMerge}
-                      disabled={isMerging || (item.agentStatus !== 'completed' && item.column !== 'done')}
-                      className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <GitMerge size={12} />
-                      {isMerging ? 'Merging...' : 'Merge to Main'}
-                    </button>
-                    {item.agentStatus !== 'completed' && item.column !== 'done' && (
-                      <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
-                        Available when agent completes or item is in Done
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Timestamps */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
-                Created
-              </label>
-              <div
-                data-testid="created-at"
-                className="flex items-center gap-1 text-xs text-[var(--color-text-tertiary)]"
-              >
-                <Clock size={12} />
-                <span>{formatTimestamp(item.createdAt)}</span>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
-                Updated
-              </label>
-              <div
-                data-testid="updated-at"
-                className="flex items-center gap-1 text-xs text-[var(--color-text-tertiary)]"
-              >
-                <Clock size={12} />
-                <span>{formatTimestamp(item.updatedAt)}</span>
-              </div>
-            </div>
-
             {/* Action Buttons */}
-            <div className="space-y-2">
+            <div className="p-4 border-t border-[var(--color-border-primary)]">
               {hasUnsavedChanges && (
                 <div
                   data-testid="unsaved-indicator"
-                  className="text-center text-xs text-yellow-400 font-medium"
+                  className="text-center text-xs text-yellow-400 font-medium mb-2"
                 >
                   Unsaved changes
                 </div>
               )}
-              <button
-                data-testid="save-button"
-                onClick={handleSave}
-                disabled={isSaving}
-                title="Ctrl+Enter"
-                className={`w-full px-4 py-2 text-sm text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
-                  hasUnsavedChanges
-                    ? 'bg-yellow-600 hover:bg-yellow-700 animate-pulse'
-                    : 'bg-[var(--color-accent-primary)] hover:bg-[var(--color-accent-hover)]'
-                }`}
-              >
-                {isSaving ? 'Saving...' : 'Save Changes'}
-              </button>
-              <p className="text-center text-[10px] text-[var(--color-text-tertiary)]">Ctrl+Enter to save &middot; Ctrl+Del to delete &middot; Esc to close</p>
-              <button
-                data-testid="delete-button"
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="w-full px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {isDeleting ? 'Deleting...' : 'Delete Item'}
-              </button>
+              <div className="space-y-2">
+                <button
+                  data-testid="save-button"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  title="Ctrl+Enter"
+                  className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+                    hasUnsavedChanges
+                      ? 'bg-yellow-600 hover:bg-yellow-700'
+                      : 'bg-[var(--color-accent-primary)] hover:bg-[var(--color-accent-hover)]'
+                  }`}
+                >
+                  <Save size={14} />
+                  {isSaving ? 'Saving...' : 'Save'}
+                </button>
+                <button
+                  data-testid="delete-button"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  title="Ctrl+Delete"
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-red-400 rounded-md hover:bg-red-600/10 border border-red-600/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Trash2 size={14} />
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+
+            {/* Timestamps - pinned to bottom of sidebar */}
+            <div className="mt-auto p-4 border-t border-[var(--color-border-primary)]">
+              <div className="flex items-center justify-between text-xs text-[var(--color-text-tertiary)]">
+                <div className="flex items-center gap-1" data-testid="created-at" title="Created">
+                  <Clock size={11} />
+                  <span>Created {formatTimestamp(item.createdAt)}</span>
+                </div>
+                <div className="flex items-center gap-1" data-testid="updated-at" title="Updated">
+                  <Clock size={11} />
+                  <span>Updated {formatTimestamp(item.updatedAt)}</span>
+                </div>
+              </div>
+              <p className="text-center text-[10px] text-[var(--color-text-tertiary)] mt-2">
+                Ctrl+Enter to save &middot; Ctrl+Del to delete &middot; Esc to close
+              </p>
             </div>
           </div>
         </div>
+
+        {/* Agent Log - bottom panel */}
+        {(agentSession.showAgentLog || agentSession.agentOutputLines.length > 0) && (
+          <div className="border-t border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
+            <AgentLogPanel
+              outputLines={agentSession.agentOutputLines}
+              onClear={agentSession.clearAgentOutput}
+            />
+          </div>
+        )}
       </div>
     </div>
   )
