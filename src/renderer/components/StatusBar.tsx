@@ -7,8 +7,8 @@ import { SpeechToTextButton } from './SpeechToTextButton';
 
 interface StatusBarProps {
   folderPath: string;
-  containerState: ContainerState;
-  onStop: () => void;
+  containerState?: ContainerState;
+  onStop?: () => void;
   onShowShortcuts: () => void;
   onOpenSettings: () => void;
   onOpenCodeReview: () => void;
@@ -42,7 +42,7 @@ export function StatusBar({
     crashed: { text: 'Crashed', className: 'text-[var(--color-status-error)]' },
   };
 
-  const { text, className } = stateDisplay[containerState];
+  const containerInfo = containerState ? stateDisplay[containerState] : null;
   const { theme, toggleTheme } = useTheme();
 
   return (
@@ -69,19 +69,23 @@ export function StatusBar({
             )}
           </>
         )}
-        <span className="text-[var(--color-text-muted)]">|</span>
-        <span data-testid="status-container-state" className={className}>
-          {containerState === 'starting' && (
-            <Loader2 size={12} className="inline mr-1 animate-spin" />
-          )}
-          {text}
-        </span>
+        {containerInfo && (
+          <>
+            <span className="text-[var(--color-text-muted)]">|</span>
+            <span data-testid="status-container-state" className={containerInfo.className}>
+              {containerState === 'starting' && (
+                <Loader2 size={12} className="inline mr-1 animate-spin" />
+              )}
+              {containerInfo.text}
+            </span>
+          </>
+        )}
       </div>
 
       {/* Right: action buttons and shortcuts hint */}
       <div className="flex items-center gap-2 flex-shrink-0">
         {/* Stop button (only when running or starting) */}
-        {(containerState === 'running' || containerState === 'starting') && (
+        {onStop && (containerState === 'running' || containerState === 'starting') && (
           <button
             data-testid="stop-button"
             onClick={onStop}
@@ -94,7 +98,7 @@ export function StatusBar({
         )}
 
         {/* Crashed state: show Close option */}
-        {containerState === 'crashed' && (
+        {onStop && containerState === 'crashed' && (
           <button
             onClick={onStop}
             className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-tertiary)] transition-colors"
