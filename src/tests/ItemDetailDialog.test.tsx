@@ -567,7 +567,7 @@ describe('ItemDetailDialog', () => {
     expect(dialog).toHaveAttribute('aria-modal', 'true')
   })
 
-  it('should close dialog when clicking overlay background', () => {
+  it('should not close dialog when clicking background', () => {
     const onClose = vi.fn()
     const item = createMockItem()
 
@@ -584,7 +584,7 @@ describe('ItemDetailDialog', () => {
     const overlay = screen.getByTestId('item-detail-dialog').parentElement!
     fireEvent.click(overlay, { target: overlay, currentTarget: overlay })
 
-    expect(onClose).toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('should show unsaved changes indicator when title is modified', () => {

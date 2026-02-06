@@ -4,7 +4,7 @@
  */
 
 import React from 'react'
-import { Play, Code, RotateCcw, MessageSquare, XCircle, Terminal } from 'lucide-react'
+import { Play, Code, RotateCcw, MessageSquare, XCircle } from 'lucide-react'
 import type { KanbanItem, AgentStatus } from '@shared/types/kanban'
 
 const statusColors: Record<AgentStatus, string> = {
@@ -23,15 +23,12 @@ interface AgentControlsProps {
   answerText: string
   currentSessionId: string | null
   currentDetail: string | null
-  showAgentLog: boolean
-  agentOutputLines: string[]
   answerInputRef: React.RefObject<HTMLTextAreaElement | null>
   onStartAgent: (agentName: string) => void
   onResumeAgent: (agentName: string) => void
   onStopAgent: () => void
   onAnswerQuestion: () => void
   onSetAnswerText: (text: string) => void
-  onShowLog: () => void
   onUpdated: () => void
 }
 
@@ -55,15 +52,12 @@ export function AgentControls({
   answerText,
   currentSessionId,
   currentDetail,
-  showAgentLog,
-  agentOutputLines,
   answerInputRef,
   onStartAgent,
   onResumeAgent,
   onStopAgent,
   onAnswerQuestion,
   onSetAnswerText,
-  onShowLog,
 }: AgentControlsProps): React.ReactElement {
   return (
     <>
@@ -147,16 +141,6 @@ export function AgentControls({
               >
                 <XCircle size={14} />
                 Stop Agent
-              </button>
-            )}
-            {!showAgentLog && agentOutputLines.length > 0 && (
-              <button
-                data-testid="show-log-button"
-                onClick={onShowLog}
-                className="w-full flex items-center justify-center gap-2 px-2 py-1.5 text-xs bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] rounded border border-[var(--color-border-primary)] hover:border-[var(--color-accent-primary)] transition-colors"
-              >
-                <Terminal size={12} />
-                Show Log
               </button>
             )}
           </div>
