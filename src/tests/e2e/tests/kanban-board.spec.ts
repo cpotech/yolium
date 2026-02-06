@@ -172,17 +172,15 @@ test.describe('Kanban Board', () => {
     await expect(window.locator(selectors.newItemDialog)).not.toBeVisible();
   });
 
-  test('should close new item dialog by clicking overlay', async () => {
+  test('should close new item dialog with close button (X)', async () => {
     await openKanbanBoard();
     const { window } = ctx;
 
     await window.click(selectors.kanbanNewItemButton);
     await expect(window.locator(selectors.newItemDialog)).toBeVisible();
 
-    // Click on the overlay (parent of dialog)
-    const overlay = window.locator(selectors.newItemDialog).locator('..');
-    // Click at the edge of the overlay, far from the dialog
-    await overlay.click({ position: { x: 5, y: 5 } });
+    // Full-screen dialogs close via Escape, Cancel, or close button (no overlay click)
+    await window.click('[data-testid="new-item-dialog"] [data-testid="close-button"]');
     await expect(window.locator(selectors.newItemDialog)).not.toBeVisible();
   });
 
@@ -343,17 +341,16 @@ test.describe('Kanban Board', () => {
     await expect(window.locator(selectors.itemDetailDialog)).not.toBeVisible();
   });
 
-  test('should close detail dialog by clicking overlay', async () => {
+  test('should close detail dialog with close button (X)', async () => {
     await openKanbanBoard();
-    await createItemViaIPC('Overlay Test', 'Test');
+    await createItemViaIPC('Close Button Test', 'Test');
     const { window } = ctx;
 
     await window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
     await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
 
-    // Click on the overlay
-    const overlay = window.locator(selectors.itemDetailDialog).locator('..');
-    await overlay.click({ position: { x: 5, y: 5 } });
+    // Full-screen dialogs close via Escape or close button (no overlay click)
+    await window.click(selectors.detailCloseButton);
     await expect(window.locator(selectors.itemDetailDialog)).not.toBeVisible();
   });
 
