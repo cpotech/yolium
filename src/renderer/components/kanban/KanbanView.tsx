@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { FolderOpen, RefreshCw, Plus, Loader2, X, AlertTriangle, Keyboard, Search, GitBranch } from 'lucide-react'
+import { FolderOpen, RefreshCw, Plus, Loader2, X, AlertTriangle, Keyboard, Search, GitBranch, Trash2 } from 'lucide-react'
 import { KanbanColumn } from './KanbanColumn'
 import { NewItemDialog } from './NewItemDialog'
 import { ItemDetailDialog } from './ItemDetailDialog'
@@ -8,6 +8,7 @@ import type { KanbanBoard, KanbanItem, KanbanColumn as ColumnId } from '@shared/
 interface KanbanViewProps {
   projectPath: string | null
   onSwitchProject?: (newPath: string) => void
+  onDeleteProject?: (projectPath: string) => void
 }
 
 const columns: { id: ColumnId; title: string }[] = [
@@ -17,7 +18,7 @@ const columns: { id: ColumnId; title: string }[] = [
   { id: 'done', title: 'Done' },
 ]
 
-export function KanbanView({ projectPath, onSwitchProject }: KanbanViewProps): React.ReactElement {
+export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: KanbanViewProps): React.ReactElement {
   const [board, setBoard] = useState<KanbanBoard | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [newItemDialogOpen, setNewItemDialogOpen] = useState(false)
@@ -29,6 +30,7 @@ export function KanbanView({ projectPath, onSwitchProject }: KanbanViewProps): R
     isRepo: boolean
     nestedRepos: Array<{ name: string; path: string }>
   } | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const viewRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -210,6 +212,23 @@ export function KanbanView({ projectPath, onSwitchProject }: KanbanViewProps): R
     }
   }, [projectPath, board, loadBoard])
 
+  const handleDeleteProject = useCallback(async () => {
+    if (!projectPath || !onDeleteProject || isDeleting) return
+
+    const confirmed = await window.electronAPI.dialog.confirmOkCancel(
+      'Delete Project',
+      'Delete this project? This will stop all running agents, remove worktrees, and delete the kanban board. This cannot be undone.'
+    )
+    if (!confirmed) return
+
+    setIsDeleting(true)
+    try {
+      await onDeleteProject(projectPath)
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [projectPath, onDeleteProject, isDeleting])
+
   // Empty state when no project selected
   if (!projectPath) {
     return (
@@ -303,6 +322,17 @@ export function KanbanView({ projectPath, onSwitchProject }: KanbanViewProps): R
               </button>
             )}
           </div>
+          {onDeleteProject && (
+            <button
+              data-testid="delete-project-button"
+              onClick={handleDeleteProject}
+              disabled={isDeleting}
+              title="Delete project"
+              className="flex items-center gap-1.5 px-2 py-1.5 text-sm text-[var(--color-text-secondary)] hover:text-red-400 hover:bg-[var(--color-bg-tertiary)] rounded-md transition-colors disabled:opacity-50"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
           <button
             data-testid="refresh-button"
             onClick={handleRefresh}

@@ -11,7 +11,7 @@ vi.mock('@main/lib/logger', () => ({
   })),
 }));
 
-import { buildAgentPrompt, resolveModel } from '@main/services/agent-runner';
+import { buildAgentPrompt, resolveModel, stopAllAgentsForProject, clearSessions } from '@main/services/agent-runner';
 
 describe('agent-runner', () => {
   describe('buildAgentPrompt', () => {
@@ -211,6 +211,21 @@ describe('agent-runner', () => {
       }
 
       expect(deleteWorktree).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('stopAllAgentsForProject', () => {
+    beforeEach(() => {
+      clearSessions();
+    });
+
+    it('should resolve without error when no sessions exist', async () => {
+      await expect(stopAllAgentsForProject('/some/path')).resolves.toBeUndefined();
+    });
+
+    it('should resolve without error when no sessions match the project', async () => {
+      // No sessions added, so nothing should match
+      await expect(stopAllAgentsForProject('/nonexistent/project')).resolves.toBeUndefined();
     });
   });
 });
