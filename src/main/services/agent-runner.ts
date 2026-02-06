@@ -10,6 +10,7 @@ import {
   createWorktree,
   deleteWorktree,
   generateBranchName,
+  getWorktreePath,
   hasCommits,
   isGitRepo,
 } from '@main/git/git-worktree';
@@ -540,4 +541,31 @@ export function recoverInterruptedAgents(projectPath: string): KanbanItem[] {
   }
 
   return interrupted;
+}
+
+/**
+ * Backfill worktreePath for existing items that have a branch but no worktreePath.
+ * Checks if a worktree directory exists on disk at the expected path.
+ */
+export function backfillWorktreePaths(projectPath: string): number {
+  const board = getOrCreateBoard(projectPath);
+  const resolvedPath = path.resolve(projectPath);
+  let backfilled = 0;
+
+  for (const item of board.items) {
+    if (item.branch && !item.worktreePath && item.mergeStatus !== 'merged') {
+      try {
+        const expectedPath = getWorktreePath(resolvedPath, item.branch);
+        if (fs.existsSync(expectedPath)) {
+          updateItem(board, item.id, { worktreePath: expectedPath, mergeStatus: 'unmerged' });
+          logger.info('Backfilled worktree path', { itemId: item.id, branch: item.branch, worktreePath: expectedPath });
+          backfilled++;
+        }
+      } catch {
+        // Skip items with invalid branch names
+      }
+    }
+  }
+
+  return backfilled;
 }

@@ -12,6 +12,7 @@ import {
   deleteItem,
 } from '@main/stores/kanban-store';
 import { deleteWorktree } from '@main/git/git-worktree';
+import { backfillWorktreePaths } from '@main/services/agent-runner';
 import { createLogger } from '@main/lib/logger';
 import type { KanbanItem } from '@shared/types/kanban';
 
@@ -22,8 +23,9 @@ const logger = createLogger('kanban-handlers');
  * @param ipcMain - Electron IPC main instance
  */
 export function registerKanbanHandlers(ipcMain: IpcMain): void {
-  // Get or create board for a project
+  // Get or create board for a project (backfills worktree paths for existing items)
   ipcMain.handle('kanban:get-board', (_event, projectPath: string) => {
+    backfillWorktreePaths(projectPath);
     return getOrCreateBoard(projectPath);
   });
 
