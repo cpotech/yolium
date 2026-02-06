@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock electron-dependent logger before importing agent-runner
-vi.mock('../lib/logger', () => ({
+vi.mock('@main/lib/logger', () => ({
   createLogger: vi.fn(() => ({
     debug: vi.fn(),
     info: vi.fn(),
@@ -11,7 +11,7 @@ vi.mock('../lib/logger', () => ({
   })),
 }));
 
-import { buildAgentPrompt, resolveModel } from '../lib/agent-runner';
+import { buildAgentPrompt, resolveModel } from '@main/services/agent-runner';
 
 describe('agent-runner', () => {
   describe('buildAgentPrompt', () => {

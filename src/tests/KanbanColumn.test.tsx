@@ -3,8 +3,8 @@
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { KanbanColumn } from '../components/KanbanColumn'
-import type { KanbanItem, KanbanColumn as ColumnId } from '../types/kanban'
+import { KanbanColumn } from '@renderer/components/kanban/KanbanColumn'
+import type { KanbanItem, KanbanColumn as ColumnId } from '@shared/types/kanban'
 
 const createMockItem = (overrides: Partial<KanbanItem> = {}): KanbanItem => ({
   id: 'test-1',

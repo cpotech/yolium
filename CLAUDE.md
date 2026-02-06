@@ -34,12 +34,19 @@ Yolium Desktop is an Electron app that orchestrates AI coding agents (Claude Cod
 
 ### Entry Points
 - `src/main.ts` — Electron main process: window creation, menu, app lifecycle
-- `src/main.tsx` — React entry point: renders `<App />`
-- `src/App.tsx` — Root component: tab management, dialog orchestration, keyboard shortcuts
+- `src/renderer/main.tsx` — React entry point: renders `<App />`
+- `src/renderer/App.tsx` — Root component: tab management, dialog orchestration, keyboard shortcuts
 - `src/preload.ts` — IPC bridge: exposes `window.electronAPI.*` namespaces to renderer
 
-### IPC Layer (`src/ipc/`)
-Each file registers handlers for one namespace. All aggregated in `src/ipc/index.ts`.
+### Import Aliases
+- `@main/*` → `src/main/*` (main process code)
+- `@renderer/*` → `src/renderer/*` (React/UI code)
+- `@shared/*` → `src/shared/*` (types shared across processes)
+
+### Main Process (`src/main/`)
+
+#### IPC Layer (`src/main/ipc/`)
+Each file registers handlers for one namespace. All aggregated in `src/main/ipc/index.ts`.
 Full API reference with types: [docs/IPC.md](docs/IPC.md).
 
 | File | Namespace | Purpose |
@@ -58,21 +65,15 @@ Full API reference with types: [docs/IPC.md](docs/IPC.md).
 | `whisper-handlers.ts` | `whisper:*` | Speech-to-text model management |
 | `code-review-handlers.ts` | `code-review:*` | PR review sessions |
 
-### Business Logic (`src/lib/`)
+#### Services (`src/main/services/`)
 - `agent-runner.ts` — Agent orchestration: start, stop, resume, protocol message routing
 - `agent-loader.ts` — Parse agent definitions from `src/agents/*.md` (YAML frontmatter + system prompt)
 - `agent-protocol.ts` — Extract `@@YOLIUM:{type,data}` protocol messages from agent stdout
-- `git-worktree.ts` — Create/delete git worktrees for branch isolation
-- `kanban-store.ts` — Persist kanban boards (JSON via electron-store)
-- `session-store.ts` — Persist tab/session state across restarts
-- `sidebar-store.ts` — Persist sidebar project list
-- `git-config.ts` — Git credential storage (name, email, PAT)
-- `logger.ts` — Structured logging with module context
-- `focus-trap.ts` — Focus trap utility for dialogs
-- `path-utils.ts` — Path normalization helpers
-- `audio-utils.ts` — Audio format conversion for Whisper
+- `pty-manager.ts` — PTY creation and management for terminal sessions
+- `whisper-manager.ts` — Whisper speech-to-text model management
+- `docker-setup.ts` — Docker availability detection and setup
 
-### Docker (`src/lib/docker/`)
+#### Docker (`src/main/docker/`)
 - `agent-container.ts` — Create headless agent containers (non-interactive, prompt-driven)
 - `container-lifecycle.ts` — Create/stop interactive containers (user-facing terminal)
 - `image-builder.ts` — Build `yolium:latest` Docker image
@@ -82,16 +83,35 @@ Full API reference with types: [docs/IPC.md](docs/IPC.md).
 - `path-utils.ts` — Docker-specific path normalization
 - `shared.ts` — Shared Docker client instance (dockerode)
 
-### React Components (`src/components/`)
-- **Terminal**: `Terminal.tsx` (xterm.js rendering)
-- **Tabs**: `TabBar.tsx`, `Tab.tsx`
-- **Kanban**: `KanbanView.tsx`, `KanbanColumn.tsx`, `KanbanCard.tsx`, `NewItemDialog.tsx`, `ItemDetailDialog.tsx`
-- **Agent UI**: `AgentSelectDialog.tsx`, `AgentControls.tsx`, `AgentLogPanel.tsx`, `AgentStatusBanner.tsx`
-- **Settings**: `GitConfigDialog.tsx`, `KeyboardShortcutsDialog.tsx`, `WhisperModelDialog.tsx`
-- **Navigation**: `Sidebar.tsx`, `ProjectList.tsx`, `DirectoryListing.tsx`, `FavoritesList.tsx`
-- **Other**: `DockerSetupDialog.tsx`, `CodeReviewDialog.tsx`, `SpeechToTextButton.tsx`, `StatusBar.tsx`, `EmptyState.tsx`
+#### Stores (`src/main/stores/`)
+- `kanban-store.ts` — Persist kanban boards (JSON via electron-store)
+- `session-store.ts` — Persist tab/session state across restarts
+- `sidebar-store.ts` — Persist sidebar project list
 
-### Custom Hooks (`src/hooks/`)
+#### Git (`src/main/git/`)
+- `git-worktree.ts` — Create/delete git worktrees for branch isolation
+- `git-config.ts` — Git credential storage (name, email, PAT)
+
+#### Lib (`src/main/lib/`)
+- `logger.ts` — Structured logging with module context
+- `focus-trap.ts` — Focus trap utility for dialogs
+- `path-utils.ts` — Path normalization helpers
+- `audio-utils.ts` — Audio format conversion for Whisper
+
+### Renderer (`src/renderer/`)
+
+#### Components (`src/renderer/components/`)
+- **`agent/`**: `AgentSelectDialog.tsx`, `AgentControls.tsx`, `AgentLogPanel.tsx`, `AgentStatusBanner.tsx`
+- **`kanban/`**: `KanbanView.tsx`, `KanbanColumn.tsx`, `KanbanCard.tsx`, `NewItemDialog.tsx`, `ItemDetailDialog.tsx`, `CommentsList.tsx`
+- **`navigation/`**: `Sidebar.tsx`, `ProjectList.tsx`, `PathInputDialog.tsx`, `DirectoryListing.tsx`, `FavoritesList.tsx`, `FolderCreationInput.tsx`
+- **`terminal/`**: `Terminal.tsx`
+- **`tabs/`**: `TabBar.tsx`, `Tab.tsx`
+- **`settings/`**: `GitConfigDialog.tsx`, `KeyboardShortcutsDialog.tsx`, `WhisperModelDialog.tsx`
+- **`docker/`**: `DockerSetupDialog.tsx`
+- **`code-review/`**: `CodeReviewDialog.tsx`
+- **Shared**: `StatusBar.tsx`, `EmptyState.tsx`, `SpeechToTextButton.tsx`
+
+#### Hooks (`src/renderer/hooks/`)
 - `useTabState.ts` — Tab CRUD, reducer-based state management
 - `useAgentCreation.ts` — Agent session creation flow (container + worktree)
 - `useAgentSession.ts` — Agent event listeners (output, questions, completion)
@@ -105,7 +125,13 @@ Full API reference with types: [docs/IPC.md](docs/IPC.md).
 - `useWhisper.ts` — Speech-to-text recording and transcription
 - `useTerminalCwd.ts` — Track terminal working directory
 
-### Type Definitions (`src/types/`)
+#### Theme (`src/renderer/theme/`)
+- `index.ts` — Theme exports
+- `ThemeProvider.tsx` — React context provider for theming
+- `tokens.ts` — Design token definitions
+- `themes/dark.ts`, `themes/light.ts` — Theme implementations
+
+### Shared Types (`src/shared/types/`)
 - `agent.ts` — `AgentType`, `KanbanAgentType`, `ProtocolMessage` variants, `AgentDefinition`
 - `kanban.ts` — `KanbanBoard`, `KanbanItem`, `KanbanColumn`, `AgentStatus`
 - `tabs.ts` — `Tab`, `TabState`, `TabAction` (reducer actions)
@@ -136,7 +162,7 @@ Full API reference with types: [docs/IPC.md](docs/IPC.md).
 
 ### Adding a new IPC handler
 
-1. Create `src/ipc/foo-handlers.ts`:
+1. Create `src/main/ipc/foo-handlers.ts`:
 ```typescript
 import type { IpcMain } from 'electron';
 
@@ -147,7 +173,7 @@ export function registerFooHandlers(ipcMain: IpcMain): void {
 }
 ```
 
-2. Register in `src/ipc/index.ts`:
+2. Register in `src/main/ipc/index.ts`:
 ```typescript
 import { registerFooHandlers } from './foo-handlers';
 // Inside registerAllHandlers():
@@ -164,14 +190,15 @@ const foo = {
 
 ### Adding a new React component
 
-- Place in `src/components/FooDialog.tsx`
+- Place in `src/renderer/components/<feature>/FooDialog.tsx` (group by feature: agent, kanban, navigation, settings, etc.)
 - Use `data-testid` attributes on interactive elements for E2E tests
 - Follow existing dialog patterns (see `NewItemDialog.tsx` for a clean example)
 - Wire into `App.tsx` if it needs global state or dialog management
+- Import types with `@shared/types/...`, hooks with `@renderer/hooks/...`
 
 ### Adding a new custom hook
 
-- Place in `src/hooks/useFoo.ts`
+- Place in `src/renderer/hooks/useFoo.ts`
 - Keep hooks focused on one concern
 - Access IPC via `window.electronAPI.namespace.method()`
 - Return cleanup functions from `useEffect` for event listeners
@@ -232,11 +259,11 @@ npm test:watch    # Watch mode for development
 
 ### Test File Location
 
-Tests live in `src/tests/`, alongside the source code:
-- `src/tests/git-worktree.test.ts` → `src/lib/git-worktree.ts`
-- `src/tests/session-store.test.ts` → `src/lib/session-store.ts`
-- `src/tests/useTabState.test.ts` → `src/hooks/useTabState.ts`
-- `src/tests/docker-manager.test.ts` → `src/docker-manager.ts`
+Tests live in `src/tests/` and import via path aliases:
+- `src/tests/git-worktree.test.ts` → `src/main/git/git-worktree.ts`
+- `src/tests/session-store.test.ts` → `src/main/stores/session-store.ts`
+- `src/tests/useTabState.test.ts` → `src/renderer/hooks/useTabState.ts`
+- `src/tests/KanbanView.test.tsx` → `src/renderer/components/kanban/KanbanView.tsx`
 
 ### Writing Testable Code
 

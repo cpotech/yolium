@@ -3,8 +3,8 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { KanbanView } from '../components/KanbanView'
-import type { KanbanBoard, KanbanItem } from '../types/kanban'
+import { KanbanView } from '@renderer/components/kanban/KanbanView'
+import type { KanbanBoard, KanbanItem } from '@shared/types/kanban'
 
 // Mock the electronAPI
 const mockKanbanGetBoard = vi.fn()

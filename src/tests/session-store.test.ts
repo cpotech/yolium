@@ -17,7 +17,7 @@ const localStorageMock = {
 
 vi.stubGlobal('localStorage', localStorageMock)
 
-import { saveSession, loadSession, clearSession } from '../lib/session-store'
+import { saveSession, loadSession, clearSession } from '@main/stores/session-store'
 
 describe('session-store', () => {
   beforeEach(() => {

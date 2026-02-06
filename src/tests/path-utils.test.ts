@@ -6,7 +6,7 @@ import {
   hasTrailingSeparator,
   getBasename,
   PATH_SEP,
-} from '../lib/path-utils';
+} from '@shared/lib/path-utils';
 
 describe('path-utils', () => {
   describe('normalizePath', () => {

@@ -9,7 +9,7 @@ import {
   addComment,
   buildConversationHistory,
   normalizeForHash,
-} from '../lib/kanban-store';
+} from '@main/stores/kanban-store';
 
 // Mock fs
 vi.mock('node:fs', () => ({

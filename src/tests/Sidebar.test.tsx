@@ -3,8 +3,8 @@
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { Sidebar } from '../components/Sidebar'
-import type { SidebarProject } from '../lib/sidebar-store'
+import { Sidebar } from '@renderer/components/navigation/Sidebar'
+import type { SidebarProject } from '@renderer/stores/sidebar-store'
 
 describe('Sidebar', () => {
   const mockProjects: SidebarProject[] = [

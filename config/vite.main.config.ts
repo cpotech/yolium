@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import path from 'path';
 
 // https://vitejs.dev/config
 export default defineConfig({
@@ -13,6 +14,10 @@ export default defineConfig({
     },
   },
   resolve: {
+    alias: {
+      '@main': path.resolve(__dirname, '../src/main'),
+      '@shared': path.resolve(__dirname, '../src/shared'),
+    },
     // Ensure node-pty is treated as external in all contexts
     mainFields: ['module', 'main'],
   },

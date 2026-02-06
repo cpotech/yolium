@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseProtocolMessage, extractProtocolMessages } from '../lib/agent-protocol';
+import { parseProtocolMessage, extractProtocolMessages } from '@main/services/agent-protocol';
 
 describe('agent-protocol', () => {
   describe('parseProtocolMessage', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { encodeWav, resampleToMono } from '../lib/audio-utils'
+import { encodeWav, resampleToMono } from '@shared/lib/audio-utils'
 
 // ============================================================================
 // encodeWav tests

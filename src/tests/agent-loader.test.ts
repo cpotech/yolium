@@ -1,6 +1,6 @@
 // src/tests/agent-loader.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { parseAgentDefinition, loadAgentDefinition, getAgentsDir } from '../lib/agent-loader';
+import { parseAgentDefinition, loadAgentDefinition, getAgentsDir } from '@main/services/agent-loader';
 
 describe('agent-loader', () => {
   describe('getAgentsDir', () => {
