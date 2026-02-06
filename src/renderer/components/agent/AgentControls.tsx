@@ -4,7 +4,7 @@
  */
 
 import React from 'react'
-import { Play, Code, RotateCcw, MessageSquare, XCircle } from 'lucide-react'
+import { Play, Code, RotateCcw, MessageSquare, XCircle, CheckCircle2 } from 'lucide-react'
 import type { KanbanItem, AgentStatus } from '@shared/types/kanban'
 
 const agentNameLabels: Record<string, string> = {
@@ -227,8 +227,20 @@ export function AgentControls({
 
         {/* Completed */}
         {item.agentStatus === 'completed' && (
-          <div className="text-sm text-green-400">
-            Agent completed successfully
+          <div className="space-y-2">
+            <div className="text-sm text-green-400 flex items-center gap-2">
+              <CheckCircle2 size={14} />
+              Agent completed successfully
+            </div>
+            <button
+              data-testid="run-again-button"
+              onClick={() => onStartAgent(getDefaultAgentName(item))}
+              disabled={isStartingAgent}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <RotateCcw size={14} />
+              {isStartingAgent ? 'Starting...' : 'Run Again'}
+            </button>
           </div>
         )}
 
