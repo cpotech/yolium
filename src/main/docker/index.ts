@@ -24,6 +24,7 @@ export {
   isDockerAvailable,
   ensureImage,
   removeYoliumImage,
+  getYoliumImageInfo,
   getDockerDir,
   computeDockerImageHash,
   buildLocalImage,

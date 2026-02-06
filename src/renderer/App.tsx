@@ -210,10 +210,28 @@ function App(): React.ReactElement {
     handleCloseTab(tabId);
   }, [handleCloseTab]);
 
-  // Rebuild Docker image
-  const handleRebuildImage = useCallback(async () => {
-    await docker.handleRebuildImage(tabs, closeAllTabs);
+  // Delete Docker image — close all tabs with proper cleanup, then remove image
+  const handleDeleteImage = useCallback(async () => {
+    const confirmed = await docker.handleDeleteImage();
+    if (!confirmed) return;
+
+    // Close all terminal tabs with proper container + worktree cleanup
+    const terminalTabs = tabs.filter(t => t.type === 'terminal' && t.sessionId);
+    await Promise.all(
+      terminalTabs.map(t => window.electronAPI.container.stop(t.sessionId!, true).catch((err) => {
+        console.error('Failed to cleanup container:', err);
+      }))
+    );
+    closeAllTabs();
+
+    // Now remove remaining containers and the image
+    await docker.executeImageDeletion();
   }, [docker, tabs, closeAllTabs]);
+
+  // Build Docker image
+  const handleBuildImage = useCallback(() => {
+    docker.handleBuildImage();
+  }, [docker]);
 
   // Send transcribed text to the active terminal
   useEffect(() => {
@@ -333,6 +351,10 @@ function App(): React.ReactElement {
         onClose={dialogs.closeGitConfigDialog}
         onSave={dialogs.saveGitConfig}
         initialConfig={dialogs.gitConfig}
+        onDeleteImage={handleDeleteImage}
+        onBuildImage={handleBuildImage}
+        imageRemoved={docker.imageRemoved}
+        isRebuilding={docker.isRebuilding}
       />
 
       {/* Whisper model selection dialog */}
@@ -449,45 +471,6 @@ function App(): React.ReactElement {
               </div>
               {/* Minimal status bar for empty state */}
               <div className="flex items-center justify-end h-7 px-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)] text-xs shrink-0 gap-2">
-                {/* Docker image info and rebuild button (only shown when image exists) */}
-                {!docker.imageRemoved && (
-                  <>
-                    <span className="flex items-center gap-1 text-[var(--color-text-muted)]">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-                        <path d="m3.3 7 8.7 5 8.7-5" />
-                        <path d="M12 22V12" />
-                      </svg>
-                      <span>yolium:latest</span>
-                    </span>
-
-                    {/* Rebuild button */}
-                    <button
-                      onClick={handleRebuildImage}
-                      disabled={docker.isRebuilding}
-                      className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Delete Docker image"
-                    >
-                      {docker.isRebuilding ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
-                          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                        </svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                          <path d="M21 3v5h-5" />
-                          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                          <path d="M8 16H3v5" />
-                        </svg>
-                      )}
-                      <span>Delete</span>
-                    </button>
-
-                    {/* Separator */}
-                    <span className="text-[var(--color-text-disabled)]">|</span>
-                  </>
-                )}
-
                 {/* Speech-to-text button */}
                 <SpeechToTextButton
                   recordingState={whisper.state.recordingState}
@@ -575,9 +558,6 @@ function App(): React.ReactElement {
                       onShowShortcuts={dialogs.openShortcutsDialog}
                       onOpenSettings={dialogs.openGitConfigDialog}
                       onOpenCodeReview={codeReview.openDialog}
-                      imageName={docker.imageRemoved ? undefined : 'yolium:latest'}
-                      onRebuild={handleRebuildImage}
-                      isRebuilding={docker.isRebuilding}
                       gitBranch={tab.gitBranch}
                       worktreeName={tab.worktreeName}
                       whisperRecordingState={whisper.state.recordingState}

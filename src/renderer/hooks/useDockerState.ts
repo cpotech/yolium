@@ -28,11 +28,12 @@ export interface UseDockerStateResult {
   setImageRemoved: React.Dispatch<React.SetStateAction<boolean>>
   /** Handle Docker setup completion */
   handleDockerSetupComplete: () => void
-  /** Rebuild Docker image */
-  handleRebuildImage: (
-    tabs: Array<{ sessionId: string }>,
-    closeAllTabs: () => void
-  ) => Promise<void>
+  /** Delete Docker image — shows confirmation, returns true if confirmed */
+  handleDeleteImage: () => Promise<boolean>
+  /** Execute the image deletion (call after closing tabs) */
+  executeImageDeletion: () => Promise<void>
+  /** Manually trigger Docker image build */
+  handleBuildImage: () => void
 }
 
 /**
@@ -107,44 +108,77 @@ export function useDockerState(): UseDockerStateResult {
     setDockerReady(true)
   }, [])
 
-  const handleRebuildImage = useCallback(async (
-    tabs: Array<{ sessionId: string }>,
-    closeAllTabs: () => void
-  ) => {
+  const handleDeleteImage = useCallback(async (): Promise<boolean> => {
     // Show confirmation dialog
     const confirmed = await window.electronAPI.dialog.confirmOkCancel(
       'Delete Docker Image',
       'This will:\n\u2022 End all active terminals\n\u2022 Remove all yolium containers\n\u2022 Remove the Docker image\n\nThe image will be rebuilt automatically when you start a new terminal.\n\nContinue?'
     )
-    if (!confirmed) return
+    if (!confirmed) return false
 
     setIsRebuilding(true)
+    setBuildProgress(['Stopping containers...'])
 
+    // Return true so caller can close tabs while we proceed
+    return true
+  }, [])
+
+  const executeImageDeletion = useCallback(async () => {
     try {
-      // Close all tabs (which stops all containers)
-      await Promise.all(tabs.map(t => window.electronAPI.container.stop(t.sessionId)))
-      closeAllTabs()
-
-      // Remove any remaining containers
+      setBuildProgress(['Removing containers...'])
       await window.electronAPI.docker.removeAllContainers()
 
-      // Remove the image
+      setBuildProgress(['Removing Docker image...'])
       await window.electronAPI.docker.removeImage()
 
-      // Mark image as removed
       setImageRemoved(true)
 
-      // Show success (brief toast-like feedback via build progress)
       setBuildProgress(['Docker image removed. It will rebuild on next terminal start.'])
-      setTimeout(() => setBuildProgress(null), 2000)
+      setTimeout(() => { setBuildProgress(null); setIsRebuilding(false) }, 2000)
     } catch (err) {
-      console.error('Failed to rebuild image:', err)
+      console.error('Failed to delete image:', err)
       const message = err instanceof Error ? err.message : 'Unknown error'
       setBuildProgress([`Error: ${message}`])
-      setTimeout(() => setBuildProgress(null), 3000)
-    } finally {
-      setIsRebuilding(false)
+      setTimeout(() => { setBuildProgress(null); setIsRebuilding(false) }, 3000)
     }
+  }, [])
+
+  const handleBuildImage = useCallback(() => {
+    buildCancelledRef.current = false
+    setBuildError(null)
+    setBuildProgress(['Checking Yolium image...'])
+
+    let receivedProgress = false
+    const cleanupProgress = window.electronAPI.docker.onBuildProgress((message) => {
+      receivedProgress = true
+      setBuildProgress(prev => {
+        const lines = prev || []
+        return [...lines, message].slice(-50)
+      })
+    })
+
+    window.electronAPI.docker.ensureImage()
+      .then(() => {
+        cleanupProgress()
+        if (!buildCancelledRef.current) {
+          if (receivedProgress) {
+            // Image was actually built — clear immediately
+            setBuildProgress(null)
+          } else {
+            // Image already existed — show brief confirmation
+            setBuildProgress(['Image is up to date.'])
+            setTimeout(() => setBuildProgress(null), 1500)
+          }
+          setImageRemoved(false)
+        }
+      })
+      .catch((err) => {
+        cleanupProgress()
+        if (!buildCancelledRef.current) {
+          const message = err instanceof Error ? err.message : 'Unknown error'
+          setBuildError(message)
+        }
+      })
   }, [])
 
   return {
@@ -159,6 +193,8 @@ export function useDockerState(): UseDockerStateResult {
     setBuildError,
     setImageRemoved,
     handleDockerSetupComplete,
-    handleRebuildImage,
+    handleDeleteImage,
+    executeImageDeletion,
+    handleBuildImage,
   }
 }

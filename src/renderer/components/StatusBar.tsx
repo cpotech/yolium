@@ -1,5 +1,5 @@
 import React from 'react';
-import { Square, Loader2, Keyboard, Box, RefreshCw, GitBranch, TreeDeciduous, Sun, Moon, GitPullRequest, Settings } from 'lucide-react';
+import { Square, Loader2, Keyboard, GitBranch, TreeDeciduous, Sun, Moon, GitPullRequest, Settings } from 'lucide-react';
 import type { ContainerState } from '@shared/types/tabs';
 import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper';
 import { useTheme } from '@renderer/theme';
@@ -12,9 +12,6 @@ interface StatusBarProps {
   onShowShortcuts: () => void;
   onOpenSettings: () => void;
   onOpenCodeReview: () => void;
-  imageName?: string;
-  onRebuild?: () => void;
-  isRebuilding?: boolean;
   gitBranch?: string;
   worktreeName?: string;
   // Speech-to-text props
@@ -31,9 +28,6 @@ export function StatusBar({
   onShowShortcuts,
   onOpenSettings,
   onOpenCodeReview,
-  imageName = 'yolium:latest',
-  onRebuild,
-  isRebuilding = false,
   gitBranch,
   worktreeName,
   whisperRecordingState = 'idle',
@@ -108,36 +102,6 @@ export function StatusBar({
           >
             <span className="hidden sm:inline">Close</span>
           </button>
-        )}
-
-        {/* Separator */}
-        <span className="text-[var(--color-text-disabled)]">|</span>
-
-        {/* Docker image info and rebuild button (only shown when image exists) */}
-        {imageName && (
-          <>
-            <span className="flex items-center gap-1 text-[var(--color-text-muted)]">
-              <Box size={12} />
-              <span>{imageName}</span>
-            </span>
-
-            {/* Rebuild button */}
-            {onRebuild && (
-              <button
-                onClick={onRebuild}
-                disabled={isRebuilding}
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Delete Docker image (stops all terminals)"
-              >
-                {isRebuilding ? (
-                  <Loader2 size={10} className="animate-spin" />
-                ) : (
-                  <RefreshCw size={10} />
-                )}
-                <span className="hidden sm:inline">Delete</span>
-              </button>
-            )}
-          </>
         )}
 
         {/* Separator */}

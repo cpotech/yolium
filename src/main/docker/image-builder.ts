@@ -213,6 +213,54 @@ export async function ensureImage(
 }
 
 /**
+ * Get info about the yolium Docker image, including staleness check.
+ * @returns Image info or null if not found
+ */
+export async function getYoliumImageInfo(): Promise<{
+  name: string;
+  size: number;
+  created: string;
+  stale: boolean;
+} | null> {
+  try {
+    const image = docker.getImage(DEFAULT_IMAGE);
+    const inspect = await image.inspect();
+    const labels = inspect.Config?.Labels || {};
+    const imageHash = labels['yolium.build_hash'];
+
+    // Check if the image is stale (Dockerfile/entrypoint changed since build)
+    let stale = false;
+    if (imageHash) {
+      try {
+        const currentHash = computeDockerImageHash();
+        stale = imageHash !== currentHash;
+      } catch {
+        // Can't compute hash (e.g., Dockerfile not found) — skip staleness check
+      }
+    }
+
+    logger.debug('Image info', {
+      id: inspect.Id?.substring(0, 20),
+      size: inspect.Size,
+      created: inspect.Created,
+      stale,
+    });
+
+    return {
+      name: DEFAULT_IMAGE,
+      size: inspect.Size,
+      created: inspect.Created,
+      stale,
+    };
+  } catch (err) {
+    logger.debug('Image not found', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
+
+/**
  * Remove the yolium Docker image.
  * Used when rebuilding the image.
  */
