@@ -6,13 +6,15 @@
 import type { IpcMain } from 'electron';
 import {
   getOrCreateBoard,
+  getBoard,
   addItem,
   updateItem,
   addComment,
   deleteItem,
+  deleteBoard,
 } from '@main/stores/kanban-store';
 import { deleteWorktree } from '@main/git/git-worktree';
-import { backfillWorktreePaths } from '@main/services/agent-runner';
+import { backfillWorktreePaths, stopAllAgentsForProject } from '@main/services/agent-runner';
 import { createLogger } from '@main/lib/logger';
 import type { KanbanItem } from '@shared/types/kanban';
 
@@ -88,5 +90,34 @@ export function registerKanbanHandlers(ipcMain: IpcMain): void {
     const result = deleteItem(board, itemId);
     event.sender.send('kanban:board-updated', projectPath);
     return result;
+  });
+
+  // Delete entire board (stops agents, cleans up worktrees, removes board file)
+  ipcMain.handle('kanban:delete-board', async (_event, projectPath: string) => {
+    // 1. Stop all running agents for this project
+    await stopAllAgentsForProject(projectPath);
+
+    // 2. Clean up worktrees for all items
+    const board = getBoard(projectPath);
+    if (board) {
+      for (const item of board.items) {
+        if (item.worktreePath) {
+          try {
+            deleteWorktree(projectPath, item.worktreePath);
+            logger.info('Cleaned up worktree on board delete', { itemId: item.id, worktreePath: item.worktreePath });
+          } catch (err) {
+            logger.error('Failed to clean up worktree on board delete', {
+              itemId: item.id,
+              worktreePath: item.worktreePath,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+      }
+    }
+
+    // 3. Delete the board file
+    const deleted = deleteBoard(projectPath);
+    return { deleted };
   });
 }

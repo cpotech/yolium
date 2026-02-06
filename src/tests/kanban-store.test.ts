@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import {
   createBoard,
   getBoard,
+  deleteBoard,
   addItem,
   updateItem,
   addComment,
@@ -18,6 +19,7 @@ vi.mock('node:fs', () => ({
   writeFileSync: vi.fn(),
   readFileSync: vi.fn(() => '{}'),
   readdirSync: vi.fn(() => []),
+  unlinkSync: vi.fn(),
 }));
 
 vi.mock('node:os', () => ({
@@ -242,6 +244,26 @@ describe('kanban-store', () => {
       expect(history).toContain('[system]: Agent started');
       expect(history).toContain('[agent]: Which framework?');
       expect(history).toContain('[user]: Use React');
+    });
+  });
+
+  describe('deleteBoard', () => {
+    it('should return true when board file exists', async () => {
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.unlinkSync).mockImplementation(() => {});
+
+      const result = deleteBoard('/path/to/project');
+      expect(result).toBe(true);
+      expect(fs.unlinkSync).toHaveBeenCalled();
+    });
+
+    it('should return false when board file does not exist', async () => {
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
+      const result = deleteBoard('/path/to/nonexistent');
+      expect(result).toBe(false);
     });
   });
 });
