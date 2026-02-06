@@ -296,7 +296,7 @@ Output: @@YOLIUM:{"type":"complete","summary":"done"}`;
       expect(entrypointContent).toContain('opus)');
       expect(entrypointContent).toContain('sonnet)');
       expect(entrypointContent).toContain('haiku)');
-      expect(entrypointContent).toContain('claude-opus-4-5-20251101');
+      expect(entrypointContent).toContain('claude-opus-4-6');
       expect(entrypointContent).toContain('claude-sonnet-4-5-20250929');
       expect(entrypointContent).toContain('claude-haiku-4-5-20251001');
     });
