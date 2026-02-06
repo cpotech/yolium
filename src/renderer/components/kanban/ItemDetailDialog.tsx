@@ -35,6 +35,18 @@ const agentTypeLabels: Record<KanbanItem['agentType'], string> = {
 }
 
 /**
+ * Extract display label from agent definition name.
+ * e.g., 'code-agent' → 'Code', 'plan-agent' → 'Plan'
+ */
+function formatAgentRoleLabel(agentName: string): string {
+  return agentName
+    .replace(/-agent$/, '')
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+/**
  * Format a timestamp as a relative time string.
  * @param isoString - ISO 8601 timestamp string
  * @returns Human-readable relative time
@@ -484,7 +496,7 @@ export function ItemDetailDialog({
                   data-testid="agent-type-display"
                   className="text-sm text-[var(--color-text-primary)]"
                 >
-                  {agentTypeLabels[item.agentType]}
+                  {item.activeAgentName ? formatAgentRoleLabel(item.activeAgentName) : agentTypeLabels[item.agentType]}
                 </span>
               </div>
 
