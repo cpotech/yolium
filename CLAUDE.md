@@ -74,7 +74,7 @@ Full API reference with types: [docs/IPC.md](docs/IPC.md).
 - `docker-setup.ts` — Docker availability detection and setup
 
 #### Docker (`src/main/docker/`)
-- `agent-container.ts` — Create headless agent containers (non-interactive, prompt-driven)
+- `agent-container.ts` — Create headless agent containers with stream-json parsing for live output
 - `container-lifecycle.ts` — Create/stop interactive containers (user-facing terminal)
 - `image-builder.ts` — Build `yolium:latest` Docker image
 - `project-registry.ts` — Track project cache directories (`~/.yolium/project-registry.json`)
@@ -156,6 +156,7 @@ Full API reference with types: [docs/IPC.md](docs/IPC.md).
 - **Git worktrees**: Agents work on isolated branches without switching the main repo's checkout, enabling true parallel work
 - **Namespaced IPC**: All IPC channels follow `domain:action` naming (e.g., `kanban:add-item`) to avoid collisions and improve discoverability
 - **Agent protocol**: Agents communicate via `@@YOLIUM:{type,data}` JSON messages embedded in stdout — no separate control channel needed
+- **Stream-json output**: Agent containers use `--output-format stream-json` with Claude CLI so events stream incrementally (Claude's `-p` mode alone buffers all output until completion). The main process parses JSON events into readable display text (assistant messages, tool use summaries, results with cost) and extracts protocol messages from text content
 - **electron-store for persistence**: Kanban boards, session state, and settings use JSON files via electron-store — no database needed at this scale
 
 ## Common Patterns
