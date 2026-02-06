@@ -12,6 +12,8 @@ vi.mock('node:fs', () => ({
   existsSync: vi.fn(),
   mkdirSync: vi.fn(),
   rmSync: vi.fn(),
+  readFileSync: vi.fn(),
+  writeFileSync: vi.fn(),
 }))
 
 // Import after mocking
@@ -164,6 +166,97 @@ describe('git-worktree', () => {
   })
 
   describe('createWorktree', () => {
+    it('fixes MSYS2 paths in .git file on Windows', () => {
+      const projectPath = '/home/user/project'
+      const branchName = 'my-branch'
+      const worktreePath = getWorktreePath(projectPath, branchName)
+
+      // Simulate Windows platform
+      const originalPlatform = process.platform
+      Object.defineProperty(process, 'platform', { value: 'win32', configurable: true })
+
+      vi.mocked(fs.existsSync).mockReturnValue(false)
+      vi.mocked(fs.readFileSync).mockReturnValue(
+        'gitdir: /c/Users/gaming/repos/project/.git/worktrees/my-branch\n'
+      )
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        if (command.startsWith('git rev-parse HEAD')) return Buffer.from('abc123')
+        if (command.startsWith('git worktree prune')) return Buffer.from('')
+        if (command.startsWith('git rev-parse --verify')) throw new Error('not found')
+        if (command.startsWith('git worktree add')) return Buffer.from('')
+        throw new Error(`Unexpected command: ${command}`)
+      })
+
+      createWorktree(projectPath, branchName)
+
+      expect(fs.readFileSync).toHaveBeenCalledWith(
+        path.join(worktreePath, '.git'),
+        'utf-8'
+      )
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        path.join(worktreePath, '.git'),
+        'gitdir: C:/Users/gaming/repos/project/.git/worktrees/my-branch\n'
+      )
+
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true })
+    })
+
+    it('does not rewrite .git file when path is already Windows-native', () => {
+      const projectPath = '/home/user/project'
+      const branchName = 'my-branch'
+
+      const originalPlatform = process.platform
+      Object.defineProperty(process, 'platform', { value: 'win32', configurable: true })
+
+      vi.mocked(fs.existsSync).mockReturnValue(false)
+      vi.mocked(fs.readFileSync).mockReturnValue(
+        'gitdir: C:/Users/gaming/repos/project/.git/worktrees/my-branch\n'
+      )
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        if (command.startsWith('git rev-parse HEAD')) return Buffer.from('abc123')
+        if (command.startsWith('git worktree prune')) return Buffer.from('')
+        if (command.startsWith('git rev-parse --verify')) throw new Error('not found')
+        if (command.startsWith('git worktree add')) return Buffer.from('')
+        throw new Error(`Unexpected command: ${command}`)
+      })
+
+      createWorktree(projectPath, branchName)
+
+      expect(fs.writeFileSync).not.toHaveBeenCalled()
+
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true })
+    })
+
+    it('does not modify .git file on non-Windows platforms', () => {
+      const projectPath = '/home/user/project'
+      const branchName = 'my-branch'
+
+      const originalPlatform = process.platform
+      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true })
+
+      vi.mocked(fs.existsSync).mockReturnValue(false)
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        if (command.startsWith('git rev-parse HEAD')) return Buffer.from('abc123')
+        if (command.startsWith('git worktree prune')) return Buffer.from('')
+        if (command.startsWith('git rev-parse --verify')) throw new Error('not found')
+        if (command.startsWith('git worktree add')) return Buffer.from('')
+        throw new Error(`Unexpected command: ${command}`)
+      })
+
+      createWorktree(projectPath, branchName)
+
+      expect(fs.readFileSync).not.toHaveBeenCalled()
+      expect(fs.writeFileSync).not.toHaveBeenCalled()
+
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true })
+    })
+
     it('reuses existing worktree when path is already registered', () => {
       const projectPath = '/home/user/project'
       const branchName = 'feature-branch'
