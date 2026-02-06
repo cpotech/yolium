@@ -3,14 +3,10 @@
  * Agent control panel with state-dependent UI for starting, stopping, and resuming agents.
  */
 
-import React from 'react'
-import { Play, Code, RotateCcw, MessageSquare, XCircle, CheckCircle2 } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Play, RotateCcw, MessageSquare, XCircle, CheckCircle2 } from 'lucide-react'
 import type { KanbanItem, AgentStatus } from '@shared/types/kanban'
-
-const agentNameLabels: Record<string, string> = {
-  'plan-agent': 'Plan Agent',
-  'code-agent': 'Code Agent',
-}
+import type { AgentDefinition } from '@shared/types/agent'
 
 const statusColors: Record<AgentStatus, string> = {
   idle: 'bg-gray-500',
@@ -19,6 +15,16 @@ const statusColors: Record<AgentStatus, string> = {
   interrupted: 'bg-orange-500',
   completed: 'bg-green-500',
   failed: 'bg-red-500',
+}
+
+/**
+ * Convert agent name like 'code-agent' to 'Code Agent'.
+ */
+function formatAgentLabel(name: string): string {
+  return name
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
 }
 
 interface AgentControlsProps {
@@ -38,17 +44,45 @@ interface AgentControlsProps {
 }
 
 /**
- * Get the default agent name based on item state.
- * @param item - The kanban item
- * @returns Agent name string
+ * Render a list of agent buttons.
  */
-function getDefaultAgentName(item: KanbanItem): string {
-  return item.branch ? 'code-agent' : 'plan-agent'
+function AgentButtonList({
+  agents,
+  isStartingAgent,
+  onClick,
+  buttonTextPrefix,
+  startingText,
+}: {
+  agents: AgentDefinition[]
+  isStartingAgent: boolean
+  onClick: (agentName: string) => void
+  buttonTextPrefix: string
+  startingText: string
+}) {
+  return (
+    <div className="space-y-2">
+      {agents.map((agent, index) => (
+        <button
+          key={agent.name}
+          data-testid={`run-${agent.name}-button`}
+          onClick={() => onClick(agent.name)}
+          disabled={isStartingAgent}
+          className={`w-full flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+            index === 0
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border-primary)] hover:border-[var(--color-accent-primary)]'
+          }`}
+        >
+          <Play size={14} />
+          {isStartingAgent ? startingText : `${buttonTextPrefix} ${formatAgentLabel(agent.name)}`}
+        </button>
+      ))}
+    </div>
+  )
 }
 
 /**
  * Agent controls panel showing appropriate UI based on agent status.
- * @param props - Component props
  */
 export function AgentControls({
   item,
@@ -64,6 +98,12 @@ export function AgentControls({
   onAnswerQuestion,
   onSetAnswerText,
 }: AgentControlsProps): React.ReactElement {
+  const [agents, setAgents] = useState<AgentDefinition[]>([])
+
+  useEffect(() => {
+    window.electronAPI.agent.listDefinitions().then(setAgents).catch(() => {})
+  }, [])
+
   return (
     <>
       {/* Status Badge */}
@@ -83,7 +123,7 @@ export function AgentControls({
               data-testid="active-agent-name"
               className="text-xs text-[var(--color-text-secondary)]"
             >
-              {agentNameLabels[item.activeAgentName] || item.activeAgentName}
+              {formatAgentLabel(item.activeAgentName)}
             </span>
           )}
         </div>
@@ -95,42 +135,15 @@ export function AgentControls({
           Agent Controls
         </label>
 
-        {/* Idle - Show agent buttons */}
-        {item.agentStatus === 'idle' && (
-          <div className="space-y-2">
-            {item.branch ? (
-              <>
-                <button
-                  data-testid="run-code-agent-button"
-                  onClick={() => onStartAgent('code-agent')}
-                  disabled={isStartingAgent}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Code size={14} />
-                  {isStartingAgent ? 'Starting...' : 'Run Code Agent'}
-                </button>
-                <button
-                  data-testid="run-plan-agent-button"
-                  onClick={() => onStartAgent('plan-agent')}
-                  disabled={isStartingAgent}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] rounded-md border border-[var(--color-border-primary)] hover:border-[var(--color-accent-primary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Play size={14} />
-                  {isStartingAgent ? 'Starting...' : 'Run Plan Agent'}
-                </button>
-              </>
-            ) : (
-              <button
-                data-testid="run-plan-agent-button"
-                onClick={() => onStartAgent('plan-agent')}
-                disabled={isStartingAgent}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <Play size={14} />
-                {isStartingAgent ? 'Starting...' : 'Run Plan Agent'}
-              </button>
-            )}
-          </div>
+        {/* Idle - Show all agent buttons */}
+        {item.agentStatus === 'idle' && agents.length > 0 && (
+          <AgentButtonList
+            agents={agents}
+            isStartingAgent={isStartingAgent}
+            onClick={onStartAgent}
+            buttonTextPrefix="Run"
+            startingText="Starting..."
+          />
         )}
 
         {/* Running - Show indicator with progress and stop button */}
@@ -201,7 +214,7 @@ export function AgentControls({
               </button>
               <button
                 data-testid="resume-agent-button"
-                onClick={() => onResumeAgent(getDefaultAgentName(item))}
+                onClick={() => onResumeAgent(item.activeAgentName || 'code-agent')}
                 disabled={isStartingAgent}
                 className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
@@ -216,7 +229,7 @@ export function AgentControls({
         {item.agentStatus === 'interrupted' && (
           <button
             data-testid="resume-interrupted-button"
-            onClick={() => onResumeAgent(getDefaultAgentName(item))}
+            onClick={() => onResumeAgent(item.activeAgentName || 'code-agent')}
             disabled={isStartingAgent}
             className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
@@ -225,38 +238,38 @@ export function AgentControls({
           </button>
         )}
 
-        {/* Completed */}
+        {/* Completed - Show all agent buttons */}
         {item.agentStatus === 'completed' && (
           <div className="space-y-2">
             <div className="text-sm text-green-400 flex items-center gap-2">
               <CheckCircle2 size={14} />
               Agent completed successfully
             </div>
-            <button
-              data-testid="run-again-button"
-              onClick={() => onStartAgent(getDefaultAgentName(item))}
-              disabled={isStartingAgent}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <RotateCcw size={14} />
-              {isStartingAgent ? 'Starting...' : 'Run Again'}
-            </button>
+            {agents.length > 0 && (
+              <AgentButtonList
+                agents={agents}
+                isStartingAgent={isStartingAgent}
+                onClick={onStartAgent}
+                buttonTextPrefix="Run"
+                startingText="Starting..."
+              />
+            )}
           </div>
         )}
 
-        {/* Failed */}
+        {/* Failed - Show all agent buttons */}
         {item.agentStatus === 'failed' && (
           <div className="space-y-2">
             <div className="text-sm text-red-400">Agent failed</div>
-            <button
-              data-testid="retry-agent-button"
-              onClick={() => onStartAgent(getDefaultAgentName(item))}
-              disabled={isStartingAgent}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <RotateCcw size={14} />
-              {isStartingAgent ? 'Retrying...' : 'Retry'}
-            </button>
+            {agents.length > 0 && (
+              <AgentButtonList
+                agents={agents}
+                isStartingAgent={isStartingAgent}
+                onClick={onStartAgent}
+                buttonTextPrefix="Run"
+                startingText="Starting..."
+              />
+            )}
           </div>
         )}
       </div>

@@ -152,11 +152,12 @@ export function addItem(board: KanbanBoard, params: NewItemParams): KanbanItem {
 const VALID_COLUMNS = new Set(['backlog', 'ready', 'in-progress', 'done']);
 const VALID_AGENT_STATUSES = new Set(['idle', 'running', 'waiting', 'interrupted', 'completed', 'failed']);
 const VALID_MERGE_STATUSES = new Set(['unmerged', 'merged', 'conflict']);
+const VALID_MODELS = new Set(['opus', 'sonnet', 'haiku']);
 
 export function updateItem(
   board: KanbanBoard,
   itemId: string,
-  updates: Partial<Pick<KanbanItem, 'title' | 'description' | 'column' | 'branch' | 'agentStatus' | 'activeAgentName' | 'agentQuestion' | 'agentQuestionOptions' | 'worktreePath' | 'mergeStatus'>>
+  updates: Partial<Pick<KanbanItem, 'title' | 'description' | 'column' | 'branch' | 'model' | 'agentStatus' | 'activeAgentName' | 'agentQuestion' | 'agentQuestionOptions' | 'worktreePath' | 'mergeStatus'>>
 ): KanbanItem | null {
   const item = board.items.find(i => i.id === itemId);
   if (!item) return null;
@@ -164,6 +165,7 @@ export function updateItem(
   if (updates.column !== undefined && !VALID_COLUMNS.has(updates.column)) return null;
   if (updates.agentStatus !== undefined && !VALID_AGENT_STATUSES.has(updates.agentStatus)) return null;
   if (updates.mergeStatus !== undefined && !VALID_MERGE_STATUSES.has(updates.mergeStatus)) return null;
+  if (updates.model !== undefined && updates.model !== '' && !VALID_MODELS.has(updates.model)) return null;
 
   Object.assign(item, updates, { updatedAt: new Date().toISOString() });
   saveBoard(board);

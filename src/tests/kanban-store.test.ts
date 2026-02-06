@@ -223,6 +223,48 @@ describe('kanban-store', () => {
       expect(result).not.toBeNull();
       expect(result!.agentStatus).toBe('running');
     });
+
+    it('should accept valid model values', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentType: 'claude',
+        order: 0,
+      });
+
+      const result = updateItem(board, item.id, { model: 'opus' });
+      expect(result).not.toBeNull();
+      expect(result!.model).toBe('opus');
+    });
+
+    it('should accept clearing model with empty string', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentType: 'claude',
+        order: 0,
+        model: 'opus',
+      });
+
+      const result = updateItem(board, item.id, { model: '' });
+      expect(result).not.toBeNull();
+      expect(result!.model).toBe('');
+    });
+
+    it('should reject invalid model values', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentType: 'claude',
+        order: 0,
+      });
+
+      const result = updateItem(board, item.id, { model: 'invalid-model' });
+      expect(result).toBeNull();
+    });
   });
 
   describe('buildConversationHistory', () => {
