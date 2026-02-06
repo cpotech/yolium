@@ -200,7 +200,7 @@ export function createWorktree(projectPath: string, branchName: string): string 
     }
 
     // Remove stale directory
-    fs.rmSync(worktreePath, { recursive: true, force: true });
+    fs.rmSync(worktreePath, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
   }
 
   // Check if branch already exists
@@ -278,7 +278,7 @@ export function deleteWorktree(projectPath: string, worktreePath: string): void 
 
     // Remove the directory if it still exists
     if (fs.existsSync(worktreePath)) {
-      fs.rmSync(worktreePath, { recursive: true, force: true });
+      fs.rmSync(worktreePath, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
     }
   }
 }
