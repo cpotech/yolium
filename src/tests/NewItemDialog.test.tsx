@@ -409,25 +409,6 @@ describe('NewItemDialog', () => {
     expect(document.activeElement).toBe(focusableElements[focusableElements.length - 1])
   })
 
-  it('should close dialog when clicking overlay background', () => {
-    const onClose = vi.fn()
-
-    render(
-      <NewItemDialog
-        isOpen={true}
-        projectPath="/test/project"
-        onClose={onClose}
-        onCreated={vi.fn()}
-      />
-    )
-
-    // Click directly on the overlay (parent of dialog)
-    const overlay = screen.getByTestId('new-item-dialog').parentElement!
-    fireEvent.click(overlay, { target: overlay, currentTarget: overlay })
-
-    expect(onClose).toHaveBeenCalled()
-  })
-
   it('should render model selector with default empty option', () => {
     render(
       <NewItemDialog

@@ -7,6 +7,11 @@ import React from 'react'
 import { Play, Code, RotateCcw, MessageSquare, XCircle } from 'lucide-react'
 import type { KanbanItem, AgentStatus } from '@shared/types/kanban'
 
+const agentNameLabels: Record<string, string> = {
+  'plan-agent': 'Plan Agent',
+  'code-agent': 'Code Agent',
+}
+
 const statusColors: Record<AgentStatus, string> = {
   idle: 'bg-gray-500',
   running: 'bg-yellow-500',
@@ -66,12 +71,22 @@ export function AgentControls({
         <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
           Status
         </label>
-        <span
-          data-testid="status-badge"
-          className={`inline-block px-2 py-1 text-xs font-medium rounded text-white ${statusColors[item.agentStatus]}`}
-        >
-          {item.agentStatus}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            data-testid="status-badge"
+            className={`inline-block px-2 py-1 text-xs font-medium rounded text-white ${statusColors[item.agentStatus]}`}
+          >
+            {item.agentStatus}
+          </span>
+          {item.activeAgentName && (
+            <span
+              data-testid="active-agent-name"
+              className="text-xs text-[var(--color-text-secondary)]"
+            >
+              {agentNameLabels[item.activeAgentName] || item.activeAgentName}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Agent Controls */}
