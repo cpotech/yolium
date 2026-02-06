@@ -528,6 +528,16 @@ function App(): React.ReactElement {
                       className={`absolute inset-0 flex flex-col ${isActive ? '' : 'hidden'}`}
                     >
                       <KanbanView projectPath={tab.cwd} />
+                      <StatusBar
+                        folderPath={tab.cwd}
+                        onShowShortcuts={dialogs.openShortcutsDialog}
+                        onOpenSettings={dialogs.openGitConfigDialog}
+                        onOpenCodeReview={codeReview.openDialog}
+                        whisperRecordingState={whisper.state.recordingState}
+                        whisperSelectedModel={whisper.state.selectedModel}
+                        onToggleRecording={whisper.toggleRecording}
+                        onOpenModelDialog={whisper.openModelDialog}
+                      />
                     </div>
                   );
                 }
