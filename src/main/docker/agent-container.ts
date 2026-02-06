@@ -11,6 +11,7 @@ import { BrowserWindow } from 'electron';
 import { createLogger } from '@main/lib/logger';
 // deleteWorktree no longer called here — worktrees persist with kanban items
 import { extractProtocolMessages } from '@main/services/agent-protocol';
+import { loadGitConfig } from '@main/git/git-config';
 import { docker, agentSessions, DEFAULT_IMAGE, type AgentContainerSession } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
 import { getYoliumSshDir, getGitCredentialsBind } from './project-registry';
@@ -197,6 +198,9 @@ export async function createAgentContainer(
   const promptBase64 = Buffer.from(prompt).toString('base64');
   logger.info('Agent prompt encoded', { sessionId, promptLength: prompt.length, base64Length: promptBase64.length });
 
+  // Load git config for identity env vars (name, email)
+  const gitConfig = loadGitConfig();
+
   const container = await docker.createContainer({
     Image: DEFAULT_IMAGE,
     Tty: false,  // Headless - no TTY
@@ -216,6 +220,8 @@ export async function createAgentContainer(
       'CLAUDE_CONFIG_DIR=/home/agent/.claude',
       ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
       ...(worktreePath && originalPath ? [`WORKTREE_REPO_PATH=${toDockerPath(originalPath)}`] : []),
+      ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
+      ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
     ],
     HostConfig: {
       CapAdd: ['NET_ADMIN'],
