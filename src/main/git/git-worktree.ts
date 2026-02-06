@@ -60,6 +60,17 @@ function fixWorktreeGitFile(worktreePath: string): void {
   }
 }
 
+/**
+ * Sanitize a branch name by replacing characters that are invalid in git ref names.
+ * Replaces colons with slashes and collapses consecutive slashes.
+ */
+export function sanitizeBranchName(branchName: string): string {
+  return branchName
+    .replace(/:/g, '/')     // colons → slashes
+    .replace(/\/\/+/g, '/') // collapse consecutive slashes
+    .replace(/\/$/g, '');   // no trailing slash
+}
+
 export function validateBranchName(branchName: string): void {
   const error = getBranchNameValidationError(branchName);
   if (error) {
