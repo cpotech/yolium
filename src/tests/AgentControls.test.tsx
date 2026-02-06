@@ -1,10 +1,26 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { AgentControls } from '@renderer/components/agent/AgentControls'
 import type { KanbanItem } from '@shared/types/kanban'
+
+const mockDefinitions = [
+  { name: 'code-agent', description: 'Code execution agent', model: 'sonnet' as const, tools: ['Read', 'Write'] },
+  { name: 'plan-agent', description: 'Planning agent', model: 'sonnet' as const, tools: ['Read'] },
+]
+
+beforeEach(() => {
+  // Mock the electronAPI.agent.listDefinitions
+  window.electronAPI = {
+    ...window.electronAPI,
+    agent: {
+      ...(window.electronAPI?.agent || {}),
+      listDefinitions: vi.fn().mockResolvedValue(mockDefinitions),
+    },
+  } as typeof window.electronAPI
+})
 
 const createMockItem = (overrides: Partial<KanbanItem> = {}): KanbanItem => ({
   id: 'test-1',
@@ -21,251 +37,206 @@ const createMockItem = (overrides: Partial<KanbanItem> = {}): KanbanItem => ({
   ...overrides,
 })
 
+const defaultProps = {
+  isStartingAgent: false,
+  isAnswering: false,
+  answerText: '',
+  currentSessionId: null as string | null,
+  currentDetail: null as string | null,
+  answerInputRef: { current: null },
+  onStartAgent: vi.fn(),
+  onResumeAgent: vi.fn(),
+  onStopAgent: vi.fn(),
+  onAnswerQuestion: vi.fn(),
+  onSetAnswerText: vi.fn(),
+  onUpdated: vi.fn(),
+}
+
 describe('AgentControls', () => {
+  describe('idle state', () => {
+    it('should show all agent buttons regardless of branch', async () => {
+      const item = createMockItem({ agentStatus: 'idle', branch: undefined })
+      render(<AgentControls item={item} {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('run-code-agent-button')).toBeInTheDocument()
+      })
+      expect(screen.getByTestId('run-plan-agent-button')).toBeInTheDocument()
+    })
+
+    it('should show all agent buttons when item has branch', async () => {
+      const item = createMockItem({ agentStatus: 'idle', branch: 'feature/test' })
+      render(<AgentControls item={item} {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('run-code-agent-button')).toBeInTheDocument()
+      })
+      expect(screen.getByTestId('run-plan-agent-button')).toBeInTheDocument()
+    })
+
+    it('should call onStartAgent with the correct agent name', async () => {
+      const onStartAgent = vi.fn()
+      const item = createMockItem({ agentStatus: 'idle' })
+      render(<AgentControls item={item} {...defaultProps} onStartAgent={onStartAgent} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('run-code-agent-button')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByTestId('run-plan-agent-button'))
+      expect(onStartAgent).toHaveBeenCalledWith('plan-agent')
+    })
+
+    it('should give first agent primary button style', async () => {
+      const item = createMockItem({ agentStatus: 'idle' })
+      render(<AgentControls item={item} {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('run-code-agent-button')).toBeInTheDocument()
+      })
+
+      const firstButton = screen.getByTestId('run-code-agent-button')
+      expect(firstButton.className).toContain('bg-blue-600')
+    })
+  })
+
   describe('completed state', () => {
-    it('should show completed status text', () => {
+    it('should show completed status text', async () => {
       const item = createMockItem({ agentStatus: 'completed' })
-      render(
-        <AgentControls
-          item={item}
-          isStartingAgent={false}
-          isAnswering={false}
-          answerText=""
-          currentSessionId={null}
-          currentDetail={null}
-          answerInputRef={{ current: null }}
-          onStartAgent={vi.fn()}
-          onResumeAgent={vi.fn()}
-          onStopAgent={vi.fn()}
-          onAnswerQuestion={vi.fn()}
-          onSetAnswerText={vi.fn()}
-          onUpdated={vi.fn()}
-        />
-      )
+      render(<AgentControls item={item} {...defaultProps} />)
 
       expect(screen.getByText('Agent completed successfully')).toBeInTheDocument()
     })
 
-    it('should show run-again button for completed status', () => {
+    it('should show per-agent buttons for completed status', async () => {
       const item = createMockItem({ agentStatus: 'completed', branch: 'feature/test' })
-      render(
-        <AgentControls
-          item={item}
-          isStartingAgent={false}
-          isAnswering={false}
-          answerText=""
-          currentSessionId={null}
-          currentDetail={null}
-          answerInputRef={{ current: null }}
-          onStartAgent={vi.fn()}
-          onResumeAgent={vi.fn()}
-          onStopAgent={vi.fn()}
-          onAnswerQuestion={vi.fn()}
-          onSetAnswerText={vi.fn()}
-          onUpdated={vi.fn()}
-        />
-      )
+      render(<AgentControls item={item} {...defaultProps} />)
 
-      expect(screen.getByTestId('run-again-button')).toBeInTheDocument()
-      expect(screen.getByText('Run Again')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByTestId('run-code-agent-button')).toBeInTheDocument()
+      })
+      expect(screen.getByTestId('run-plan-agent-button')).toBeInTheDocument()
     })
 
-    it('should call onStartAgent with correct agent name when run-again button clicked', () => {
+    it('should call onStartAgent with correct agent name when button clicked', async () => {
       const onStartAgent = vi.fn()
       const item = createMockItem({ agentStatus: 'completed', branch: 'feature/test' })
-      render(
-        <AgentControls
-          item={item}
-          isStartingAgent={false}
-          isAnswering={false}
-          answerText=""
-          currentSessionId={null}
-          currentDetail={null}
-          answerInputRef={{ current: null }}
-          onStartAgent={onStartAgent}
-          onResumeAgent={vi.fn()}
-          onStopAgent={vi.fn()}
-          onAnswerQuestion={vi.fn()}
-          onSetAnswerText={vi.fn()}
-          onUpdated={vi.fn()}
-        />
-      )
+      render(<AgentControls item={item} {...defaultProps} onStartAgent={onStartAgent} />)
 
-      fireEvent.click(screen.getByTestId('run-again-button'))
-      // Item has branch, so should default to code-agent
+      await waitFor(() => {
+        expect(screen.getByTestId('run-code-agent-button')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByTestId('run-code-agent-button'))
       expect(onStartAgent).toHaveBeenCalledWith('code-agent')
     })
 
-    it('should call onStartAgent with plan-agent when item has no branch', () => {
-      const onStartAgent = vi.fn()
-      const item = createMockItem({ agentStatus: 'completed', branch: undefined })
-      render(
-        <AgentControls
-          item={item}
-          isStartingAgent={false}
-          isAnswering={false}
-          answerText=""
-          currentSessionId={null}
-          currentDetail={null}
-          answerInputRef={{ current: null }}
-          onStartAgent={onStartAgent}
-          onResumeAgent={vi.fn()}
-          onStopAgent={vi.fn()}
-          onAnswerQuestion={vi.fn()}
-          onSetAnswerText={vi.fn()}
-          onUpdated={vi.fn()}
-        />
-      )
-
-      fireEvent.click(screen.getByTestId('run-again-button'))
-      // Item has no branch, so should default to plan-agent
-      expect(onStartAgent).toHaveBeenCalledWith('plan-agent')
-    })
-
-    it('should disable run-again button when isStartingAgent is true', () => {
+    it('should disable buttons when isStartingAgent is true', async () => {
       const item = createMockItem({ agentStatus: 'completed', branch: 'feature/test' })
-      render(
-        <AgentControls
-          item={item}
-          isStartingAgent={true}
-          isAnswering={false}
-          answerText=""
-          currentSessionId={null}
-          currentDetail={null}
-          answerInputRef={{ current: null }}
-          onStartAgent={vi.fn()}
-          onResumeAgent={vi.fn()}
-          onStopAgent={vi.fn()}
-          onAnswerQuestion={vi.fn()}
-          onSetAnswerText={vi.fn()}
-          onUpdated={vi.fn()}
-        />
-      )
+      render(<AgentControls item={item} {...defaultProps} isStartingAgent={true} />)
 
-      const button = screen.getByTestId('run-again-button')
-      expect(button).toBeDisabled()
-      expect(button).toHaveTextContent('Starting...')
-    })
+      await waitFor(() => {
+        expect(screen.getByTestId('run-code-agent-button')).toBeInTheDocument()
+      })
 
-    it('should show Run Again text when not starting', () => {
-      const item = createMockItem({ agentStatus: 'completed', branch: 'feature/test' })
-      render(
-        <AgentControls
-          item={item}
-          isStartingAgent={false}
-          isAnswering={false}
-          answerText=""
-          currentSessionId={null}
-          currentDetail={null}
-          answerInputRef={{ current: null }}
-          onStartAgent={vi.fn()}
-          onResumeAgent={vi.fn()}
-          onStopAgent={vi.fn()}
-          onAnswerQuestion={vi.fn()}
-          onSetAnswerText={vi.fn()}
-          onUpdated={vi.fn()}
-        />
-      )
-
-      const button = screen.getByTestId('run-again-button')
-      expect(button).not.toBeDisabled()
-      expect(button).toHaveTextContent('Run Again')
+      expect(screen.getByTestId('run-code-agent-button')).toBeDisabled()
+      expect(screen.getByTestId('run-plan-agent-button')).toBeDisabled()
     })
   })
 
   describe('failed state', () => {
-    it('should show failed status text', () => {
+    it('should show failed status text', async () => {
       const item = createMockItem({ agentStatus: 'failed' })
-      render(
-        <AgentControls
-          item={item}
-          isStartingAgent={false}
-          isAnswering={false}
-          answerText=""
-          currentSessionId={null}
-          currentDetail={null}
-          answerInputRef={{ current: null }}
-          onStartAgent={vi.fn()}
-          onResumeAgent={vi.fn()}
-          onStopAgent={vi.fn()}
-          onAnswerQuestion={vi.fn()}
-          onSetAnswerText={vi.fn()}
-          onUpdated={vi.fn()}
-        />
-      )
+      render(<AgentControls item={item} {...defaultProps} />)
 
       expect(screen.getByText('Agent failed')).toBeInTheDocument()
     })
 
-    it('should show retry button for failed status', () => {
+    it('should show per-agent buttons for failed status', async () => {
       const item = createMockItem({ agentStatus: 'failed' })
-      render(
-        <AgentControls
-          item={item}
-          isStartingAgent={false}
-          isAnswering={false}
-          answerText=""
-          currentSessionId={null}
-          currentDetail={null}
-          answerInputRef={{ current: null }}
-          onStartAgent={vi.fn()}
-          onResumeAgent={vi.fn()}
-          onStopAgent={vi.fn()}
-          onAnswerQuestion={vi.fn()}
-          onSetAnswerText={vi.fn()}
-          onUpdated={vi.fn()}
-        />
-      )
+      render(<AgentControls item={item} {...defaultProps} />)
 
-      expect(screen.getByTestId('retry-agent-button')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByTestId('run-code-agent-button')).toBeInTheDocument()
+      })
+      expect(screen.getByTestId('run-plan-agent-button')).toBeInTheDocument()
+    })
+
+    it('should call onStartAgent with correct agent name when retry clicked', async () => {
+      const onStartAgent = vi.fn()
+      const item = createMockItem({ agentStatus: 'failed' })
+      render(<AgentControls item={item} {...defaultProps} onStartAgent={onStartAgent} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('run-code-agent-button')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByTestId('run-code-agent-button'))
+      expect(onStartAgent).toHaveBeenCalledWith('code-agent')
     })
   })
 
-  describe('idle state', () => {
-    it('should show run code agent button when item has branch', () => {
-      const item = createMockItem({ agentStatus: 'idle', branch: 'feature/test' })
-      render(
-        <AgentControls
-          item={item}
-          isStartingAgent={false}
-          isAnswering={false}
-          answerText=""
-          currentSessionId={null}
-          currentDetail={null}
-          answerInputRef={{ current: null }}
-          onStartAgent={vi.fn()}
-          onResumeAgent={vi.fn()}
-          onStopAgent={vi.fn()}
-          onAnswerQuestion={vi.fn()}
-          onSetAnswerText={vi.fn()}
-          onUpdated={vi.fn()}
-        />
-      )
+  describe('running state', () => {
+    it('should show running indicator', () => {
+      const item = createMockItem({ agentStatus: 'running' })
+      render(<AgentControls item={item} {...defaultProps} />)
 
-      expect(screen.getByTestId('run-code-agent-button')).toBeInTheDocument()
+      expect(screen.getByText('Agent is running...')).toBeInTheDocument()
     })
 
-    it('should show run plan agent button when item has no branch', () => {
-      const item = createMockItem({ agentStatus: 'idle', branch: undefined })
-      render(
-        <AgentControls
-          item={item}
-          isStartingAgent={false}
-          isAnswering={false}
-          answerText=""
-          currentSessionId={null}
-          currentDetail={null}
-          answerInputRef={{ current: null }}
-          onStartAgent={vi.fn()}
-          onResumeAgent={vi.fn()}
-          onStopAgent={vi.fn()}
-          onAnswerQuestion={vi.fn()}
-          onSetAnswerText={vi.fn()}
-          onUpdated={vi.fn()}
-        />
-      )
+    it('should show stop button when session exists', () => {
+      const item = createMockItem({ agentStatus: 'running' })
+      render(<AgentControls item={item} {...defaultProps} currentSessionId="sess-1" />)
 
-      expect(screen.getByTestId('run-plan-agent-button')).toBeInTheDocument()
+      expect(screen.getByTestId('stop-agent-button')).toBeInTheDocument()
+    })
+
+    it('should show progress detail', () => {
+      const item = createMockItem({ agentStatus: 'running' })
+      render(<AgentControls item={item} {...defaultProps} currentDetail="Installing deps..." />)
+
+      expect(screen.getByTestId('agent-progress-detail')).toHaveTextContent('Installing deps...')
+    })
+  })
+
+  describe('waiting state', () => {
+    it('should use activeAgentName for resume', () => {
+      const onResumeAgent = vi.fn()
+      const item = createMockItem({
+        agentStatus: 'waiting',
+        agentQuestion: 'Proceed?',
+        activeAgentName: 'plan-agent',
+      })
+      render(<AgentControls item={item} {...defaultProps} onResumeAgent={onResumeAgent} />)
+
+      fireEvent.click(screen.getByTestId('resume-agent-button'))
+      expect(onResumeAgent).toHaveBeenCalledWith('plan-agent')
+    })
+  })
+
+  describe('interrupted state', () => {
+    it('should use activeAgentName for resume', () => {
+      const onResumeAgent = vi.fn()
+      const item = createMockItem({
+        agentStatus: 'interrupted',
+        activeAgentName: 'code-agent',
+      })
+      render(<AgentControls item={item} {...defaultProps} onResumeAgent={onResumeAgent} />)
+
+      fireEvent.click(screen.getByTestId('resume-interrupted-button'))
+      expect(onResumeAgent).toHaveBeenCalledWith('code-agent')
+    })
+  })
+
+  describe('active agent label', () => {
+    it('should format agent name as label', () => {
+      const item = createMockItem({
+        agentStatus: 'running',
+        activeAgentName: 'code-agent',
+      })
+      render(<AgentControls item={item} {...defaultProps} />)
+
+      expect(screen.getByTestId('active-agent-name')).toHaveTextContent('Code Agent')
     })
   })
 })

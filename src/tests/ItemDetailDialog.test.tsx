@@ -35,6 +35,10 @@ beforeEach(() => {
         onError: mockOnAgentError,
         onExit: mockOnAgentExit,
         getActiveSession: vi.fn().mockResolvedValue(null),
+        listDefinitions: vi.fn().mockResolvedValue([
+          { name: 'code-agent', description: 'Code execution agent', model: 'sonnet', tools: ['Read', 'Write'] },
+          { name: 'plan-agent', description: 'Planning agent', model: 'sonnet', tools: ['Read'] },
+        ]),
       },
     },
     writable: true,
