@@ -1101,6 +1101,28 @@ describe('agent container env vars', () => {
     const env = [`AGENT_ITEM_ID=${itemId}`];
     expect(env).toContain('AGENT_ITEM_ID=item-12345');
   });
+
+  it('should include git identity env vars when config is available', () => {
+    const gitConfig = { name: 'Agent User', email: 'agent@example.com' };
+    const env = [
+      'TOOL=agent',
+      ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
+      ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
+    ];
+    expect(env).toContain('GIT_USER_NAME=Agent User');
+    expect(env).toContain('GIT_USER_EMAIL=agent@example.com');
+  });
+
+  it('should omit git identity env vars when config is null', () => {
+    const gitConfig = null;
+    const env = [
+      'TOOL=agent',
+      ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
+      ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
+    ];
+    expect(env.some(e => e.startsWith('GIT_USER_NAME='))).toBe(false);
+    expect(env.some(e => e.startsWith('GIT_USER_EMAIL='))).toBe(false);
+  });
 });
 
 // ============================================================================
