@@ -336,7 +336,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
         if (!query) return true
         return item.title.toLowerCase().includes(query) || item.description.toLowerCase().includes(query)
       })
-      .sort((a, b) => a.order - b.order)
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
   }
 
   return (
