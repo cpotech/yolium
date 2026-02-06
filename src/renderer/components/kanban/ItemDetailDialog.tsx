@@ -82,6 +82,8 @@ export function ItemDetailDialog({
   // Refs
   const answerInputRef = useRef<HTMLTextAreaElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
+  // Track previous item ID to prevent form resets on same item updates
+  const prevItemIdRef = useRef<string | null>(null)
 
   // Agent session hook
   const agentSession = useAgentSession({
@@ -102,14 +104,19 @@ export function ItemDetailDialog({
   // Sync editable fields when item data changes
   useEffect(() => {
     if (item) {
-      setTitle(item.title)
-      setDescription(item.description)
-      setColumn(item.column)
-      setModel(item.model || '')
-      setBaseTitle(item.title)
-      setBaseDescription(item.description)
-      setBaseColumn(item.column)
-      setBaseModel(item.model || '')
+      // Only reset form fields when the item ID changes (new item selected)
+      // This prevents overwriting user input when the same item updates
+      if (item.id !== prevItemIdRef.current) {
+        setTitle(item.title)
+        setDescription(item.description)
+        setColumn(item.column)
+        setModel(item.model || '')
+        setBaseTitle(item.title)
+        setBaseDescription(item.description)
+        setBaseColumn(item.column)
+        setBaseModel(item.model || '')
+        prevItemIdRef.current = item.id
+      }
     }
   }, [item])
 
