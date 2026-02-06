@@ -538,9 +538,14 @@ function App(): React.ReactElement {
                     >
                       <KanbanView
                         projectPath={tab.cwd}
-                        onSwitchProject={(newPath) => {
+                        onSwitchProject={async (newPath) => {
+                          const oldPath = tab.cwd;
                           updateCwd(tab.id, newPath);
                           addSidebarProject(newPath);
+                          if (oldPath) {
+                            removeSidebarProject(oldPath);
+                            await window.electronAPI.kanban.deleteBoard(oldPath);
+                          }
                           setSidebarProjects(getSidebarProjects());
                         }}
                         onDeleteProject={handleDeleteProject}
