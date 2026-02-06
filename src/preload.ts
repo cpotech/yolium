@@ -149,6 +149,7 @@ const docker = {
   startEngine: () => ipcRenderer.invoke('docker:start-engine'),
   removeAllContainers: () => ipcRenderer.invoke('docker:remove-all-containers'),
   removeImage: () => ipcRenderer.invoke('docker:remove-image'),
+  getImageInfo: () => ipcRenderer.invoke('docker:get-image-info'),
   onBuildProgress: (callback: (message: string) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, message: string) =>
       callback(message);
@@ -415,6 +416,7 @@ declare global {
         startEngine: () => Promise<boolean>;
         removeAllContainers: () => Promise<number>;
         removeImage: () => Promise<void>;
+        getImageInfo: () => Promise<{ name: string; size: number; created: string; stale: boolean } | null>;
         onBuildProgress: (callback: (message: string) => void) => CleanupFunction;
       };
       container: {

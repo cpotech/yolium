@@ -558,7 +558,6 @@ function App(): React.ReactElement {
                       onShowShortcuts={dialogs.openShortcutsDialog}
                       onOpenSettings={dialogs.openGitConfigDialog}
                       onOpenCodeReview={codeReview.openDialog}
-                      imageName={docker.imageRemoved ? undefined : 'yolium:latest'}
                       gitBranch={tab.gitBranch}
                       worktreeName={tab.worktreeName}
                       whisperRecordingState={whisper.state.recordingState}

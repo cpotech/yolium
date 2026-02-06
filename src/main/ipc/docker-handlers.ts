@@ -10,6 +10,7 @@ import {
   ensureImage,
   removeAllYoliumContainers,
   removeYoliumImage,
+  getYoliumImageInfo,
 } from '@main/docker';
 import {
   detectDockerState,
@@ -67,5 +68,10 @@ export function registerDockerHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('docker:remove-image', () => {
     logger.info('IPC: docker:remove-image');
     return removeYoliumImage();
+  });
+
+  ipcMain.handle('docker:get-image-info', () => {
+    logger.debug('IPC: docker:get-image-info');
+    return getYoliumImageInfo();
   });
 }

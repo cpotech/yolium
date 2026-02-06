@@ -58,6 +58,7 @@ export function GitConfigDialog({
   const [showOpenaiKey, setShowOpenaiKey] = useState(false);
   const [openaiKeyError, setOpenaiKeyError] = useState<string | null>(null);
   const [openaiKeyCleared, setOpenaiKeyCleared] = useState(false);
+  const [dockerImageInfo, setDockerImageInfo] = useState<{ name: string; size: number; created: string; stale: boolean } | null>(null);
   // Name validation: at least 2 chars, no problematic characters
   const validateName = (value: string): { valid: boolean; error?: string } => {
     const trimmed = value.trim();
@@ -122,6 +123,8 @@ export function GitConfigDialog({
       if (initialConfig?.hasPat) {
         setAuthExpanded(true);
       }
+      // Fetch Docker image info
+      window.electronAPI.docker.getImageInfo().then(setDockerImageInfo).catch(() => setDockerImageInfo(null));
       // Focus dialog wrapper immediately for keyboard events (e.g. Escape)
       dialogRef.current?.focus();
       // Then move focus to name field for better UX
@@ -438,6 +441,28 @@ export function GitConfigDialog({
           {(onDeleteImage || onBuildImage) && (
             <div className="border-t border-gray-700 pt-4">
               <p className="text-sm font-medium text-gray-300 mb-3">Docker Image</p>
+              {dockerImageInfo && !imageRemoved ? (
+                <>
+                  <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-gray-700/50 rounded-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 shrink-0">
+                      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                      <path d="m3.3 7 8.7 5 8.7-5" />
+                      <path d="M12 22V12" />
+                    </svg>
+                    <span className="text-sm text-white font-mono">{dockerImageInfo.name}</span>
+                    <span className="text-xs text-gray-500 ml-auto">
+                      {(dockerImageInfo.size / (1024 * 1024)).toFixed(0)} MB
+                    </span>
+                  </div>
+                  {dockerImageInfo.stale && (
+                    <p className="mb-2 text-xs text-yellow-400">
+                      Image is outdated. Click "Build Image" to update it.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-gray-500 mb-3">No image found</p>
+              )}
               <div className="flex gap-2">
                 {onBuildImage && (
                   <button
@@ -455,7 +480,7 @@ export function GitConfigDialog({
                     Build Image
                   </button>
                 )}
-                {onDeleteImage && !imageRemoved && (
+                {onDeleteImage && dockerImageInfo && !imageRemoved && (
                   <button
                     type="button"
                     onClick={() => { onClose(); onDeleteImage(); }}
@@ -472,11 +497,6 @@ export function GitConfigDialog({
                   </button>
                 )}
               </div>
-              <p className="mt-2 text-xs text-gray-500">
-                {imageRemoved
-                  ? 'Image has been removed. Click "Build Image" to rebuild it.'
-                  : 'Delete removes the Docker image. It will rebuild automatically on next terminal start.'}
-              </p>
             </div>
           )}
 
