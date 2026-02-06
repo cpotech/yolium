@@ -14,7 +14,9 @@ import {
   getSessionByItemId,
   recoverInterruptedAgents,
 } from '@main/services/agent-runner';
+import { listAgents, loadAgentDefinition } from '@main/services/agent-loader';
 import type { KanbanItem } from '@shared/types/kanban';
+import type { AgentDefinition } from '@shared/types/agent';
 
 const logger = createLogger('agent-handlers');
 
@@ -162,5 +164,20 @@ export function registerAgentHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('agent:recover', (_event, projectPath: string) => {
     logger.info('IPC: agent:recover', { projectPath });
     return recoverInterruptedAgents(projectPath);
+  });
+
+  // List available agent definitions
+  ipcMain.handle('agent:list-definitions', () => {
+    const agentNames = listAgents();
+    const definitions: AgentDefinition[] = [];
+    for (const name of agentNames) {
+      try {
+        const { systemPrompt: _, ...def } = loadAgentDefinition(name);
+        definitions.push(def);
+      } catch (err) {
+        logger.error('Failed to load agent definition', { name, error: String(err) });
+      }
+    }
+    return definitions;
   });
 }

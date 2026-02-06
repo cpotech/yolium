@@ -251,9 +251,9 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     const item = board.items.find(i => i.id === itemId)
     if (!item) return
 
-    // Start agent with same goal
+    // Start agent with same goal (use last agent name if available, fall back to code-agent)
     await window.electronAPI.agent.start({
-      agentName: item.agentType,
+      agentName: item.activeAgentName || 'code-agent',
       projectPath,
       itemId: item.id,
       goal: item.description,
@@ -267,9 +267,9 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     const item = board.items.find(i => i.id === itemId)
     if (!item) return
 
-    // Resume agent
+    // Resume agent (use last agent name if available, fall back to code-agent)
     await window.electronAPI.agent.resume({
-      agentName: item.agentType,
+      agentName: item.activeAgentName || 'code-agent',
       projectPath,
       itemId: item.id,
       goal: item.description,
@@ -283,9 +283,9 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     const item = board.items.find(i => i.id === itemId)
     if (!item) return
 
-    // Start agent again with same goal
+    // Start agent again with same goal (use last agent name if available, fall back to code-agent)
     await window.electronAPI.agent.start({
-      agentName: item.agentType,
+      agentName: item.activeAgentName || 'code-agent',
       projectPath,
       itemId: item.id,
       goal: item.description,
@@ -336,7 +336,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
         if (!query) return true
         return item.title.toLowerCase().includes(query) || item.description.toLowerCase().includes(query)
       })
-      .sort((a, b) => a.order - b.order)
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
   }
 
   return (

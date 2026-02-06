@@ -240,6 +240,8 @@ const agent = {
     ipcRenderer.invoke('agent:get-active-session', projectPath, itemId),
   recover: (projectPath: string) =>
     ipcRenderer.invoke('agent:recover', projectPath),
+  listDefinitions: () =>
+    ipcRenderer.invoke('agent:list-definitions'),
   onOutput: (callback: (sessionId: string, data: string) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, sessionId: string, data: string) =>
       callback(sessionId, data);
@@ -506,6 +508,13 @@ declare global {
         stop: (sessionId: string) => Promise<void>;
         getActiveSession: (projectPath: string, itemId: string) => Promise<{ sessionId: string } | null>;
         recover: (projectPath: string) => Promise<Array<object>>;
+        listDefinitions: () => Promise<Array<{
+          name: string;
+          description: string;
+          model: 'opus' | 'sonnet' | 'haiku';
+          tools: string[];
+          timeout?: number;
+        }>>;
         onOutput: (callback: (sessionId: string, data: string) => void) => CleanupFunction;
         onQuestion: (callback: (sessionId: string, question: { text: string; options?: string[] }) => void) => CleanupFunction;
         onItemCreated: (callback: (sessionId: string, item: object) => void) => CleanupFunction;
