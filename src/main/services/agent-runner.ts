@@ -13,6 +13,7 @@ import {
   getWorktreePath,
   hasCommits,
   isGitRepo,
+  sanitizeBranchName,
 } from '@main/git/git-worktree';
 import {
   getOrCreateBoard,
@@ -173,10 +174,10 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
 
   try {
     if (isGitRepo(resolvedProjectPath) && hasCommits(resolvedProjectPath)) {
-      branchName = item.branch || generateBranchName();
+      branchName = sanitizeBranchName(item.branch || generateBranchName());
 
-      // Persist auto-generated branch name to kanban item
-      if (!item.branch) {
+      // Persist branch name to kanban item (sanitized or auto-generated)
+      if (branchName !== item.branch) {
         updateItem(board, itemId, { branch: branchName });
       }
 
@@ -584,10 +585,14 @@ export function backfillWorktreePaths(projectPath: string): number {
   for (const item of board.items) {
     if (item.branch && !item.worktreePath && item.mergeStatus !== 'merged') {
       try {
-        const expectedPath = getWorktreePath(resolvedPath, item.branch);
+        const sanitized = sanitizeBranchName(item.branch);
+        if (sanitized !== item.branch) {
+          updateItem(board, item.id, { branch: sanitized });
+        }
+        const expectedPath = getWorktreePath(resolvedPath, sanitized);
         if (fs.existsSync(expectedPath)) {
           updateItem(board, item.id, { worktreePath: expectedPath, mergeStatus: 'unmerged' });
-          logger.info('Backfilled worktree path', { itemId: item.id, branch: item.branch, worktreePath: expectedPath });
+          logger.info('Backfilled worktree path', { itemId: item.id, branch: sanitized, worktreePath: expectedPath });
           backfilled++;
         }
       } catch {

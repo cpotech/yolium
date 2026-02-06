@@ -26,6 +26,7 @@ import {
   getWorktreePath,
   initGitRepo,
   createWorktree,
+  sanitizeBranchName,
 } from '@main/git/git-worktree'
 
 describe('git-worktree', () => {
@@ -73,6 +74,30 @@ describe('git-worktree', () => {
       await new Promise(r => setTimeout(r, 5)) // small delay
       const name2 = generateBranchName()
       expect(name1).not.toBe(name2)
+    })
+  })
+
+  describe('sanitizeBranchName', () => {
+    it('replaces colons with slashes', () => {
+      expect(sanitizeBranchName('fix:e2e')).toBe('fix/e2e')
+    })
+
+    it('replaces multiple colons', () => {
+      expect(sanitizeBranchName('fix:plan:dup-workitems')).toBe('fix/plan/dup-workitems')
+    })
+
+    it('collapses consecutive slashes', () => {
+      expect(sanitizeBranchName('fix://double')).toBe('fix/double')
+    })
+
+    it('removes trailing slash', () => {
+      expect(sanitizeBranchName('fix:trailing:')).toBe('fix/trailing')
+    })
+
+    it('leaves valid branch names unchanged', () => {
+      expect(sanitizeBranchName('feature/my-branch')).toBe('feature/my-branch')
+      expect(sanitizeBranchName('fix_bug_123')).toBe('fix_bug_123')
+      expect(sanitizeBranchName('v1.0.0')).toBe('v1.0.0')
     })
   })
 
