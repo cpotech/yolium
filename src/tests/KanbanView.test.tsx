@@ -583,4 +583,75 @@ describe('KanbanView', () => {
 
     expect(document.activeElement).toBe(screen.getByTestId('search-input'))
   })
+
+  it('should sort items by updatedAt descending (most recent first)', async () => {
+    const items = [
+      createMockItem({ id: '1', title: 'Oldest', column: 'backlog', updatedAt: '2024-01-01T00:00:00Z' }),
+      createMockItem({ id: '2', title: 'Newest', column: 'backlog', updatedAt: '2024-01-03T00:00:00Z' }),
+      createMockItem({ id: '3', title: 'Middle', column: 'backlog', updatedAt: '2024-01-02T00:00:00Z' }),
+    ]
+    const board = createMockBoard(items)
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
+
+    const cards = screen.getAllByTestId('kanban-card')
+    expect(cards).toHaveLength(3)
+
+    // Cards should be ordered by updatedAt descending: Newest, Middle, Oldest
+    expect(cards[0]).toHaveTextContent('Newest')
+    expect(cards[1]).toHaveTextContent('Middle')
+    expect(cards[2]).toHaveTextContent('Oldest')
+  })
+
+  it('should float updated items to the top within their column', async () => {
+    const items = [
+      createMockItem({ id: '1', title: 'Task A', column: 'ready', updatedAt: '2024-01-01T10:00:00Z' }),
+      createMockItem({ id: '2', title: 'Task B', column: 'ready', updatedAt: '2024-01-01T09:00:00Z' }),
+      createMockItem({ id: '3', title: 'Task C', column: 'ready', updatedAt: '2024-01-01T11:00:00Z' }),
+    ]
+    const board = createMockBoard(items)
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
+
+    const cards = screen.getAllByTestId('kanban-card')
+
+    // Expected order: C (11:00), A (10:00), B (09:00)
+    expect(cards[0]).toHaveTextContent('Task C')
+    expect(cards[1]).toHaveTextContent('Task A')
+    expect(cards[2]).toHaveTextContent('Task B')
+  })
+
+  it('should show new items at the top (createdAt equals updatedAt)', async () => {
+    const now = new Date().toISOString()
+    const earlier = new Date(Date.now() - 60000).toISOString() // 1 minute ago
+
+    const items = [
+      createMockItem({ id: '1', title: 'Existing Task', column: 'backlog', createdAt: earlier, updatedAt: earlier }),
+      createMockItem({ id: '2', title: 'New Task', column: 'backlog', createdAt: now, updatedAt: now }),
+    ]
+    const board = createMockBoard(items)
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
+
+    const cards = screen.getAllByTestId('kanban-card')
+
+    // New item should be first
+    expect(cards[0]).toHaveTextContent('New Task')
+    expect(cards[1]).toHaveTextContent('Existing Task')
+  })
 })
