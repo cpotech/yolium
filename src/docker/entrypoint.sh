@@ -534,8 +534,10 @@ elif [ "$TOOL" = "agent" ]; then
 
     log "Running Claude: model=$MODEL_ID tools=$AGENT_TOOLS"
 
-    # Run Claude with the decoded prompt (headless - no TTY)
-    exec claude --model "$MODEL_ID" -p "$PROMPT" $TOOLS_ARG --dangerously-skip-permissions
+    # Run Claude with stream-json output format so events are streamed incrementally.
+    # Without this, -p mode buffers all output until completion (no streaming).
+    # --verbose is required when combining -p with --output-format stream-json.
+    exec claude --model "$MODEL_ID" -p "$PROMPT" $TOOLS_ARG --dangerously-skip-permissions --verbose --output-format stream-json
 elif [ "$TOOL" = "opencode" ]; then
     log "Starting OpenCode"
     OPENCODE_BIN=$(which opencode)

@@ -27,6 +27,8 @@ export interface AgentSessionActions {
   setLiveStatus: React.Dispatch<React.SetStateAction<LiveAgentStatus>>
   setLiveStatusMessage: React.Dispatch<React.SetStateAction<string | null>>
   clearAgentOutput: () => void
+  /** Set the session ID and flush any output that arrived before it was known. */
+  associateSession: (sessionId: string) => void
 }
 
 export interface UseAgentSessionOptions {
@@ -55,6 +57,8 @@ export function useAgentSession({
   const [currentDetail, setCurrentDetail] = useState<string | null>(null)
   const [liveStatus, setLiveStatus] = useState<LiveAgentStatus>(null)
   const [liveStatusMessage, setLiveStatusMessage] = useState<string | null>(null)
+  // Buffer output that arrives before the session ID is known (race between IPC send and invoke)
+  const pendingOutputRef = useRef<{ sessionId: string; data: string }[]>([])
 
   // Reset agent output state when switching to a different item
   useEffect(() => {
@@ -62,11 +66,31 @@ export function useAgentSession({
     setShowAgentLog(false)
     setCurrentSessionId(null)
     sessionIdRef.current = null
+    pendingOutputRef.current = []
     setCurrentStep(null)
     setCurrentDetail(null)
     setLiveStatus(null)
     setLiveStatusMessage(null)
   }, [itemId])
+
+  /**
+   * Associate a session ID and flush any output that arrived before it was known.
+   * Solves the race between IPC send events (output) arriving before the
+   * invoke response (which carries the session ID).
+   */
+  const associateSession = useCallback((sessionId: string) => {
+    sessionIdRef.current = sessionId
+    setCurrentSessionId(sessionId)
+
+    // Flush output that arrived before we knew the session ID
+    const pending = pendingOutputRef.current.filter(p => p.sessionId === sessionId)
+    pendingOutputRef.current = []
+    const allLines = pending.flatMap(p => p.data.split('\n').filter(Boolean))
+    if (allLines.length > 0) {
+      setAgentOutputLines(prev => [...prev, ...allLines])
+      setShowAgentLog(true)
+    }
+  }, [])
 
   // Reconnect to active agent session when dialog reopens for a running item
   useEffect(() => {
@@ -75,14 +99,13 @@ export function useAgentSession({
     const reconnect = async () => {
       const result = await window.electronAPI.agent.getActiveSession(projectPath, itemId)
       if (result?.sessionId) {
-        sessionIdRef.current = result.sessionId
-        setCurrentSessionId(result.sessionId)
+        associateSession(result.sessionId)
         setLiveStatus('running')
         setShowAgentLog(true)
       }
     }
     reconnect()
-  }, [itemId, itemAgentStatus, projectPath])
+  }, [itemId, itemAgentStatus, projectPath, associateSession])
 
   // Subscribe to agent output events
   useEffect(() => {
@@ -95,6 +118,9 @@ export function useAgentSession({
           setAgentOutputLines(prev => [...prev, ...lines])
           setShowAgentLog(true)
         }
+      } else if (!sessionIdRef.current) {
+        // Session ID not yet known — buffer output to flush when it arrives
+        pendingOutputRef.current.push({ sessionId, data })
       }
     })
 
@@ -188,5 +214,6 @@ export function useAgentSession({
     setLiveStatus,
     setLiveStatusMessage,
     clearAgentOutput,
+    associateSession,
   }
 }

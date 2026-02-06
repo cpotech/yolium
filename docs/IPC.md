@@ -357,6 +357,7 @@ interface KanbanItem {
 ## agent
 
 Headless agent execution (no terminal UI — agent runs in background container, communicates via protocol).
+Agent containers use `--output-format stream-json` so Claude CLI streams events incrementally. The main process parses these into readable output (assistant text, tool use summaries like `[Read] /path`, `[Bash] command`, and final results with cost).
 
 | Method | Channel | Direction | Description |
 |--------|---------|-----------|-------------|
@@ -366,7 +367,7 @@ Headless agent execution (no terminal UI — agent runs in background container,
 | `stop(sessionId)` | `agent:stop` | invoke | Stop a running agent |
 | `getActiveSession(projectPath, itemId)` | `agent:get-active-session` | invoke | Check if item has an active agent session |
 | `recover(projectPath)` | `agent:recover` | invoke | Mark stale "running" items as "interrupted" after app restart |
-| `onOutput(cb)` | `agent:output` | event | Raw agent stdout |
+| `onOutput(cb)` | `agent:output` | event | Parsed agent output (text, tool summaries, results) |
 | `onQuestion(cb)` | `agent:question` | event | Agent is asking the user a question |
 | `onItemCreated(cb)` | `agent:item-created` | event | Agent created a new kanban item |
 | `onComplete(cb)` | `agent:complete` | event | Agent finished successfully |

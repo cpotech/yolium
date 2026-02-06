@@ -21,6 +21,84 @@ const logger = createLogger('agent-container');
 const DEFAULT_AGENT_TIMEOUT_MS = 30 * 60 * 1000;
 
 /**
+ * Format a tool_use event into a readable one-line summary.
+ */
+function formatToolUse(name: string, input: Record<string, unknown> | undefined): string {
+  if (!input) return `[Tool: ${name}]`;
+  switch (name) {
+    case 'Read':
+      return `[Read] ${input.file_path || ''}`;
+    case 'Write':
+      return `[Write] ${input.file_path || ''}`;
+    case 'Edit':
+      return `[Edit] ${input.file_path || ''}`;
+    case 'Bash':
+      return `[Bash] ${(input.command as string || '').slice(0, 120)}`;
+    case 'Glob':
+      return `[Glob] ${input.pattern || ''}`;
+    case 'Grep':
+      return `[Grep] ${input.pattern || ''}`;
+    default:
+      return `[Tool: ${name}]`;
+  }
+}
+
+/**
+ * Parse a stream-json event from Claude CLI into display text and raw text.
+ * Claude CLI with `--output-format stream-json` emits one JSON object per line:
+ *   {"type":"system", ...}
+ *   {"type":"assistant","message":{"content":[{"type":"text","text":"..."}]}}
+ *   {"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{...}}]}}
+ *   {"type":"result","result":"...","cost_usd":0.05}
+ *
+ * @returns display text for UI, and raw text content for protocol parsing
+ */
+function parseStreamEvent(event: Record<string, unknown>): { display?: string; text?: string } {
+  switch (event.type) {
+    case 'system':
+      return { display: '[Agent] Session started' };
+
+    case 'assistant': {
+      const message = event.message as Record<string, unknown> | undefined;
+      const content = message?.content as Array<Record<string, unknown>> | undefined;
+      if (!Array.isArray(content)) return {};
+
+      const displayParts: string[] = [];
+      let text = '';
+
+      for (const item of content) {
+        if (item.type === 'text' && typeof item.text === 'string') {
+          displayParts.push(item.text);
+          text += item.text;
+        } else if (item.type === 'tool_use' && typeof item.name === 'string') {
+          displayParts.push(formatToolUse(item.name as string, item.input as Record<string, unknown> | undefined));
+        }
+      }
+
+      return {
+        display: displayParts.length > 0 ? displayParts.join('\n') : undefined,
+        text: text || undefined,
+      };
+    }
+
+    case 'result': {
+      const result = event.result as string | undefined;
+      const costUsd = event.cost_usd as number | undefined;
+      const parts: string[] = [];
+      if (result) parts.push(result);
+      if (typeof costUsd === 'number') parts.push(`[Cost: $${costUsd.toFixed(4)}]`);
+      return {
+        display: parts.length > 0 ? parts.join('\n') : undefined,
+        text: result || undefined,
+      };
+    }
+
+    default:
+      return {};
+  }
+}
+
+/**
  * Parameters for creating an agent container.
  */
 export interface AgentContainerParams {
@@ -201,7 +279,10 @@ export async function createAgentContainer(
     ...(worktreePath && { worktreePath, originalPath, branchName }),
   });
 
-  // Handle output
+  // Line buffer for stream-json parsing (Docker stream chunks may not align with line boundaries)
+  let lineBuffer = '';
+
+  // Handle output: parse stream-json events from Claude CLI into readable display text
   const handleOutput = (data: Buffer) => {
     const dataStr = data.toString();
 
@@ -214,23 +295,59 @@ export async function createAgentContainer(
       session.timeoutId = timeoutId;
     }
 
-    logger.info('Agent output', { sessionId, outputLength: dataStr.length, output: dataStr.slice(0, 500) });
+    logger.debug('Agent raw chunk', { sessionId, chunkLength: dataStr.length });
 
-    // Forward raw output (flows through agent-runner events → main.ts → renderer IPC)
-    onOutput?.(dataStr);
+    // Buffer and split on newlines for stream-json parsing
+    lineBuffer += dataStr;
+    const lines = lineBuffer.split('\n');
+    lineBuffer = lines.pop() || ''; // Keep incomplete last line in buffer
 
-    // Parse and forward protocol messages
-    const messages = extractProtocolMessages(dataStr);
-    if (messages.length > 0) {
-      const webContents = BrowserWindow.getAllWindows().find(
-        (w) => w.webContents.id === webContentsId
-      )?.webContents;
+    const displayParts: string[] = [];
+    let textContent = '';
 
-      for (const message of messages) {
-        onProtocolMessage?.(message);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
 
-        if (webContents && !webContents.isDestroyed()) {
-          webContents.send('agent:protocol-message', sessionId, message);
+      try {
+        const event = JSON.parse(trimmed);
+        const parsed = parseStreamEvent(event);
+        if (parsed.display) displayParts.push(parsed.display);
+        if (parsed.text) textContent += parsed.text + '\n';
+      } catch {
+        // Not JSON — forward as raw text (e.g., entrypoint echo messages, stderr)
+        displayParts.push(trimmed);
+        textContent += trimmed + '\n';
+      }
+    }
+
+    if (displayParts.length === 0) return;
+
+    const displayStr = displayParts.join('\n');
+    logger.info('Agent output', { sessionId, displayLines: displayParts.length, display: displayStr.slice(0, 500) });
+
+    // Forward text content for protocol parsing via callback
+    onOutput?.(textContent || displayStr);
+
+    // Send parsed display output to renderer
+    const webContents = BrowserWindow.getAllWindows().find(
+      (w) => w.webContents.id === webContentsId
+    )?.webContents;
+
+    if (webContents && !webContents.isDestroyed()) {
+      webContents.send('agent:output', sessionId, displayStr);
+    }
+
+    // Parse and forward protocol messages from text content
+    if (textContent) {
+      const messages = extractProtocolMessages(textContent);
+      if (messages.length > 0) {
+        for (const message of messages) {
+          onProtocolMessage?.(message);
+
+          if (webContents && !webContents.isDestroyed()) {
+            webContents.send('agent:protocol-message', sessionId, message);
+          }
         }
       }
     }
