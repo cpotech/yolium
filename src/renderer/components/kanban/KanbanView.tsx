@@ -246,6 +246,54 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     }
   }, [projectPath, onDeleteProject, isDeleting])
 
+  const handleRetryAgent = useCallback(async (itemId: string) => {
+    if (!projectPath || !board) return
+
+    const item = board.items.find(i => i.id === itemId)
+    if (!item) return
+
+    // Start agent with same goal
+    await window.electronAPI.agent.start({
+      agentName: item.agentType,
+      projectPath,
+      itemId: item.id,
+      goal: item.description,
+    })
+    loadBoard()
+  }, [projectPath, board, loadBoard])
+
+  const handleResumeAgent = useCallback(async (itemId: string) => {
+    if (!projectPath || !board) return
+
+    const item = board.items.find(i => i.id === itemId)
+    if (!item) return
+
+    // Resume agent
+    await window.electronAPI.agent.resume({
+      agentName: item.agentType,
+      projectPath,
+      itemId: item.id,
+      goal: item.description,
+    })
+    loadBoard()
+  }, [projectPath, board, loadBoard])
+
+  const handleRunAgainAgent = useCallback(async (itemId: string) => {
+    if (!projectPath || !board) return
+
+    const item = board.items.find(i => i.id === itemId)
+    if (!item) return
+
+    // Start agent again with same goal
+    await window.electronAPI.agent.start({
+      agentName: item.agentType,
+      projectPath,
+      itemId: item.id,
+      goal: item.description,
+    })
+    loadBoard()
+  }, [projectPath, board, loadBoard])
+
   // Empty state when no project selected
   if (!projectPath) {
     return (
@@ -490,6 +538,9 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
               items={getColumnItems(col.id)}
               onCardClick={handleCardClick}
               onCardDrop={handleCardDrop}
+              onRetryAgent={handleRetryAgent}
+              onResumeAgent={handleResumeAgent}
+              onRunAgainAgent={handleRunAgainAgent}
             />
           ))}
         </div>

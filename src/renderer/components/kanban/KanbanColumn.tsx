@@ -8,6 +8,9 @@ interface KanbanColumnProps {
   items: KanbanItem[]
   onCardClick: (item: KanbanItem) => void
   onCardDrop?: (itemId: string, targetColumn: ColumnId) => void
+  onRetryAgent?: (itemId: string) => void
+  onResumeAgent?: (itemId: string) => void
+  onRunAgainAgent?: (itemId: string) => void
 }
 
 const columnBorderColors: Record<ColumnId, string> = {
@@ -23,6 +26,9 @@ export function KanbanColumn({
   items,
   onCardClick,
   onCardDrop,
+  onRetryAgent,
+  onResumeAgent,
+  onRunAgainAgent,
 }: KanbanColumnProps): React.ReactElement {
   const borderColor = columnBorderColors[columnId]
   const [isDragOver, setIsDragOver] = useState(false)
@@ -98,7 +104,14 @@ export function KanbanColumn({
           </div>
         ) : (
           items.map((item) => (
-            <KanbanCard key={item.id} item={item} onClick={onCardClick} />
+            <KanbanCard
+              key={item.id}
+              item={item}
+              onClick={onCardClick}
+              onRetryAgent={onRetryAgent}
+              onResumeAgent={onResumeAgent}
+              onRunAgainAgent={onRunAgainAgent}
+            />
           ))
         )}
       </div>

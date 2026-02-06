@@ -239,4 +239,128 @@ describe('KanbanCard', () => {
     const card = screen.getByTestId('kanban-card')
     expect(card).toHaveAttribute('draggable', 'true')
   })
+
+  // Action button tests
+  it('should show retry button for failed status', () => {
+    const item = createMockItem({ agentStatus: 'failed' })
+    const onRetryAgent = vi.fn()
+    render(<KanbanCard item={item} onClick={vi.fn()} onRetryAgent={onRetryAgent} />)
+
+    expect(screen.getByTestId('retry-agent-card-btn')).toBeInTheDocument()
+  })
+
+  it('should not show retry button for failed status when callback not provided', () => {
+    const item = createMockItem({ agentStatus: 'failed' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.queryByTestId('retry-agent-card-btn')).not.toBeInTheDocument()
+  })
+
+  it('should call onRetryAgent when retry button clicked', () => {
+    const item = createMockItem({ id: 'test-123', agentStatus: 'failed' })
+    const onRetryAgent = vi.fn()
+    const onClick = vi.fn()
+    render(<KanbanCard item={item} onClick={onClick} onRetryAgent={onRetryAgent} />)
+
+    fireEvent.click(screen.getByTestId('retry-agent-card-btn'))
+    expect(onRetryAgent).toHaveBeenCalledWith('test-123')
+    expect(onClick).not.toHaveBeenCalled() // Should not open card detail
+  })
+
+  it('should show resume button for interrupted status', () => {
+    const item = createMockItem({ agentStatus: 'interrupted' })
+    const onResumeAgent = vi.fn()
+    render(<KanbanCard item={item} onClick={vi.fn()} onResumeAgent={onResumeAgent} />)
+
+    expect(screen.getByTestId('resume-agent-card-btn')).toBeInTheDocument()
+  })
+
+  it('should not show resume button for interrupted status when callback not provided', () => {
+    const item = createMockItem({ agentStatus: 'interrupted' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.queryByTestId('resume-agent-card-btn')).not.toBeInTheDocument()
+  })
+
+  it('should call onResumeAgent when resume button clicked', () => {
+    const item = createMockItem({ id: 'test-456', agentStatus: 'interrupted' })
+    const onResumeAgent = vi.fn()
+    const onClick = vi.fn()
+    render(<KanbanCard item={item} onClick={onClick} onResumeAgent={onResumeAgent} />)
+
+    fireEvent.click(screen.getByTestId('resume-agent-card-btn'))
+    expect(onResumeAgent).toHaveBeenCalledWith('test-456')
+    expect(onClick).not.toHaveBeenCalled() // Should not open card detail
+  })
+
+  it('should show run-again button for completed status', () => {
+    const item = createMockItem({ agentStatus: 'completed' })
+    const onRunAgainAgent = vi.fn()
+    render(<KanbanCard item={item} onClick={vi.fn()} onRunAgainAgent={onRunAgainAgent} />)
+
+    expect(screen.getByTestId('run-again-card-btn')).toBeInTheDocument()
+  })
+
+  it('should not show run-again button for completed status when callback not provided', () => {
+    const item = createMockItem({ agentStatus: 'completed' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.queryByTestId('run-again-card-btn')).not.toBeInTheDocument()
+  })
+
+  it('should call onRunAgainAgent when run-again button clicked', () => {
+    const item = createMockItem({ id: 'test-789', agentStatus: 'completed' })
+    const onRunAgainAgent = vi.fn()
+    const onClick = vi.fn()
+    render(<KanbanCard item={item} onClick={onClick} onRunAgainAgent={onRunAgainAgent} />)
+
+    fireEvent.click(screen.getByTestId('run-again-card-btn'))
+    expect(onRunAgainAgent).toHaveBeenCalledWith('test-789')
+    expect(onClick).not.toHaveBeenCalled() // Should not open card detail
+  })
+
+  it('should not show action buttons for idle status', () => {
+    const item = createMockItem({ agentStatus: 'idle' })
+    render(<KanbanCard
+      item={item}
+      onClick={vi.fn()}
+      onRetryAgent={vi.fn()}
+      onResumeAgent={vi.fn()}
+      onRunAgainAgent={vi.fn()}
+    />)
+
+    expect(screen.queryByTestId('retry-agent-card-btn')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('resume-agent-card-btn')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('run-again-card-btn')).not.toBeInTheDocument()
+  })
+
+  it('should not show action buttons for running status', () => {
+    const item = createMockItem({ agentStatus: 'running' })
+    render(<KanbanCard
+      item={item}
+      onClick={vi.fn()}
+      onRetryAgent={vi.fn()}
+      onResumeAgent={vi.fn()}
+      onRunAgainAgent={vi.fn()}
+    />)
+
+    expect(screen.queryByTestId('retry-agent-card-btn')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('resume-agent-card-btn')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('run-again-card-btn')).not.toBeInTheDocument()
+  })
+
+  it('should not show action buttons for waiting status', () => {
+    const item = createMockItem({ agentStatus: 'waiting' })
+    render(<KanbanCard
+      item={item}
+      onClick={vi.fn()}
+      onRetryAgent={vi.fn()}
+      onResumeAgent={vi.fn()}
+      onRunAgainAgent={vi.fn()}
+    />)
+
+    expect(screen.queryByTestId('retry-agent-card-btn')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('resume-agent-card-btn')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('run-again-card-btn')).not.toBeInTheDocument()
+  })
 })

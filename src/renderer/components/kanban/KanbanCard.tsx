@@ -1,11 +1,14 @@
 import React, { useState } from 'react'
-import { GitBranch, Loader2, AlertCircle, CheckCircle, XCircle, MessageSquare } from 'lucide-react'
+import { GitBranch, Loader2, AlertCircle, CheckCircle, XCircle, MessageSquare, RotateCcw, Play } from 'lucide-react'
 import type { KanbanItem, AgentStatus } from '@shared/types/kanban'
 
 interface KanbanCardProps {
   item: KanbanItem
   onClick: (item: KanbanItem) => void
   onDragStart?: (item: KanbanItem) => void
+  onRetryAgent?: (itemId: string) => void
+  onResumeAgent?: (itemId: string) => void
+  onRunAgainAgent?: (itemId: string) => void
 }
 
 const agentTypeLabels: Record<KanbanItem['agentType'], string> = {
@@ -59,7 +62,7 @@ function getStatusConfig(status: AgentStatus): StatusConfig | null {
   }
 }
 
-export function KanbanCard({ item, onClick, onDragStart }: KanbanCardProps): React.ReactElement {
+export function KanbanCard({ item, onClick, onDragStart, onRetryAgent, onResumeAgent, onRunAgainAgent }: KanbanCardProps): React.ReactElement {
   const statusConfig = getStatusConfig(item.agentStatus)
   const [isDragging, setIsDragging] = useState(false)
   const isRunning = item.agentStatus === 'running'
@@ -68,6 +71,62 @@ export function KanbanCard({ item, onClick, onDragStart }: KanbanCardProps): Rea
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
       onClick(item)
+    }
+  }
+
+  const handleRetryClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onRetryAgent?.(item.id)
+  }
+
+  const handleResumeClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onResumeAgent?.(item.id)
+  }
+
+  const handleRunAgainClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onRunAgainAgent?.(item.id)
+  }
+
+  // Determine which action button to show based on status
+  const getActionButton = () => {
+    switch (item.agentStatus) {
+      case 'failed':
+        return onRetryAgent ? (
+          <button
+            data-testid="retry-agent-card-btn"
+            onClick={handleRetryClick}
+            title="Retry agent"
+            className="p-1 rounded hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors"
+          >
+            <RotateCcw size={14} />
+          </button>
+        ) : null
+      case 'completed':
+        return onRunAgainAgent ? (
+          <button
+            data-testid="run-again-card-btn"
+            onClick={handleRunAgainClick}
+            title="Run again"
+            className="p-1 rounded hover:bg-green-500/20 text-green-400 hover:text-green-300 transition-colors"
+          >
+            <RotateCcw size={14} />
+          </button>
+        ) : null
+      case 'interrupted':
+        return onResumeAgent ? (
+          <button
+            data-testid="resume-agent-card-btn"
+            onClick={handleResumeClick}
+            title="Resume agent"
+            className="p-1 rounded hover:bg-orange-500/20 text-orange-400 hover:text-orange-300 transition-colors"
+          >
+            <Play size={14} />
+          </button>
+        ) : null
+      default:
+        return null
     }
   }
 
@@ -121,17 +180,20 @@ export function KanbanCard({ item, onClick, onDragStart }: KanbanCardProps): Rea
         {item.description}
       </p>
 
-      {/* Footer: Status indicator and comment count */}
+      {/* Footer: Status indicator, action button, and comment count */}
       <div className="flex items-center justify-between">
-        {statusConfig ? (
-          <div
-            data-testid="status-indicator"
-            className={`flex items-center gap-1 text-[11px] ${statusConfig.colorClass}`}
-          >
-            {statusConfig.icon}
-            <span>{statusConfig.text}</span>
-          </div>
-        ) : <div />}
+        <div className="flex items-center gap-1.5">
+          {statusConfig ? (
+            <div
+              data-testid="status-indicator"
+              className={`flex items-center gap-1 text-[11px] ${statusConfig.colorClass}`}
+            >
+              {statusConfig.icon}
+              <span>{statusConfig.text}</span>
+            </div>
+          ) : <div />}
+          {getActionButton()}
+        </div>
         {item.comments.length > 0 && (
           <div
             data-testid="comment-count"
