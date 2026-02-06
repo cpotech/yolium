@@ -414,7 +414,7 @@ export function ItemDetailDialog({
         <div className="flex flex-1 overflow-hidden">
           {/* Left pane - Title, Description, Comments, Agent Output */}
           <div className="flex-1 overflow-y-auto p-6">
-            <div className="max-w-3xl">
+            <div>
               {/* Title */}
               <div className="mb-5">
                 <label
