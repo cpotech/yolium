@@ -144,6 +144,8 @@ const git = {
     ipcRenderer.invoke('git:worktree-diff-stats', projectPath, branchName),
   cleanupWorktree: (projectPath: string, worktreePath: string, branchName: string) =>
     ipcRenderer.invoke('git:cleanup-worktree', projectPath, worktreePath, branchName),
+  detectNestedRepos: (folderPath: string) =>
+    ipcRenderer.invoke('git:detect-nested-repos', folderPath),
 };
 
 // Docker namespace
@@ -416,6 +418,10 @@ declare global {
         mergeBranch: (projectPath: string, branchName: string) => Promise<{ success: boolean; error?: string; conflict?: boolean }>;
         worktreeDiffStats: (projectPath: string, branchName: string) => Promise<{ filesChanged: number; insertions: number; deletions: number }>;
         cleanupWorktree: (projectPath: string, worktreePath: string, branchName: string) => Promise<void>;
+        detectNestedRepos: (folderPath: string) => Promise<{
+          isRepo: boolean;
+          nestedRepos: Array<{ name: string; path: string }>;
+        }>;
       };
       docker: {
         isAvailable: () => Promise<boolean>;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { FolderOpen, RefreshCw, Plus, Loader2, X, AlertTriangle, Keyboard, Search } from 'lucide-react'
+import { FolderOpen, RefreshCw, Plus, Loader2, X, AlertTriangle, Keyboard, Search, GitBranch } from 'lucide-react'
 import { KanbanColumn } from './KanbanColumn'
 import { NewItemDialog } from './NewItemDialog'
 import { ItemDetailDialog } from './ItemDetailDialog'
@@ -7,6 +7,7 @@ import type { KanbanBoard, KanbanItem, KanbanColumn as ColumnId } from '@shared/
 
 interface KanbanViewProps {
   projectPath: string | null
+  onSwitchProject?: (newPath: string) => void
 }
 
 const columns: { id: ColumnId; title: string }[] = [
@@ -16,7 +17,7 @@ const columns: { id: ColumnId; title: string }[] = [
   { id: 'done', title: 'Done' },
 ]
 
-export function KanbanView({ projectPath }: KanbanViewProps): React.ReactElement {
+export function KanbanView({ projectPath, onSwitchProject }: KanbanViewProps): React.ReactElement {
   const [board, setBoard] = useState<KanbanBoard | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [newItemDialogOpen, setNewItemDialogOpen] = useState(false)
@@ -24,6 +25,10 @@ export function KanbanView({ projectPath }: KanbanViewProps): React.ReactElement
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [gitWarning, setGitWarning] = useState<{
+    isRepo: boolean
+    nestedRepos: Array<{ name: string; path: string }>
+  } | null>(null)
   const viewRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -90,6 +95,31 @@ export function KanbanView({ projectPath }: KanbanViewProps): React.ReactElement
 
     return () => clearInterval(intervalId)
   }, [projectPath, loadBoard])
+
+  // Check if project path is a git repo; detect nested repos if not
+  useEffect(() => {
+    if (!projectPath) {
+      setGitWarning(null)
+      return
+    }
+    let cancelled = false
+    window.electronAPI.git.detectNestedRepos(projectPath).then(result => {
+      if (!cancelled) {
+        setGitWarning(result.isRepo ? null : result)
+      }
+    }).catch(() => {
+      if (!cancelled) setGitWarning(null)
+    })
+    return () => { cancelled = true }
+  }, [projectPath])
+
+  const handleInitGit = useCallback(async () => {
+    if (!projectPath) return
+    await window.electronAPI.git.init(projectPath)
+    // Re-check after init
+    const result = await window.electronAPI.git.detectNestedRepos(projectPath)
+    setGitWarning(result.isRepo ? null : result)
+  }, [projectPath])
 
   const handleRefresh = useCallback(() => {
     loadBoard()
@@ -311,6 +341,52 @@ export function KanbanView({ projectPath }: KanbanViewProps): React.ReactElement
           >
             <X size={14} />
           </button>
+        </div>
+      )}
+
+      {/* Git warning banner */}
+      {gitWarning && !gitWarning.isRepo && (
+        <div
+          data-testid="git-warning-banner"
+          className="flex items-center justify-between px-4 py-2 bg-amber-900/30 border-b border-amber-700/50 text-amber-300 text-sm"
+        >
+          <div className="flex items-center gap-2">
+            <GitBranch size={14} />
+            <span>This folder is not a git repository. Agents will run without branch isolation.</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {gitWarning.nestedRepos.length === 1 && onSwitchProject && (
+              <button
+                data-testid="switch-nested-repo"
+                onClick={() => onSwitchProject(gitWarning.nestedRepos[0].path)}
+                className="px-2.5 py-1 text-xs font-medium bg-amber-700/50 hover:bg-amber-700/80 text-amber-100 rounded transition-colors"
+              >
+                Use {gitWarning.nestedRepos[0].name}/ instead
+              </button>
+            )}
+            {gitWarning.nestedRepos.length > 1 && onSwitchProject && (
+              <select
+                data-testid="switch-nested-repo-select"
+                onChange={(e) => { if (e.target.value) onSwitchProject(e.target.value) }}
+                defaultValue=""
+                className="px-2 py-1 text-xs bg-amber-700/50 hover:bg-amber-700/80 text-amber-100 rounded border-none cursor-pointer"
+              >
+                <option value="" disabled>Switch to nested repo...</option>
+                {gitWarning.nestedRepos.map(repo => (
+                  <option key={repo.path} value={repo.path}>{repo.name}/</option>
+                ))}
+              </select>
+            )}
+            {gitWarning.nestedRepos.length === 0 && (
+              <button
+                data-testid="init-git-button"
+                onClick={handleInitGit}
+                className="px-2.5 py-1 text-xs font-medium bg-amber-700/50 hover:bg-amber-700/80 text-amber-100 rounded transition-colors"
+              >
+                Initialize Git
+              </button>
+            )}
+          </div>
         </div>
       )}
 

@@ -3,6 +3,8 @@
  * Git config and repository IPC handlers.
  */
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import type { IpcMain } from 'electron';
 import { createLogger } from '@main/lib/logger';
 import { loadGitConfig, loadDetectedGitConfig, saveGitConfig } from '@main/git/git-config';
@@ -143,6 +145,30 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
       const message = err instanceof Error ? err.message : 'Unknown error';
       logger.error('Failed to cleanup worktree', { projectPath, worktreePath, branchName, error: message });
     }
+  });
+
+  // Detect if folder is a git repo, and scan one level deep for nested repos if not
+  ipcMain.handle('git:detect-nested-repos', (_event, folderPath: string) => {
+    if (isGitRepo(folderPath)) {
+      return { isRepo: true, nestedRepos: [] };
+    }
+
+    const nestedRepos: { name: string; path: string }[] = [];
+    try {
+      const entries = fs.readdirSync(folderPath, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory() && !entry.name.startsWith('.')) {
+          const subPath = path.join(folderPath, entry.name);
+          if (fs.existsSync(path.join(subPath, '.git'))) {
+            nestedRepos.push({ name: entry.name, path: subPath });
+          }
+        }
+      }
+    } catch {
+      // Folder may not be readable
+    }
+
+    return { isRepo: false, nestedRepos };
   });
 }
 
