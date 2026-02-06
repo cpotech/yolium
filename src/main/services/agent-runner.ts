@@ -461,6 +461,35 @@ export async function stopAgent(sessionId: string): Promise<void> {
 }
 
 /**
+ * Stop all running agents for a given project.
+ * Iterates sessions, finds matching projectPath, calls stopAgent on each.
+ * Logs failures but does not throw.
+ */
+export async function stopAllAgentsForProject(projectPath: string): Promise<void> {
+  const matchingSessions = Array.from(sessions.values()).filter(
+    s => s.projectPath === projectPath
+  );
+
+  if (matchingSessions.length === 0) return;
+
+  logger.info('Stopping all agents for project', { projectPath, count: matchingSessions.length });
+
+  const results = await Promise.allSettled(
+    matchingSessions.map(s => stopAgent(s.id))
+  );
+
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    if (result.status === 'rejected') {
+      logger.error('Failed to stop agent session', {
+        sessionId: matchingSessions[i].id,
+        error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+      });
+    }
+  }
+}
+
+/**
  * Answer a question for an agent task.
  * Records the answer and marks the item as ready to resume.
  */

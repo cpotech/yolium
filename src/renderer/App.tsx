@@ -129,6 +129,14 @@ function App(): React.ReactElement {
     closeKanbanForProject(path);
   }, [closeKanbanForProject]);
 
+  // Delete a project entirely (backend cleanup + sidebar + tab)
+  const handleDeleteProject = useCallback(async (projectPath: string) => {
+    await window.electronAPI.kanban.deleteBoard(projectPath);
+    removeSidebarProject(projectPath);
+    setSidebarProjects(getSidebarProjects());
+    closeKanbanForProject(projectPath);
+  }, [closeKanbanForProject]);
+
   // Close a tab - instant UI update, cleanup in background
   const handleCloseTab = useCallback((tabId: string) => {
     const tab = tabs.find(t => t.id === tabId);
@@ -535,6 +543,7 @@ function App(): React.ReactElement {
                           addSidebarProject(newPath);
                           setSidebarProjects(getSidebarProjects());
                         }}
+                        onDeleteProject={handleDeleteProject}
                       />
                       <StatusBar
                         folderPath={tab.cwd}
