@@ -9,15 +9,22 @@ import type { KanbanBoard, KanbanItem } from '@shared/types/kanban'
 // Mock the electronAPI
 const mockKanbanGetBoard = vi.fn()
 const mockOnKanbanBoardUpdated = vi.fn()
+const mockDetectNestedRepos = vi.fn()
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Default: project is a git repo (no warning)
+  mockDetectNestedRepos.mockResolvedValue({ isRepo: true, nestedRepos: [] })
   // Setup the mock on window.electronAPI
   Object.defineProperty(window, 'electronAPI', {
     value: {
       kanban: {
         getBoard: mockKanbanGetBoard,
         onBoardUpdated: mockOnKanbanBoardUpdated,
+      },
+      git: {
+        detectNestedRepos: mockDetectNestedRepos,
+        init: vi.fn().mockResolvedValue({ success: true }),
       },
     },
     writable: true,

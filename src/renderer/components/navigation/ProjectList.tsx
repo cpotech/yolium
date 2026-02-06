@@ -17,9 +17,9 @@ export function ProjectList({
   onProjectRemove,
   onAddProject,
 }: ProjectListProps): React.ReactElement {
-  // Extract folder name from path
+  // Extract folder name from path (handle both / and \ separators)
   const getFolderName = (path: string): string => {
-    return path.split('/').pop() || path;
+    return path.split(/[/\\]/).filter(Boolean).pop() || path;
   };
 
   return (
