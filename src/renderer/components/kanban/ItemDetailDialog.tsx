@@ -410,6 +410,7 @@ export function ItemDetailDialog({
                   type="text"
                   value={title}
                   onChange={e => setTitle(e.target.value)}
+                  autoFocus
                   className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
                 />
               </div>
@@ -645,6 +646,7 @@ export function ItemDetailDialog({
                 >
                   <Save size={14} />
                   {isSaving ? 'Saving...' : 'Save'}
+                  <span className="text-xs opacity-60 ml-1">(Ctrl+Enter)</span>
                 </button>
                 <button
                   data-testid="delete-button"
@@ -655,6 +657,7 @@ export function ItemDetailDialog({
                 >
                   <Trash2 size={14} />
                   {isDeleting ? 'Deleting...' : 'Delete'}
+                  <span className="text-xs opacity-60 ml-1">(Ctrl+Del)</span>
                 </button>
               </div>
             </div>
@@ -672,7 +675,7 @@ export function ItemDetailDialog({
                 </div>
               </div>
               <p className="text-center text-[10px] text-[var(--color-text-tertiary)] mt-2">
-                Ctrl+Enter to save &middot; Ctrl+Del to delete &middot; Esc to close
+                Esc to close
               </p>
             </div>
           </div>
