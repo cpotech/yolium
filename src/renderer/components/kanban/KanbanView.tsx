@@ -33,6 +33,8 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
   const [isDeleting, setIsDeleting] = useState(false)
   const viewRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  // Ref to track dialog open state without stale closures
+  const dialogOpenRef = useRef(false)
 
   const loadBoard = useCallback(async () => {
     if (!projectPath) return
@@ -67,13 +69,21 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     }
   }, [projectPath, loadBoard])
 
+  // Update dialogOpenRef whenever dialog state changes
+  useEffect(() => {
+    dialogOpenRef.current = newItemDialogOpen || selectedItem !== null
+  }, [newItemDialogOpen, selectedItem])
+
   // Subscribe to board updates
   useEffect(() => {
     const cleanup = window.electronAPI.kanban.onBoardUpdated((updatedPath) => {
       // Normalize both paths for comparison (Windows backslash vs forward slash)
       const normalize = (p: string) => p.replace(/\\/g, '/')
       if (projectPath && normalize(updatedPath) === normalize(projectPath)) {
-        loadBoard()
+        // Skip refresh if a dialog is open to prevent overwriting user input
+        if (!dialogOpenRef.current) {
+          loadBoard()
+        }
       }
     })
 
@@ -92,7 +102,10 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     if (!projectPath) return
 
     const intervalId = setInterval(() => {
-      loadBoard()
+      // Skip refresh if a dialog is open to prevent overwriting user input
+      if (!dialogOpenRef.current) {
+        loadBoard()
+      }
     }, 15000)
 
     return () => clearInterval(intervalId)
@@ -133,7 +146,9 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
 
   const handleNewItemClose = useCallback(() => {
     setNewItemDialogOpen(false)
-  }, [])
+    // Refresh board when dialog closes to catch missed updates
+    loadBoard()
+  }, [loadBoard])
 
   const handleNewItemCreated = useCallback(() => {
     setNewItemDialogOpen(false)
@@ -146,7 +161,9 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
 
   const handleDetailClose = useCallback(() => {
     setSelectedItem(null)
-  }, [])
+    // Refresh board when dialog closes to catch missed updates
+    loadBoard()
+  }, [loadBoard])
 
   const handleDetailUpdated = useCallback(() => {
     loadBoard()
