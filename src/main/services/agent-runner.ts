@@ -272,21 +272,21 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
           if (code === 0) {
             // Success - check if already marked as completed
             if (exitItem && exitItem.agentStatus === 'running') {
-              updateItem(exitBoard, itemId, { agentStatus: 'completed' });
+              updateItem(exitBoard, itemId, { agentStatus: 'completed', activeAgentName: undefined });
               addComment(exitBoard, itemId, 'system', 'Agent finished successfully');
               events.emit('complete', 'Agent finished successfully');
             }
           } else if (code === 124) {
             // Timeout
             const timeoutMinutes = agent.timeout || 30;
-            updateItem(exitBoard, itemId, { agentStatus: 'failed' });
+            updateItem(exitBoard, itemId, { agentStatus: 'failed', activeAgentName: undefined });
             addComment(exitBoard, itemId, 'system', `Agent timed out (no activity for ${timeoutMinutes} minutes)`);
             events.emit('error', 'Agent timed out');
             onError?.('Agent timed out');
           } else {
             // Non-zero exit that wasn't handled by protocol
             if (exitItem && exitItem.agentStatus === 'running') {
-              updateItem(exitBoard, itemId, { agentStatus: 'failed' });
+              updateItem(exitBoard, itemId, { agentStatus: 'failed', activeAgentName: undefined });
               addComment(exitBoard, itemId, 'system', `Agent exited with code ${code}`);
               events.emit('error', `Agent exited with code ${code}`);
               onError?.(`Agent exited with code ${code}`);
@@ -335,7 +335,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     }
 
     // Revert status on failure
-    updateItem(board, itemId, { agentStatus: 'failed' });
+    updateItem(board, itemId, { agentStatus: 'failed', activeAgentName: undefined });
     addComment(board, itemId, 'system', `Failed to start agent: ${errorMessage}`);
 
     return {
@@ -391,7 +391,7 @@ export function handleAgentOutput(sessionId: string, data: string): void {
       case 'complete': {
         const comp = message as CompleteMessage;
         // Move to done column when agent completes successfully
-        updateItem(board, session.itemId, { agentStatus: 'completed', column: 'done' });
+        updateItem(board, session.itemId, { agentStatus: 'completed', activeAgentName: undefined, column: 'done' });
         addComment(board, session.itemId, 'system', `Completed: ${comp.summary}`);
 
         // Auto-merge the worktree branch into the default branch
@@ -436,7 +436,7 @@ export function handleAgentOutput(sessionId: string, data: string): void {
 
       case 'error': {
         const err = message as ErrorMessage;
-        updateItem(board, session.itemId, { agentStatus: 'failed' });
+        updateItem(board, session.itemId, { agentStatus: 'failed', activeAgentName: undefined });
         addComment(board, session.itemId, 'system', `Error: ${err.message}`);
         session.events.emit('error', err.message);
         break;
