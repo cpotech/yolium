@@ -193,6 +193,10 @@ export function createWorktree(projectPath: string, branchName: string): string 
         .some((line) => path.resolve(line.replace('worktree ', '').trim()) === normalizedTarget);
       if (hasMatch) {
         // Worktree exists and is valid, reuse it
+        // Still fix paths — worktree may have been created before the MSYS2 fix
+        if (process.platform === 'win32') {
+          fixWorktreeGitFile(worktreePath);
+        }
         return worktreePath;
       }
     } catch {
