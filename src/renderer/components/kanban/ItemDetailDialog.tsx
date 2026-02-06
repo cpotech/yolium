@@ -193,8 +193,7 @@ export function ItemDetailDialog({
         agentSession.setLiveStatus('failed')
         agentSession.setLiveStatusMessage(result.error)
       } else if (result.sessionId) {
-        agentSession.sessionIdRef.current = result.sessionId
-        agentSession.setCurrentSessionId(result.sessionId)
+        agentSession.associateSession(result.sessionId)
         agentSession.setLiveStatus('running')
       }
       onUpdated()
@@ -248,8 +247,7 @@ export function ItemDetailDialog({
         agentSession.setLiveStatus('failed')
         agentSession.setLiveStatusMessage(result.error)
       } else if (result.sessionId) {
-        agentSession.sessionIdRef.current = result.sessionId
-        agentSession.setCurrentSessionId(result.sessionId)
+        agentSession.associateSession(result.sessionId)
         agentSession.setLiveStatus('running')
       }
       onUpdated()

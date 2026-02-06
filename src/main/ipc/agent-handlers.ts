@@ -34,33 +34,15 @@ export function registerAgentHandlers(ipcMain: IpcMain): void {
     const win = BrowserWindow.getAllWindows().find(w => w.webContents.id === webContentsId);
     logger.info('IPC: agent:start', { ...params, webContentsId });
 
-    // Buffer output that arrives before we have the sessionId
-    let resolvedSessionId: string | null = null;
-    const outputBuffer: string[] = [];
-
+    // Output is sent directly from agent-container.ts to webContents (no callback needed here)
     const result = await startAgent({
       webContentsId,
       ...params,
-      // Direct callback ensures output is captured immediately (no event timing gap)
-      onOutput: (data: string) => {
-        if (resolvedSessionId) {
-          win?.webContents.send('agent:output', resolvedSessionId, data);
-        } else {
-          outputBuffer.push(data);
-        }
-      },
     });
 
     if (result.error) {
       logger.error('Agent start failed', { error: result.error });
       return result;
-    }
-
-    resolvedSessionId = result.sessionId;
-
-    // Flush buffered output that arrived during startup
-    for (const data of outputBuffer) {
-      win?.webContents.send('agent:output', result.sessionId, data);
     }
 
     // Set up event forwarding for non-output events
@@ -70,7 +52,6 @@ export function registerAgentHandlers(ipcMain: IpcMain): void {
     win?.webContents.send('kanban:board-updated', params.projectPath);
 
     if (events) {
-      // NOTE: 'output' is handled via onOutput callback above (not events) to avoid timing gap
 
       events.on('question', (question: { text: string; options?: string[] }) => {
         win?.webContents.send('agent:question', result.sessionId, question);
@@ -112,32 +93,15 @@ export function registerAgentHandlers(ipcMain: IpcMain): void {
     const win = BrowserWindow.getAllWindows().find(w => w.webContents.id === webContentsId);
     logger.info('IPC: agent:resume', { ...params, webContentsId });
 
-    // Buffer output that arrives before we have the sessionId
-    let resolvedSessionId: string | null = null;
-    const outputBuffer: string[] = [];
-
+    // Output is sent directly from agent-container.ts to webContents (no callback needed here)
     const result = await resumeAgent({
       webContentsId,
       ...params,
-      onOutput: (data: string) => {
-        if (resolvedSessionId) {
-          win?.webContents.send('agent:output', resolvedSessionId, data);
-        } else {
-          outputBuffer.push(data);
-        }
-      },
     });
 
     if (result.error) {
       logger.error('Agent resume failed', { error: result.error });
       return result;
-    }
-
-    resolvedSessionId = result.sessionId;
-
-    // Flush buffered output that arrived during startup
-    for (const data of outputBuffer) {
-      win?.webContents.send('agent:output', result.sessionId, data);
     }
 
     // Set up event forwarding for non-output events

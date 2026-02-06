@@ -216,16 +216,21 @@ export async function createAgentContainer(
 
     logger.info('Agent output', { sessionId, outputLength: dataStr.length, output: dataStr.slice(0, 500) });
 
-    // Forward raw output (flows through agent-runner events → main.ts → renderer IPC)
+    // Forward raw output via callback (for agent-runner protocol parsing)
     onOutput?.(dataStr);
+
+    // Send output directly to renderer (avoids stale closure in callback chain)
+    const webContents = BrowserWindow.getAllWindows().find(
+      (w) => w.webContents.id === webContentsId
+    )?.webContents;
+
+    if (webContents && !webContents.isDestroyed()) {
+      webContents.send('agent:output', sessionId, dataStr);
+    }
 
     // Parse and forward protocol messages
     const messages = extractProtocolMessages(dataStr);
     if (messages.length > 0) {
-      const webContents = BrowserWindow.getAllWindows().find(
-        (w) => w.webContents.id === webContentsId
-      )?.webContents;
-
       for (const message of messages) {
         onProtocolMessage?.(message);
 
