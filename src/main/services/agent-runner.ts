@@ -1,6 +1,7 @@
 // src/lib/agent-runner.ts
 import { ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createLogger } from '@main/lib/logger';
 import { loadAgentDefinition, ParsedAgent } from './agent-loader';
@@ -163,7 +164,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
   updateItem(board, itemId, { agentStatus: 'running', column: 'in-progress' });
   addComment(board, itemId, 'system', `${agentName} started`);
 
-  // Create worktree for branch isolation (best-effort, graceful fallback)
+  // Create or reuse worktree for branch isolation (best-effort, graceful fallback)
   const resolvedProjectPath = path.resolve(projectPath);
   let worktreePath: string | undefined;
   let worktreeOriginalPath: string | undefined;
@@ -178,9 +179,27 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
         updateItem(board, itemId, { branch: branchName });
       }
 
-      worktreePath = createWorktree(resolvedProjectPath, branchName);
-      worktreeOriginalPath = resolvedProjectPath;
-      logger.info('Created agent worktree', { agentName, branchName, worktreePath });
+      // Check if item already has a worktree path (resume / subsequent agent scenario)
+      if (item.worktreePath && fs.existsSync(item.worktreePath)) {
+        // Reuse existing worktree
+        worktreePath = item.worktreePath;
+        worktreeOriginalPath = resolvedProjectPath;
+        logger.info('Reusing existing worktree', { agentName, branchName, worktreePath });
+      } else {
+        // Clear stale path if directory is gone
+        if (item.worktreePath) {
+          logger.info('Clearing stale worktree path', { worktreePath: item.worktreePath });
+          updateItem(board, itemId, { worktreePath: undefined, mergeStatus: undefined });
+        }
+
+        // Create fresh worktree
+        worktreePath = createWorktree(resolvedProjectPath, branchName);
+        worktreeOriginalPath = resolvedProjectPath;
+        logger.info('Created agent worktree', { agentName, branchName, worktreePath });
+
+        // Persist worktree path on the kanban item
+        updateItem(board, itemId, { worktreePath, mergeStatus: 'unmerged' });
+      }
     } else {
       logger.info('Skipping worktree: not a git repo or no commits', { projectPath });
     }

@@ -9,7 +9,7 @@ import * as os from 'node:os';
 import { PassThrough } from 'node:stream';
 import { BrowserWindow } from 'electron';
 import { createLogger } from '@main/lib/logger';
-import { deleteWorktree } from '@main/git/git-worktree';
+// deleteWorktree no longer called here — worktrees persist with kanban items
 import { extractProtocolMessages } from '@main/services/agent-protocol';
 import { docker, agentSessions, DEFAULT_IMAGE, type AgentContainerSession } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
@@ -393,19 +393,8 @@ export async function createAgentContainer(
         // Container may already be removed
       }
 
-      // Clean up worktree if this agent had one
-      if (session.worktreePath && session.originalPath) {
-        try {
-          deleteWorktree(session.originalPath, session.worktreePath);
-          logger.info('Agent worktree deleted on exit', { sessionId, worktreePath: session.worktreePath });
-        } catch (err) {
-          logger.error('Failed to clean up agent worktree on exit', {
-            sessionId,
-            worktreePath: session.worktreePath,
-            error: err instanceof Error ? err.message : String(err),
-          });
-        }
-      }
+      // Worktree is NOT deleted here — it persists with the kanban item
+      // and gets cleaned up on merge or item deletion
 
       agentSessions.delete(sessionId);
     }
@@ -464,19 +453,8 @@ export async function stopAgentContainer(sessionId: string): Promise<void> {
     });
   }
 
-  // Clean up worktree if this agent had one
-  if (session.worktreePath && session.originalPath) {
-    try {
-      deleteWorktree(session.originalPath, session.worktreePath);
-      logger.info('Agent worktree deleted on stop', { sessionId, worktreePath: session.worktreePath });
-    } catch (err) {
-      logger.error('Failed to delete agent worktree', {
-        sessionId,
-        worktreePath: session.worktreePath,
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }
+  // Worktree is NOT deleted here — it persists with the kanban item
+  // and gets cleaned up on merge or item deletion
 
   agentSessions.delete(sessionId);
 }

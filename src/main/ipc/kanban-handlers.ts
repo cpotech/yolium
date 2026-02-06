@@ -11,7 +11,11 @@ import {
   addComment,
   deleteItem,
 } from '@main/stores/kanban-store';
+import { deleteWorktree } from '@main/git/git-worktree';
+import { createLogger } from '@main/lib/logger';
 import type { KanbanItem } from '@shared/types/kanban';
+
+const logger = createLogger('kanban-handlers');
 
 /**
  * Register kanban IPC handlers.
@@ -60,9 +64,25 @@ export function registerKanbanHandlers(ipcMain: IpcMain): void {
     return result;
   });
 
-  // Delete item
+  // Delete item (also cleans up associated worktree if present)
   ipcMain.handle('kanban:delete-item', (event, projectPath: string, itemId: string) => {
     const board = getOrCreateBoard(projectPath);
+
+    // Clean up worktree before deleting the item
+    const item = board.items.find(i => i.id === itemId);
+    if (item?.worktreePath) {
+      try {
+        deleteWorktree(projectPath, item.worktreePath);
+        logger.info('Cleaned up worktree on item delete', { itemId, worktreePath: item.worktreePath });
+      } catch (err) {
+        logger.error('Failed to clean up worktree on item delete', {
+          itemId,
+          worktreePath: item.worktreePath,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
     const result = deleteItem(board, itemId);
     event.sender.send('kanban:board-updated', projectPath);
     return result;

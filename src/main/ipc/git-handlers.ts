@@ -6,7 +6,16 @@
 import type { IpcMain } from 'electron';
 import { createLogger } from '@main/lib/logger';
 import { loadGitConfig, loadDetectedGitConfig, saveGitConfig } from '@main/git/git-config';
-import { isGitRepo, hasCommits, getWorktreeBranch, initGitRepo, validateBranchNameForUi } from '@main/git/git-worktree';
+import {
+  isGitRepo,
+  hasCommits,
+  getWorktreeBranch,
+  initGitRepo,
+  validateBranchNameForUi,
+  mergeWorktreeBranch,
+  getWorktreeDiffStats,
+  cleanupWorktreeAndBranch,
+} from '@main/git/git-worktree';
 import type { GitConfig } from '@shared/types/git';
 
 const logger = createLogger('git-handlers');
@@ -96,4 +105,53 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('git:validate-branch', (_event, branchName: string) => {
     return validateBranchNameForUi(branchName);
   });
+
+  // Merge a branch into the default branch
+  ipcMain.handle('git:merge-branch', async (_event, projectPath: string, branchName: string) => {
+    logger.info('IPC: git:merge-branch', { projectPath, branchName });
+    return withMergeLock(projectPath, async () => {
+      try {
+        mergeWorktreeBranch(projectPath, branchName);
+        return { success: true };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        const conflict = message.startsWith('conflict:');
+        logger.error('Failed to merge branch', { projectPath, branchName, error: message });
+        return { success: false, error: message, conflict };
+      }
+    });
+  });
+
+  // Get diff stats between default branch and a feature branch
+  ipcMain.handle('git:worktree-diff-stats', (_event, projectPath: string, branchName: string) => {
+    logger.info('IPC: git:worktree-diff-stats', { projectPath, branchName });
+    try {
+      return getWorktreeDiffStats(projectPath, branchName);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      logger.error('Failed to get diff stats', { projectPath, branchName, error: message });
+      return { filesChanged: 0, insertions: 0, deletions: 0 };
+    }
+  });
+
+  // Clean up a worktree and its branch
+  ipcMain.handle('git:cleanup-worktree', (_event, projectPath: string, worktreePath: string, branchName: string) => {
+    logger.info('IPC: git:cleanup-worktree', { projectPath, worktreePath, branchName });
+    try {
+      cleanupWorktreeAndBranch(projectPath, worktreePath, branchName);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      logger.error('Failed to cleanup worktree', { projectPath, worktreePath, branchName, error: message });
+    }
+  });
+}
+
+// Per-project merge mutex to serialize concurrent merge operations
+const mergeQueues = new Map<string, Promise<unknown>>();
+
+function withMergeLock<T>(projectPath: string, fn: () => Promise<T>): Promise<T> {
+  const prev = mergeQueues.get(projectPath) || Promise.resolve();
+  const next = prev.then(fn, fn);
+  mergeQueues.set(projectPath, next);
+  return next;
 }

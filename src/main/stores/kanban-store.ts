@@ -151,17 +151,19 @@ export function addItem(board: KanbanBoard, params: NewItemParams): KanbanItem {
 
 const VALID_COLUMNS = new Set(['backlog', 'ready', 'in-progress', 'done']);
 const VALID_AGENT_STATUSES = new Set(['idle', 'running', 'waiting', 'interrupted', 'completed', 'failed']);
+const VALID_MERGE_STATUSES = new Set(['unmerged', 'merged', 'conflict']);
 
 export function updateItem(
   board: KanbanBoard,
   itemId: string,
-  updates: Partial<Pick<KanbanItem, 'title' | 'description' | 'column' | 'branch' | 'agentStatus' | 'agentQuestion' | 'agentQuestionOptions'>>
+  updates: Partial<Pick<KanbanItem, 'title' | 'description' | 'column' | 'branch' | 'agentStatus' | 'agentQuestion' | 'agentQuestionOptions' | 'worktreePath' | 'mergeStatus'>>
 ): KanbanItem | null {
   const item = board.items.find(i => i.id === itemId);
   if (!item) return null;
 
   if (updates.column !== undefined && !VALID_COLUMNS.has(updates.column)) return null;
   if (updates.agentStatus !== undefined && !VALID_AGENT_STATUSES.has(updates.agentStatus)) return null;
+  if (updates.mergeStatus !== undefined && !VALID_MERGE_STATUSES.has(updates.mergeStatus)) return null;
 
   Object.assign(item, updates, { updatedAt: new Date().toISOString() });
   saveBoard(board);
