@@ -26,6 +26,40 @@ function getBranchNameValidationError(branchName: string): string | null {
   }
 }
 
+/**
+ * Convert an MSYS2-style path (/c/Users/...) to a Windows-native path (C:/Users/...).
+ * Returns the path unchanged if it's not in MSYS2 format.
+ */
+function msys2ToWindowsPath(p: string): string {
+  const match = p.match(/^\/([a-zA-Z])\//);
+  if (match) {
+    return `${match[1].toUpperCase()}:/${p.slice(3)}`;
+  }
+  return p;
+}
+
+/**
+ * Fix the .git file in a worktree to use Windows-native paths.
+ * Git for Windows may write MSYS2-style paths (/c/Users/...) when invoked from
+ * a Git Bash/MSYS2 context. These paths break worktree detection for native
+ * Windows tools (lazygit, VS Code, etc.).
+ */
+function fixWorktreeGitFile(worktreePath: string): void {
+  const gitFile = path.join(worktreePath, '.git');
+  try {
+    const content = fs.readFileSync(gitFile, 'utf-8').trim();
+    if (content.startsWith('gitdir: /')) {
+      const gitdir = content.replace('gitdir: ', '');
+      const fixed = msys2ToWindowsPath(gitdir);
+      if (fixed !== gitdir) {
+        fs.writeFileSync(gitFile, `gitdir: ${fixed}\n`);
+      }
+    }
+  } catch {
+    // Best-effort — don't fail worktree creation over this
+  }
+}
+
 export function validateBranchName(branchName: string): void {
   const error = getBranchNameValidationError(branchName);
   if (error) {
@@ -206,6 +240,13 @@ export function createWorktree(projectPath: string, branchName: string): string 
     }
 
     throw new Error(`Failed to create worktree: ${stderr}`);
+  }
+
+  // On Windows, git may write MSYS2-style paths (/c/Users/...) in the worktree's
+  // .git file when invoked from a Git Bash context. These paths aren't resolved by
+  // native Windows git, breaking worktree detection. Rewrite to Windows-native paths.
+  if (process.platform === 'win32') {
+    fixWorktreeGitFile(worktreePath);
   }
 
   return worktreePath;
