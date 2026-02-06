@@ -4,7 +4,7 @@ import {
   addSidebarProject,
   removeSidebarProject,
   clearSidebarProjects,
-} from '../lib/sidebar-store';
+} from '@renderer/stores/sidebar-store';
 
 // Mock localStorage
 const localStorageMock = (() => {

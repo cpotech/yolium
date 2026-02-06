@@ -24,7 +24,7 @@ import {
   getWorktreePath,
   initGitRepo,
   createWorktree,
-} from '../lib/git-worktree'
+} from '@main/git/git-worktree'
 
 describe('git-worktree', () => {
   beforeEach(() => {

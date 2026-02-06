@@ -3,8 +3,8 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { ItemDetailDialog } from '../components/ItemDetailDialog'
-import type { KanbanItem } from '../types/kanban'
+import { ItemDetailDialog } from '@renderer/components/kanban/ItemDetailDialog'
+import type { KanbanItem } from '@shared/types/kanban'
 
 // Mock the electronAPI
 const mockKanbanUpdateItem = vi.fn()

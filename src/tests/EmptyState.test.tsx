@@ -3,8 +3,8 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { EmptyState } from '../components/EmptyState';
-import { ThemeProvider } from '../theme';
+import { EmptyState } from '@renderer/components/EmptyState';
+import { ThemeProvider } from '@renderer/theme';
 
 // Wrap component with ThemeProvider for tests
 function renderEmptyState(props: { onNewTab: () => void; onCreateProject?: () => void }) {

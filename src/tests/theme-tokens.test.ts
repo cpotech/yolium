@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import type { ThemeTokens, ThemeName } from '../types/theme';
-import { darkTheme } from '../theme/themes/dark';
-import { lightTheme } from '../theme/themes/light';
+import type { ThemeTokens, ThemeName } from '@shared/types/theme';
+import { darkTheme } from '@renderer/theme/themes/dark';
+import { lightTheme } from '@renderer/theme/themes/light';
 
 describe('Theme Tokens', () => {
   describe('ThemeTokens structure', () => {

@@ -3,8 +3,8 @@
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { KanbanCard } from '../components/KanbanCard'
-import type { KanbanItem } from '../types/kanban'
+import { KanbanCard } from '@renderer/components/kanban/KanbanCard'
+import type { KanbanItem } from '@shared/types/kanban'
 
 const createMockItem = (overrides: Partial<KanbanItem> = {}): KanbanItem => ({
   id: 'test-1',

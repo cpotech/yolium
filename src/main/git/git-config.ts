@@ -1,0 +1,227 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as os from 'node:os';
+import { execSync } from 'node:child_process';
+import type { GitConfig } from '@shared/types/git';
+
+export type { GitConfig } from '@shared/types/git';
+
+/**
+ * Interface to track the source of detected Git configuration
+ */
+export interface DetectedGitConfig extends GitConfig {
+  sources: {
+    name?: 'system' | 'environment' | 'yolium';
+    email?: 'system' | 'environment' | 'yolium';
+    githubPat?: 'system' | 'environment' | 'yolium';
+    openaiApiKey?: 'system' | 'environment' | 'yolium';
+  };
+}
+
+/**
+ * Load Git configuration from system Git (git config --global)
+ */
+function loadSystemGitConfig(): Partial<GitConfig> | null {
+  try {
+    const name = execSync('git config --global user.name', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    const email = execSync('git config --global user.email', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+
+    const config: Partial<GitConfig> = {};
+    if (name) config.name = name;
+    if (email) config.email = email;
+
+    return Object.keys(config).length > 0 ? config : null;
+  } catch {
+    // Git not available or no global config set
+    return null;
+  }
+}
+
+/**
+ * Load Git configuration from environment variables
+ */
+function loadEnvironmentGitConfig(): Partial<GitConfig> | null {
+  const config: Partial<GitConfig> = {};
+  
+  // Check common Git environment variables
+  const name = process.env.GIT_AUTHOR_NAME || process.env.GIT_COMMITTER_NAME;
+  const email = process.env.GIT_AUTHOR_EMAIL || process.env.GIT_COMMITTER_EMAIL;
+  
+  // Check for other potential environment variables
+  const githubPat = process.env.GITHUB_TOKEN || process.env.GITHUB_PAT;
+  const openaiKey = process.env.OPENAI_API_KEY;
+  
+  if (name) config.name = name;
+  if (email) config.email = email;
+  if (githubPat) config.githubPat = githubPat;
+  if (openaiKey) config.openaiApiKey = openaiKey;
+  
+  return Object.keys(config).length > 0 ? config : null;
+}
+
+/**
+ * Load Git configuration from all sources with source tracking
+ */
+export function loadDetectedGitConfig(): DetectedGitConfig | null {
+  const systemConfig = loadSystemGitConfig();
+  const envConfig = loadEnvironmentGitConfig();
+  const yoliumConfig = loadGitConfig();
+  
+  const detected: DetectedGitConfig = {
+    name: '',
+    email: '',
+    sources: {}
+  };
+  
+  let hasAnyConfig = false;
+  
+  // Priority: Yolium > Environment > System for each field
+  if (yoliumConfig?.name) {
+    detected.name = yoliumConfig.name;
+    detected.sources.name = 'yolium';
+    hasAnyConfig = true;
+  } else if (envConfig?.name) {
+    detected.name = envConfig.name;
+    detected.sources.name = 'environment';
+    hasAnyConfig = true;
+  } else if (systemConfig?.name) {
+    detected.name = systemConfig.name;
+    detected.sources.name = 'system';
+    hasAnyConfig = true;
+  }
+  
+  if (yoliumConfig?.email) {
+    detected.email = yoliumConfig.email;
+    detected.sources.email = 'yolium';
+    hasAnyConfig = true;
+  } else if (envConfig?.email) {
+    detected.email = envConfig.email;
+    detected.sources.email = 'environment';
+    hasAnyConfig = true;
+  } else if (systemConfig?.email) {
+    detected.email = systemConfig.email;
+    detected.sources.email = 'system';
+    hasAnyConfig = true;
+  }
+  
+  // For tokens, we only check environment and yolium (no system git config for these)
+  if (yoliumConfig?.githubPat) {
+    detected.githubPat = yoliumConfig.githubPat;
+    detected.sources.githubPat = 'yolium';
+    hasAnyConfig = true;
+  } else if (envConfig?.githubPat) {
+    detected.githubPat = envConfig.githubPat;
+    detected.sources.githubPat = 'environment';
+    hasAnyConfig = true;
+  }
+  
+  if (yoliumConfig?.openaiApiKey) {
+    detected.openaiApiKey = yoliumConfig.openaiApiKey;
+    detected.sources.openaiApiKey = 'yolium';
+    hasAnyConfig = true;
+  } else if (envConfig?.openaiApiKey) {
+    detected.openaiApiKey = envConfig.openaiApiKey;
+    detected.sources.openaiApiKey = 'environment';
+    hasAnyConfig = true;
+  }
+  
+  return hasAnyConfig ? detected : null;
+}
+
+/**
+ * Get the path to the settings file.
+ * Stored at ~/.yolium/settings.json
+ *
+ * Migrates from the legacy gitconfig.json path if needed.
+ */
+export function getGitConfigPath(): string {
+  const settingsPath = path.join(os.homedir(), '.yolium', 'settings.json');
+  const legacyPath = path.join(os.homedir(), '.yolium', 'gitconfig.json');
+
+  // Migrate: rename legacy file if new one doesn't exist yet
+  if (!fs.existsSync(settingsPath) && fs.existsSync(legacyPath)) {
+    fs.renameSync(legacyPath, settingsPath);
+  }
+
+  return settingsPath;
+}
+
+/**
+ * Load git config from file.
+ * Returns null if the file doesn't exist or is invalid.
+ */
+export function loadGitConfig(): GitConfig | null {
+  const configPath = getGitConfigPath();
+
+  try {
+    if (!fs.existsSync(configPath)) {
+      return null;
+    }
+
+    const content = fs.readFileSync(configPath, 'utf-8');
+    const config = JSON.parse(content);
+
+    // Validate the config has required fields
+    if (typeof config.name === 'string' && typeof config.email === 'string') {
+      return {
+        name: config.name,
+        email: config.email,
+        ...(typeof config.githubPat === 'string' && config.githubPat ? { githubPat: config.githubPat } : {}),
+        ...(typeof config.openaiApiKey === 'string' && config.openaiApiKey ? { openaiApiKey: config.openaiApiKey } : {}),
+      };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save git config to file.
+ * Creates the .yolium directory if it doesn't exist.
+ */
+export function saveGitConfig(config: GitConfig): void {
+  const configPath = getGitConfigPath();
+  const configDir = path.dirname(configPath);
+
+  // Ensure .yolium directory exists
+  fs.mkdirSync(configDir, { recursive: true });
+
+  // Write config file with restrictive permissions (secrets may be included)
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), { encoding: 'utf-8', mode: 0o600 });
+}
+
+/**
+ * Get the path to the git-credentials file.
+ * This file is generated from the PAT in settings.json.
+ */
+export function getGitCredentialsPath(): string {
+  return path.join(os.homedir(), '.yolium', 'git-credentials');
+}
+
+/**
+ * Generate git-credentials file from PAT.
+ * Returns the path to the credentials file if PAT exists, null otherwise.
+ * The credentials file is in git's store format: https://user:token@github.com
+ */
+export function generateGitCredentials(gitConfig: GitConfig | null): string | null {
+  if (!gitConfig?.githubPat) {
+    return null;
+  }
+
+  const credPath = getGitCredentialsPath();
+  const credDir = path.dirname(credPath);
+
+  // Ensure directory exists
+  fs.mkdirSync(credDir, { recursive: true });
+
+  // Write credentials in git's store format
+  // Using 'git' as the username works with GitHub PATs
+  // Strip trailing @github.com if user pasted the full credential URL token
+  const pat = gitConfig.githubPat.replace(/@github\.com$/, '');
+  const credContent = `https://git:${pat}@github.com\n`;
+  fs.writeFileSync(credPath, credContent, { mode: 0o600 });
+
+  return credPath;
+}

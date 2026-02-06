@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import type { WhisperModelSize, WhisperRecordingState } from '../types/whisper'
-import { micErrorMessage } from '../hooks/useWhisper'
+import type { WhisperModelSize, WhisperRecordingState } from '@shared/types/whisper'
+import { micErrorMessage } from '@renderer/hooks/useWhisper'
 
 // ============================================================================
 // Extract the reducer logic for testing (mirrors useWhisper.ts)

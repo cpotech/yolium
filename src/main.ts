@@ -6,9 +6,9 @@
 import { app, BrowserWindow, Menu } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
-import { createLogger, getLogPath } from './lib/logger';
-import { clearSessions } from './lib/agent-runner';
-import { registerAllHandlers, performCleanup, isCleanupDone } from './ipc';
+import { createLogger, getLogPath } from '@main/lib/logger';
+import { clearSessions } from '@main/services/agent-runner';
+import { registerAllHandlers, performCleanup, isCleanupDone } from '@main/ipc';
 
 const logger = createLogger('main');
 

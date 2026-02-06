@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { Tab, TabState, TabAction, ContainerState } from '../types/tabs'
+import type { Tab, TabState, TabAction, ContainerState } from '@shared/types/tabs'
 
 // Extract the reducer logic for testing
 // (In production, you'd export this from useTabState.ts)

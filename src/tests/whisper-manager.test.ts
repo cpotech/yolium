@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import * as path from 'node:path'
 import * as os from 'node:os'
-import type { WhisperModelSize } from '../types/whisper'
-import { WHISPER_MODELS, WHISPER_MODEL_BASE_URL } from '../types/whisper'
+import type { WhisperModelSize } from '@shared/types/whisper'
+import { WHISPER_MODELS, WHISPER_MODEL_BASE_URL } from '@shared/types/whisper'
 
 // Mock the logger before importing whisper-manager (which imports logger.ts that uses Electron's app)
-vi.mock('../lib/logger', () => ({
+vi.mock('@main/lib/logger', () => ({
   createLogger: () => ({
     debug: vi.fn(),
     info: vi.fn(),
@@ -23,7 +23,7 @@ import {
   getWhisperBinaryDir,
   buildTranscribeArgs,
   parseWhisperOutput,
-} from '../whisper-manager'
+} from '@main/services/whisper-manager'
 
 // ============================================================================
 // Tests

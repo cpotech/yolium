@@ -80,6 +80,10 @@ async function buildMain() {
       noExternal: false,
     },
     resolve: {
+      alias: {
+        '@main': resolve(projectRoot, 'src/main'),
+        '@shared': resolve(projectRoot, 'src/shared'),
+      },
       // Ensure we're resolving for Node.js environment
       conditions: ['node'],
     },
@@ -111,6 +115,10 @@ async function buildPreload() {
       copyPublicDir: false,
     },
     resolve: {
+      alias: {
+        '@main': resolve(projectRoot, 'src/main'),
+        '@shared': resolve(projectRoot, 'src/shared'),
+      },
       conditions: ['node'],
     },
   });

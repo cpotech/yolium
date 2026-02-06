@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { ThemeName, ThemeTokens } from '../types/theme';
-import { darkTheme } from '../theme/themes/dark';
-import { lightTheme } from '../theme/themes/light';
+import type { ThemeName, ThemeTokens } from '@shared/types/theme';
+import { darkTheme } from '@renderer/theme/themes/dark';
+import { lightTheme } from '@renderer/theme/themes/light';
 
 // Storage key constant - should match ThemeProvider
 const STORAGE_KEY = 'yolium:theme';
