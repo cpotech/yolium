@@ -276,7 +276,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
   }
 
   return (
-    <div ref={viewRef} data-testid="kanban-view" tabIndex={0} onKeyDown={handleKeyDown} className="flex-1 flex flex-col bg-[var(--color-bg-primary)] outline-none">
+    <div ref={viewRef} data-testid="kanban-view" tabIndex={0} onKeyDown={handleKeyDown} className="flex-1 min-h-0 flex flex-col bg-[var(--color-bg-primary)] outline-none">
       {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border-primary)]">
         <div className="flex items-center gap-3 text-sm text-[var(--color-text-secondary)]">
@@ -462,7 +462,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
       {/* Columns container */}
       <div
         data-testid="kanban-columns-container"
-        className="flex-1 overflow-x-auto p-4"
+        className="flex-1 overflow-x-auto min-h-0 p-4"
       >
         <div className="flex gap-4 h-full">
           {columns.map((col) => (
