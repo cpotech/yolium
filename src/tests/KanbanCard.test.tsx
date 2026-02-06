@@ -57,6 +57,27 @@ describe('KanbanCard', () => {
     expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('Claude')
   })
 
+  it('should show agent role label when activeAgentName is set', () => {
+    const item = createMockItem({ agentType: 'claude', activeAgentName: 'code-agent' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('Code')
+  })
+
+  it('should show plan agent role label when activeAgentName is plan-agent', () => {
+    const item = createMockItem({ agentType: 'claude', activeAgentName: 'plan-agent' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('Plan')
+  })
+
+  it('should fall back to runtime label when activeAgentName is not set', () => {
+    const item = createMockItem({ agentType: 'codex', activeAgentName: undefined })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('Codex')
+  })
+
   it('should show branch when set', () => {
     const item = createMockItem({ branch: 'feature/my-branch' })
     render(<KanbanCard item={item} onClick={vi.fn()} />)

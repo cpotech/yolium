@@ -17,6 +17,18 @@ const agentTypeLabels: Record<KanbanItem['agentType'], string> = {
   opencode: 'OpenCode',
 }
 
+/**
+ * Extract display label from agent definition name.
+ * e.g., 'code-agent' → 'Code', 'plan-agent' → 'Plan'
+ */
+function formatAgentRoleLabel(agentName: string): string {
+  return agentName
+    .replace(/-agent$/, '')
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
 interface StatusConfig {
   icon: React.ReactNode
   text: string
@@ -157,7 +169,7 @@ export function KanbanCard({ item, onClick, onDragStart, onRetryAgent, onResumeA
           data-testid="agent-type-badge"
           className="flex-shrink-0 px-1.5 py-0.5 text-[10px] font-medium rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
         >
-          {agentTypeLabels[item.agentType]}
+          {item.activeAgentName ? formatAgentRoleLabel(item.activeAgentName) : agentTypeLabels[item.agentType]}
         </span>
       </div>
 
