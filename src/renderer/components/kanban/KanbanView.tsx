@@ -74,16 +74,15 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     dialogOpenRef.current = newItemDialogOpen || selectedItem !== null
   }, [newItemDialogOpen, selectedItem])
 
-  // Subscribe to board updates
+  // Subscribe to board updates from IPC (item added, deleted, state changed).
+  // Always refresh on IPC events — the detail dialog syncs selectedItem via
+  // loadBoard() without resetting form fields (prevItemIdRef guard).
   useEffect(() => {
     const cleanup = window.electronAPI.kanban.onBoardUpdated((updatedPath) => {
       // Normalize both paths for comparison (Windows backslash vs forward slash)
       const normalize = (p: string) => p.replace(/\\/g, '/')
       if (projectPath && normalize(updatedPath) === normalize(projectPath)) {
-        // Skip refresh if a dialog is open to prevent overwriting user input
-        if (!dialogOpenRef.current) {
-          loadBoard()
-        }
+        loadBoard()
       }
     })
 
