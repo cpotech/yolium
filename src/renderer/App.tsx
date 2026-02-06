@@ -25,6 +25,7 @@ import { Sidebar } from '@renderer/components/navigation/Sidebar';
 import {
   getSidebarProjects,
   removeSidebarProject,
+  addSidebarProject,
   getOpenKanbanPaths,
   saveOpenKanbanPaths,
   type SidebarProject,
@@ -527,7 +528,14 @@ function App(): React.ReactElement {
                       key={tab.id}
                       className={`absolute inset-0 flex flex-col ${isActive ? '' : 'hidden'}`}
                     >
-                      <KanbanView projectPath={tab.cwd} />
+                      <KanbanView
+                        projectPath={tab.cwd}
+                        onSwitchProject={(newPath) => {
+                          updateCwd(tab.id, newPath);
+                          addSidebarProject(newPath);
+                          setSidebarProjects(getSidebarProjects());
+                        }}
+                      />
                       <StatusBar
                         folderPath={tab.cwd}
                         onShowShortcuts={dialogs.openShortcutsDialog}
