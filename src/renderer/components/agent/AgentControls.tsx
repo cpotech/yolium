@@ -257,10 +257,19 @@ export function AgentControls({
           </div>
         )}
 
-        {/* Failed - Show all agent buttons */}
+        {/* Failed - Show retry button and all agent buttons */}
         {item.agentStatus === 'failed' && (
           <div className="space-y-2">
             <div className="text-sm text-red-400">Agent failed</div>
+            <button
+              data-testid="retry-agent-button"
+              onClick={() => onStartAgent(item.activeAgentName || agents[0]?.name || 'code-agent')}
+              disabled={isStartingAgent}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <RotateCcw size={14} />
+              {isStartingAgent ? 'Starting...' : 'Retry'}
+            </button>
             {agents.length > 0 && (
               <AgentButtonList
                 agents={agents}

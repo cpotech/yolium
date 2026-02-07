@@ -62,7 +62,7 @@ export function StatusBar({
               </span>
             )}
             {gitBranch && gitBranch !== worktreeName && (
-              <span className="flex items-center gap-1 text-[var(--color-special-branch)]" title={`Branch: ${gitBranch}`}>
+              <span data-testid="status-branch" className="flex items-center gap-1 text-[var(--color-special-branch)]" title={`Branch: ${gitBranch}`}>
                 <GitBranch size={12} />
                 <span className="truncate max-w-[150px]">{gitBranch}</span>
               </span>
