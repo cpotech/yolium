@@ -6,6 +6,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { X, GitBranch, Clock, FolderOpen, GitMerge, GitPullRequest, Check, AlertTriangle, ExternalLink, Save, Trash2 } from 'lucide-react'
 import type { KanbanItem, KanbanColumn } from '@shared/types/kanban'
+import type { AgentDefinition } from '@shared/types/agent'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
 import { CommentsList } from './CommentsList'
@@ -81,7 +82,9 @@ export function ItemDetailDialog({
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [column, setColumn] = useState<KanbanColumn>('backlog')
+  const [agentType, setAgentType] = useState('')
   const [model, setModel] = useState('')
+  const [agentDefinitions, setAgentDefinitions] = useState<AgentDefinition[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isStartingAgent, setIsStartingAgent] = useState(false)
@@ -105,13 +108,19 @@ export function ItemDetailDialog({
     onUpdated,
   })
 
+  // Fetch agent definitions on mount
+  useEffect(() => {
+    window.electronAPI.agent.listDefinitions().then(setAgentDefinitions).catch(() => {})
+  }, [])
+
   // Track baseline values to detect unsaved changes
   const [baseTitle, setBaseTitle] = useState('')
   const [baseDescription, setBaseDescription] = useState('')
   const [baseColumn, setBaseColumn] = useState<KanbanColumn>('backlog')
+  const [baseAgentType, setBaseAgentType] = useState('')
   const [baseModel, setBaseModel] = useState('')
 
-  const hasUnsavedChanges = title !== baseTitle || description !== baseDescription || column !== baseColumn || model !== baseModel
+  const hasUnsavedChanges = title !== baseTitle || description !== baseDescription || column !== baseColumn || agentType !== baseAgentType || model !== baseModel
 
   // Sync editable fields when item data changes
   useEffect(() => {
@@ -122,10 +131,12 @@ export function ItemDetailDialog({
         setTitle(item.title)
         setDescription(item.description)
         setColumn(item.column)
+        setAgentType(item.agentType || '')
         setModel(item.model || '')
         setBaseTitle(item.title)
         setBaseDescription(item.description)
         setBaseColumn(item.column)
+        setBaseAgentType(item.agentType || '')
         setBaseModel(item.model || '')
         setPrUrl(null)
         prevItemIdRef.current = item.id
@@ -151,11 +162,13 @@ export function ItemDetailDialog({
         title: trimmedTitle,
         description: trimmedDescription,
         column,
+        agentType: agentType || undefined,
         model: model || undefined,
       })
       setBaseTitle(trimmedTitle)
       setBaseDescription(trimmedDescription)
       setBaseColumn(column)
+      setBaseAgentType(agentType)
       setBaseModel(model)
       setErrorMessage(null)
       onUpdated()
@@ -165,7 +178,7 @@ export function ItemDetailDialog({
     } finally {
       setIsSaving(false)
     }
-  }, [item, isSaving, projectPath, title, description, column, model, onUpdated])
+  }, [item, isSaving, projectPath, title, description, column, agentType, model, onUpdated])
 
   const handleDelete = useCallback(async () => {
     if (!item || isDeleting) return
@@ -512,6 +525,32 @@ export function ItemDetailDialog({
                   {item.activeAgentName ? formatAgentRoleLabel(item.activeAgentName) : agentProviderLabels[item.agentProvider]}
                 </span>
               </div>
+
+              {/* Agent Type */}
+              {agentDefinitions.length > 0 && (
+                <div>
+                  <label
+                    htmlFor="detail-agent-type"
+                    className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
+                  >
+                    Agent Type
+                  </label>
+                  <select
+                    id="detail-agent-type"
+                    data-testid="agent-type-select"
+                    value={agentType}
+                    onChange={e => setAgentType(e.target.value)}
+                    className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+                  >
+                    <option value="">Not set</option>
+                    {agentDefinitions.map(agent => (
+                      <option key={agent.name} value={agent.name}>
+                        {agent.name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Model */}
               <div>

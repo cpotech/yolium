@@ -127,6 +127,31 @@ describe('kanban-store', () => {
       expect(item.agentStatus).toBe('idle');
       expect(board.items).toContain(item);
     });
+
+    it('should add item with agentType', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test Item',
+        description: 'Do the thing',
+        agentProvider: 'claude',
+        agentType: 'code-agent',
+        order: 1,
+      });
+
+      expect(item.agentType).toBe('code-agent');
+    });
+
+    it('should add item without agentType', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test Item',
+        description: 'Do the thing',
+        agentProvider: 'claude',
+        order: 1,
+      });
+
+      expect(item.agentType).toBeUndefined();
+    });
   });
 
   describe('addComment', () => {
@@ -312,6 +337,35 @@ describe('kanban-store', () => {
 
       const result = updateItem(board, item.id, { model: 'invalid-model' });
       expect(result).toBeNull();
+    });
+
+    it('should accept updating agentType', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      const result = updateItem(board, item.id, { agentType: 'plan-agent' });
+      expect(result).not.toBeNull();
+      expect(result!.agentType).toBe('plan-agent');
+    });
+
+    it('should accept clearing agentType with undefined', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentProvider: 'claude',
+        agentType: 'code-agent',
+        order: 0,
+      });
+
+      const result = updateItem(board, item.id, { agentType: undefined });
+      expect(result).not.toBeNull();
+      expect(result!.agentType).toBeUndefined();
     });
   });
 

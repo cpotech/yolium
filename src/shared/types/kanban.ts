@@ -30,6 +30,7 @@ export interface KanbanItem {
   column: KanbanColumn;
   branch?: string;
   agentProvider: KanbanAgentProvider;
+  agentType?: string;
   order: number;
   model?: string;
   agentStatus: AgentStatus;

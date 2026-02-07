@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { X, Plus } from 'lucide-react'
-import type { KanbanAgentProvider } from '@shared/types/agent'
+import type { KanbanAgentProvider, AgentDefinition } from '@shared/types/agent'
 import { trapFocus } from '@shared/lib/focus-trap'
 
 interface NewItemDialogProps {
@@ -33,10 +33,17 @@ export function NewItemDialog({
   const [description, setDescription] = useState('')
   const [branch, setBranch] = useState('')
   const [agentProvider, setAgentProvider] = useState<KanbanAgentProvider>('claude')
+  const [agentType, setAgentType] = useState('')
   const [model, setModel] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [agentDefinitions, setAgentDefinitions] = useState<AgentDefinition[]>([])
   const dialogRef = useRef<HTMLDivElement>(null)
+
+  // Fetch agent definitions on mount
+  useEffect(() => {
+    window.electronAPI.agent.listDefinitions().then(setAgentDefinitions).catch(() => {})
+  }, [])
 
   // Reset form when dialog opens/closes
   useEffect(() => {
@@ -45,6 +52,7 @@ export function NewItemDialog({
       setDescription('')
       setBranch('')
       setAgentProvider('claude')
+      setAgentType('')
       setModel('')
       setIsSubmitting(false)
       setErrorMessage(null)
@@ -63,6 +71,7 @@ export function NewItemDialog({
         description: description.trim(),
         branch: branch.trim() || undefined,
         agentProvider,
+        ...(agentType && { agentType }),
         order: 0,
         ...(model && { model }),
       })
@@ -72,6 +81,7 @@ export function NewItemDialog({
       setDescription('')
       setBranch('')
       setAgentProvider('claude')
+      setAgentType('')
       setModel('')
 
       setErrorMessage(null)
@@ -82,7 +92,7 @@ export function NewItemDialog({
     } finally {
       setIsSubmitting(false)
     }
-  }, [canSubmit, isSubmitting, projectPath, title, description, branch, agentProvider, model, onCreated])
+  }, [canSubmit, isSubmitting, projectPath, title, description, branch, agentProvider, agentType, model, onCreated])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -233,6 +243,32 @@ export function NewItemDialog({
                   ))}
                 </select>
               </div>
+
+              {/* Agent Type */}
+              {agentDefinitions.length > 0 && (
+                <div>
+                  <label
+                    htmlFor="new-item-agent-type"
+                    className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
+                  >
+                    Agent Type <span className="normal-case tracking-normal">(optional)</span>
+                  </label>
+                  <select
+                    id="new-item-agent-type"
+                    data-testid="agent-type-select"
+                    value={agentType}
+                    onChange={e => setAgentType(e.target.value)}
+                    className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+                  >
+                    <option value="">Not set</option>
+                    {agentDefinitions.map(agent => (
+                      <option key={agent.name} value={agent.name}>
+                        {agent.name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Model Override */}
               <div>
