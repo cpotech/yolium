@@ -10,7 +10,6 @@ import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
 import { CommentsList } from './CommentsList'
 import { AgentLogPanel } from '../agent/AgentLogPanel'
-import { AgentStatusBanner } from '../agent/AgentStatusBanner'
 import { AgentControls } from '../agent/AgentControls'
 
 interface ItemDetailDialogProps {
@@ -451,13 +450,6 @@ export function ItemDetailDialog({
                   className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
                 />
               </div>
-
-              {/* Live Agent Status Banner */}
-              <AgentStatusBanner
-                status={agentSession.liveStatus}
-                detail={agentSession.currentDetail}
-                message={agentSession.liveStatusMessage}
-              />
 
               {/* Comments */}
               <CommentsList comments={item.comments} />
