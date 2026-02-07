@@ -188,9 +188,9 @@ export function WhisperModelDialog({
               </span>
             </div>
             <p className="text-xs text-[var(--color-text-secondary)] mb-2">
-              {process.platform === 'win32'
+              {navigator.platform.toLowerCase().includes('win')
                 ? 'Download and install the whisper.cpp binary to enable speech-to-text.'
-                : 'Download, build, and install whisper.cpp from source. Requires cmake and a C++ compiler.'}
+                : 'Download, build, and install whisper.cpp from source. Requires cmake, make, and a C++ compiler.'}
             </p>
             {installError && (
               <p className="text-xs text-[var(--color-status-error)] mb-2">{installError}</p>
