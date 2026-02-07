@@ -146,6 +146,54 @@ describe('kanban-store', () => {
       expect(updated.comments[0].source).toBe('user');
       expect(updated.comments[0].text).toBe('This is my answer');
     });
+
+    it('should add comment with options', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentType: 'claude',
+        order: 1,
+      });
+
+      addComment(board, item.id, 'agent', 'Which approach?', ['Option A', 'Option B']);
+
+      const updated = board.items.find(i => i.id === item.id)!;
+      expect(updated.comments).toHaveLength(1);
+      expect(updated.comments[0].source).toBe('agent');
+      expect(updated.comments[0].text).toBe('Which approach?');
+      expect(updated.comments[0].options).toEqual(['Option A', 'Option B']);
+    });
+
+    it('should not include options field when options is empty', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentType: 'claude',
+        order: 1,
+      });
+
+      addComment(board, item.id, 'agent', 'Just a message', []);
+
+      const updated = board.items.find(i => i.id === item.id)!;
+      expect(updated.comments[0].options).toBeUndefined();
+    });
+
+    it('should not include options field when options is undefined', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentType: 'claude',
+        order: 1,
+      });
+
+      addComment(board, item.id, 'user', 'A comment');
+
+      const updated = board.items.find(i => i.id === item.id)!;
+      expect(updated.comments[0].options).toBeUndefined();
+    });
   });
 
   describe('getBoard', () => {

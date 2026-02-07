@@ -35,13 +35,14 @@ function formatTimestamp(isoString: string): string {
 
 interface CommentsListProps {
   comments: KanbanComment[]
+  onSelectOption?: (option: string) => void
 }
 
 /**
  * Display a list of comments with source badges and timestamps.
  * @param props - Component props
  */
-export function CommentsList({ comments }: CommentsListProps): React.ReactElement {
+export function CommentsList({ comments, onSelectOption }: CommentsListProps): React.ReactElement {
   return (
     <div data-testid="comments-section">
       <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">
@@ -73,6 +74,20 @@ export function CommentsList({ comments }: CommentsListProps): React.ReactElemen
                 </span>
               </div>
               <p className="text-sm text-[var(--color-text-primary)]">{comment.text}</p>
+              {comment.options && comment.options.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {comment.options.map((option, idx) => (
+                    <button
+                      key={idx}
+                      data-testid={`comment-option-${comment.id}-${idx}`}
+                      onClick={() => onSelectOption?.(option)}
+                      className="px-2 py-1 text-xs bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] rounded border border-[var(--color-border-primary)] hover:border-[var(--color-accent-primary)] transition-colors"
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>

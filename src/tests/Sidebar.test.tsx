@@ -5,6 +5,16 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { Sidebar } from '@renderer/components/navigation/Sidebar'
 import type { SidebarProject } from '@renderer/stores/sidebar-store'
+import type { WaitingItem } from '@renderer/components/navigation/ProjectList'
+
+const defaultProps = {
+  waitingItems: [] as WaitingItem[],
+  onToggleCollapse: vi.fn(),
+  onProjectClick: vi.fn(),
+  onProjectRemove: vi.fn(),
+  onAddProject: vi.fn(),
+  onAnswerAndResume: vi.fn(),
+}
 
 describe('Sidebar', () => {
   const mockProjects: SidebarProject[] = [
@@ -17,10 +27,7 @@ describe('Sidebar', () => {
       <Sidebar
         projects={mockProjects}
         collapsed={false}
-        onToggleCollapse={vi.fn()}
-        onProjectClick={vi.fn()}
-        onProjectRemove={vi.fn()}
-        onAddProject={vi.fn()}
+        {...defaultProps}
       />
     )
 
@@ -33,10 +40,7 @@ describe('Sidebar', () => {
       <Sidebar
         projects={[]}
         collapsed={false}
-        onToggleCollapse={vi.fn()}
-        onProjectClick={vi.fn()}
-        onProjectRemove={vi.fn()}
-        onAddProject={vi.fn()}
+        {...defaultProps}
       />
     )
 
@@ -49,9 +53,7 @@ describe('Sidebar', () => {
       <Sidebar
         projects={[]}
         collapsed={false}
-        onToggleCollapse={vi.fn()}
-        onProjectClick={vi.fn()}
-        onProjectRemove={vi.fn()}
+        {...defaultProps}
         onAddProject={onAddProject}
       />
     )
@@ -66,10 +68,8 @@ describe('Sidebar', () => {
       <Sidebar
         projects={mockProjects}
         collapsed={false}
-        onToggleCollapse={vi.fn()}
+        {...defaultProps}
         onProjectClick={onProjectClick}
-        onProjectRemove={vi.fn()}
-        onAddProject={vi.fn()}
       />
     )
 
@@ -82,10 +82,7 @@ describe('Sidebar', () => {
       <Sidebar
         projects={[]}
         collapsed={false}
-        onToggleCollapse={vi.fn()}
-        onProjectClick={vi.fn()}
-        onProjectRemove={vi.fn()}
-        onAddProject={vi.fn()}
+        {...defaultProps}
       />
     )
 
@@ -98,10 +95,8 @@ describe('Sidebar', () => {
       <Sidebar
         projects={[]}
         collapsed={true}
+        {...defaultProps}
         onToggleCollapse={onToggleCollapse}
-        onProjectClick={vi.fn()}
-        onProjectRemove={vi.fn()}
-        onAddProject={vi.fn()}
       />
     )
 
@@ -114,10 +109,7 @@ describe('Sidebar', () => {
       <Sidebar
         projects={[]}
         collapsed={true}
-        onToggleCollapse={vi.fn()}
-        onProjectClick={vi.fn()}
-        onProjectRemove={vi.fn()}
-        onAddProject={vi.fn()}
+        {...defaultProps}
       />
     )
 
@@ -129,13 +121,87 @@ describe('Sidebar', () => {
       <Sidebar
         projects={[]}
         collapsed={false}
-        onToggleCollapse={vi.fn()}
-        onProjectClick={vi.fn()}
-        onProjectRemove={vi.fn()}
-        onAddProject={vi.fn()}
+        {...defaultProps}
       />
     )
 
     expect(container.firstChild).toHaveClass('w-48')
+  })
+
+  describe('waiting items', () => {
+    const waitingItems: WaitingItem[] = [
+      {
+        projectPath: '/home/user/project1',
+        itemId: 'item-1',
+        itemTitle: 'Fix bug',
+        question: 'Should I use approach A or B?',
+        options: ['Approach A', 'Approach B'],
+        agentName: 'code-agent',
+      },
+    ]
+
+    it('should show waiting item badge count on project', () => {
+      render(
+        <Sidebar
+          projects={mockProjects}
+          collapsed={false}
+          {...defaultProps}
+          waitingItems={waitingItems}
+        />
+      )
+
+      expect(screen.getByText('1')).toBeInTheDocument()
+    })
+
+    it('should display waiting item question and options', () => {
+      render(
+        <Sidebar
+          projects={mockProjects}
+          collapsed={false}
+          {...defaultProps}
+          waitingItems={waitingItems}
+        />
+      )
+
+      expect(screen.getByText('Fix bug')).toBeInTheDocument()
+      expect(screen.getByText('Should I use approach A or B?')).toBeInTheDocument()
+      expect(screen.getByText('Approach A')).toBeInTheDocument()
+      expect(screen.getByText('Approach B')).toBeInTheDocument()
+    })
+
+    it('should call onAnswerAndResume when option clicked', () => {
+      const onAnswerAndResume = vi.fn().mockResolvedValue(undefined)
+      render(
+        <Sidebar
+          projects={mockProjects}
+          collapsed={false}
+          {...defaultProps}
+          waitingItems={waitingItems}
+          onAnswerAndResume={onAnswerAndResume}
+        />
+      )
+
+      fireEvent.click(screen.getByTestId('sidebar-option-item-1-0'))
+      expect(onAnswerAndResume).toHaveBeenCalledWith(
+        '/home/user/project1',
+        'item-1',
+        'Approach A',
+        'code-agent'
+      )
+    })
+
+    it('should not show waiting items when sidebar is collapsed', () => {
+      render(
+        <Sidebar
+          projects={mockProjects}
+          collapsed={true}
+          {...defaultProps}
+          waitingItems={waitingItems}
+        />
+      )
+
+      expect(screen.queryByText('Fix bug')).not.toBeInTheDocument()
+      expect(screen.queryByText('Should I use approach A or B?')).not.toBeInTheDocument()
+    })
   })
 })

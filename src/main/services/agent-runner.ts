@@ -25,6 +25,10 @@ import {
   buildConversationHistory,
 } from '@main/stores/kanban-store';
 import {
+  appendLog,
+  appendSessionHeader,
+} from '@main/stores/workitem-log-store';
+import {
   createAgentContainer,
   stopAgentContainer,
   checkAgentAuth,
@@ -223,6 +227,9 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
 
   logger.info('Starting agent container', { agentName, projectPath, itemId, model, branchName });
 
+  // Write a session header to the persistent log
+  appendSessionHeader(projectPath, itemId, agentName);
+
   // Create EventEmitter early so callbacks are wired before container output arrives
   const events = new EventEmitter();
   if (onQuestion) events.on('question', onQuestion);
@@ -259,6 +266,10 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
           } else {
             outputBuffer.push(data);
           }
+        },
+        onDisplayOutput: (data: string) => {
+          // Persist display output to the work item log file
+          appendLog(projectPath, itemId, data + '\n');
         },
         onProtocolMessage: (message: unknown) => {
           // Protocol messages are handled in handleAgentOutput
@@ -369,7 +380,7 @@ export function handleAgentOutput(sessionId: string, data: string): void {
           agentQuestionOptions: q.options,
           column: 'ready',
         });
-        addComment(board, session.itemId, 'agent', q.text);
+        addComment(board, session.itemId, 'agent', q.text, q.options);
         session.events.emit('question', q);
         break;
       }

@@ -1,24 +1,29 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ProjectList } from './ProjectList';
+import type { WaitingItem } from './ProjectList';
 import type { SidebarProject } from '@renderer/stores/sidebar-store';
 
 interface SidebarProps {
   projects: SidebarProject[];
   collapsed: boolean;
+  waitingItems: WaitingItem[];
   onToggleCollapse: () => void;
   onProjectClick: (path: string) => void;
   onProjectRemove: (path: string) => void;
   onAddProject: () => void;
+  onAnswerAndResume: (projectPath: string, itemId: string, answer: string, agentName: string) => void;
 }
 
 export function Sidebar({
   projects,
   collapsed,
+  waitingItems,
   onToggleCollapse,
   onProjectClick,
   onProjectRemove,
   onAddProject,
+  onAnswerAndResume,
 }: SidebarProps): React.ReactElement {
   return (
     <div
@@ -32,9 +37,11 @@ export function Sidebar({
         <ProjectList
           projects={projects}
           collapsed={collapsed}
+          waitingItems={waitingItems}
           onProjectClick={onProjectClick}
           onProjectRemove={onProjectRemove}
           onAddProject={onAddProject}
+          onAnswerAndResume={onAnswerAndResume}
         />
       </div>
 

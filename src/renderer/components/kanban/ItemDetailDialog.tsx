@@ -452,7 +452,7 @@ export function ItemDetailDialog({
               </div>
 
               {/* Comments */}
-              <CommentsList comments={item.comments} />
+              <CommentsList comments={item.comments} onSelectOption={setAnswerText} />
             </div>
           </div>
 

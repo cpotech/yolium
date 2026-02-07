@@ -121,6 +121,8 @@ export interface AgentContainerParams {
  */
 export interface AgentContainerCallbacks {
   onOutput?: (data: string) => void;
+  /** Called with display-formatted output text (what users see in the log panel). */
+  onDisplayOutput?: (data: string) => void;
   onProtocolMessage?: (message: unknown) => void;
   onExit?: (code: number) => void;
 }
@@ -138,7 +140,7 @@ export async function createAgentContainer(
   callbacks: AgentContainerCallbacks = {}
 ): Promise<string> {
   const { webContentsId, projectPath, agentName, prompt, model, tools, itemId, worktreePath, originalPath, branchName, timeoutMs } = params;
-  const { onOutput, onProtocolMessage, onExit } = callbacks;
+  const { onOutput, onDisplayOutput, onProtocolMessage, onExit } = callbacks;
 
   const sessionId = `agent-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
@@ -334,6 +336,9 @@ export async function createAgentContainer(
 
     // Forward text content for protocol parsing via callback
     onOutput?.(textContent || displayStr);
+
+    // Forward display text for persistent logging
+    onDisplayOutput?.(displayStr);
 
     // Send parsed display output to renderer
     const webContents = BrowserWindow.getAllWindows().find(
