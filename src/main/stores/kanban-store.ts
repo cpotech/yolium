@@ -212,6 +212,24 @@ export function deleteItem(board: KanbanBoard, itemId: string): boolean {
   return true;
 }
 
+export function deleteItems(board: KanbanBoard, itemIds: string[]): string[] {
+  const idSet = new Set(itemIds);
+  const deletedIds: string[] = [];
+
+  board.items = board.items.filter(item => {
+    if (idSet.has(item.id)) {
+      deletedIds.push(item.id);
+      return false;
+    }
+    return true;
+  });
+
+  if (deletedIds.length > 0) {
+    saveBoard(board);
+  }
+  return deletedIds;
+}
+
 export function deleteBoard(projectPath: string): boolean {
   const boardPath = getBoardPath(projectPath);
   if (fs.existsSync(boardPath)) {

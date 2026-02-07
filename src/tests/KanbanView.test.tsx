@@ -21,6 +21,10 @@ beforeEach(() => {
       kanban: {
         getBoard: mockKanbanGetBoard,
         onBoardUpdated: mockOnKanbanBoardUpdated,
+        deleteItems: vi.fn().mockResolvedValue([]),
+      },
+      dialog: {
+        confirmOkCancel: vi.fn().mockResolvedValue(true),
       },
       git: {
         detectNestedRepos: mockDetectNestedRepos,
