@@ -83,6 +83,7 @@ export function ItemDetailDialog({
   const [description, setDescription] = useState('')
   const [column, setColumn] = useState<KanbanColumn>('backlog')
   const [agentType, setAgentType] = useState('')
+  const [agentProvider, setAgentProvider] = useState<KanbanItem['agentProvider']>('claude')
   const [model, setModel] = useState('')
   const [agentDefinitions, setAgentDefinitions] = useState<AgentDefinition[]>([])
   const [isSaving, setIsSaving] = useState(false)
@@ -118,9 +119,10 @@ export function ItemDetailDialog({
   const [baseDescription, setBaseDescription] = useState('')
   const [baseColumn, setBaseColumn] = useState<KanbanColumn>('backlog')
   const [baseAgentType, setBaseAgentType] = useState('')
+  const [baseAgentProvider, setBaseAgentProvider] = useState<KanbanItem['agentProvider']>('claude')
   const [baseModel, setBaseModel] = useState('')
 
-  const hasUnsavedChanges = title !== baseTitle || description !== baseDescription || column !== baseColumn || agentType !== baseAgentType || model !== baseModel
+  const hasUnsavedChanges = title !== baseTitle || description !== baseDescription || column !== baseColumn || agentType !== baseAgentType || agentProvider !== baseAgentProvider || model !== baseModel
 
   // Sync editable fields when item data changes
   useEffect(() => {
@@ -132,11 +134,13 @@ export function ItemDetailDialog({
         setDescription(item.description)
         setColumn(item.column)
         setAgentType(item.agentType || '')
+        setAgentProvider(item.agentProvider)
         setModel(item.model || '')
         setBaseTitle(item.title)
         setBaseDescription(item.description)
         setBaseColumn(item.column)
         setBaseAgentType(item.agentType || '')
+        setBaseAgentProvider(item.agentProvider)
         setBaseModel(item.model || '')
         setPrUrl(null)
         prevItemIdRef.current = item.id
@@ -163,12 +167,14 @@ export function ItemDetailDialog({
         description: trimmedDescription,
         column,
         agentType: agentType || undefined,
+        agentProvider,
         model: model || undefined,
       })
       setBaseTitle(trimmedTitle)
       setBaseDescription(trimmedDescription)
       setBaseColumn(column)
       setBaseAgentType(agentType)
+      setBaseAgentProvider(agentProvider)
       setBaseModel(model)
       setErrorMessage(null)
       onUpdated()
@@ -178,7 +184,7 @@ export function ItemDetailDialog({
     } finally {
       setIsSaving(false)
     }
-  }, [item, isSaving, projectPath, title, description, column, agentType, model, onUpdated])
+  }, [item, isSaving, projectPath, title, description, column, agentType, agentProvider, model, onUpdated])
 
   const handleDelete = useCallback(async () => {
     if (!item || isDeleting) return
@@ -219,6 +225,7 @@ export function ItemDetailDialog({
         projectPath,
         itemId: item.id,
         goal: item.description,
+        agentProvider: item.agentProvider,
       })
 
       if (result.error) {
@@ -273,6 +280,7 @@ export function ItemDetailDialog({
         projectPath,
         itemId: item.id,
         goal: item.description,
+        agentProvider: item.agentProvider,
       })
 
       if (result.error) {
@@ -515,15 +523,32 @@ export function ItemDetailDialog({
             <div className="p-4 space-y-4">
               {/* Agent Provider */}
               <div>
-                <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
+                <label
+                  htmlFor="detail-agent-provider"
+                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
+                >
                   Agent Provider
                 </label>
-                <span
-                  data-testid="agent-provider-display"
-                  className="text-sm text-[var(--color-text-primary)]"
-                >
-                  {item.activeAgentName ? formatAgentRoleLabel(item.activeAgentName) : agentProviderLabels[item.agentProvider]}
-                </span>
+                {item.agentStatus === 'idle' ? (
+                  <select
+                    id="detail-agent-provider"
+                    data-testid="agent-provider-select"
+                    value={agentProvider}
+                    onChange={e => setAgentProvider(e.target.value as KanbanItem['agentProvider'])}
+                    className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+                  >
+                    <option value="claude">Claude</option>
+                    <option value="opencode">OpenCode</option>
+                    <option value="codex">Codex</option>
+                  </select>
+                ) : (
+                  <span
+                    data-testid="agent-provider-display"
+                    className="text-sm text-[var(--color-text-primary)]"
+                  >
+                    {item.activeAgentName ? formatAgentRoleLabel(item.activeAgentName) : agentProviderLabels[item.agentProvider]}
+                  </span>
+                )}
               </div>
 
               {/* Agent Type */}

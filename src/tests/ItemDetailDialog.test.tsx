@@ -113,7 +113,7 @@ describe('ItemDetailDialog', () => {
     expect(screen.getByTestId('title-input')).toHaveValue('My Task Title')
     expect(screen.getByTestId('description-input')).toHaveValue('My task description text')
     expect(screen.getByTestId('branch-display')).toHaveTextContent('feature/my-feature')
-    expect(screen.getByTestId('agent-provider-display')).toHaveTextContent('Codex')
+    expect(screen.getByTestId('agent-provider-select')).toHaveValue('codex')
   })
 
   it('should render column selector with current column selected', () => {
@@ -313,6 +313,9 @@ describe('ItemDetailDialog', () => {
         title: 'Updated Title',
         description: 'Updated description',
         column: 'ready',
+        agentProvider: 'claude',
+        agentType: undefined,
+        model: undefined,
       })
     })
 
@@ -519,6 +522,9 @@ describe('ItemDetailDialog', () => {
         title: 'Ctrl+Enter Title',
         description: 'Test description',
         column: 'backlog',
+        agentProvider: 'claude',
+        agentType: undefined,
+        model: undefined,
       })
     })
   })
@@ -855,6 +861,8 @@ describe('ItemDetailDialog', () => {
         description: 'Test description',
         column: 'backlog',
         model: 'haiku',
+        agentProvider: 'claude',
+        agentType: undefined,
       })
     })
   })

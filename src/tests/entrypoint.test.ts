@@ -315,10 +315,52 @@ Output: @@YOLIUM:{"type":"complete","summary":"done"}`;
 
       // Find the agent section specifically
       const agentStart = entrypointContent.indexOf('TOOL" = "agent"');
-      const agentEnd = entrypointContent.indexOf('elif', agentStart + 1);
+      // Find the next elif after the TOOL=opencode section (which comes after agent)
+      const agentEnd = entrypointContent.indexOf('elif [ "$TOOL" = "opencode" ]', agentStart + 1);
       const agentBlock = entrypointContent.slice(agentStart, agentEnd > -1 ? agentEnd : undefined);
 
+      // Claude is in the default else branch when AGENT_PROVIDER is not opencode or codex
       expect(agentBlock).toContain('--dangerously-skip-permissions');
+    });
+
+    it('should support AGENT_PROVIDER environment variable', () => {
+      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
+      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+
+      expect(entrypointContent).toContain('AGENT_PROVIDER');
+    });
+
+    it('should default to claude when AGENT_PROVIDER is not set', () => {
+      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
+      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+
+      expect(entrypointContent).toContain('AGENT_PROVIDER:-claude');
+    });
+
+    it('should run opencode when AGENT_PROVIDER=opencode', () => {
+      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
+      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+
+      const agentStart = entrypointContent.indexOf('TOOL" = "agent"');
+      // Find the next elif after the TOOL=opencode section (which comes after agent)
+      const agentEnd = entrypointContent.indexOf('elif [ "$TOOL" = "opencode" ]', agentStart + 1);
+      const agentBlock = entrypointContent.slice(agentStart, agentEnd > -1 ? agentEnd : undefined);
+
+      expect(agentBlock).toContain('if [ "$AGENT_PROV" = "opencode" ]');
+      expect(agentBlock).toContain('opencode run');
+    });
+
+    it('should run codex when AGENT_PROVIDER=codex', () => {
+      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
+      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+
+      const agentStart = entrypointContent.indexOf('TOOL" = "agent"');
+      // Find the next elif after the TOOL=opencode section (which comes after agent)
+      const agentEnd = entrypointContent.indexOf('elif [ "$TOOL" = "opencode" ]', agentStart + 1);
+      const agentBlock = entrypointContent.slice(agentStart, agentEnd > -1 ? agentEnd : undefined);
+
+      expect(agentBlock).toContain('elif [ "$AGENT_PROV" = "codex" ]');
+      expect(agentBlock).toContain('codex exec');
     });
   });
 

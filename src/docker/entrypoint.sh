@@ -532,12 +532,51 @@ elif [ "$TOOL" = "agent" ]; then
         TOOLS_ARG="--allowedTools $AGENT_TOOLS"
     fi
 
-    log "Running Claude: model=$MODEL_ID tools=$AGENT_TOOLS"
+    log "Running agent: provider=$AGENT_PROVIDER model=$MODEL_ID tools=$AGENT_TOOLS"
 
-    # Run Claude with stream-json output format so events are streamed incrementally.
-    # Without this, -p mode buffers all output until completion (no streaming).
-    # --verbose is required when combining -p with --output-format stream-json.
-    exec claude --model "$MODEL_ID" -p "$PROMPT" $TOOLS_ARG --dangerously-skip-permissions --verbose --output-format stream-json
+    # Determine which agent to run based on AGENT_PROVIDER
+    AGENT_PROV="${AGENT_PROVIDER:-claude}"
+    log "Agent provider: $AGENT_PROV"
+
+    if [ "$AGENT_PROV" = "opencode" ]; then
+        log "Starting OpenCode headless agent mode"
+        # OpenCode doesn't have the same model mapping as Claude
+        # We pass the model as-is or let OpenCode decide
+        opencode run "$PROMPT"
+        exit $?
+    elif [ "$AGENT_PROV" = "codex" ]; then
+        log "Starting Codex headless agent mode"
+        # Validate authentication before running Codex
+        if [ -z "$OPENAI_API_KEY" ]; then
+            HAS_OAUTH=false
+            if [ -f /home/agent/.codex/auth.json ]; then
+                if command -v jq >/dev/null 2>&1; then
+                    jq -e '.tokens.access_token // empty' /home/agent/.codex/auth.json >/dev/null 2>&1 && HAS_OAUTH=true
+                else
+                    # Fallback: grep for access_token when jq is not available
+                    grep -q '"access_token"' /home/agent/.codex/auth.json 2>/dev/null && HAS_OAUTH=true
+                fi
+            fi
+            if [ "$HAS_OAUTH" = "true" ]; then
+                log "Using Codex OAuth authentication"
+            else
+                echo "ERROR: No Codex authentication found."
+                echo "Set OPENAI_API_KEY or run 'codex login' on the host."
+                exit 3
+            fi
+        fi
+        # Use danger-full-access sandbox — Codex's Landlock sandbox panics on
+        # kernels where Landlock is compiled but not functional.
+        # Docker already provides container-level isolation.
+        codex exec --sandbox danger-full-access "$PROMPT"
+        exit $?
+    else
+        log "Starting Claude Code agent"
+        # Run Claude with stream-json output format so events are streamed incrementally.
+        # Without this, -p mode buffers all output until completion (no streaming).
+        # --verbose is required when combining -p with --output-format stream-json.
+        exec claude --model "$MODEL_ID" -p "$PROMPT" $TOOLS_ARG --dangerously-skip-permissions --verbose --output-format stream-json
+    fi
 elif [ "$TOOL" = "opencode" ]; then
     log "Starting OpenCode"
     OPENCODE_BIN=$(which opencode)
