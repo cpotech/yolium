@@ -6,6 +6,9 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Trash2, Terminal, ChevronRight, ChevronDown } from 'lucide-react'
 
+/** Regex to match timestamp prefix like "[12:34:56] " at start of line */
+const TIMESTAMP_RE = /^(\[\d{2}:\d{2}:\d{2}\]) (.*)$/
+
 interface AgentLogPanelProps {
   outputLines: string[]
   onClear: () => void
@@ -70,11 +73,22 @@ export function AgentLogPanel({
           {outputLines.length === 0 ? (
             <span className="text-[var(--color-text-tertiary)]">Waiting for output...</span>
           ) : (
-            outputLines.map((line, idx) => (
-              <div key={idx} className="whitespace-pre-wrap break-words leading-5">
-                {line}
-              </div>
-            ))
+            outputLines.map((line, idx) => {
+              const match = TIMESTAMP_RE.exec(line)
+              if (match) {
+                return (
+                  <div key={idx} className="whitespace-pre-wrap break-words leading-5">
+                    <span className="text-[var(--color-text-tertiary)] select-none">{match[1]}</span>{' '}
+                    {match[2]}
+                  </div>
+                )
+              }
+              return (
+                <div key={idx} className="whitespace-pre-wrap break-words leading-5">
+                  {line}
+                </div>
+              )
+            })
           )}
           <div ref={logEndRef} />
         </div>

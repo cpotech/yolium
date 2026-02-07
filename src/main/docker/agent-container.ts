@@ -11,6 +11,7 @@ import { BrowserWindow } from 'electron';
 import { createLogger } from '@main/lib/logger';
 // deleteWorktree no longer called here — worktrees persist with kanban items
 import { extractProtocolMessages } from '@main/services/agent-protocol';
+import { formatLogTimestamp } from '@main/stores/workitem-log-store';
 import { loadGitConfig } from '@main/git/git-config';
 import { docker, agentSessions, DEFAULT_IMAGE, type AgentContainerSession } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
@@ -331,7 +332,10 @@ export async function createAgentContainer(
 
     if (displayParts.length === 0) return;
 
-    const displayStr = displayParts.join('\n');
+    // Prepend timestamp to each display line
+    const ts = formatLogTimestamp();
+    const timestampedParts = displayParts.map(line => `${ts} ${line}`);
+    const displayStr = timestampedParts.join('\n');
     logger.info('Agent output', { sessionId, displayLines: displayParts.length, display: displayStr.slice(0, 500) });
 
     // Forward text content for protocol parsing via callback

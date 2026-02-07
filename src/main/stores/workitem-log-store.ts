@@ -73,6 +73,17 @@ export function deleteLog(projectPath: string, itemId: string): boolean {
 }
 
 /**
+ * Format a timestamp for agent log lines.
+ * Returns a string like "[12:34:56]" using local time.
+ */
+export function formatLogTimestamp(date: Date = new Date()): string {
+  const h = String(date.getHours()).padStart(2, '0');
+  const m = String(date.getMinutes()).padStart(2, '0');
+  const s = String(date.getSeconds()).padStart(2, '0');
+  return `[${h}:${m}:${s}]`;
+}
+
+/**
  * Append a session separator to the log, marking the start of a new agent session.
  */
 export function appendSessionHeader(
