@@ -371,13 +371,11 @@ describe('git-worktree', () => {
         // fetch
         if (command.includes('fetch origin')) return Buffer.from('')
         // checkout default
-        if (command.includes('checkout main') && !command.includes('-b')) return Buffer.from('')
+        if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
         // pull
         if (command.includes('pull')) return Buffer.from('')
-        // delete existing pr branch (branch -D)
-        if (command.includes('branch -D')) throw new Error('not found')
         // create pr branch
-        if (command.includes('checkout -b')) return Buffer.from('')
+        if (command.includes('checkout -B')) return Buffer.from('')
         // merge - fail with conflict
         if (command.includes('merge') && command.includes('--no-ff')) {
           const err = new Error('merge failed') as Error & { stderr: Buffer; stdout: Buffer }
@@ -410,10 +408,9 @@ describe('git-worktree', () => {
         if (command.includes('symbolic-ref')) throw new Error('no remote')
         if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
         if (command.includes('fetch')) return Buffer.from('')
-        if (command.includes('checkout main') && !command.includes('-b')) return Buffer.from('')
+        if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
         if (command.includes('pull')) return Buffer.from('')
-        if (command.includes('branch -D')) throw new Error('not found')
-        if (command.includes('checkout -b')) return Buffer.from('')
+        if (command.includes('checkout -B')) return Buffer.from('')
         if (command.includes('merge') && command.includes('--no-ff')) return Buffer.from('')
         if (command.includes('push -u')) {
           const err = new Error('push failed') as Error & { stderr: Buffer }
@@ -442,10 +439,9 @@ describe('git-worktree', () => {
         if (command.includes('symbolic-ref')) throw new Error('no remote')
         if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
         if (command.includes('fetch')) return Buffer.from('')
-        if (command.includes('checkout main') && !command.includes('-b')) return Buffer.from('')
+        if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
         if (command.includes('pull')) return Buffer.from('')
-        if (command.includes('branch -D')) throw new Error('not found')
-        if (command.includes('checkout -b')) return Buffer.from('')
+        if (command.includes('checkout -B')) return Buffer.from('')
         if (command.includes('merge') && command.includes('--no-ff')) return Buffer.from('')
         if (command.includes('push -u')) return Buffer.from('')
         // gh pr create
@@ -476,10 +472,9 @@ describe('git-worktree', () => {
         if (command.includes('symbolic-ref')) throw new Error('no remote')
         if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
         if (command.includes('fetch')) return Buffer.from('')
-        if (command.includes('checkout main') && !command.includes('-b')) return Buffer.from('')
+        if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
         if (command.includes('pull')) return Buffer.from('')
-        if (command.includes('branch -D')) throw new Error('not found')
-        if (command.includes('checkout -b')) return Buffer.from('')
+        if (command.includes('checkout -B')) return Buffer.from('')
         if (command.includes('merge') && command.includes('--no-ff')) return Buffer.from('')
         if (command.includes('push -u')) return Buffer.from('')
         // gh pr create fails
@@ -503,6 +498,38 @@ describe('git-worktree', () => {
       expect(result.prUrl).toBeUndefined()
       expect(result.prBranch).toBe('yolium/add-auth')
       expect(result.error).toContain('PR creation failed')
+    })
+
+    it('succeeds when prBranch equals worktreeBranch (user-specified branch)', () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        if (command.includes('symbolic-ref')) throw new Error('no remote')
+        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        if (command.includes('fetch')) return Buffer.from('')
+        if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
+        if (command.includes('pull')) return Buffer.from('')
+        // checkout -B should handle existing branch without error
+        if (command.includes('checkout -B')) return Buffer.from('')
+        if (command.includes('merge') && command.includes('--no-ff')) return Buffer.from('')
+        if (command.includes('push -u')) return Buffer.from('')
+        if (cmd === 'gh') return 'https://github.com/user/repo/pull/99\n'
+        if (command.includes('worktree remove')) return Buffer.from('')
+        if (command.includes('branch -d')) return Buffer.from('')
+        return Buffer.from('')
+      })
+
+      // Use a non-yolium branch so prBranch === worktreeBranch
+      const result = mergeBranchAndPushPR(
+        '/home/user/project',
+        '(bug)-agent-type-wrong',
+        '/home/user/.yolium/worktrees/proj/(bug)-agent-type-wrong',
+        'Fix agent type',
+        'Fix the agent type bug',
+      )
+
+      expect(result.success).toBe(true)
+      expect(result.prBranch).toBe('(bug)-agent-type-wrong')
     })
 
     it('returns error when checkout of default branch fails', () => {
