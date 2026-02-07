@@ -1,5 +1,6 @@
 // src/tests/agent-output.test.ts
 import { describe, it, expect, vi } from 'vitest';
+import { formatLogTimestamp } from '@main/stores/workitem-log-store';
 
 describe('agent output deduplication', () => {
   /**
@@ -353,5 +354,59 @@ describe('relative timestamp formatting', () => {
     // Should be a date string (not relative)
     expect(result).not.toContain('ago');
     expect(result).not.toBe('just now');
+  });
+});
+
+describe('formatLogTimestamp', () => {
+  it('formats date as [HH:MM:SS]', () => {
+    const date = new Date(2026, 1, 7, 14, 5, 9); // 14:05:09
+    expect(formatLogTimestamp(date)).toBe('[14:05:09]');
+  });
+
+  it('pads single-digit hours, minutes, seconds with zero', () => {
+    const date = new Date(2026, 0, 1, 3, 7, 2); // 03:07:02
+    expect(formatLogTimestamp(date)).toBe('[03:07:02]');
+  });
+
+  it('handles midnight', () => {
+    const date = new Date(2026, 0, 1, 0, 0, 0);
+    expect(formatLogTimestamp(date)).toBe('[00:00:00]');
+  });
+
+  it('handles end of day', () => {
+    const date = new Date(2026, 0, 1, 23, 59, 59);
+    expect(formatLogTimestamp(date)).toBe('[23:59:59]');
+  });
+
+  it('returns current time when called without arguments', () => {
+    const result = formatLogTimestamp();
+    expect(result).toMatch(/^\[\d{2}:\d{2}:\d{2}\]$/);
+  });
+});
+
+describe('agent log timestamp prefixing', () => {
+  it('prepends timestamp to display lines', () => {
+    const ts = formatLogTimestamp(new Date(2026, 1, 7, 10, 30, 45));
+    const displayParts = ['[Read] /project/src/App.tsx', 'Analyzing code'];
+    const timestampedParts = displayParts.map(line => `${ts} ${line}`);
+
+    expect(timestampedParts).toEqual([
+      '[10:30:45] [Read] /project/src/App.tsx',
+      '[10:30:45] Analyzing code',
+    ]);
+  });
+
+  it('timestamp prefix can be parsed with regex', () => {
+    const line = '[14:05:09] [Bash] npm test';
+    const match = /^\[(\d{2}:\d{2}:\d{2})\] (.*)$/.exec(line);
+    expect(match).not.toBeNull();
+    expect(match![1]).toBe('14:05:09');
+    expect(match![2]).toBe('[Bash] npm test');
+  });
+
+  it('lines without timestamp prefix do not match', () => {
+    const line = '[Bash] npm test';
+    const match = /^\[(\d{2}:\d{2}:\d{2})\] (.*)$/.exec(line);
+    expect(match).toBeNull();
   });
 });
