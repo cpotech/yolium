@@ -6,7 +6,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { X, GitBranch, Clock, FolderOpen, GitMerge, GitPullRequest, Check, AlertTriangle, ExternalLink, Save, Trash2 } from 'lucide-react'
 import type { KanbanItem, KanbanColumn } from '@shared/types/kanban'
-import type { AgentDefinition } from '@shared/types/agent'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
 import { CommentsList } from './CommentsList'
@@ -85,7 +84,6 @@ export function ItemDetailDialog({
   const [agentType, setAgentType] = useState('')
   const [agentProvider, setAgentProvider] = useState<KanbanItem['agentProvider']>('claude')
   const [model, setModel] = useState('')
-  const [agentDefinitions, setAgentDefinitions] = useState<AgentDefinition[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isStartingAgent, setIsStartingAgent] = useState(false)
@@ -108,11 +106,6 @@ export function ItemDetailDialog({
     projectPath,
     onUpdated,
   })
-
-  // Fetch agent definitions on mount
-  useEffect(() => {
-    window.electronAPI.agent.listDefinitions().then(setAgentDefinitions).catch(() => {})
-  }, [])
 
   // Track baseline values to detect unsaved changes
   const [baseTitle, setBaseTitle] = useState('')
@@ -529,7 +522,7 @@ export function ItemDetailDialog({
                 >
                   Agent Provider
                 </label>
-                {item.agentStatus === 'idle' ? (
+                {item.agentStatus !== 'running' && item.agentStatus !== 'waiting' ? (
                   <select
                     id="detail-agent-provider"
                     data-testid="agent-provider-select"
@@ -550,32 +543,6 @@ export function ItemDetailDialog({
                   </span>
                 )}
               </div>
-
-              {/* Agent Type */}
-              {agentDefinitions.length > 0 && (
-                <div>
-                  <label
-                    htmlFor="detail-agent-type"
-                    className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
-                  >
-                    Agent Type
-                  </label>
-                  <select
-                    id="detail-agent-type"
-                    data-testid="agent-type-select"
-                    value={agentType}
-                    onChange={e => setAgentType(e.target.value)}
-                    className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
-                  >
-                    <option value="">Not set</option>
-                    {agentDefinitions.map(agent => (
-                      <option key={agent.name} value={agent.name}>
-                        {agent.name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
               {/* Model */}
               <div>
