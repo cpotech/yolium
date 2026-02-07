@@ -8,6 +8,7 @@ import {
   addItem,
   updateItem,
   addComment,
+  deleteItems,
   buildConversationHistory,
   normalizeForHash,
 } from '@main/stores/kanban-store';
@@ -334,6 +335,66 @@ describe('kanban-store', () => {
       expect(history).toContain('[system]: Agent started');
       expect(history).toContain('[agent]: Which framework?');
       expect(history).toContain('[user]: Use React');
+    });
+  });
+
+  describe('deleteItems', () => {
+    it('should delete multiple items by their IDs', () => {
+      const board = createBoard('/path/to/project');
+      const item1 = addItem(board, { title: 'Item 1', description: 'Desc 1', agentProvider: 'claude', order: 0 });
+      const item2 = addItem(board, { title: 'Item 2', description: 'Desc 2', agentProvider: 'claude', order: 1 });
+      const item3 = addItem(board, { title: 'Item 3', description: 'Desc 3', agentProvider: 'claude', order: 2 });
+
+      const deletedIds = deleteItems(board, [item1.id, item3.id]);
+
+      expect(deletedIds).toHaveLength(2);
+      expect(deletedIds).toContain(item1.id);
+      expect(deletedIds).toContain(item3.id);
+      expect(board.items).toHaveLength(1);
+      expect(board.items[0].id).toBe(item2.id);
+    });
+
+    it('should return empty array when no IDs match', () => {
+      const board = createBoard('/path/to/project');
+      addItem(board, { title: 'Item 1', description: 'Desc 1', agentProvider: 'claude', order: 0 });
+
+      const deletedIds = deleteItems(board, ['nonexistent-id']);
+
+      expect(deletedIds).toHaveLength(0);
+      expect(board.items).toHaveLength(1);
+    });
+
+    it('should handle empty itemIds array', () => {
+      const board = createBoard('/path/to/project');
+      addItem(board, { title: 'Item 1', description: 'Desc 1', agentProvider: 'claude', order: 0 });
+
+      const deletedIds = deleteItems(board, []);
+
+      expect(deletedIds).toHaveLength(0);
+      expect(board.items).toHaveLength(1);
+    });
+
+    it('should only delete items that exist, ignoring unknown IDs', () => {
+      const board = createBoard('/path/to/project');
+      const item1 = addItem(board, { title: 'Item 1', description: 'Desc 1', agentProvider: 'claude', order: 0 });
+      addItem(board, { title: 'Item 2', description: 'Desc 2', agentProvider: 'claude', order: 1 });
+
+      const deletedIds = deleteItems(board, [item1.id, 'nonexistent-id']);
+
+      expect(deletedIds).toHaveLength(1);
+      expect(deletedIds).toContain(item1.id);
+      expect(board.items).toHaveLength(1);
+    });
+
+    it('should delete all items when all IDs are provided', () => {
+      const board = createBoard('/path/to/project');
+      const item1 = addItem(board, { title: 'Item 1', description: 'Desc 1', agentProvider: 'claude', order: 0 });
+      const item2 = addItem(board, { title: 'Item 2', description: 'Desc 2', agentProvider: 'claude', order: 1 });
+
+      const deletedIds = deleteItems(board, [item1.id, item2.id]);
+
+      expect(deletedIds).toHaveLength(2);
+      expect(board.items).toHaveLength(0);
     });
   });
 

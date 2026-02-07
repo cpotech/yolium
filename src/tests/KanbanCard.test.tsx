@@ -153,7 +153,7 @@ describe('KanbanCard', () => {
     render(<KanbanCard item={item} onClick={onClick} />)
 
     fireEvent.click(screen.getByTestId('kanban-card'))
-    expect(onClick).toHaveBeenCalledWith(item)
+    expect(onClick).toHaveBeenCalledWith(item, expect.anything())
   })
 
   it('should have cursor pointer style', () => {
@@ -186,7 +186,7 @@ describe('KanbanCard', () => {
     render(<KanbanCard item={item} onClick={onClick} />)
 
     fireEvent.keyDown(screen.getByTestId('kanban-card'), { key: 'Enter' })
-    expect(onClick).toHaveBeenCalledWith(item)
+    expect(onClick).toHaveBeenCalledWith(item, expect.anything())
   })
 
   it('should open on Space keypress', () => {
@@ -195,7 +195,7 @@ describe('KanbanCard', () => {
     render(<KanbanCard item={item} onClick={onClick} />)
 
     fireEvent.keyDown(screen.getByTestId('kanban-card'), { key: ' ' })
-    expect(onClick).toHaveBeenCalledWith(item)
+    expect(onClick).toHaveBeenCalledWith(item, expect.anything())
   })
 
   it('should have pulsing border for running agent cards', () => {

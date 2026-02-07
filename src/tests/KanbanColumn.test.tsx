@@ -196,7 +196,7 @@ describe('KanbanColumn', () => {
     )
 
     screen.getByTestId('kanban-card').click()
-    expect(onCardClick).toHaveBeenCalledWith(item)
+    expect(onCardClick).toHaveBeenCalledWith(item, expect.anything())
   })
 
   it('should show column empty state with data-testid', () => {

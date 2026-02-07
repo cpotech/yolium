@@ -210,6 +210,8 @@ const kanban = {
     ipcRenderer.invoke('kanban:add-comment', projectPath, itemId, source, text),
   deleteItem: (projectPath: string, itemId: string) =>
     ipcRenderer.invoke('kanban:delete-item', projectPath, itemId),
+  deleteItems: (projectPath: string, itemIds: string[]) =>
+    ipcRenderer.invoke('kanban:delete-items', projectPath, itemIds),
   deleteBoard: (projectPath: string) =>
     ipcRenderer.invoke('kanban:delete-board', projectPath),
   onBoardUpdated: (callback: (projectPath: string) => void): CleanupFn => {
@@ -502,6 +504,7 @@ declare global {
         updateItem: (projectPath: string, itemId: string, updates: object) => Promise<object | null>;
         addComment: (projectPath: string, itemId: string, source: string, text: string) => Promise<object | null>;
         deleteItem: (projectPath: string, itemId: string) => Promise<boolean>;
+        deleteItems: (projectPath: string, itemIds: string[]) => Promise<string[]>;
         deleteBoard: (projectPath: string) => Promise<{ deleted: boolean }>;
         onBoardUpdated: (callback: (projectPath: string) => void) => CleanupFunction;
       };
