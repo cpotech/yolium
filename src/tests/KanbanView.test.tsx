@@ -38,7 +38,7 @@ const createMockItem = (overrides: Partial<KanbanItem> = {}): KanbanItem => ({
   title: 'Test Task Title',
   description: 'This is a test description for the kanban card',
   column: 'backlog',
-  agentType: 'claude',
+  agentProvider: 'claude',
   agentStatus: 'idle',
   branch: undefined,
   order: 0,

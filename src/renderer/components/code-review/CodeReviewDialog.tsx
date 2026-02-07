@@ -1,11 +1,11 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
 import { Loader2, AlertTriangle } from 'lucide-react';
-import type { ReviewAgentType, CodeReviewStatus } from '@shared/types/agent';
+import type { ReviewAgentProvider, CodeReviewStatus } from '@shared/types/agent';
 
 interface CodeReviewDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onStartReview: (repoUrl: string, branch: string, agent: ReviewAgentType) => void;
+  onStartReview: (repoUrl: string, branch: string, agent: ReviewAgentProvider) => void;
   hasGitCredentials: boolean;
   reviewStatus: CodeReviewStatus | null;
   reviewError: string | null;
@@ -30,7 +30,7 @@ export function CodeReviewDialog({
   const [branches, setBranches] = useState<string[]>([]);
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [branchError, setBranchError] = useState<string | null>(null);
-  const [selectedAgent, setSelectedAgent] = useState<ReviewAgentType>('claude');
+  const [selectedAgent, setSelectedAgent] = useState<ReviewAgentProvider>('claude');
   const [agentAuthWarning, setAgentAuthWarning] = useState<string | null>(null);
 
   // Auto-focus URL input when opened
@@ -70,7 +70,7 @@ export function CodeReviewDialog({
     checkAgentAuth(selectedAgent);
   }, [selectedAgent, isOpen]);
 
-  const checkAgentAuth = useCallback(async (agent: ReviewAgentType) => {
+  const checkAgentAuth = useCallback(async (agent: ReviewAgentProvider) => {
     try {
       const result = await window.electronAPI.codeReview.checkAuth(agent);
       if (!result.authenticated) {

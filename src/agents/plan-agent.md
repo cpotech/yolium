@@ -41,13 +41,13 @@ Communicate with Yolium by outputting JSON messages prefixed with `@@YOLIUM:`:
 ### Create a Work Item
 
 ```
-@@YOLIUM:{"type":"create_item","title":"Short title","description":"Detailed instructions...","branch":"feature/branch-name","agentType":"claude","order":1}
+@@YOLIUM:{"type":"create_item","title":"Short title","description":"Detailed instructions...","branch":"feature/branch-name","agentProvider":"claude","order":1}
 ```
 
 - `title`: Short, descriptive title (required)
 - `description`: Detailed instructions with acceptance criteria (required)
 - `branch`: Suggested git branch name (optional)
-- `agentType`: `claude` | `codex` | `opencode` (required)
+- `agentProvider`: `claude` | `codex` | `opencode` (required)
 - `order`: Suggested execution sequence, 1 = first (required)
 - `model`: `opus` | `sonnet` | `haiku` (optional, defaults to agent's own model)
 

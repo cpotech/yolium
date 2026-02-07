@@ -1,5 +1,5 @@
 // src/types/kanban.ts
-import type { KanbanAgentType } from './agent';
+import type { KanbanAgentProvider } from './agent';
 
 export type AgentStatus =
   | 'idle'
@@ -29,7 +29,7 @@ export interface KanbanItem {
   description: string;
   column: KanbanColumn;
   branch?: string;
-  agentType: KanbanAgentType;
+  agentProvider: KanbanAgentProvider;
   order: number;
   model?: string;
   agentStatus: AgentStatus;

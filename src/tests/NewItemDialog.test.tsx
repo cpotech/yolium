@@ -49,7 +49,7 @@ describe('NewItemDialog', () => {
     expect(screen.getByTestId('title-input')).toBeInTheDocument()
     expect(screen.getByTestId('description-input')).toBeInTheDocument()
     expect(screen.getByTestId('branch-input')).toBeInTheDocument()
-    expect(screen.getByTestId('agent-type-select')).toBeInTheDocument()
+    expect(screen.getByTestId('agent-provider-select')).toBeInTheDocument()
   })
 
   it('should have create button disabled when title is empty', () => {
@@ -128,7 +128,7 @@ describe('NewItemDialog', () => {
     fireEvent.change(screen.getByTestId('branch-input'), {
       target: { value: 'feature/my-branch' },
     })
-    fireEvent.change(screen.getByTestId('agent-type-select'), {
+    fireEvent.change(screen.getByTestId('agent-provider-select'), {
       target: { value: 'codex' },
     })
 
@@ -139,7 +139,7 @@ describe('NewItemDialog', () => {
         title: 'My New Task',
         description: 'Task description here',
         branch: 'feature/my-branch',
-        agentType: 'codex',
+        agentProvider: 'codex',
         order: 0,
       })
     })
@@ -176,7 +176,7 @@ describe('NewItemDialog', () => {
         title: 'My Task',
         description: 'Description',
         branch: undefined,
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 0,
       })
     })
@@ -255,7 +255,7 @@ describe('NewItemDialog', () => {
     expect(screen.getByTestId('description-input')).toHaveValue('')
   })
 
-  it('should have claude as default agent type', () => {
+  it('should have claude as default agent provider', () => {
     render(
       <NewItemDialog
         isOpen={true}
@@ -265,10 +265,10 @@ describe('NewItemDialog', () => {
       />
     )
 
-    expect(screen.getByTestId('agent-type-select')).toHaveValue('claude')
+    expect(screen.getByTestId('agent-provider-select')).toHaveValue('claude')
   })
 
-  it('should render all agent type options', () => {
+  it('should render all agent provider options', () => {
     render(
       <NewItemDialog
         isOpen={true}
@@ -278,7 +278,7 @@ describe('NewItemDialog', () => {
       />
     )
 
-    const select = screen.getByTestId('agent-type-select')
+    const select = screen.getByTestId('agent-provider-select')
     const options = select.querySelectorAll('option')
 
     expect(options).toHaveLength(3)
@@ -318,7 +318,7 @@ describe('NewItemDialog', () => {
         title: 'Shortcut Task',
         description: 'Created via shortcut',
         branch: undefined,
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 0,
       })
     })
@@ -454,7 +454,7 @@ describe('NewItemDialog', () => {
         title: 'Model Task',
         description: 'Testing model selection',
         branch: undefined,
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 0,
         model: 'opus',
       })
@@ -487,7 +487,7 @@ describe('NewItemDialog', () => {
         title: 'No Model',
         description: 'Uses agent default',
         branch: undefined,
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 0,
       })
     })
