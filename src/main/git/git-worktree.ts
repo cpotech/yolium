@@ -601,18 +601,10 @@ export function mergeBranchAndPushPR(
   }
 
   // Step 3: Create the PR branch from default branch
-  // If the PR branch already exists, delete it first
+  // Use -B to create or reset the branch (handles the case where prBranch === worktreeBranch
+  // or when a previous failed attempt left the branch behind)
   try {
-    execFileSync('git', ['branch', '-D', prBranch], {
-      cwd: projectPath,
-      stdio: 'pipe',
-    });
-  } catch {
-    // Branch doesn't exist — that's fine
-  }
-
-  try {
-    execFileSync('git', ['checkout', '-b', prBranch], {
+    execFileSync('git', ['checkout', '-B', prBranch], {
       cwd: projectPath,
       stdio: 'pipe',
     });
