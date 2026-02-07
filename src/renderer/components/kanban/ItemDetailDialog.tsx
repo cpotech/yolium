@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react'
-import { X, GitBranch, Clock, FolderOpen, GitMerge, Check, AlertTriangle, Save, Trash2 } from 'lucide-react'
+import { X, GitBranch, Clock, FolderOpen, GitMerge, GitPullRequest, Check, AlertTriangle, ExternalLink, Save, Trash2 } from 'lucide-react'
 import type { KanbanItem, KanbanColumn } from '@shared/types/kanban'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
@@ -89,6 +89,7 @@ export function ItemDetailDialog({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isAnswering, setIsAnswering] = useState(false)
   const [isMerging, setIsMerging] = useState(false)
+  const [prUrl, setPrUrl] = useState<string | null>(null)
 
   // Refs
   const answerInputRef = useRef<HTMLTextAreaElement>(null)
@@ -126,6 +127,7 @@ export function ItemDetailDialog({
         setBaseDescription(item.description)
         setBaseColumn(item.column)
         setBaseModel(item.model || '')
+        setPrUrl(null)
         prevItemIdRef.current = item.id
       }
     }
@@ -299,25 +301,44 @@ export function ItemDetailDialog({
         : 'No changes detected'
 
       const confirmed = await window.electronAPI.dialog.confirmOkCancel(
-        'Merge to Main',
-        `Merge branch "${item.branch}"?\n\n${statsMsg}`
+        'Merge & Create PR',
+        `Merge branch "${item.branch}" and push a PR?\n\n${statsMsg}`
       )
       if (!confirmed) {
         setIsMerging(false)
         return
       }
 
-      // Perform the merge
-      const result = await window.electronAPI.git.mergeBranch(projectPath, item.branch)
+      // Merge, push, and create PR
+      const result = await window.electronAPI.git.mergeAndPushPR(
+        projectPath,
+        item.branch,
+        item.worktreePath,
+        item.title,
+        item.description,
+      )
 
-      if (result.success) {
-        // Clean up worktree and branch
-        await window.electronAPI.git.cleanupWorktree(projectPath, item.worktreePath, item.branch)
-        // Update item: mark as merged, clear worktree path
+      if (result.success && !result.error) {
+        // Full success: merged, pushed, PR created, worktree cleaned up
         await window.electronAPI.kanban.updateItem(projectPath, item.id, {
           mergeStatus: 'merged',
           worktreePath: undefined,
         })
+        if (result.prUrl) {
+          setPrUrl(result.prUrl)
+          await window.electronAPI.kanban.addComment(
+            projectPath, item.id, 'system',
+            `PR created: ${result.prUrl}`
+          )
+        }
+        onUpdated()
+      } else if (result.success && result.error) {
+        // Partial success: branch pushed but PR creation failed
+        await window.electronAPI.kanban.updateItem(projectPath, item.id, {
+          mergeStatus: 'merged',
+          worktreePath: undefined,
+        })
+        setErrorMessage(result.error)
         onUpdated()
       } else if (result.conflict) {
         await window.electronAPI.kanban.updateItem(projectPath, item.id, {
@@ -329,8 +350,8 @@ export function ItemDetailDialog({
         setErrorMessage(result.error || 'Merge failed')
       }
     } catch (error) {
-      console.error('Failed to merge:', error)
-      setErrorMessage('Failed to merge branch. Please try again.')
+      console.error('Failed to merge and push PR:', error)
+      setErrorMessage('Failed to merge and push PR. Please try again.')
     } finally {
       setIsMerging(false)
     }
@@ -587,12 +608,22 @@ export function ItemDetailDialog({
                     Merge Status
                   </label>
                   {item.mergeStatus === 'merged' && (
-                    <div
-                      data-testid="merge-status-merged"
-                      className="flex items-center gap-1 text-sm text-green-400"
-                    >
-                      <Check size={14} />
-                      <span>Merged</span>
+                    <div data-testid="merge-status-merged">
+                      <div className="flex items-center gap-1 text-sm text-green-400">
+                        <Check size={14} />
+                        <span>Merged</span>
+                      </div>
+                      {prUrl && (
+                        <button
+                          data-testid="pr-link"
+                          onClick={() => window.electronAPI.app.openExternal(prUrl)}
+                          className="mt-1.5 w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 text-blue-400 rounded-md hover:bg-blue-600/10 border border-blue-600/30 transition-colors"
+                        >
+                          <GitPullRequest size={12} />
+                          <span>View PR</span>
+                          <ExternalLink size={10} />
+                        </button>
+                      )}
                     </div>
                   )}
                   {item.mergeStatus === 'conflict' && (
@@ -607,7 +638,7 @@ export function ItemDetailDialog({
                         disabled={isMerging}
                         className="w-full px-3 py-1.5 text-xs bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
-                        {isMerging ? 'Merging...' : 'Retry Merge'}
+                        {isMerging ? 'Retrying...' : 'Retry Merge & PR'}
                       </button>
                     </div>
                   )}
@@ -620,7 +651,7 @@ export function ItemDetailDialog({
                         className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         <GitMerge size={12} />
-                        {isMerging ? 'Merging...' : 'Merge to Main'}
+                        {isMerging ? 'Merging & Pushing...' : 'Merge & Push PR'}
                       </button>
                       {item.agentStatus !== 'completed' && item.column !== 'done' && (
                         <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">

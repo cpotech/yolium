@@ -27,6 +27,8 @@ import {
   initGitRepo,
   createWorktree,
   sanitizeBranchName,
+  generatePrBranchName,
+  mergeBranchAndPushPR,
 } from '@main/git/git-worktree'
 
 describe('git-worktree', () => {
@@ -312,6 +314,222 @@ describe('git-worktree', () => {
         expect.arrayContaining(['worktree', 'add']),
         expect.any(Object)
       )
+    })
+  })
+
+  describe('generatePrBranchName', () => {
+    it('creates slug from item title for auto-generated yolium branches', () => {
+      expect(generatePrBranchName('yolium-1738900000000-abc123', 'Add user authentication'))
+        .toBe('yolium/add-user-authentication')
+    })
+
+    it('handles special characters in title', () => {
+      expect(generatePrBranchName('yolium-1738900000000-def456', 'Fix bug #123: handle edge-case!'))
+        .toBe('yolium/fix-bug-123-handle-edge-case')
+    })
+
+    it('truncates long titles to 50 chars', () => {
+      const longTitle = 'This is a very long title that should be truncated to fifty characters maximum'
+      const result = generatePrBranchName('yolium-1738900000000-aaa111', longTitle)
+      // 'yolium/' prefix + slug <= 50 chars for the slug part
+      const slug = result.replace('yolium/', '')
+      expect(slug.length).toBeLessThanOrEqual(50)
+    })
+
+    it('falls back to "changes" for empty title after sanitization', () => {
+      expect(generatePrBranchName('yolium-1738900000000-bbb222', '!!!'))
+        .toBe('yolium/changes')
+    })
+
+    it('returns original branch name for user-specified branches', () => {
+      expect(generatePrBranchName('feature/my-cool-feature', 'Some title'))
+        .toBe('feature/my-cool-feature')
+    })
+
+    it('returns original branch name for non-yolium branches', () => {
+      expect(generatePrBranchName('fix/auth-bug', 'Fix auth'))
+        .toBe('fix/auth-bug')
+    })
+  })
+
+  describe('mergeBranchAndPushPR', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      vi.mocked(execFileSync).mockReturnValue(Buffer.from(''))
+      vi.mocked(fs.existsSync).mockReturnValue(true)
+    })
+
+    it('returns conflict result when merge has conflicts', () => {
+      let callCount = 0
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        // validate branch
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        // getDefaultBranch
+        if (command.includes('symbolic-ref')) throw new Error('no remote')
+        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        // fetch
+        if (command.includes('fetch origin')) return Buffer.from('')
+        // checkout default
+        if (command.includes('checkout main') && !command.includes('-b')) return Buffer.from('')
+        // pull
+        if (command.includes('pull')) return Buffer.from('')
+        // delete existing pr branch (branch -D)
+        if (command.includes('branch -D')) throw new Error('not found')
+        // create pr branch
+        if (command.includes('checkout -b')) return Buffer.from('')
+        // merge - fail with conflict
+        if (command.includes('merge') && command.includes('--no-ff')) {
+          const err = new Error('merge failed') as Error & { stderr: Buffer; stdout: Buffer }
+          err.stderr = Buffer.from('CONFLICT (content): Merge conflict in file.ts')
+          err.stdout = Buffer.from('Automatic merge failed')
+          throw err
+        }
+        // merge --abort
+        if (command.includes('merge --abort')) return Buffer.from('')
+        return Buffer.from('')
+      })
+
+      const result = mergeBranchAndPushPR(
+        '/home/user/project',
+        'yolium-123-abc',
+        '/home/user/.yolium/worktrees/proj/yolium-123-abc',
+        'Add auth feature',
+        'Add user authentication',
+      )
+
+      expect(result.success).toBe(false)
+      expect(result.conflict).toBe(true)
+      expect(result.error).toContain('conflicts')
+    })
+
+    it('returns error when push fails', () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        if (command.includes('symbolic-ref')) throw new Error('no remote')
+        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        if (command.includes('fetch')) return Buffer.from('')
+        if (command.includes('checkout main') && !command.includes('-b')) return Buffer.from('')
+        if (command.includes('pull')) return Buffer.from('')
+        if (command.includes('branch -D')) throw new Error('not found')
+        if (command.includes('checkout -b')) return Buffer.from('')
+        if (command.includes('merge') && command.includes('--no-ff')) return Buffer.from('')
+        if (command.includes('push -u')) {
+          const err = new Error('push failed') as Error & { stderr: Buffer }
+          err.stderr = Buffer.from('remote: Permission denied')
+          throw err
+        }
+        return Buffer.from('')
+      })
+
+      const result = mergeBranchAndPushPR(
+        '/home/user/project',
+        'yolium-123-abc',
+        '/home/user/.yolium/worktrees/proj/yolium-123-abc',
+        'Add auth',
+        'Add user auth',
+      )
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Failed to push')
+    })
+
+    it('returns success with prUrl on full success', () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        if (command.includes('symbolic-ref')) throw new Error('no remote')
+        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        if (command.includes('fetch')) return Buffer.from('')
+        if (command.includes('checkout main') && !command.includes('-b')) return Buffer.from('')
+        if (command.includes('pull')) return Buffer.from('')
+        if (command.includes('branch -D')) throw new Error('not found')
+        if (command.includes('checkout -b')) return Buffer.from('')
+        if (command.includes('merge') && command.includes('--no-ff')) return Buffer.from('')
+        if (command.includes('push -u')) return Buffer.from('')
+        // gh pr create
+        if (cmd === 'gh') return 'https://github.com/user/repo/pull/42\n'
+        // cleanup: worktree remove, branch delete, worktree prune
+        if (command.includes('worktree remove')) return Buffer.from('')
+        if (command.includes('branch -d')) return Buffer.from('')
+        return Buffer.from('')
+      })
+
+      const result = mergeBranchAndPushPR(
+        '/home/user/project',
+        'yolium-123-abc',
+        '/home/user/.yolium/worktrees/proj/yolium-123-abc',
+        'Add auth feature',
+        'Add user authentication',
+      )
+
+      expect(result.success).toBe(true)
+      expect(result.prUrl).toBe('https://github.com/user/repo/pull/42')
+      expect(result.prBranch).toBe('yolium/add-auth-feature')
+    })
+
+    it('returns partial success when PR creation fails but push succeeds', () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        if (command.includes('symbolic-ref')) throw new Error('no remote')
+        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        if (command.includes('fetch')) return Buffer.from('')
+        if (command.includes('checkout main') && !command.includes('-b')) return Buffer.from('')
+        if (command.includes('pull')) return Buffer.from('')
+        if (command.includes('branch -D')) throw new Error('not found')
+        if (command.includes('checkout -b')) return Buffer.from('')
+        if (command.includes('merge') && command.includes('--no-ff')) return Buffer.from('')
+        if (command.includes('push -u')) return Buffer.from('')
+        // gh pr create fails
+        if (cmd === 'gh') {
+          const err = new Error('gh failed') as Error & { stderr: Buffer }
+          err.stderr = Buffer.from('gh: not found')
+          throw err
+        }
+        return Buffer.from('')
+      })
+
+      const result = mergeBranchAndPushPR(
+        '/home/user/project',
+        'yolium-123-abc',
+        '/home/user/.yolium/worktrees/proj/yolium-123-abc',
+        'Add auth',
+        'Description',
+      )
+
+      expect(result.success).toBe(true)
+      expect(result.prUrl).toBeUndefined()
+      expect(result.prBranch).toBe('yolium/add-auth')
+      expect(result.error).toContain('PR creation failed')
+    })
+
+    it('returns error when checkout of default branch fails', () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        if (command.includes('symbolic-ref')) throw new Error('no remote')
+        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        if (command.includes('fetch')) return Buffer.from('')
+        if (command.includes('checkout main')) {
+          const err = new Error('checkout failed') as Error & { stderr: Buffer }
+          err.stderr = Buffer.from('error: uncommitted changes')
+          throw err
+        }
+        return Buffer.from('')
+      })
+
+      const result = mergeBranchAndPushPR(
+        '/home/user/project',
+        'yolium-123-abc',
+        '/home/user/.yolium/worktrees/proj/yolium-123-abc',
+        'Add auth',
+        'Description',
+      )
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Failed to checkout main')
     })
   })
 })

@@ -144,6 +144,8 @@ const git = {
     ipcRenderer.invoke('git:worktree-diff-stats', projectPath, branchName),
   cleanupWorktree: (projectPath: string, worktreePath: string, branchName: string) =>
     ipcRenderer.invoke('git:cleanup-worktree', projectPath, worktreePath, branchName),
+  mergeAndPushPR: (projectPath: string, branchName: string, worktreePath: string, itemTitle: string, itemDescription: string) =>
+    ipcRenderer.invoke('git:merge-and-push-pr', projectPath, branchName, worktreePath, itemTitle, itemDescription),
   detectNestedRepos: (folderPath: string) =>
     ipcRenderer.invoke('git:detect-nested-repos', folderPath),
 };
@@ -426,6 +428,7 @@ declare global {
         mergeBranch: (projectPath: string, branchName: string) => Promise<{ success: boolean; error?: string; conflict?: boolean }>;
         worktreeDiffStats: (projectPath: string, branchName: string) => Promise<{ filesChanged: number; insertions: number; deletions: number }>;
         cleanupWorktree: (projectPath: string, worktreePath: string, branchName: string) => Promise<void>;
+        mergeAndPushPR: (projectPath: string, branchName: string, worktreePath: string, itemTitle: string, itemDescription: string) => Promise<{ success: boolean; prUrl?: string; prBranch?: string; error?: string; conflict?: boolean }>;
         detectNestedRepos: (folderPath: string) => Promise<{
           isRepo: boolean;
           nestedRepos: Array<{ name: string; path: string }>;
