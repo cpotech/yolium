@@ -225,7 +225,7 @@ test.describe('Kanban Board', () => {
     await expect(window.locator(selectors.detailTitle)).toHaveValue('My Task');
     await expect(window.locator(selectors.detailDescription)).toHaveValue('Do the thing');
     await expect(window.locator(selectors.detailStatusBadge)).toContainText('idle');
-    await expect(window.locator(selectors.detailAgentProvider)).toContainText('Codex');
+    await expect(window.locator(selectors.detailAgentProviderSelect)).toHaveValue('codex');
     await expect(window.locator(selectors.detailBranchDisplay)).toContainText('feat/thing');
     await expect(window.locator(selectors.detailNoComments)).toBeVisible();
   });

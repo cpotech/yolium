@@ -131,6 +131,7 @@ export const selectors = {
   detailCloseButton: '[data-testid="item-detail-dialog"] [data-testid="close-button"]',
   detailBranchDisplay: '[data-testid="item-detail-dialog"] [data-testid="branch-display"]',
   detailAgentProvider: '[data-testid="item-detail-dialog"] [data-testid="agent-provider-display"]',
+  detailAgentProviderSelect: '[data-testid="item-detail-dialog"] [data-testid="agent-provider-select"]',
   detailCreatedAt: '[data-testid="item-detail-dialog"] [data-testid="created-at"]',
   detailCommentsSection: '[data-testid="item-detail-dialog"] [data-testid="comments-section"]',
   detailNoComments: '[data-testid="item-detail-dialog"] [data-testid="no-comments"]',

@@ -357,6 +357,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
       projectPath,
       itemId: item.id,
       goal: item.description,
+      agentProvider: item.agentProvider,
     })
     loadBoard()
   }, [projectPath, board, loadBoard])
@@ -373,6 +374,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
       projectPath,
       itemId: item.id,
       goal: item.description,
+      agentProvider: item.agentProvider,
     })
     loadBoard()
   }, [projectPath, board, loadBoard])
@@ -389,6 +391,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
       projectPath,
       itemId: item.id,
       goal: item.description,
+      agentProvider: item.agentProvider,
     })
     loadBoard()
   }, [projectPath, board, loadBoard])

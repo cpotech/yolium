@@ -170,8 +170,8 @@ test.describe('Work Item State Updates', () => {
     // Status badge should show failed
     await expect(window.locator('[data-testid="status-badge"]')).toContainText('failed');
 
-    // Retry button should be visible
-    await expect(window.locator('[data-testid="retry-agent-button"]')).toBeVisible();
+    // Agent failed message should be visible in the controls section
+    await expect(window.locator('[data-testid="item-detail-dialog"]')).toContainText('Agent failed');
   });
 
   test('detail dialog stays open through full lifecycle', async () => {
