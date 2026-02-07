@@ -1,13 +1,13 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
-import type { AgentType } from '@shared/types/agent';
+import type { AgentProvider } from '@shared/types/agent';
 
-export type { AgentType } from '@shared/types/agent';
+export type { AgentProvider } from '@shared/types/agent';
 
 interface AgentSelectDialogProps {
   isOpen: boolean;
   folderPath: string;
   gitStatus: { isRepo: boolean; hasCommits: boolean } | null;
-  onSelect: (agent: AgentType, gsdEnabled: boolean, worktreeEnabled: boolean, branchName: string | null) => void;
+  onSelect: (agent: AgentProvider, gsdEnabled: boolean, worktreeEnabled: boolean, branchName: string | null) => void;
   onBack: () => void;
   onCancel: () => void;
   onGitInit?: () => void;
@@ -24,7 +24,7 @@ export function AgentSelectDialog({
 }: AgentSelectDialogProps): React.ReactElement | null {
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstButtonRef = useRef<HTMLButtonElement>(null);
-  const [selectedAgent, setSelectedAgent] = useState<AgentType>('claude');
+  const [selectedAgent, setSelectedAgent] = useState<AgentProvider>('claude');
   const [gsdEnabled, setGsdEnabled] = useState(false);
   const [worktreeEnabled, setWorktreeEnabled] = useState(false);
   const [branchName, setBranchName] = useState('');

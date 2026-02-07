@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import * as path from 'node:path'
 import * as os from 'node:os'
 import * as crypto from 'node:crypto'
-import type { AgentType } from '@shared/types/agent'
+import type { AgentProvider } from '@shared/types/agent'
 
 // Test pure utility functions from docker-manager
 // These are extracted/reimplemented here since they're not exported
@@ -475,13 +475,13 @@ describe('settings config persistence', () => {
 })
 
 describe('codex agent type', () => {
-  it('codex is assignable to AgentType', () => {
-    const agent: AgentType = 'codex';
+  it('codex is assignable to AgentProvider', () => {
+    const agent: AgentProvider = 'codex';
     expect(agent).toBe('codex');
   })
 
   it('all agent types are distinct', () => {
-    const agents: AgentType[] = ['claude', 'opencode', 'codex', 'shell'];
+    const agents: AgentProvider[] = ['claude', 'opencode', 'codex', 'shell'];
     expect(new Set(agents).size).toBe(agents.length);
   })
 })

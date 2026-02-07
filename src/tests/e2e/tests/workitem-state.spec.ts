@@ -55,7 +55,7 @@ test.describe('Work Item State Updates', () => {
       return window.electronAPI.kanban.addItem(repoPath, {
         title: 'Test work item',
         description: 'E2E test item for state updates',
-        agentType: 'claude' as const,
+        agentProvider: 'claude' as const,
         order: 0,
       });
     }, testRepoPath) as { id: string };

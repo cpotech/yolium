@@ -9,7 +9,7 @@ import type {
   KanbanComment,
   CommentSource,
 } from '@shared/types/kanban';
-import type { KanbanAgentType } from '@shared/types/agent';
+import type { KanbanAgentProvider } from '@shared/types/agent';
 
 const YOLIUM_DIR = path.join(os.homedir(), '.yolium');
 const BOARDS_DIR = path.join(YOLIUM_DIR, 'boards');
@@ -124,7 +124,7 @@ export interface NewItemParams {
   title: string;
   description: string;
   branch?: string;
-  agentType: KanbanAgentType;
+  agentProvider: KanbanAgentProvider;
   order: number;
   model?: string;
 }
@@ -136,7 +136,7 @@ export function addItem(board: KanbanBoard, params: NewItemParams): KanbanItem {
     description: params.description,
     column: 'backlog',
     branch: params.branch,
-    agentType: params.agentType,
+    agentProvider: params.agentProvider,
     order: params.order,
     model: params.model,
     agentStatus: 'idle',

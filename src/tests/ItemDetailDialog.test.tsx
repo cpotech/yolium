@@ -53,7 +53,7 @@ const createMockItem = (overrides: Partial<KanbanItem> = {}): KanbanItem => ({
   description: 'Test description',
   column: 'backlog',
   branch: 'feature/test',
-  agentType: 'claude',
+  agentProvider: 'claude',
   order: 0,
   agentStatus: 'idle',
   comments: [],
@@ -96,7 +96,7 @@ describe('ItemDetailDialog', () => {
       title: 'My Task Title',
       description: 'My task description text',
       branch: 'feature/my-feature',
-      agentType: 'codex',
+      agentProvider: 'codex',
     })
 
     render(
@@ -113,7 +113,7 @@ describe('ItemDetailDialog', () => {
     expect(screen.getByTestId('title-input')).toHaveValue('My Task Title')
     expect(screen.getByTestId('description-input')).toHaveValue('My task description text')
     expect(screen.getByTestId('branch-display')).toHaveTextContent('feature/my-feature')
-    expect(screen.getByTestId('agent-type-display')).toHaveTextContent('Codex')
+    expect(screen.getByTestId('agent-provider-display')).toHaveTextContent('Codex')
   })
 
   it('should render column selector with current column selected', () => {

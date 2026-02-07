@@ -200,7 +200,7 @@ const kanban = {
     title: string;
     description: string;
     branch?: string;
-    agentType: 'claude' | 'codex' | 'opencode';
+    agentProvider: 'claude' | 'codex' | 'opencode';
     order: number;
     model?: string;
   }) => ipcRenderer.invoke('kanban:add-item', projectPath, params),
@@ -476,7 +476,7 @@ declare global {
             description: string;
             column: 'backlog' | 'ready' | 'in-progress' | 'done';
             branch?: string;
-            agentType: 'claude' | 'codex' | 'opencode';
+            agentProvider: 'claude' | 'codex' | 'opencode';
             order: number;
             model?: string;
             agentStatus: 'idle' | 'running' | 'waiting' | 'interrupted' | 'completed' | 'failed';
@@ -495,7 +495,7 @@ declare global {
           title: string;
           description: string;
           branch?: string;
-          agentType: 'claude' | 'codex' | 'opencode';
+          agentProvider: 'claude' | 'codex' | 'opencode';
           order: number;
           model?: string;
         }) => Promise<object>;

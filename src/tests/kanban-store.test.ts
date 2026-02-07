@@ -118,7 +118,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test Item',
         description: 'Do the thing',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 1,
       });
 
@@ -135,7 +135,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 1,
       });
 
@@ -152,7 +152,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 1,
       });
 
@@ -170,7 +170,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 1,
       });
 
@@ -185,7 +185,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 1,
       });
 
@@ -223,7 +223,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 0,
       });
 
@@ -236,7 +236,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 0,
       });
 
@@ -249,7 +249,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 0,
       });
 
@@ -263,7 +263,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 0,
       });
 
@@ -277,7 +277,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 0,
       });
 
@@ -291,7 +291,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 0,
         model: 'opus',
       });
@@ -306,7 +306,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 0,
       });
 
@@ -321,7 +321,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 1,
       });
 

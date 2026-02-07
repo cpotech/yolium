@@ -37,7 +37,7 @@ export function registerKanbanHandlers(ipcMain: IpcMain): void {
     title: string;
     description: string;
     branch?: string;
-    agentType: 'claude' | 'codex' | 'opencode';
+    agentProvider: 'claude' | 'codex' | 'opencode';
     order: number;
     model?: string;
   }) => {

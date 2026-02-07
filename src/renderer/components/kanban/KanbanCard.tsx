@@ -11,7 +11,7 @@ interface KanbanCardProps {
   onRunAgainAgent?: (itemId: string) => void
 }
 
-const agentTypeLabels: Record<KanbanItem['agentType'], string> = {
+const agentProviderLabels: Record<KanbanItem['agentProvider'], string> = {
   claude: 'Claude',
   codex: 'Codex',
   opencode: 'OpenCode',
@@ -169,7 +169,7 @@ export function KanbanCard({ item, onClick, onDragStart, onRetryAgent, onResumeA
           data-testid="agent-type-badge"
           className="flex-shrink-0 px-1.5 py-0.5 text-[10px] font-medium rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
         >
-          {item.activeAgentName ? formatAgentRoleLabel(item.activeAgentName) : agentTypeLabels[item.agentType]}
+          {item.activeAgentName ? formatAgentRoleLabel(item.activeAgentName) : agentProviderLabels[item.agentProvider]}
         </span>
       </div>
 

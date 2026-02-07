@@ -14,7 +14,21 @@ describe('agent-protocol', () => {
       });
     });
 
-    it('should parse create_item message', () => {
+    it('should parse create_item message with agentProvider', () => {
+      const json = '{"type":"create_item","title":"Add auth","description":"Implement JWT","branch":"feature/auth","agentProvider":"claude","order":1}';
+      const result = parseProtocolMessage(json);
+
+      expect(result).toEqual({
+        type: 'create_item',
+        title: 'Add auth',
+        description: 'Implement JWT',
+        branch: 'feature/auth',
+        agentProvider: 'claude',
+        order: 1,
+      });
+    });
+
+    it('should parse create_item message with legacy agentType field', () => {
       const json = '{"type":"create_item","title":"Add auth","description":"Implement JWT","branch":"feature/auth","agentType":"claude","order":1}';
       const result = parseProtocolMessage(json);
 
@@ -23,7 +37,7 @@ describe('agent-protocol', () => {
         title: 'Add auth',
         description: 'Implement JWT',
         branch: 'feature/auth',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 1,
       });
     });
@@ -88,7 +102,7 @@ describe('agent-protocol', () => {
     });
 
     it('should parse create_item with model field', () => {
-      const json = '{"type":"create_item","title":"Task","description":"Do it","agentType":"claude","order":1,"model":"opus"}';
+      const json = '{"type":"create_item","title":"Task","description":"Do it","agentProvider":"claude","order":1,"model":"opus"}';
       const result = parseProtocolMessage(json);
 
       expect(result).toEqual({
@@ -96,14 +110,14 @@ describe('agent-protocol', () => {
         title: 'Task',
         description: 'Do it',
         branch: undefined,
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 1,
         model: 'opus',
       });
     });
 
-    it('should parse create_item without model (backward compat)', () => {
-      const json = '{"type":"create_item","title":"Task","description":"Do it","agentType":"codex","order":2}';
+    it('should parse create_item without model', () => {
+      const json = '{"type":"create_item","title":"Task","description":"Do it","agentProvider":"codex","order":2}';
       const result = parseProtocolMessage(json);
 
       expect(result).toEqual({
@@ -111,7 +125,7 @@ describe('agent-protocol', () => {
         title: 'Task',
         description: 'Do it',
         branch: undefined,
-        agentType: 'codex',
+        agentProvider: 'codex',
         order: 2,
         model: undefined,
       });
@@ -121,7 +135,7 @@ describe('agent-protocol', () => {
   describe('extractProtocolMessages', () => {
     it('should extract @@YOLIUM: messages from output', () => {
       const output = `Starting analysis...
-@@YOLIUM:{"type":"create_item","title":"Task 1","description":"Do thing","agentType":"claude","order":1}
+@@YOLIUM:{"type":"create_item","title":"Task 1","description":"Do thing","agentProvider":"claude","order":1}
 More output here
 @@YOLIUM:{"type":"complete","summary":"Done"}
 Final line`;
@@ -133,7 +147,7 @@ Final line`;
         type: 'create_item',
         title: 'Task 1',
         description: 'Do thing',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 1,
       });
       expect(results[1]).toEqual({

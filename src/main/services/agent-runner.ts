@@ -389,7 +389,7 @@ export function handleAgentOutput(sessionId: string, data: string): void {
           title: c.title,
           description: c.description,
           branch: c.branch,
-          agentType: c.agentType,
+          agentProvider: c.agentProvider,
           order: c.order,
           model: c.model,
         });

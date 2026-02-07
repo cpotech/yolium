@@ -27,7 +27,7 @@ const columnOptions: { id: KanbanColumn; label: string }[] = [
   { id: 'done', label: 'Done' },
 ]
 
-const agentTypeLabels: Record<KanbanItem['agentType'], string> = {
+const agentProviderLabels: Record<KanbanItem['agentProvider'], string> = {
   claude: 'Claude',
   codex: 'Codex',
   opencode: 'OpenCode',
@@ -500,16 +500,16 @@ export function ItemDetailDialog({
 
             {/* Properties */}
             <div className="p-4 space-y-4">
-              {/* Agent Type */}
+              {/* Agent Provider */}
               <div>
                 <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
-                  Agent Type
+                  Agent Provider
                 </label>
                 <span
-                  data-testid="agent-type-display"
+                  data-testid="agent-provider-display"
                   className="text-sm text-[var(--color-text-primary)]"
                 >
-                  {item.activeAgentName ? formatAgentRoleLabel(item.activeAgentName) : agentTypeLabels[item.agentType]}
+                  {item.activeAgentName ? formatAgentRoleLabel(item.activeAgentName) : agentProviderLabels[item.agentProvider]}
                 </span>
               </div>
 
