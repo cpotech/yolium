@@ -22,6 +22,7 @@ import { WhisperModelDialog } from '@renderer/components/settings/WhisperModelDi
 import { SpeechToTextButton } from '@renderer/components/SpeechToTextButton';
 import type { WhisperModelSize } from '@shared/types/whisper';
 import { Sidebar } from '@renderer/components/navigation/Sidebar';
+import type { WaitingItem } from '@renderer/components/navigation/ProjectList';
 import {
   getSidebarProjects,
   removeSidebarProject,
@@ -65,6 +66,7 @@ function App(): React.ReactElement {
   // State for sidebar (must be declared before useAgentCreation which uses setSidebarProjects)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [sidebarProjects, setSidebarProjects] = useState<SidebarProject[]>(() => getSidebarProjects());
+  const [waitingItems, setWaitingItems] = useState<WaitingItem[]>([]);
 
   // Agent creation flow
   const agentCreation = useAgentCreation({
@@ -128,6 +130,56 @@ function App(): React.ReactElement {
     setSidebarProjects(getSidebarProjects());
     closeKanbanForProject(path);
   }, [closeKanbanForProject]);
+
+  // Load waiting items from all sidebar projects
+  const refreshWaitingItems = useCallback(async () => {
+    const items: WaitingItem[] = [];
+    for (const project of getSidebarProjects()) {
+      try {
+        const board = await window.electronAPI.kanban.getBoard(project.path);
+        if (board) {
+          for (const item of board.items) {
+            if (item.agentStatus === 'waiting' && item.agentQuestion) {
+              items.push({
+                projectPath: project.path,
+                itemId: item.id,
+                itemTitle: item.title,
+                question: item.agentQuestion,
+                options: item.agentQuestionOptions,
+                agentName: item.activeAgentName,
+              });
+            }
+          }
+        }
+      } catch {
+        // skip projects that fail to load
+      }
+    }
+    setWaitingItems(items);
+  }, []);
+
+  // Refresh waiting items on mount and when board updates occur
+  useEffect(() => {
+    refreshWaitingItems();
+    const cleanup = window.electronAPI.kanban.onBoardUpdated(() => {
+      refreshWaitingItems();
+    });
+    return cleanup;
+  }, [refreshWaitingItems]);
+
+  // Answer a question and resume the agent from sidebar
+  const handleAnswerAndResume = useCallback(async (projectPath: string, itemId: string, answer: string, agentName: string) => {
+    await window.electronAPI.agent.answer(projectPath, itemId, answer);
+    // Fetch the item's description to use as goal
+    const board = await window.electronAPI.kanban.getBoard(projectPath);
+    const item = board?.items.find((i: { id: string }) => i.id === itemId);
+    await window.electronAPI.agent.resume({
+      agentName,
+      projectPath,
+      itemId,
+      goal: item?.description || '',
+    });
+  }, []);
 
   // Delete a project entirely (backend cleanup + sidebar + tab)
   const handleDeleteProject = useCallback(async (projectPath: string) => {
@@ -465,10 +517,12 @@ function App(): React.ReactElement {
         <Sidebar
           projects={sidebarProjects}
           collapsed={sidebarCollapsed}
+          waitingItems={waitingItems}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
           onProjectClick={handleProjectClick}
           onProjectRemove={handleProjectRemove}
           onAddProject={handleAddProject}
+          onAnswerAndResume={handleAnswerAndResume}
         />
 
         {/* Content area */}

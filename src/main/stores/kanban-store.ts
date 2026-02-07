@@ -176,7 +176,8 @@ export function addComment(
   board: KanbanBoard,
   itemId: string,
   source: CommentSource,
-  text: string
+  text: string,
+  options?: string[]
 ): KanbanComment | null {
   const item = board.items.find(i => i.id === itemId);
   if (!item) return null;
@@ -186,6 +187,7 @@ export function addComment(
     source,
     text,
     timestamp: new Date().toISOString(),
+    ...(options && options.length > 0 ? { options } : {}),
   };
   item.comments.push(comment);
   item.updatedAt = new Date().toISOString();

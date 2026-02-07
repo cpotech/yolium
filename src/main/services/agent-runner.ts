@@ -369,7 +369,7 @@ export function handleAgentOutput(sessionId: string, data: string): void {
           agentQuestionOptions: q.options,
           column: 'ready',
         });
-        addComment(board, session.itemId, 'agent', q.text);
+        addComment(board, session.itemId, 'agent', q.text, q.options);
         session.events.emit('question', q);
         break;
       }

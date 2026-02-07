@@ -18,6 +18,7 @@ export interface KanbanComment {
   source: CommentSource;
   text: string;
   timestamp: string;
+  options?: string[];
 }
 
 export type MergeStatus = 'unmerged' | 'merged' | 'conflict';

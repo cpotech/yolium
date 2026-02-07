@@ -470,7 +470,7 @@ declare global {
             agentQuestionOptions?: string[];
             worktreePath?: string;
             mergeStatus?: 'unmerged' | 'merged' | 'conflict';
-            comments: Array<{ id: string; source: 'user' | 'agent' | 'system'; text: string; timestamp: string }>;
+            comments: Array<{ id: string; source: 'user' | 'agent' | 'system'; text: string; timestamp: string; options?: string[] }>;
             createdAt: string;
             updatedAt: string;
           }>;
