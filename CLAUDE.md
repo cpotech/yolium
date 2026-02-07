@@ -101,7 +101,7 @@ Full API reference with types: [docs/IPC.md](docs/IPC.md).
 ### Renderer (`src/renderer/`)
 
 #### Components (`src/renderer/components/`)
-- **`agent/`**: `AgentSelectDialog.tsx`, `AgentControls.tsx`, `AgentLogPanel.tsx`, `AgentStatusBanner.tsx`
+- **`agent/`**: `AgentSelectDialog.tsx`, `AgentControls.tsx`, `AgentLogPanel.tsx`
 - **`kanban/`**: `KanbanView.tsx`, `KanbanColumn.tsx`, `KanbanCard.tsx`, `NewItemDialog.tsx`, `ItemDetailDialog.tsx`, `CommentsList.tsx`
 - **`navigation/`**: `Sidebar.tsx`, `ProjectList.tsx`, `PathInputDialog.tsx`, `DirectoryListing.tsx`, `FavoritesList.tsx`, `FolderCreationInput.tsx`
 - **`terminal/`**: `Terminal.tsx`
