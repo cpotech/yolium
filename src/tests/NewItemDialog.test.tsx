@@ -16,6 +16,9 @@ beforeEach(() => {
       kanban: {
         addItem: mockKanbanAddItem,
       },
+      agent: {
+        listDefinitions: vi.fn().mockResolvedValue([]),
+      },
     },
     writable: true,
   })

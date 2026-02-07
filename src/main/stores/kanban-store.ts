@@ -125,6 +125,7 @@ export interface NewItemParams {
   description: string;
   branch?: string;
   agentProvider: KanbanAgentProvider;
+  agentType?: string;
   order: number;
   model?: string;
 }
@@ -137,6 +138,7 @@ export function addItem(board: KanbanBoard, params: NewItemParams): KanbanItem {
     column: 'backlog',
     branch: params.branch,
     agentProvider: params.agentProvider,
+    agentType: params.agentType,
     order: params.order,
     model: params.model,
     agentStatus: 'idle',
@@ -157,7 +159,7 @@ const VALID_MODELS = new Set(['opus', 'sonnet', 'haiku']);
 export function updateItem(
   board: KanbanBoard,
   itemId: string,
-  updates: Partial<Pick<KanbanItem, 'title' | 'description' | 'column' | 'branch' | 'model' | 'agentStatus' | 'activeAgentName' | 'agentQuestion' | 'agentQuestionOptions' | 'worktreePath' | 'mergeStatus'>>
+  updates: Partial<Pick<KanbanItem, 'title' | 'description' | 'column' | 'branch' | 'model' | 'agentType' | 'agentStatus' | 'activeAgentName' | 'agentQuestion' | 'agentQuestionOptions' | 'worktreePath' | 'mergeStatus'>>
 ): KanbanItem | null {
   const item = board.items.find(i => i.id === itemId);
   if (!item) return null;

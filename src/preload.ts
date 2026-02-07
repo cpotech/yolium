@@ -201,6 +201,7 @@ const kanban = {
     description: string;
     branch?: string;
     agentProvider: 'claude' | 'codex' | 'opencode';
+    agentType?: string;
     order: number;
     model?: string;
   }) => ipcRenderer.invoke('kanban:add-item', projectPath, params),
@@ -496,6 +497,7 @@ declare global {
           description: string;
           branch?: string;
           agentProvider: 'claude' | 'codex' | 'opencode';
+          agentType?: string;
           order: number;
           model?: string;
         }) => Promise<object>;

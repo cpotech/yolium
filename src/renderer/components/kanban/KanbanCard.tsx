@@ -169,7 +169,11 @@ export function KanbanCard({ item, onClick, onDragStart, onRetryAgent, onResumeA
           data-testid="agent-type-badge"
           className="flex-shrink-0 px-1.5 py-0.5 text-[10px] font-medium rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
         >
-          {item.activeAgentName ? formatAgentRoleLabel(item.activeAgentName) : agentProviderLabels[item.agentProvider]}
+          {item.activeAgentName
+            ? formatAgentRoleLabel(item.activeAgentName)
+            : item.agentType
+              ? formatAgentRoleLabel(item.agentType)
+              : agentProviderLabels[item.agentProvider]}
         </span>
       </div>
 

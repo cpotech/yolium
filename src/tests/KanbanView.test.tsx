@@ -26,6 +26,9 @@ beforeEach(() => {
         detectNestedRepos: mockDetectNestedRepos,
         init: vi.fn().mockResolvedValue({ success: true }),
       },
+      agent: {
+        listDefinitions: vi.fn().mockResolvedValue([]),
+      },
     },
     writable: true,
   })

@@ -78,6 +78,34 @@ describe('KanbanCard', () => {
     expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('Codex')
   })
 
+  it('should show agentType label when agentType is set and no activeAgentName', () => {
+    const item = createMockItem({ agentProvider: 'claude', agentType: 'code-agent' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('Code')
+  })
+
+  it('should show agentType label for plan-agent when set', () => {
+    const item = createMockItem({ agentProvider: 'claude', agentType: 'plan-agent' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('Plan')
+  })
+
+  it('should prefer activeAgentName over agentType', () => {
+    const item = createMockItem({ agentProvider: 'claude', agentType: 'plan-agent', activeAgentName: 'code-agent' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('Code')
+  })
+
+  it('should fall back to agentProvider when agentType is not set', () => {
+    const item = createMockItem({ agentProvider: 'opencode', agentType: undefined })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('OpenCode')
+  })
+
   it('should show branch when set', () => {
     const item = createMockItem({ branch: 'feature/my-branch' })
     render(<KanbanCard item={item} onClick={vi.fn()} />)
