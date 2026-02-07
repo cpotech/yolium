@@ -302,6 +302,13 @@ const whisper = {
   downloadModel: (modelSize: string) => ipcRenderer.invoke('whisper:download-model', modelSize),
   deleteModel: (modelSize: string) => ipcRenderer.invoke('whisper:delete-model', modelSize),
   isBinaryAvailable: () => ipcRenderer.invoke('whisper:is-binary-available'),
+  installBinary: () => ipcRenderer.invoke('whisper:install-binary'),
+  onInstallProgress: (callback: (message: string) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, message: string) =>
+      callback(message);
+    ipcRenderer.on('whisper:install-progress', handler);
+    return () => ipcRenderer.removeListener('whisper:install-progress', handler);
+  },
   transcribe: (audioData: number[], modelSize: string) =>
     ipcRenderer.invoke('whisper:transcribe', audioData, modelSize),
   getSelectedModel: () => ipcRenderer.invoke('whisper:get-selected-model'),
@@ -560,6 +567,8 @@ declare global {
         downloadModel: (modelSize: string) => Promise<string>;
         deleteModel: (modelSize: string) => Promise<boolean>;
         isBinaryAvailable: () => Promise<boolean>;
+        installBinary: () => Promise<string>;
+        onInstallProgress: (callback: (message: string) => void) => CleanupFunction;
         transcribe: (audioData: number[], modelSize: string) => Promise<{ text: string; durationSeconds: number }>;
         getSelectedModel: () => Promise<string>;
         saveSelectedModel: (modelSize: string) => Promise<void>;

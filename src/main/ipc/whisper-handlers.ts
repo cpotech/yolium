@@ -16,6 +16,7 @@ import {
   deleteModel,
   transcribeAudio,
   isWhisperBinaryAvailable,
+  installWhisperBinary,
   getSelectedModel,
   saveSelectedModel,
   isValidModelSize,
@@ -53,6 +54,11 @@ export function registerWhisperHandlers(ipcMain: IpcMain): void {
 
   ipcMain.handle('whisper:is-binary-available', () => {
     return isWhisperBinaryAvailable();
+  });
+
+  ipcMain.handle('whisper:install-binary', async (event) => {
+    logger.info('IPC: whisper:install-binary');
+    return installWhisperBinary(event.sender);
   });
 
   ipcMain.handle('whisper:transcribe', async (_event, audioData: number[], modelSize: WhisperModelSize) => {

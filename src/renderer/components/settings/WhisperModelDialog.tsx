@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
-import { Download, Trash2, Check, Loader2, HardDrive, Copy, ClipboardCheck } from 'lucide-react';
+import { Download, Trash2, Check, Loader2, HardDrive, Copy, ClipboardCheck, Wrench } from 'lucide-react';
 import type { WhisperModelSize } from '@shared/types/whisper';
 import { WHISPER_MODELS } from '@shared/types/whisper';
 
@@ -64,14 +64,21 @@ export function WhisperModelDialog({
   const dialogRef = useRef<HTMLDivElement>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [binaryAvailable, setBinaryAvailable] = useState<boolean | null>(null);
+  const [installingBinary, setInstallingBinary] = useState(false);
+  const [installProgress, setInstallProgress] = useState<string | null>(null);
+  const [installError, setInstallError] = useState<string | null>(null);
 
   const prevDownloadProgressRef = useRef<number | null>(null);
 
-  // Load model status on open
+  // Load model + binary status on open
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
-    window.electronAPI.whisper.listModels().then((modelList) => {
+    Promise.all([
+      window.electronAPI.whisper.listModels(),
+      window.electronAPI.whisper.isBinaryAvailable(),
+    ]).then(([modelList, binAvailable]) => {
       const infos: ModelInfo[] = modelList.map((m) => ({
         size: m.size as WhisperModelSize,
         name: m.name,
@@ -82,9 +89,34 @@ export function WhisperModelDialog({
         path: m.path,
       }));
       setModels(infos);
+      setBinaryAvailable(binAvailable);
       setLoading(false);
     });
   }, [isOpen]);
+
+  // Listen for install progress events
+  useEffect(() => {
+    const cleanup = window.electronAPI.whisper.onInstallProgress((message: string) => {
+      setInstallProgress(message);
+    });
+    return cleanup;
+  }, []);
+
+  const handleInstallBinary = useCallback(async () => {
+    setInstallingBinary(true);
+    setInstallError(null);
+    setInstallProgress('Starting installation...');
+    try {
+      await window.electronAPI.whisper.installBinary();
+      setBinaryAvailable(true);
+      setInstallProgress(null);
+    } catch (err) {
+      setInstallError(err instanceof Error ? err.message : 'Installation failed');
+      setInstallProgress(null);
+    } finally {
+      setInstallingBinary(false);
+    }
+  }, []);
 
   // Re-fetch models when a download completes (progress transitions from non-null to null)
   useEffect(() => {
@@ -142,6 +174,44 @@ export function WhisperModelDialog({
         <p className="text-sm text-[var(--color-text-secondary)] mb-4">
           Select a whisper.cpp model for speech recognition. Larger models are more accurate but slower.
         </p>
+
+        {/* Binary installation status */}
+        {!loading && binaryAvailable === false && (
+          <div
+            data-testid="whisper-binary-banner"
+            className="mb-4 p-3 rounded-md bg-[var(--color-status-warning)]/10 border border-[var(--color-status-warning)]/30"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Wrench size={14} className="text-[var(--color-status-warning)]" />
+              <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                whisper.cpp not installed
+              </span>
+            </div>
+            <p className="text-xs text-[var(--color-text-secondary)] mb-2">
+              {process.platform === 'win32'
+                ? 'Download and install the whisper.cpp binary to enable speech-to-text.'
+                : 'Download, build, and install whisper.cpp from source. Requires cmake and a C++ compiler.'}
+            </p>
+            {installError && (
+              <p className="text-xs text-[var(--color-status-error)] mb-2">{installError}</p>
+            )}
+            {installingBinary ? (
+              <div className="flex items-center gap-2">
+                <Loader2 size={12} className="animate-spin text-[var(--color-text-muted)]" />
+                <span className="text-xs text-[var(--color-text-muted)]">{installProgress || 'Installing...'}</span>
+              </div>
+            ) : (
+              <button
+                data-testid="whisper-install-binary"
+                onClick={handleInstallBinary}
+                className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium bg-[var(--color-accent-primary)] text-white hover:bg-[var(--color-accent-hover)] transition-colors"
+              >
+                <Download size={12} />
+                Install whisper.cpp
+              </button>
+            )}
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-8">
