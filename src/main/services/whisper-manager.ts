@@ -552,10 +552,72 @@ async function installWhisperBinaryWindows(
   return binaryPath;
 }
 
+/** Check if a command-line tool is available on PATH. */
+function isToolAvailable(tool: string): boolean {
+  try {
+    execSync(`which ${tool}`, { stdio: 'pipe' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Get a distro-specific install hint for a missing tool. */
+function getInstallHint(tool: string): string {
+  const pkgMap: Record<string, Record<string, string>> = {
+    make: { arch: 'make', debian: 'make', fedora: 'make' },
+    'g++': { arch: 'gcc', debian: 'g++', fedora: 'gcc-c++' },
+    cmake: { arch: 'cmake', debian: 'cmake', fedora: 'cmake' },
+  };
+
+  let distroId = '';
+  try {
+    const osRelease = fs.readFileSync('/etc/os-release', 'utf-8');
+    const idMatch = osRelease.match(/^ID=(.*)$/m);
+    if (idMatch) distroId = idMatch[1].replace(/"/g, '').trim();
+    // Also check ID_LIKE for derivatives (e.g. Linux Mint → ubuntu → debian)
+    if (!['arch', 'debian', 'ubuntu', 'fedora'].includes(distroId)) {
+      const idLikeMatch = osRelease.match(/^ID_LIKE=(.*)$/m);
+      if (idLikeMatch) {
+        const likes = idLikeMatch[1].replace(/"/g, '').trim().split(/\s+/);
+        for (const like of likes) {
+          if (['arch', 'debian', 'ubuntu', 'fedora'].includes(like)) {
+            distroId = like;
+            break;
+          }
+        }
+      }
+    }
+  } catch {
+    // /etc/os-release not available (macOS, etc.)
+  }
+
+  const pkg = pkgMap[tool];
+  if (!pkg) return `Install '${tool}' using your system package manager.`;
+
+  if (distroId === 'arch') return `sudo pacman -S ${pkg.arch}`;
+  if (distroId === 'debian' || distroId === 'ubuntu') return `sudo apt install ${pkg.debian}`;
+  if (distroId === 'fedora') return `sudo dnf install ${pkg.fedora}`;
+  if (process.platform === 'darwin') return `xcode-select --install`;
+
+  return `Install '${tool}' using your system package manager.`;
+}
+
 async function installWhisperBinaryUnix(
   binDir: string,
   sendProgress: (msg: string) => void
 ): Promise<string> {
+  // Pre-check: cmake, make, and g++ are all required for building from source
+  const requiredTools = ['cmake', 'make', 'g++'];
+  const missingTools = requiredTools.filter(t => !isToolAvailable(t));
+
+  if (missingTools.length > 0) {
+    const hints = missingTools.map(t => `  ${t}: ${getInstallHint(t)}`).join('\n');
+    throw new Error(
+      `Build requires ${missingTools.join(', ')} but ${missingTools.length === 1 ? "it's" : "they're"} not installed.\n\n${hints}`
+    );
+  }
+
   const sourceUrl = getWhisperSourceUrl();
   const tarballPath = path.join(binDir, `whisper.cpp-${WHISPER_CPP_VERSION}.tar.gz`);
   // Strip the 'v' prefix from version for the extracted directory name
@@ -572,7 +634,7 @@ async function installWhisperBinaryUnix(
 
     sendProgress('Building whisper.cpp (cmake)...');
     fs.mkdirSync(buildDir, { recursive: true });
-    await runCommand('cmake ..', buildDir);
+    await runCommand('cmake .. -DBUILD_SHARED_LIBS=OFF', buildDir);
 
     sendProgress('Compiling whisper.cpp (this may take a few minutes)...');
     await runCommand('cmake --build . --config Release', buildDir);
