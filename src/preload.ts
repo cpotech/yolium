@@ -230,12 +230,14 @@ const agent = {
     projectPath: string;
     itemId: string;
     goal: string;
+    agentProvider: string;
   }) => ipcRenderer.invoke('agent:start', params),
   resume: (params: {
     agentName: string;
     projectPath: string;
     itemId: string;
     goal: string;
+    agentProvider: string;
   }) => ipcRenderer.invoke('agent:resume', params),
   answer: (projectPath: string, itemId: string, answer: string) =>
     ipcRenderer.invoke('agent:answer', projectPath, itemId, answer),
@@ -516,12 +518,14 @@ declare global {
           projectPath: string;
           itemId: string;
           goal: string;
+          agentProvider: string;
         }) => Promise<{ sessionId: string; error?: string }>;
         resume: (params: {
           agentName: string;
           projectPath: string;
           itemId: string;
           goal: string;
+          agentProvider: string;
         }) => Promise<{ sessionId: string; error?: string }>;
         answer: (projectPath: string, itemId: string, answer: string) => Promise<void>;
         stop: (sessionId: string) => Promise<void>;

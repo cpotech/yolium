@@ -103,6 +103,7 @@ export interface StartAgentParams {
   projectPath: string;
   itemId: string;
   goal: string;
+  agentProvider?: string;
   onOutput?: (data: string) => void;
   onQuestion?: (question: AskQuestionMessage) => void;
   onItemCreated?: (item: KanbanItem) => void;
@@ -123,6 +124,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     projectPath,
     itemId,
     goal,
+    agentProvider,
     onOutput,
     onQuestion,
     onItemCreated,
@@ -130,15 +132,6 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     onError,
     onProgress,
   } = params;
-
-  // Check if Claude is authenticated
-  const auth = checkAgentAuth('claude');
-  if (!auth.authenticated) {
-    return {
-      sessionId: '',
-      error: 'Claude is not authenticated. Please authenticate Claude first using an interactive container.',
-    };
-  }
 
   let agent: ParsedAgent;
   try {
@@ -156,6 +149,18 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     return {
       sessionId: '',
       error: `Item not found: ${itemId}`,
+    };
+  }
+
+  // Use provided agentProvider or fall back to the item's stored provider
+  const provider = agentProvider || item.agentProvider || 'claude';
+
+  // Check if the selected agent is authenticated
+  const auth = checkAgentAuth(provider);
+  if (!auth.authenticated) {
+    return {
+      sessionId: '',
+      error: `${provider} is not authenticated. Please authenticate ${provider} first using an interactive container.`,
     };
   }
 
@@ -251,6 +256,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
         model,
         tools: agent.tools,
         itemId,
+        agentProvider: provider,
         ...(worktreePath && { worktreePath, originalPath: worktreeOriginalPath, branchName }),
         ...(agent.timeout && { timeoutMs: agent.timeout * 60 * 1000 }),
       },

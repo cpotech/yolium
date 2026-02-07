@@ -111,6 +111,7 @@ export interface AgentContainerParams {
   model: string;
   tools: string[];
   itemId: string;
+  agentProvider?: string;
   worktreePath?: string;
   originalPath?: string;
   branchName?: string;
@@ -140,7 +141,7 @@ export async function createAgentContainer(
   params: AgentContainerParams,
   callbacks: AgentContainerCallbacks = {}
 ): Promise<string> {
-  const { webContentsId, projectPath, agentName, prompt, model, tools, itemId, worktreePath, originalPath, branchName, timeoutMs } = params;
+  const { webContentsId, projectPath, agentName, prompt, model, tools, itemId, agentProvider, worktreePath, originalPath, branchName, timeoutMs } = params;
   const { onOutput, onDisplayOutput, onProtocolMessage, onExit } = callbacks;
 
   const sessionId = `agent-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -219,6 +220,7 @@ export async function createAgentContainer(
       `AGENT_MODEL=${model}`,
       `AGENT_TOOLS=${tools.join(',')}`,
       `AGENT_ITEM_ID=${itemId}`,
+      `AGENT_PROVIDER=${agentProvider || 'claude'}`,
       `HOST_HOME=${toContainerHomePath(os.homedir())}`,
       'CLAUDE_CONFIG_DIR=/home/agent/.claude',
       ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),

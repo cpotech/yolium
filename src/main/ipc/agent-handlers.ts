@@ -32,6 +32,7 @@ export function registerAgentHandlers(ipcMain: IpcMain): void {
     projectPath: string;
     itemId: string;
     goal: string;
+    agentProvider: string;
   }) => {
     const webContentsId = event.sender.id;
     const win = BrowserWindow.getAllWindows().find(w => w.webContents.id === webContentsId);
@@ -91,6 +92,7 @@ export function registerAgentHandlers(ipcMain: IpcMain): void {
     projectPath: string;
     itemId: string;
     goal: string;
+    agentProvider: string;
   }) => {
     const webContentsId = event.sender.id;
     const win = BrowserWindow.getAllWindows().find(w => w.webContents.id === webContentsId);
