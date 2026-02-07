@@ -13,8 +13,6 @@ import {
   getWorktreePath,
   hasCommits,
   isGitRepo,
-  mergeWorktreeBranch,
-  cleanupWorktreeAndBranch,
   sanitizeBranchName,
 } from '@main/git/git-worktree';
 import {
@@ -404,42 +402,6 @@ export function handleAgentOutput(sessionId: string, data: string): void {
         // Move to done column when agent completes successfully
         updateItem(board, session.itemId, { agentStatus: 'completed', activeAgentName: undefined, column: 'done' });
         addComment(board, session.itemId, 'system', `Completed: ${comp.summary}`);
-
-        // Auto-merge the worktree branch into the default branch
-        const completedItem = board.items.find(i => i.id === session.itemId);
-        if (completedItem?.branch && completedItem.worktreePath) {
-          try {
-            mergeWorktreeBranch(session.projectPath, completedItem.branch);
-            updateItem(board, session.itemId, { mergeStatus: 'merged' });
-            addComment(board, session.itemId, 'system', `Merged branch '${completedItem.branch}' into default branch`);
-
-            // Clean up worktree and branch after successful merge
-            try {
-              cleanupWorktreeAndBranch(session.projectPath, completedItem.worktreePath, completedItem.branch);
-              updateItem(board, session.itemId, { worktreePath: undefined });
-              addComment(board, session.itemId, 'system', 'Cleaned up worktree');
-            } catch (cleanupErr) {
-              logger.warn('Failed to cleanup worktree after merge', {
-                itemId: session.itemId,
-                error: cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr),
-              });
-            }
-          } catch (mergeErr) {
-            const mergeMessage = mergeErr instanceof Error ? mergeErr.message : String(mergeErr);
-            const isConflict = mergeMessage.startsWith('conflict:');
-            updateItem(board, session.itemId, { mergeStatus: isConflict ? 'conflict' : 'unmerged' });
-            addComment(board, session.itemId, 'system',
-              isConflict
-                ? 'Auto-merge failed: conflicts detected. Please merge manually.'
-                : `Auto-merge failed: ${mergeMessage}`
-            );
-            logger.warn('Auto-merge failed', {
-              itemId: session.itemId,
-              branch: completedItem.branch,
-              error: mergeMessage,
-            });
-          }
-        }
 
         session.events.emit('complete', comp.summary);
         break;

@@ -510,3 +510,231 @@ export function cleanupWorktreeAndBranch(projectPath: string, worktreePath: stri
     }
   }
 }
+
+export interface MergeAndPushResult {
+  success: boolean;
+  prUrl?: string;
+  prBranch?: string;
+  error?: string;
+  conflict?: boolean;
+}
+
+/**
+ * Generate a well-named PR branch from the worktree branch name.
+ * Strips the 'yolium-{timestamp}-{hash}' prefix and creates a clean name.
+ * If the original branch already has a descriptive name, use it directly.
+ */
+export function generatePrBranchName(worktreeBranch: string, itemTitle: string): string {
+  // If the branch is an auto-generated yolium branch, derive from item title
+  if (/^yolium-\d+-[a-f0-9]+$/.test(worktreeBranch)) {
+    const slug = itemTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .substring(0, 50);
+    return `yolium/${slug || 'changes'}`;
+  }
+  // Otherwise use the existing branch name as-is (user-specified)
+  return worktreeBranch;
+}
+
+/**
+ * Merge a worktree branch into the latest default branch, push to remote, and create a PR.
+ *
+ * Steps:
+ * 1. Fetch latest default branch from remote
+ * 2. Checkout default branch and pull latest
+ * 3. Merge the worktree branch into default (--no-ff)
+ * 4. Create a new well-named branch from the merge result
+ * 5. Push the new branch to remote
+ * 6. Create a PR using `gh pr create`
+ * 7. On success, clean up worktree and old worktree branch
+ *
+ * @param projectPath - The repository path (main worktree)
+ * @param worktreeBranch - The worktree branch to merge
+ * @param worktreePath - The worktree directory path
+ * @param itemTitle - The kanban item title (used for PR title and branch name)
+ * @param itemDescription - The kanban item description (used for PR body)
+ * @throws Error with 'conflict:' prefix if merge conflicts occur
+ */
+export function mergeBranchAndPushPR(
+  projectPath: string,
+  worktreeBranch: string,
+  worktreePath: string,
+  itemTitle: string,
+  itemDescription: string,
+): MergeAndPushResult {
+  validateBranchName(worktreeBranch);
+
+  const defaultBranch = getDefaultBranch(projectPath);
+  const prBranch = generatePrBranchName(worktreeBranch, itemTitle);
+
+  // Step 1: Fetch latest from remote
+  try {
+    execFileSync('git', ['fetch', 'origin'], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch {
+    // Fetch may fail if no remote configured — continue anyway
+  }
+
+  // Step 2: Checkout default branch and pull latest
+  try {
+    execFileSync('git', ['checkout', defaultBranch], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch (err) {
+    const error = err as { stderr?: Buffer; message?: string };
+    const stderr = error.stderr?.toString() || error.message || 'Unknown error';
+    return { success: false, error: `Failed to checkout ${defaultBranch}: ${stderr}` };
+  }
+
+  try {
+    execFileSync('git', ['pull', '--ff-only', 'origin', defaultBranch], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch {
+    // Pull may fail if no remote or if diverged — continue with local state
+  }
+
+  // Step 3: Create the PR branch from default branch
+  // If the PR branch already exists, delete it first
+  try {
+    execFileSync('git', ['branch', '-D', prBranch], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch {
+    // Branch doesn't exist — that's fine
+  }
+
+  try {
+    execFileSync('git', ['checkout', '-b', prBranch], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch (err) {
+    const error = err as { stderr?: Buffer; message?: string };
+    const stderr = error.stderr?.toString() || error.message || 'Unknown error';
+    return { success: false, error: `Failed to create PR branch: ${stderr}` };
+  }
+
+  // Step 4: Merge the worktree branch into the PR branch
+  try {
+    execFileSync('git', ['merge', worktreeBranch, '--no-ff', '-m', `Merge branch '${worktreeBranch}' for: ${itemTitle}`], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch (err) {
+    const error = err as { stderr?: Buffer; stdout?: Buffer; message?: string };
+    const stderr = error.stderr?.toString() || '';
+    const stdout = error.stdout?.toString() || '';
+    const output = stderr + stdout;
+
+    if (output.includes('CONFLICT') || output.includes('Automatic merge failed')) {
+      // Abort the merge to leave the repo clean
+      try {
+        execFileSync('git', ['merge', '--abort'], {
+          cwd: projectPath,
+          stdio: 'ignore',
+        });
+      } catch {
+        // Ignore abort errors
+      }
+      // Go back to default branch
+      try {
+        execFileSync('git', ['checkout', defaultBranch], {
+          cwd: projectPath,
+          stdio: 'pipe',
+        });
+        execFileSync('git', ['branch', '-D', prBranch], {
+          cwd: projectPath,
+          stdio: 'pipe',
+        });
+      } catch {
+        // Best effort cleanup
+      }
+      return { success: false, conflict: true, error: 'Merge conflicts detected. Please resolve manually.' };
+    }
+
+    // Non-conflict merge failure — clean up PR branch
+    try {
+      execFileSync('git', ['checkout', defaultBranch], {
+        cwd: projectPath,
+        stdio: 'pipe',
+      });
+      execFileSync('git', ['branch', '-D', prBranch], {
+        cwd: projectPath,
+        stdio: 'pipe',
+      });
+    } catch {
+      // Best effort
+    }
+    return { success: false, error: `Merge failed: ${output || error.message || 'Unknown error'}` };
+  }
+
+  // Step 5: Push the PR branch to remote
+  try {
+    execFileSync('git', ['push', '-u', 'origin', prBranch], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch (err) {
+    const error = err as { stderr?: Buffer; message?: string };
+    const stderr = error.stderr?.toString() || error.message || 'Unknown error';
+    // Clean up: go back to default branch
+    try {
+      execFileSync('git', ['checkout', defaultBranch], {
+        cwd: projectPath,
+        stdio: 'pipe',
+      });
+      execFileSync('git', ['branch', '-D', prBranch], {
+        cwd: projectPath,
+        stdio: 'pipe',
+      });
+    } catch {
+      // Best effort
+    }
+    return { success: false, error: `Failed to push branch: ${stderr}` };
+  }
+
+  // Step 6: Create a PR using gh CLI
+  let prUrl: string | undefined;
+  try {
+    const prBody = itemDescription || itemTitle;
+    const output = execFileSync('gh', ['pr', 'create', '--title', itemTitle, '--body', prBody, '--base', defaultBranch, '--head', prBranch], {
+      cwd: projectPath,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    // gh pr create outputs the PR URL
+    prUrl = output.trim();
+  } catch (err) {
+    const error = err as { stderr?: Buffer; message?: string };
+    const stderr = error.stderr?.toString() || error.message || 'Unknown error';
+    // Branch was pushed successfully — PR creation failed but that's not fatal
+    // User can create PR manually
+    return {
+      success: true,
+      prBranch,
+      error: `Branch pushed but PR creation failed: ${stderr}. Create the PR manually.`,
+    };
+  }
+
+  // Step 7: Clean up worktree and old branch, return to default branch
+  try {
+    execFileSync('git', ['checkout', defaultBranch], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch {
+    // Best effort
+  }
+
+  cleanupWorktreeAndBranch(projectPath, worktreePath, worktreeBranch);
+
+  return { success: true, prUrl, prBranch };
+}

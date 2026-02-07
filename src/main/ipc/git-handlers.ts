@@ -17,6 +17,7 @@ import {
   mergeWorktreeBranch,
   getWorktreeDiffStats,
   cleanupWorktreeAndBranch,
+  mergeBranchAndPushPR,
 } from '@main/git/git-worktree';
 import type { GitConfig } from '@shared/types/git';
 
@@ -145,6 +146,21 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
       const message = err instanceof Error ? err.message : 'Unknown error';
       logger.error('Failed to cleanup worktree', { projectPath, worktreePath, branchName, error: message });
     }
+  });
+
+  // Merge a worktree branch, push to remote, and create a PR
+  ipcMain.handle('git:merge-and-push-pr', async (
+    _event,
+    projectPath: string,
+    branchName: string,
+    worktreePath: string,
+    itemTitle: string,
+    itemDescription: string,
+  ) => {
+    logger.info('IPC: git:merge-and-push-pr', { projectPath, branchName });
+    return withMergeLock(projectPath, async () => {
+      return mergeBranchAndPushPR(projectPath, branchName, worktreePath, itemTitle, itemDescription);
+    });
   });
 
   // Detect if folder is a git repo, and scan one level deep for nested repos if not
