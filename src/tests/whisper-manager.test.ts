@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import * as path from 'node:path'
 import * as os from 'node:os'
 import type { WhisperModelSize } from '@shared/types/whisper'
-import { WHISPER_MODELS, WHISPER_MODEL_BASE_URL } from '@shared/types/whisper'
+import { WHISPER_MODELS, WHISPER_MODEL_BASE_URL, WHISPER_CPP_VERSION, WHISPER_CPP_RELEASE_URL } from '@shared/types/whisper'
 
 // Mock the logger before importing whisper-manager (which imports logger.ts that uses Electron's app)
 vi.mock('@main/lib/logger', () => ({
@@ -21,6 +21,8 @@ import {
   formatBytes,
   isValidModelSize,
   getWhisperBinaryDir,
+  getWhisperBinaryDownloadUrl,
+  getWhisperSourceUrl,
   buildTranscribeArgs,
   parseWhisperOutput,
 } from '@main/services/whisper-manager'
@@ -122,6 +124,53 @@ describe('whisper-manager utilities', () => {
     })
   })
 
+  describe('getWhisperBinaryDownloadUrl', () => {
+    it('returns zip URL on Windows', () => {
+      const originalPlatform = process.platform
+      Object.defineProperty(process, 'platform', { value: 'win32' })
+      try {
+        const result = getWhisperBinaryDownloadUrl()
+        expect(result).not.toBeNull()
+        expect(result!.url).toContain('whisper-bin-x64.zip')
+        expect(result!.url).toContain(WHISPER_CPP_VERSION)
+        expect(result!.fileName).toBe('whisper-bin-x64.zip')
+      } finally {
+        Object.defineProperty(process, 'platform', { value: originalPlatform })
+      }
+    })
+
+    it('returns null on Linux (no prebuilt binaries)', () => {
+      const originalPlatform = process.platform
+      Object.defineProperty(process, 'platform', { value: 'linux' })
+      try {
+        const result = getWhisperBinaryDownloadUrl()
+        expect(result).toBeNull()
+      } finally {
+        Object.defineProperty(process, 'platform', { value: originalPlatform })
+      }
+    })
+
+    it('returns null on macOS (no prebuilt binaries)', () => {
+      const originalPlatform = process.platform
+      Object.defineProperty(process, 'platform', { value: 'darwin' })
+      try {
+        const result = getWhisperBinaryDownloadUrl()
+        expect(result).toBeNull()
+      } finally {
+        Object.defineProperty(process, 'platform', { value: originalPlatform })
+      }
+    })
+  })
+
+  describe('getWhisperSourceUrl', () => {
+    it('returns GitHub tarball URL with version', () => {
+      const url = getWhisperSourceUrl()
+      expect(url).toContain('github.com/ggml-org/whisper.cpp')
+      expect(url).toContain(WHISPER_CPP_VERSION)
+      expect(url).toMatch(/\.tar\.gz$/)
+    })
+  })
+
   describe('buildTranscribeArgs', () => {
     it('builds args with model and audio paths', () => {
       const args = buildTranscribeArgs('/path/to/model.bin', '/path/to/audio.wav')
@@ -187,6 +236,17 @@ How are you today?
 main: done`
       expect(parseWhisperOutput(output)).toBe('Hello world. How are you today?')
     })
+  })
+})
+
+describe('whisper.cpp binary constants', () => {
+  it('has a valid version string', () => {
+    expect(WHISPER_CPP_VERSION).toMatch(/^v\d+\.\d+\.\d+$/)
+  })
+
+  it('release URL contains the version', () => {
+    expect(WHISPER_CPP_RELEASE_URL).toContain(WHISPER_CPP_VERSION)
+    expect(WHISPER_CPP_RELEASE_URL).toContain('github.com/ggml-org/whisper.cpp')
   })
 })
 
