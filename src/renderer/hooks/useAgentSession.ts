@@ -60,9 +60,8 @@ export function useAgentSession({
   // Buffer output that arrives before the session ID is known (race between IPC send and invoke)
   const pendingOutputRef = useRef<{ sessionId: string; data: string }[]>([])
 
-  // Reset agent output state when switching to a different item
+  // Load persistent log and reset agent output state when switching to a different item
   useEffect(() => {
-    setAgentOutputLines([])
     setShowAgentLog(false)
     setCurrentSessionId(null)
     sessionIdRef.current = null
@@ -71,7 +70,24 @@ export function useAgentSession({
     setCurrentDetail(null)
     setLiveStatus(null)
     setLiveStatusMessage(null)
-  }, [itemId])
+
+    if (!itemId) {
+      setAgentOutputLines([])
+      return
+    }
+
+    // Load persistent log from disk
+    window.electronAPI.agent.readLog(projectPath, itemId).then((logContent) => {
+      if (logContent) {
+        const lines = logContent.split('\n').filter(Boolean)
+        setAgentOutputLines(lines)
+      } else {
+        setAgentOutputLines([])
+      }
+    }).catch(() => {
+      setAgentOutputLines([])
+    })
+  }, [itemId, projectPath])
 
   /**
    * Associate a session ID and flush any output that arrived before it was known.
@@ -195,7 +211,10 @@ export function useAgentSession({
 
   const clearAgentOutput = useCallback(() => {
     setAgentOutputLines([])
-  }, [])
+    if (itemId) {
+      window.electronAPI.agent.clearLog(projectPath, itemId).catch(() => {})
+    }
+  }, [itemId, projectPath])
 
   return {
     agentOutputLines,

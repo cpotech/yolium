@@ -15,6 +15,7 @@ import {
   recoverInterruptedAgents,
 } from '@main/services/agent-runner';
 import { listAgents, loadAgentDefinition } from '@main/services/agent-loader';
+import { readLog, deleteLog } from '@main/stores/workitem-log-store';
 import type { KanbanItem } from '@shared/types/kanban';
 import type { AgentDefinition } from '@shared/types/agent';
 
@@ -179,5 +180,15 @@ export function registerAgentHandlers(ipcMain: IpcMain): void {
       }
     }
     return definitions;
+  });
+
+  // Read persistent log for a work item
+  ipcMain.handle('agent:read-log', (_event, projectPath: string, itemId: string) => {
+    return readLog(projectPath, itemId);
+  });
+
+  // Clear persistent log for a work item
+  ipcMain.handle('agent:clear-log', (_event, projectPath: string, itemId: string) => {
+    return deleteLog(projectPath, itemId);
   });
 }

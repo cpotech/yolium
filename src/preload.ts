@@ -242,6 +242,10 @@ const agent = {
     ipcRenderer.invoke('agent:recover', projectPath),
   listDefinitions: () =>
     ipcRenderer.invoke('agent:list-definitions'),
+  readLog: (projectPath: string, itemId: string) =>
+    ipcRenderer.invoke('agent:read-log', projectPath, itemId),
+  clearLog: (projectPath: string, itemId: string) =>
+    ipcRenderer.invoke('agent:clear-log', projectPath, itemId),
   onOutput: (callback: (sessionId: string, data: string) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, sessionId: string, data: string) =>
       callback(sessionId, data);
@@ -515,6 +519,8 @@ declare global {
           tools: string[];
           timeout?: number;
         }>>;
+        readLog: (projectPath: string, itemId: string) => Promise<string>;
+        clearLog: (projectPath: string, itemId: string) => Promise<boolean>;
         onOutput: (callback: (sessionId: string, data: string) => void) => CleanupFunction;
         onQuestion: (callback: (sessionId: string, question: { text: string; options?: string[] }) => void) => CleanupFunction;
         onItemCreated: (callback: (sessionId: string, item: object) => void) => CleanupFunction;

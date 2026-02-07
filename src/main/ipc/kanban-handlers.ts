@@ -15,6 +15,7 @@ import {
 } from '@main/stores/kanban-store';
 import { deleteWorktree } from '@main/git/git-worktree';
 import { backfillWorktreePaths, stopAllAgentsForProject } from '@main/services/agent-runner';
+import { deleteLog } from '@main/stores/workitem-log-store';
 import { createLogger } from '@main/lib/logger';
 import type { KanbanItem } from '@shared/types/kanban';
 
@@ -87,6 +88,9 @@ export function registerKanbanHandlers(ipcMain: IpcMain): void {
       }
     }
 
+    // Clean up persistent log file
+    deleteLog(projectPath, itemId);
+
     const result = deleteItem(board, itemId);
     event.sender.send('kanban:board-updated', projectPath);
     return result;
@@ -116,7 +120,14 @@ export function registerKanbanHandlers(ipcMain: IpcMain): void {
       }
     }
 
-    // 3. Delete the board file
+    // 3. Clean up persistent log files for all items
+    if (board) {
+      for (const item of board.items) {
+        deleteLog(projectPath, item.id);
+      }
+    }
+
+    // 4. Delete the board file
     const deleted = deleteBoard(projectPath);
     return { deleted };
   });
