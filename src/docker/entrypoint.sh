@@ -175,6 +175,7 @@ fi
 cleanup() {
     rm -f /tmp/.git-credentials
     rm -rf /home/agent/.claude
+    rm -f /home/agent/.claude-credentials.json
 }
 trap cleanup EXIT
 
@@ -202,19 +203,18 @@ if [ -f "/home/agent/.git-credentials-mounted" ]; then
     unset GIT_CRED_FILE
 fi
 
-# Configure Claude OAuth if mounted and enabled
-# The ~/.claude directory is bind-mounted read-only at a staging path.
-# Copy to the agent's home directory so Claude Code can read its OAuth tokens.
-if [ -d "/home/agent/.claude-mounted" ] && [ "${CLAUDE_OAUTH_ENABLED:-}" = "true" ]; then
+# Configure Claude OAuth if credentials file is mounted and enabled
+# Only the credentials file is bind-mounted read-only (not the entire ~/.claude directory).
+# Create a minimal ~/.claude directory and copy just the credentials file into it.
+if [ -f "/home/agent/.claude-credentials.json" ] && [ "${CLAUDE_OAUTH_ENABLED:-}" = "true" ]; then
     log "Setting up Claude OAuth credentials..."
-    cp -r /home/agent/.claude-mounted /home/agent/.claude
+    mkdir -p /home/agent/.claude
     chmod 700 /home/agent/.claude
-    # Fix permissions: directories need execute bit, files get 600
-    find /home/agent/.claude -type d -exec chmod 700 {} + 2>/dev/null || true
-    find /home/agent/.claude -type f -exec chmod 600 {} + 2>/dev/null || true
+    cp /home/agent/.claude-credentials.json /home/agent/.claude/.credentials.json
+    chmod 600 /home/agent/.claude/.credentials.json
     export CLAUDE_CONFIG_DIR="/home/agent/.claude"
     add_status "✅ Claude OAuth credentials configured"
-    log "Claude OAuth credentials staged at /home/agent/.claude"
+    log "Claude OAuth credentials staged at /home/agent/.claude/.credentials.json"
 fi
 
 # Create CLAUDE.md with Yolium container environment info
@@ -247,7 +247,7 @@ API keys are passed as environment variables by Yolium (configured in Settings):
 - `OPENAI_API_KEY` - Used by Codex CLI
 
 Alternatively, Claude Code can use **Claude Max OAuth** tokens (enable in Settings).
-When OAuth is enabled, `~/.claude` is copied into the container with OAuth credentials.
+When OAuth is enabled, only `~/.claude/.credentials.json` is mounted and staged into the container.
 
 No other host config directories (e.g., `~/.codex`) are mounted into the container.
 

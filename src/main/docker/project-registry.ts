@@ -8,7 +8,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { app } from 'electron';
 import { createLogger } from '@main/lib/logger';
-import { loadGitConfig, generateGitCredentials, getHostClaudeDir } from '@main/git/git-config';
+import { loadGitConfig, generateGitCredentials, getHostClaudeCredentialsPath } from '@main/git/git-config';
 import { getProjectDirName, toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
 
 const logger = createLogger('project-registry');
@@ -199,8 +199,8 @@ export function getGitCredentialsBind(): string | null {
 }
 
 /**
- * Get Claude OAuth directory bind mount if OAuth is enabled and directory exists.
- * Mounts ~/.claude as read-only at a staging path in the container.
+ * Get Claude OAuth credentials file bind mount if OAuth is enabled.
+ * Mounts only ~/.claude/.credentials.json (not the entire ~/.claude directory).
  *
  * @returns Bind mount string or null if OAuth not configured
  */
@@ -209,11 +209,11 @@ export function getClaudeOAuthBind(): string | null {
   if (!gitConfig?.useClaudeOAuth) {
     return null;
   }
-  const claudeDir = getHostClaudeDir();
-  if (!claudeDir) {
-    logger.debug('No Claude OAuth directory to mount (~/.claude not found)');
+  const credPath = getHostClaudeCredentialsPath();
+  if (!credPath) {
+    logger.debug('No Claude OAuth credentials to mount (~/.claude/.credentials.json not found)');
     return null;
   }
-  logger.info('Claude OAuth directory found for mounting', { claudeDir });
-  return `${toDockerPath(claudeDir)}:/home/agent/.claude-mounted:ro`;
+  logger.info('Claude OAuth credentials file found for mounting', { credPath });
+  return `${toDockerPath(credPath)}:/home/agent/.claude-credentials.json:ro`;
 }

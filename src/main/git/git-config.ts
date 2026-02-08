@@ -178,19 +178,19 @@ export function hasHostClaudeOAuth(): boolean {
 }
 
 /**
- * Get the host ~/.claude directory path if it exists.
+ * Get the host ~/.claude/.credentials.json path if it exists.
  * Used for mounting OAuth credentials into containers.
  *
- * @returns Path to ~/.claude or null if directory doesn't exist
+ * @returns Path to the credentials file or null if it doesn't exist
  */
-export function getHostClaudeDir(): string | null {
-  const claudeDir = path.join(os.homedir(), '.claude');
+export function getHostClaudeCredentialsPath(): string | null {
+  const credPath = path.join(os.homedir(), '.claude', '.credentials.json');
   try {
-    if (fs.statSync(claudeDir).isDirectory()) {
-      return claudeDir;
+    if (fs.statSync(credPath).isFile()) {
+      return credPath;
     }
   } catch {
-    // Directory doesn't exist
+    // File doesn't exist
   }
   return null;
 }
