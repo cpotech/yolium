@@ -96,11 +96,17 @@ export async function listRemoteBranches(repoUrl: string): Promise<{ branches: s
 export function checkAgentAuth(agent: string): { authenticated: boolean } {
   const storedConfig = loadGitConfig();
 
-  if (agent === 'claude' || agent === 'opencode') {
-    // Claude and OpenCode use Anthropic API key OR Claude OAuth tokens
+  if (agent === 'claude') {
+    // Claude supports Anthropic API key OR Claude OAuth tokens
     const hasApiKey = !!(storedConfig?.anthropicApiKey || process.env.ANTHROPIC_API_KEY);
     const hasOAuth = !!(storedConfig?.useClaudeOAuth && hasHostClaudeOAuth());
     return { authenticated: hasApiKey || hasOAuth };
+  }
+
+  if (agent === 'opencode') {
+    // OpenCode has free models (e.g. opencode/big-pickle) so it always works;
+    // with an Anthropic API key it can also use paid Anthropic models.
+    return { authenticated: true };
   }
 
   if (agent === 'codex') {
@@ -178,6 +184,7 @@ export async function createCodeReviewContainer(
       `REVIEW_BRANCH=${branch}`,
       `REVIEW_AGENT=${agent}`,
       `HOST_HOME=${toContainerHomePath(os.homedir())}`,
+      'OPENCODE_YOLO=true',  // Skip permission prompts — container is already isolated
       ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
       ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
       ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
