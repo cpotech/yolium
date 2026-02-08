@@ -75,8 +75,9 @@ export function CodeReviewDialog({
       const result = await window.electronAPI.codeReview.checkAuth(agent);
       if (!result.authenticated) {
         const agentName = agent === 'claude' ? 'Claude Code' : agent === 'opencode' ? 'OpenCode' : 'Codex CLI';
+        const keyType = agent === 'codex' ? 'OpenAI' : 'Anthropic';
         setAgentAuthWarning(
-          `${agentName} is not authenticated. ${agent === 'codex' ? 'Add your OpenAI API Key in Settings.' : `Open a terminal and log in to ${agentName} first.`}`
+          `${agentName} is not authenticated. Add your ${keyType} API Key in Settings.`
         );
       } else {
         setAgentAuthWarning(null);

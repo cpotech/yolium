@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import type { GitConfig, GitConfigWithPat } from '@renderer/components/settings/GitConfigDialog'
+import type { GitConfigWithPat } from '@renderer/components/settings/GitConfigDialog'
 import { normalizePath } from '@shared/lib/path-utils'
 
 export type PathDialogMode = 'newTab' | 'addProject'
@@ -37,7 +37,7 @@ export interface UseDialogStateResult {
   /** Close git config dialog */
   closeGitConfigDialog: () => void
   /** Save git config */
-  saveGitConfig: (config: GitConfig) => Promise<void>
+  saveGitConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean }) => Promise<void>
 }
 
 /**
@@ -95,7 +95,7 @@ export function useDialogState(): UseDialogStateResult {
     setGitConfigDialogOpen(false)
   }, [])
 
-  const saveGitConfig = useCallback(async (config: GitConfig) => {
+  const saveGitConfig = useCallback(async (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean }) => {
     await window.electronAPI.git.saveConfig(config)
     // Reload from IPC to get sanitized form with hasPat/hasOpenaiKey flags
     const reloaded = await window.electronAPI.git.loadConfig()

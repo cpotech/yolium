@@ -78,59 +78,8 @@ if [ -n "$HOST_HOME" ] && [ "$HOST_HOME" != "$HOME" ] && [ ! -e "$HOST_HOME" ]; 
         add_status "✅ Host path compatibility symlink created"
 fi
 
-# Fix Windows paths in Claude config files when running on Windows host
-# Claude stores absolute paths in config files. On Windows, these are Windows paths
-# (e.g., C:\Users\gaming\.claude\...) which don't work inside the Linux container.
-# We need to rewrite these paths to use the container's home directory.
-if [ -n "$HOST_HOME" ] && [ "$HOST_HOME" != "$HOME" ]; then
-    log "Fixing Windows paths in Claude config files"
-
-    # Use Python for reliable path replacement (handles JSON escaping properly)
-    python3 << 'PYEOF'
-import os
-import re
-import glob
-
-host_home = os.environ.get('HOST_HOME', '')  # e.g., /c/Users/gaming
-container_home = os.environ.get('HOME', '/home/agent')
-
-if host_home and host_home.startswith('/') and len(host_home) > 2:
-    # Extract drive letter and path: /c/Users/gaming -> C, Users/gaming
-    drive_letter = host_home[1].upper()
-    path_suffix = host_home[3:]  # Users/gaming
-
-    # Build patterns to match Windows paths in JSON files
-    # Pattern 1: C:/Users/gaming (forward slashes)
-    # Pattern 2: C:\\Users\\gaming (JSON-escaped backslashes)
-    win_fwd = f"{drive_letter}:/{path_suffix}"
-    # Build regex pattern: C:[\\/]+Users[\\/]+gaming (matches both / and \ separators)
-    path_parts = [p for p in path_suffix.split('/') if p]
-    win_pattern = f"{drive_letter}:" + r"[\\/]+" + r"[\\/]+".join(re.escape(p) for p in path_parts)
-
-    for json_file in glob.glob('/home/agent/.claude/**/*.json', recursive=True):
-        try:
-            with open(json_file, 'r') as f:
-                content = f.read()
-
-            original = content
-            # Replace Windows paths with container paths
-            # Handle forward slash version
-            content = content.replace(win_fwd, container_home)
-            # Handle backslash/mixed version (case-insensitive for drive letter)
-            content = re.sub(win_pattern, container_home, content, flags=re.IGNORECASE)
-            # Convert remaining backslashes in paths to forward slashes
-            # Match double backslashes (JSON-escaped) followed by path characters
-            content = re.sub(r'\\\\(?=[A-Za-z0-9_./])', '/', content)
-
-            if content != original:
-                with open(json_file, 'w') as f:
-                    f.write(content)
-                print(f"Fixed: {json_file}")
-        except Exception as e:
-            print(f"Warning: Could not process {json_file}: {e}")
-PYEOF
-    add_status "✅ Windows paths in Claude config fixed for container"
-fi
+# API keys (ANTHROPIC_API_KEY, OPENAI_API_KEY) are passed as environment variables
+# by Yolium — no host config directories are mounted into the container.
 
 # For worktrees: fix the .git file to point to Linux-mounted path
 # The worktree's .git file references Windows path (e.g., gitdir: C:/Users/.../worktrees/name)
@@ -236,6 +185,13 @@ if [ -n "$PROJECT_DIR" ]; then
     git config --global --add safe.directory "$PROJECT_DIR"
 fi
 
+# Cleanup function for EXIT trap (handles git-credentials and OAuth cleanup)
+cleanup() {
+    rm -f /tmp/.git-credentials
+    rm -rf /home/agent/.claude
+}
+trap cleanup EXIT
+
 # Configure git credential helper if git-credentials file is mounted
 # Git credentials are bind-mounted read-only at a staging path.
 # Copy to a local writable location so git credential store can create lock files.
@@ -245,7 +201,6 @@ if [ -f "/home/agent/.git-credentials-mounted" ]; then
     cp /home/agent/.git-credentials-mounted "$GIT_CRED_FILE"
     chmod 600 "$GIT_CRED_FILE"
     git config --global credential.helper "store --file=\"$GIT_CRED_FILE\""
-    trap 'rm -f /tmp/.git-credentials' EXIT
     add_status "✅ GitHub HTTPS credentials configured"
 
     # Authenticate gh CLI using stored credentials
@@ -259,6 +214,21 @@ if [ -f "/home/agent/.git-credentials-mounted" ]; then
         unset GH_TOKEN
     fi
     unset GIT_CRED_FILE
+fi
+
+# Configure Claude OAuth if mounted and enabled
+# The ~/.claude directory is bind-mounted read-only at a staging path.
+# Copy to the agent's home directory so Claude Code can read its OAuth tokens.
+if [ -d "/home/agent/.claude-mounted" ] && [ "${CLAUDE_OAUTH_ENABLED:-}" = "true" ]; then
+    log "Setting up Claude OAuth credentials..."
+    cp -r /home/agent/.claude-mounted /home/agent/.claude
+    chmod 700 /home/agent/.claude
+    # Fix permissions: directories need execute bit, files get 600
+    find /home/agent/.claude -type d -exec chmod 700 {} + 2>/dev/null || true
+    find /home/agent/.claude -type f -exec chmod 600 {} + 2>/dev/null || true
+    export CLAUDE_CONFIG_DIR="/home/agent/.claude"
+    add_status "✅ Claude OAuth credentials configured"
+    log "Claude OAuth credentials staged at /home/agent/.claude"
 fi
 
 # Create CLAUDE.md with Yolium container environment info
@@ -284,6 +254,17 @@ If `gh` is not authenticated but git credentials exist, authenticate manually:
 grep 'github.com' /home/agent/.git-credentials | sed 's/.*:\(github_pat_[^@]*\|ghp_[^@]*\)@.*/\1/' | gh auth login --with-token
 ```
 
+## Authentication
+
+API keys are passed as environment variables by Yolium (configured in Settings):
+- `ANTHROPIC_API_KEY` - Used by Claude Code and OpenCode
+- `OPENAI_API_KEY` - Used by Codex CLI
+
+Alternatively, Claude Code can use **Claude Max OAuth** tokens (enable in Settings).
+When OAuth is enabled, `~/.claude` is copied into the container with OAuth credentials.
+
+No other host config directories (e.g., `~/.codex`) are mounted into the container.
+
 ## Environment
 
 - **Project directory**: Mounted at the path shown in the Yolium banner
@@ -293,7 +274,6 @@ grep 'github.com' /home/agent/.git-credentials | sed 's/.*:\(github_pat_[^@]*\|g
 
 ## Important Paths
 
-- `/home/agent/.claude` - Claude config (mounted from host)
 - `/home/agent/.git-credentials` - GitHub PAT (if configured)
 - `/home/agent/.yolium_history` - Shell history (persistent)
 
@@ -333,13 +313,6 @@ BANNER
     fi
     echo ""
     echo "💾 Persistent data (survives container removal):"
-    if [ "$TOOL" = "opencode" ]; then
-        echo "   ~/.config/opencode  → OpenCode config & auth"
-    elif [ "$TOOL" = "codex" ]; then
-        echo "   ~/.codex             → Codex CLI config & auth"
-    else
-        echo "   ~/.claude            → Claude CLI auth & settings"
-    fi
     echo "   ~/.npm               → npm cache"
     echo "   ~/.cache/pip         → pip cache"
     echo "   ~/.m2                → Maven cache"
@@ -456,32 +429,26 @@ Be thorough but constructive. Focus on substantive issues, not nitpicks."
 
     if [ "$REVIEW_AGENT" = "claude" ]; then
         log "Running Claude for code review"
+        if [ -z "$ANTHROPIC_API_KEY" ] && [ ! -f "$HOME/.claude/.credentials.json" ]; then
+            echo "ERROR: No Anthropic authentication found. Add an API Key or enable Claude Max OAuth in Yolium Settings."
+            exit 3
+        fi
         claude --dangerously-skip-permissions -p "$REVIEW_PROMPT"
         exit $?
     elif [ "$REVIEW_AGENT" = "opencode" ]; then
         log "Running OpenCode for code review"
+        if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "ERROR: ANTHROPIC_API_KEY not set. Add your Anthropic API Key in Yolium Settings."
+            exit 3
+        fi
         opencode run "$REVIEW_PROMPT"
         exit $?
     elif [ "$REVIEW_AGENT" = "codex" ]; then
         log "Running Codex for code review"
-        # Validate authentication before running Codex
         if [ -z "$OPENAI_API_KEY" ]; then
-            HAS_OAUTH=false
-            if [ -f /home/agent/.codex/auth.json ]; then
-                if command -v jq >/dev/null 2>&1; then
-                    jq -e '.tokens.access_token // empty' /home/agent/.codex/auth.json >/dev/null 2>&1 && HAS_OAUTH=true
-                else
-                    # Fallback: grep for access_token when jq is not available
-                    grep -q '"access_token"' /home/agent/.codex/auth.json 2>/dev/null && HAS_OAUTH=true
-                fi
-            fi
-            if [ "$HAS_OAUTH" = "true" ]; then
-                log "Using Codex OAuth authentication for code review"
-            else
-                echo "ERROR: No Codex authentication found."
-                echo "Set your OpenAI API Key in Yolium Settings, or run 'codex login' on the host."
-                exit 3
-            fi
+            echo "ERROR: No Codex authentication found."
+            echo "Add your OpenAI API Key in Yolium Settings."
+            exit 3
         fi
         # Use danger-full-access sandbox — Codex's Landlock sandbox panics on
         # kernels where Landlock is compiled but not functional.
@@ -540,30 +507,20 @@ elif [ "$TOOL" = "agent" ]; then
 
     if [ "$AGENT_PROV" = "opencode" ]; then
         log "Starting OpenCode headless agent mode"
+        if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "ERROR: ANTHROPIC_API_KEY not set. Add your Anthropic API Key in Yolium Settings."
+            exit 3
+        fi
         # OpenCode doesn't have the same model mapping as Claude
         # We pass the model as-is or let OpenCode decide
         opencode run "$PROMPT"
         exit $?
     elif [ "$AGENT_PROV" = "codex" ]; then
         log "Starting Codex headless agent mode"
-        # Validate authentication before running Codex
         if [ -z "$OPENAI_API_KEY" ]; then
-            HAS_OAUTH=false
-            if [ -f /home/agent/.codex/auth.json ]; then
-                if command -v jq >/dev/null 2>&1; then
-                    jq -e '.tokens.access_token // empty' /home/agent/.codex/auth.json >/dev/null 2>&1 && HAS_OAUTH=true
-                else
-                    # Fallback: grep for access_token when jq is not available
-                    grep -q '"access_token"' /home/agent/.codex/auth.json 2>/dev/null && HAS_OAUTH=true
-                fi
-            fi
-            if [ "$HAS_OAUTH" = "true" ]; then
-                log "Using Codex OAuth authentication"
-            else
-                echo "ERROR: No Codex authentication found."
-                echo "Set OPENAI_API_KEY or run 'codex login' on the host."
-                exit 3
-            fi
+            echo "ERROR: No Codex authentication found."
+            echo "Add your OpenAI API Key in Yolium Settings."
+            exit 3
         fi
         # Use danger-full-access sandbox — Codex's Landlock sandbox panics on
         # kernels where Landlock is compiled but not functional.
@@ -572,6 +529,10 @@ elif [ "$TOOL" = "agent" ]; then
         exit $?
     else
         log "Starting Claude Code agent"
+        if [ -z "$ANTHROPIC_API_KEY" ] && [ ! -f "$HOME/.claude/.credentials.json" ]; then
+            echo "ERROR: No Anthropic authentication found. Add an API Key or enable Claude Max OAuth in Yolium Settings."
+            exit 3
+        fi
         # Run Claude with stream-json output format so events are streamed incrementally.
         # Without this, -p mode buffers all output until completion (no streaming).
         # --verbose is required when combining -p with --output-format stream-json.
@@ -579,6 +540,12 @@ elif [ "$TOOL" = "agent" ]; then
     fi
 elif [ "$TOOL" = "opencode" ]; then
     log "Starting OpenCode"
+    if [ -z "$ANTHROPIC_API_KEY" ]; then
+        echo "No OpenCode authentication found."
+        echo "Add your Anthropic API Key in Yolium Settings."
+        echo "Falling back to shell."
+        exec /bin/zsh
+    fi
     OPENCODE_BIN=$(which opencode)
     log "opencode path: $OPENCODE_BIN"
     echo ""
@@ -592,17 +559,10 @@ elif [ "$TOOL" = "opencode" ]; then
 elif [ "$TOOL" = "codex" ]; then
     log "Starting Codex"
     if [ -z "$OPENAI_API_KEY" ]; then
-        # Check for OAuth auth in ~/.codex/auth.json (from `codex login`)
-        if [ -f /home/agent/.codex/auth.json ] && \
-           command -v jq >/dev/null 2>&1 && \
-           jq -e '.tokens.access_token // empty' /home/agent/.codex/auth.json >/dev/null 2>&1; then
-            add_status "✅ Codex OAuth authentication detected"
-        else
-            echo "No Codex authentication found."
-            echo "Set OPENAI_API_KEY or run 'codex login' on the host."
-            echo "Falling back to shell."
-            exec /bin/zsh
-        fi
+        echo "No Codex authentication found."
+        echo "Add your OpenAI API Key in Yolium Settings."
+        echo "Falling back to shell."
+        exec /bin/zsh
     fi
     CODEX_BIN=$(which codex)
     log "codex path: $CODEX_BIN"
@@ -617,6 +577,12 @@ elif [ "$TOOL" = "codex" ]; then
     log "ERROR: exec failed unexpectedly"
     exit 1
 elif [ "$TOOL" = "claude" ]; then
+    if [ -z "$ANTHROPIC_API_KEY" ] && [ ! -f "$HOME/.claude/.credentials.json" ]; then
+        echo "No Claude authentication found."
+        echo "Add your Anthropic API Key or enable Claude Max OAuth in Yolium Settings."
+        echo "Falling back to shell."
+        exec /bin/zsh
+    fi
     if [ "${GSD_ENABLED:-true}" = "true" ]; then
         log "Starting Claude with GSD"
         echo ""

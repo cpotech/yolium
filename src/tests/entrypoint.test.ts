@@ -76,8 +76,9 @@ describe('entrypoint.sh', () => {
     });
 
     it('should have an EXIT trap to clean up git credentials', () => {
-      // The credential file should be removed when the container process exits
-      expect(entrypointContent).toMatch(/trap\s+.*rm\s.*\.git-credentials.*EXIT/);
+      // The credential file should be removed when the container process exits via cleanup function
+      expect(entrypointContent).toMatch(/trap\s+cleanup\s+EXIT/);
+      expect(entrypointContent).toContain('rm -f /tmp/.git-credentials');
     });
 
     it('should warn against using E2E tests in container', () => {
@@ -97,9 +98,10 @@ describe('entrypoint.sh', () => {
       expect(entrypointContent).toContain('Codex');
     });
 
-    it('should display codex config path in persistent data section', () => {
-      // The banner should show ~/.codex for persistent data
-      expect(entrypointContent).toContain('.codex');
+    it('should not reference host codex config in banner', () => {
+      // The banner should NOT reference host ~/.codex path (API keys passed via env vars now)
+      const bannerSection = entrypointContent.split('Persistent data')[1]?.split('BANNER')[0] || '';
+      expect(bannerSection).not.toContain('~/.codex');
     });
   });
 
@@ -140,22 +142,15 @@ describe('entrypoint.sh', () => {
       expect(entrypointContent).toContain('Falling back to shell');
     });
 
-    it('should check for OAuth auth.json when OPENAI_API_KEY is missing', () => {
-      // When OPENAI_API_KEY is empty, entrypoint should check for OAuth tokens in auth.json
-      expect(entrypointContent).toContain('.codex/auth.json');
-      expect(entrypointContent).toContain('access_token');
-      expect(entrypointContent).toContain('OAuth');
+    it('should direct users to Yolium Settings for authentication', () => {
+      // When OPENAI_API_KEY is empty, entrypoint should direct users to Yolium Settings
+      expect(entrypointContent).toContain('Yolium Settings');
+      expect(entrypointContent).not.toContain('.codex/auth.json');
     });
 
-    it('should show distinct message for missing auth vs missing API key', () => {
-      // Should mention both OPENAI_API_KEY and codex login as options
-      expect(entrypointContent).toContain('codex login');
-      expect(entrypointContent).toContain('OPENAI_API_KEY');
-    });
-
-    it('should display codex persistent data path in banner', () => {
-      // When TOOL=codex, banner shows ~/.codex
-      expect(entrypointContent).toContain('~/.codex');
+    it('should not mount or reference host codex config', () => {
+      // Should not reference codex login (API keys are passed via env vars now)
+      expect(entrypointContent).not.toContain('codex login');
     });
 
     it('should show Codex CLI version in banner', () => {
@@ -172,11 +167,10 @@ describe('entrypoint.sh', () => {
 
     it('should validate auth before running codex exec in code review', () => {
       // The code review codex path should check OPENAI_API_KEY before running codex exec
-      // Find the code-review codex block (REVIEW_AGENT = codex)
       const reviewCodexSection = entrypointContent.split('REVIEW_AGENT" = "codex"')[1]?.split('exit $?')[0];
       expect(reviewCodexSection).toBeDefined();
       expect(reviewCodexSection).toContain('OPENAI_API_KEY');
-      expect(reviewCodexSection).toContain('.codex/auth.json');
+      expect(reviewCodexSection).not.toContain('.codex/auth.json');
     });
 
     it('should exit with code 3 when no codex auth is found in code review', () => {
@@ -184,11 +178,11 @@ describe('entrypoint.sh', () => {
       expect(reviewCodexSection).toContain('exit 3');
     });
 
-    it('should have a grep fallback when jq is unavailable for OAuth detection', () => {
-      // The code review path should not solely rely on jq for auth.json parsing
-      const reviewCodexSection = entrypointContent.split('REVIEW_AGENT" = "codex"')[1]?.split('codex exec')[0];
-      expect(reviewCodexSection).toContain('grep');
-      expect(reviewCodexSection).toContain('access_token');
+    it('should validate ANTHROPIC_API_KEY for claude/opencode in code review', () => {
+      // The code review claude path should check ANTHROPIC_API_KEY
+      const reviewClaudeSection = entrypointContent.split('REVIEW_AGENT" = "claude"')[1]?.split('exit $?')[0];
+      expect(reviewClaudeSection).toBeDefined();
+      expect(reviewClaudeSection).toContain('ANTHROPIC_API_KEY');
     });
   });
 
@@ -361,6 +355,69 @@ Output: @@YOLIUM:{"type":"complete","summary":"done"}`;
 
       expect(agentBlock).toContain('elif [ "$AGENT_PROV" = "codex" ]');
       expect(agentBlock).toContain('codex exec');
+    });
+  });
+
+  describe('Claude OAuth support', () => {
+    let entrypointContent: string;
+
+    beforeEach(() => {
+      entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+    });
+
+    it('should check for .claude-mounted directory when CLAUDE_OAUTH_ENABLED is true', () => {
+      expect(entrypointContent).toContain('.claude-mounted');
+      expect(entrypointContent).toContain('CLAUDE_OAUTH_ENABLED');
+    });
+
+    it('should copy OAuth credentials from staging mount to agent home', () => {
+      // Should copy from read-only mount to writable location
+      expect(entrypointContent).toContain('cp -r /home/agent/.claude-mounted /home/agent/.claude');
+    });
+
+    it('should set correct permissions on copied OAuth directory', () => {
+      expect(entrypointContent).toContain('chmod 700 /home/agent/.claude');
+    });
+
+    it('should export CLAUDE_CONFIG_DIR when OAuth is configured', () => {
+      expect(entrypointContent).toContain('CLAUDE_CONFIG_DIR');
+      expect(entrypointContent).toContain('/home/agent/.claude');
+    });
+
+    it('should have a cleanup function for EXIT trap', () => {
+      // Should use a cleanup function pattern instead of inline trap
+      expect(entrypointContent).toContain('cleanup()');
+      expect(entrypointContent).toMatch(/trap\s+cleanup\s+EXIT/);
+    });
+
+    it('should clean up both git-credentials and OAuth in cleanup function', () => {
+      // Extract the cleanup function body
+      const cleanupStart = entrypointContent.indexOf('cleanup()');
+      expect(cleanupStart).toBeGreaterThan(-1);
+      const cleanupEnd = entrypointContent.indexOf('}', cleanupStart);
+      const cleanupBody = entrypointContent.slice(cleanupStart, cleanupEnd);
+      expect(cleanupBody).toContain('.git-credentials');
+      expect(cleanupBody).toContain('.claude');
+    });
+
+    it('should accept .credentials.json as alternative to ANTHROPIC_API_KEY for Claude', () => {
+      // Claude checks should allow OAuth credentials file as fallback
+      expect(entrypointContent).toContain('.claude/.credentials.json');
+    });
+
+    it('should still require ANTHROPIC_API_KEY for OpenCode (no OAuth fallback)', () => {
+      // OpenCode interactive sections should still check only ANTHROPIC_API_KEY
+      // Use the elif pattern to find the tool selection section (not the banner)
+      const opencodeInteractiveStart = entrypointContent.indexOf('elif [ "$TOOL" = "opencode" ]');
+      expect(opencodeInteractiveStart).toBeGreaterThan(-1);
+      const opencodeEnd = entrypointContent.indexOf('elif', opencodeInteractiveStart + 1);
+      const opencodeBlock = entrypointContent.slice(opencodeInteractiveStart, opencodeEnd > -1 ? opencodeEnd : undefined);
+      expect(opencodeBlock).toContain('ANTHROPIC_API_KEY');
+      expect(opencodeBlock).not.toContain('.credentials.json');
+    });
+
+    it('should mention OAuth in CLAUDE.md content', () => {
+      expect(entrypointContent).toContain('Claude Max OAuth');
     });
   });
 

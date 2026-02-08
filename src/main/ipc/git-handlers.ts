@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { IpcMain } from 'electron';
 import { createLogger } from '@main/lib/logger';
-import { loadGitConfig, loadDetectedGitConfig, saveGitConfig } from '@main/git/git-config';
+import { loadGitConfig, loadDetectedGitConfig, saveGitConfig, fetchGitHubUser, hasHostClaudeOAuth } from '@main/git/git-config';
 import {
   isGitRepo,
   hasCommits,
@@ -34,6 +34,9 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     const detectedConfig = loadDetectedGitConfig();
     if (!detectedConfig) return null;
 
+    // Also load stored config to get githubLogin
+    const storedConfig = loadGitConfig();
+
     // Return detected config with source info and flags instead of actual secrets for security
     return {
       name: detectedConfig.name,
@@ -41,16 +44,20 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
       sources: detectedConfig.sources,
       hasPat: !!detectedConfig.githubPat,
       hasOpenaiKey: !!detectedConfig.openaiApiKey,
+      hasAnthropicKey: !!detectedConfig.anthropicApiKey,
+      hasClaudeOAuth: hasHostClaudeOAuth(),
+      useClaudeOAuth: storedConfig?.useClaudeOAuth ?? false,
+      githubLogin: storedConfig?.githubLogin,
     };
   });
 
-  // Save git config (preserves existing secrets if not provided)
-  ipcMain.handle('git-config:save', (_event, config: GitConfig & { githubPat?: string; openaiApiKey?: string }) => {
+  // Save git config (preserves existing secrets if not provided, auto-derives identity from PAT)
+  ipcMain.handle('git-config:save', async (_event, config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean }) => {
     // Load existing config to preserve secrets if not provided in save
     const existing = loadGitConfig();
     const toSave: GitConfig = {
-      name: config.name,
-      email: config.email,
+      name: existing?.name || '',
+      email: existing?.email || '',
     };
 
     // If new PAT is provided, use it; otherwise preserve existing
@@ -58,7 +65,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
       if (config.githubPat) {
         toSave.githubPat = config.githubPat;
       }
-      // If empty string, PAT is being cleared (don't include it)
+      // If empty string, PAT is being cleared (don't include it, also clear derived identity)
     } else if (existing?.githubPat) {
       // Preserve existing PAT if not explicitly changed
       toSave.githubPat = existing.githubPat;
@@ -73,6 +80,49 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     } else if (existing?.openaiApiKey) {
       // Preserve existing key if not explicitly changed
       toSave.openaiApiKey = existing.openaiApiKey;
+    }
+
+    // If new Anthropic key is provided, use it; otherwise preserve existing
+    if (config.anthropicApiKey !== undefined) {
+      if (config.anthropicApiKey) {
+        toSave.anthropicApiKey = config.anthropicApiKey;
+      }
+      // If empty string, key is being cleared (don't include it)
+    } else if (existing?.anthropicApiKey) {
+      // Preserve existing Anthropic key if not explicitly changed
+      toSave.anthropicApiKey = existing.anthropicApiKey;
+    }
+
+    // Handle Claude OAuth toggle
+    if (config.useClaudeOAuth !== undefined) {
+      toSave.useClaudeOAuth = config.useClaudeOAuth;
+      if (config.useClaudeOAuth) {
+        // When OAuth is enabled, clear Anthropic API key (mutual exclusion)
+        delete toSave.anthropicApiKey;
+      }
+    } else if (existing?.useClaudeOAuth) {
+      toSave.useClaudeOAuth = existing.useClaudeOAuth;
+    }
+
+    // Auto-derive git identity from PAT via GitHub API
+    const pat = toSave.githubPat;
+    if (pat) {
+      const githubUser = await fetchGitHubUser(pat);
+      if (githubUser) {
+        toSave.name = githubUser.name;
+        toSave.email = githubUser.email;
+        toSave.githubLogin = githubUser.login;
+        logger.info('Derived git identity from GitHub PAT', { login: githubUser.login });
+      } else {
+        // API call failed — preserve existing identity
+        toSave.name = existing?.name || '';
+        toSave.email = existing?.email || '';
+        toSave.githubLogin = existing?.githubLogin;
+        logger.warn('Failed to fetch GitHub user from PAT, preserving existing identity');
+      }
+    } else {
+      // PAT was cleared — clear derived identity too
+      toSave.githubLogin = undefined;
     }
 
     saveGitConfig(toSave);

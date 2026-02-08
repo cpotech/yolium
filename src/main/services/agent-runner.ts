@@ -160,7 +160,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
   if (!auth.authenticated) {
     return {
       sessionId: '',
-      error: `${provider} is not authenticated. Please authenticate ${provider} first using an interactive container.`,
+      error: `${provider} is not authenticated. Add your ${provider === 'codex' ? 'OpenAI' : 'Anthropic'} API Key in Settings.`,
     };
   }
 
