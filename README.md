@@ -8,7 +8,7 @@
 - One image builds once → many containers spawn from it
 - Containers are ephemeral (`--rm`) - deleted when session ends
 - Agents can ONLY access explicitly mounted directories
-- Package caches isolated per-project, agent config shared globally
+- Package caches isolated per-project, credentials staged read-only per-session
 
 ## ✨ Features
 

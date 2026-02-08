@@ -47,9 +47,9 @@ These resources remain across sessions:
 | Resource | Location | Purpose |
 |----------|----------|---------|
 | **Docker Image** | `yolium:latest` | Rebuilt only when explicitly requested |
-| **Project Caches** | `~/.cache/yolium/<project>/` | npm, pip, maven, gradle caches |
+| **Project Caches** | `~/.cache/yolium/<project>/` | npm, pip, maven, gradle, nuget caches |
 | **Shell History** | `~/.yolium/projects/<project>/history` | Command history per project |
-| **Tool Configs** | `~/.claude`, `~/.config/opencode` | Claude Code and OpenCode settings (Claude's `~/.claude` is also used for OAuth tokens when Claude Max is enabled) |
+| **Host Credentials** | `~/.claude/.credentials.json` | Claude Max OAuth tokens (mounted read-only into containers when enabled) |
 | **Original Project** | Your project directory | Never modified by cleanup |
 
 ### Cleanup Timing
@@ -110,18 +110,19 @@ zsh configured and ready
 
 The AI agent inside the container does **not** have direct access to your host filesystem. Yolium explicitly mounts only specific directories.
 
-| Host Path | Container Path | Scope | Purpose |
-|-----------|----------------|-------|---------|
-| Your project folder | `/home/agent/<path>` | Per-session | The codebase the agent works on |
-| `~/.cache/yolium/<project>/npm` | `/home/agent/.npm` | Per-project | npm package cache |
-| `~/.cache/yolium/<project>/pip` | `/home/agent/.cache/pip` | Per-project | pip package cache |
-| `~/.cache/yolium/<project>/maven` | `/home/agent/.m2` | Per-project | Maven repository cache |
-| `~/.cache/yolium/<project>/gradle` | `/home/agent/.gradle` | Per-project | Gradle cache |
-| `~/.yolium/projects/<project>/history` | `/home/agent/.yolium_history` | Per-project | Shell command history |
-| `~/.claude` | `/home/agent/.claude` (interactive) or `/home/agent/.claude-mounted:ro` (agent/review with OAuth) | Global | Claude Code settings, memory, and OAuth tokens |
-| `~/.config/opencode` | `/home/agent/.config/opencode` | Global | OpenCode configuration |
-| `~/.local/share/opencode` | `/home/agent/.local/share/opencode` | Global | OpenCode data |
-| `~/.yolium/ssh` | `/home/agent/.ssh` | Global | SSH keys (optional) |
+| Host Path | Container Path | Permission | Scope | Purpose |
+|-----------|----------------|-----------|-------|---------|
+| Your project folder | `/home/agent/<path>` | rw | Per-session | The codebase the agent works on |
+| `~/.cache/yolium/<project>/npm` | `/home/agent/.npm` | rw | Per-project | npm package cache |
+| `~/.cache/yolium/<project>/pip` | `/home/agent/.cache/pip` | rw | Per-project | pip package cache |
+| `~/.cache/yolium/<project>/maven` | `/home/agent/.m2` | rw | Per-project | Maven repository cache |
+| `~/.cache/yolium/<project>/gradle` | `/home/agent/.gradle` | rw | Per-project | Gradle cache |
+| `~/.cache/yolium/<project>/nuget` | `/home/agent/.nuget` | rw | Per-project | NuGet package cache |
+| `~/.yolium/projects/<project>/history` | `/home/agent/.yolium_history` | rw | Per-project | Shell command history |
+| `<original-repo>/.git` | `<container-home>/<repo>/.git` | rw | Per-session | Git data (worktree mode only) |
+| `~/.yolium/ssh` | `/home/agent/.ssh` | rw | Global | SSH keys (optional) |
+| git-credentials | `/home/agent/.git-credentials-mounted` | ro | Global | GitHub PAT (staged, cleaned on exit) |
+| `~/.claude` | `/home/agent/.claude-mounted` | ro | Global | Claude OAuth tokens (staged, cleaned on exit) |
 
 **This is the only way the agent interacts with your host filesystem.** The agent cannot read your home directory, other projects, or system files - only the explicitly mounted paths above.
 
