@@ -278,7 +278,6 @@ export async function createCodeReviewContainer(
 
   const handleOutput = (data: Buffer) => {
     const dataStr = data.toString();
-    logger.debug('Code review output', { sessionId, output: dataStr.slice(0, 200) });
 
     // Detect 401 auth errors from Codex output (missing OPENAI_API_KEY)
     // Scoped to codex agent to avoid false positives from reviewed repo output
