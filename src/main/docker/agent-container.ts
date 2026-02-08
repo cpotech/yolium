@@ -306,8 +306,6 @@ export async function createAgentContainer(
       session.timeoutId = timeoutId;
     }
 
-    logger.debug('Agent raw chunk', { sessionId, chunkLength: dataStr.length });
-
     // Buffer and split on newlines for stream-json parsing
     lineBuffer += dataStr;
     const lines = lineBuffer.split('\n');

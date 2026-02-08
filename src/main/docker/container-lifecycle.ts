@@ -187,14 +187,6 @@ export async function createYolium(
   // Forward stream data to renderer
   stream.on('data', (data: Buffer) => {
     const dataStr = data.toString();
-    // Log escape sequences (terminal queries from OpenCode)
-    if (dataStr.includes('\x1b[') || dataStr.includes('\x1b]')) {
-      logger.debug('Container output (escape seq)', {
-        sessionId,
-        dataLength: dataStr.length,
-        dataHex: data.toString('hex').slice(0, 40)
-      });
-    }
 
     const webContents = BrowserWindow.getAllWindows().find(
       (w) => w.webContents.id === webContentsId
