@@ -181,24 +181,6 @@ export function buildPersistentBindMounts(mountPath: string, agent: string, cach
 }
 
 /**
- * Get the yolium SSH directory path if it exists.
- * @returns SSH directory path or null if not configured
- */
-export function getYoliumSshDir(): string | null {
-  const homeDir = app.getPath('home');
-  const sshDir = path.join(homeDir, '.yolium', 'ssh');
-
-  try {
-    if (fs.statSync(sshDir).isDirectory()) {
-      return sshDir;
-    }
-  } catch {
-    // SSH not configured
-  }
-  return null;
-}
-
-/**
  * Get git-credentials bind mount if PAT is configured.
  * Generates the credentials file from settings.json and returns the mount string.
  *

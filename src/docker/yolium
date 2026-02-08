@@ -281,15 +281,6 @@ run_container() {
         mount_opts+=(-v "${HOME}/.gitconfig:/tmp/host_gitconfig:ro")
     fi
 
-    # Mount dedicated Yolium SSH directory
-    local yolium_ssh="${HOME}/.yolium/ssh"
-    if [[ -d "${yolium_ssh}" ]]; then
-        mount_opts+=(-v "${yolium_ssh}:/home/agent/.ssh:rw")
-        log_info "Yolium SSH directory mounted (read-write)"
-    else
-        log_warning "SSH not configured. Run 'yolium ssh-init' to enable SSH operations."
-    fi
-
     # Mount cache directories for package managers
     local cache_dir="${HOME}/.cache/yolium/${container_name}"
     mkdir -p "${cache_dir}/npm" "${cache_dir}/pip" "${cache_dir}/maven" "${cache_dir}/gradle"
@@ -455,8 +446,6 @@ Environment Variables:
 
 Commands:
     shell [--admin]         Start interactive shell instead of Claude CLI
-    ssh-init                Initialize SSH directory for Yolium
-
     If no command is provided, Claude CLI will be started automatically.
     Use 'shell' command to get a shell instead of Claude CLI.
     Use 'shell --admin' to get a shell with sudo privileges.
@@ -473,7 +462,6 @@ Examples:
     yolium --add-dir ~/1 --add-dir ~/2  # Add dirs with Claude CLI
     yolium python script.py           # Run Python script in container
     yolium --rebuild                  # Force rebuild image
-    yolium ssh-init                   # Set up SSH for Yolium
     YOLIUM_TOOL=opencode yolium     # Use env var to select tool
 
 Containers are ephemeral and automatically removed when you exit.
@@ -481,41 +469,6 @@ Package caches and shell history persist between sessions.
 
 All directories are mounted at their full host paths for symlink/path compatibility.
 EOF
-}
-
-# Set up dedicated SSH directory for Yolium
-ssh_setup() {
-    local yolium_ssh="${HOME}/.yolium/ssh"
-
-    log_info "Setting up Yolium SSH directory..."
-    mkdir -p "${yolium_ssh}"
-    chmod 700 "${yolium_ssh}"
-
-
-    # Copy known_hosts if it exists
-    if [[ -f "${HOME}/.ssh/known_hosts" ]]; then
-        cp "${HOME}/.ssh/known_hosts" "${yolium_ssh}/known_hosts"
-        chmod 600 "${yolium_ssh}/known_hosts"
-        log_success "Copied known_hosts from ~/.ssh"
-    fi
-
-    # Check if Yolium key already exists
-    if [[ -f "${yolium_ssh}/id_ed25519" ]]; then
-        log_info "Yolium SSH key already exists"
-    else
-        log_info "Generating dedicated SSH key for Yolium..."
-        ssh-keygen -t ed25519 -f "${yolium_ssh}/id_ed25519" -C "yolium@$(hostname)" -N ""
-        log_success "Generated new SSH key: ${yolium_ssh}/id_ed25519"
-        echo ""
-        log_info "Add this public key to your Git provider:"
-        echo ""
-        cat "${yolium_ssh}/id_ed25519.pub"
-        echo ""
-        log_info "Alternatively, replace the keys in ${yolium_ssh}/ with your desired keys"
-    fi
-
-    log_success "SSH setup complete! Directory: ${yolium_ssh}"
-    log_info "Yolium will use this directory for all SSH operations."
 }
 
 # Main execution
@@ -577,10 +530,6 @@ main() {
                 # Remaining args become shell commands
                 cmd_args=("$@")
                 break
-                ;;
-            ssh-init)
-                ssh_setup
-                exit 0
                 ;;
             *)
                 cmd_args+=("$1")

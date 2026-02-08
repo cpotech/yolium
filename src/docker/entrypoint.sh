@@ -22,7 +22,7 @@ add_status() {
     STATUS_MESSAGES="${STATUS_MESSAGES}${1}\n"
 }
 
-# Setup network restrictions (HTTPS, SSH, DNS only)
+# Setup network restrictions (HTTPS, DNS only)
 # Requires NET_ADMIN capability. Gracefully skips if unavailable.
 setup_network_restrictions() {
     # Skip if user opts out
@@ -56,13 +56,10 @@ setup_network_restrictions() {
     # Allow HTTPS (port 443) - APIs, package registries, HTTPS git
     sudo iptables -A OUTPUT -p tcp --dport 443 -j ACCEPT
 
-    # Allow SSH (port 22) - SSH git operations
-    sudo iptables -A OUTPUT -p tcp --dport 22 -j ACCEPT
-
     # Drop everything else
     sudo iptables -A OUTPUT -j DROP
 
-    add_status "🔒 Network restrictions applied (HTTPS/SSH/DNS only)"
+    add_status "🔒 Network restrictions applied (HTTPS/DNS only)"
 }
 
 # Apply network restrictions if available
@@ -138,17 +135,6 @@ if [ -n "$PROJECT_DIR" ] && [ -d "$HOME/.dotnet" ]; then
         dotnet restore --verbosity quiet >/dev/null 2>&1 && \
             add_status "✅ .NET packages restored"
     fi
-fi
-
-if [ -d "/home/agent/.ssh" ]; then
-    log "Configuring SSH permissions..."
-    chmod 700 /home/agent/.ssh 2>/dev/null || true
-    chmod 600 /home/agent/.ssh/* 2>/dev/null || true
-    chmod 644 /home/agent/.ssh/*.pub 2>/dev/null || true
-    chmod 644 /home/agent/.ssh/authorized_keys 2>/dev/null || true
-    chmod 644 /home/agent/.ssh/known_hosts 2>/dev/null || true
-    add_status "✅ SSH directory permissions configured"
-    log "SSH permissions configured"
 fi
 
 if [ -d "/tmp/host_direnv_allow" ]; then
@@ -270,7 +256,7 @@ No other host config directories (e.g., `~/.codex`) are mounted into the contain
 - **Project directory**: Mounted at the path shown in the Yolium banner
 - **Persistent caches**: npm, pip, maven, gradle, nuget caches persist across sessions
 - **Languages**: Python (uv), Node.js (nvm), Java (SDKMAN), .NET (dotnet)
-- **Network**: Restricted to HTTPS, SSH, DNS only (unless YOLIUM_NETWORK_FULL=true)
+- **Network**: Restricted to HTTPS, DNS only (unless YOLIUM_NETWORK_FULL=true)
 
 ## Important Paths
 

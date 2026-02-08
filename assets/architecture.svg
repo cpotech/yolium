@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1040" font-family="'Segoe UI', 'SF Pro Display', -apple-system, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 970" font-family="'Segoe UI', 'SF Pro Display', -apple-system, sans-serif">
   <defs>
     <!-- Gradients matching Yolium theme -->
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -288,42 +288,27 @@
     <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.claude-mounted</text>
   </g>
 
-  <!-- Section: SSH Keys -->
-  <g transform="translate(610, 700)">
-    <circle cx="0" cy="0" r="4" fill="#28a745"/>
-    <text x="15" y="5" fill="#28a745" font-size="12" font-weight="600">SSH KEYS</text>
-    <text x="100" y="5" fill="#6a8aa8" font-size="10">(optional)</text>
-    <rect x="165" y="-8" width="24" height="14" rx="3" fill="#28a745" opacity="0.25" stroke="#28a745" stroke-width="0.5"/>
-    <text x="177" y="2" text-anchor="middle" fill="#28a745" font-size="8" font-weight="600">rw</text>
-  </g>
-
-  <g transform="translate(610, 725)">
-    <text y="0" fill="#8aa8c8" font-size="10">~/.yolium/ssh</text>
-    <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
-    <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.ssh</text>
-  </g>
-
   <!-- Section: Environment Variables (not mounted) -->
-  <g transform="translate(610, 770)">
+  <g transform="translate(610, 700)">
     <circle cx="0" cy="0" r="4" fill="#4a6a8a"/>
     <text x="15" y="5" fill="#4a6a8a" font-size="12" font-weight="600">ENV VARS</text>
     <text x="100" y="5" fill="#4a6a8a" font-size="10">(injected, not mounted)</text>
   </g>
 
-  <g transform="translate(610, 795)">
+  <g transform="translate(610, 725)">
     <text y="0" fill="#4a6a8a" font-size="9">ANTHROPIC_API_KEY, OPENAI_API_KEY, GIT_USER_NAME, GIT_USER_EMAIL</text>
   </g>
 
   <!-- === NETWORK RESTRICTIONS === -->
-  <rect x="80" y="940" width="1040" height="35" rx="6" fill="#0a1628" stroke="#00a8cc" stroke-width="1"/>
-  <circle cx="105" cy="957" r="4" fill="#00a8cc"/>
-  <text x="125" y="962" fill="#00a8cc" font-size="12" font-weight="600">NETWORK:</text>
-  <text x="210" y="962" fill="#8aa8c8" font-size="11">iptables firewall (NET_ADMIN) — outbound HTTPS (443), SSH (22), DNS (53) only</text>
-  <text x="810" y="962" fill="#4a6a8a" font-size="10">disable: YOLIUM_NETWORK_FULL=true</text>
+  <rect x="80" y="870" width="1040" height="35" rx="6" fill="#0a1628" stroke="#00a8cc" stroke-width="1"/>
+  <circle cx="105" cy="887" r="4" fill="#00a8cc"/>
+  <text x="125" y="892" fill="#00a8cc" font-size="12" font-weight="600">NETWORK:</text>
+  <text x="210" y="892" fill="#8aa8c8" font-size="11">iptables firewall (NET_ADMIN) — outbound HTTPS (443), DNS (53) only</text>
+  <text x="810" y="892" fill="#4a6a8a" font-size="10">disable: YOLIUM_NETWORK_FULL=true</text>
 
   <!-- === WARNING SECTION === -->
-  <rect x="80" y="985" width="1040" height="35" rx="6" fill="#1a0a0a" stroke="#dc3545" stroke-width="1"/>
-  <circle cx="105" cy="1002" r="4" fill="#dc3545"/>
-  <text x="125" y="1007" fill="#dc3545" font-size="12" font-weight="600">NOT ACCESSIBLE:</text>
-  <text x="280" y="1007" fill="#ffcdd2" font-size="11">~/, /etc, /var, other projects, system files — only the mounts above are visible</text>
+  <rect x="80" y="915" width="1040" height="35" rx="6" fill="#1a0a0a" stroke="#dc3545" stroke-width="1"/>
+  <circle cx="105" cy="932" r="4" fill="#dc3545"/>
+  <text x="125" y="937" fill="#dc3545" font-size="12" font-weight="600">NOT ACCESSIBLE:</text>
+  <text x="280" y="937" fill="#ffcdd2" font-size="11">~/, /etc, /var, other projects, system files — only the mounts above are visible</text>
 </svg>

@@ -36,7 +36,7 @@ const features = [
   {
     icon: Lock,
     title: 'Network Firewall',
-    description: 'Only HTTPS & SSH traffic allowed outbound',
+    description: 'Only HTTPS traffic allowed outbound',
   },
   {
     icon: Plug,
@@ -56,7 +56,7 @@ const features = [
   {
     icon: GitBranch,
     title: 'Git Ready',
-    description: 'SSH keys mounted for Git operations',
+    description: 'HTTPS credentials and worktrees ready',
   },
 ];
 

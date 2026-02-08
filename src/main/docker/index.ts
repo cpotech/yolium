@@ -36,7 +36,6 @@ export {
   getPersistentPaths,
   ensurePersistentDirs,
   buildPersistentBindMounts,
-  getYoliumSshDir,
   getGitCredentialsBind,
 } from './project-registry';
 
