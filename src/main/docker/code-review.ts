@@ -13,7 +13,7 @@ import { createLogger } from '@main/lib/logger';
 import { loadGitConfig, generateGitCredentials, hasHostClaudeOAuth } from '@main/git/git-config';
 import { docker, sessions, DEFAULT_IMAGE } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
-import { getYoliumSshDir, getGitCredentialsBind, getClaudeOAuthBind } from './project-registry';
+import { getGitCredentialsBind, getClaudeOAuthBind } from './project-registry';
 
 const logger = createLogger('code-review');
 
@@ -145,12 +145,6 @@ export async function createCodeReviewContainer(
   const binds = [
     `${toDockerPath(tmpDir)}:${containerProjectPath}:rw`,
   ];
-
-  // Add SSH keys if available
-  const sshDir = getYoliumSshDir();
-  if (sshDir) {
-    binds.push(`${toDockerPath(sshDir)}:/home/agent/.ssh:rw`);
-  }
 
   // Add git credentials
   const gitCredBind = getGitCredentialsBind();

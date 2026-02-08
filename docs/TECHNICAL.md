@@ -120,7 +120,6 @@ The AI agent inside the container does **not** have direct access to your host f
 | `~/.cache/yolium/<project>/nuget` | `/home/agent/.nuget` | rw | Per-project | NuGet package cache |
 | `~/.yolium/projects/<project>/history` | `/home/agent/.yolium_history` | rw | Per-project | Shell command history |
 | `<original-repo>/.git` | `<container-home>/<repo>/.git` | rw | Per-session | Git data (worktree mode only) |
-| `~/.yolium/ssh` | `/home/agent/.ssh` | rw | Global | SSH keys (optional) |
 | git-credentials | `/home/agent/.git-credentials-mounted` | ro | Global | GitHub PAT (staged, cleaned on exit) |
 | `~/.claude` | `/home/agent/.claude-mounted` | ro | Global | Claude OAuth tokens (staged, cleaned on exit) |
 

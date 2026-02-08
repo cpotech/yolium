@@ -15,7 +15,7 @@ import { formatLogTimestamp } from '@main/stores/workitem-log-store';
 import { loadGitConfig } from '@main/git/git-config';
 import { docker, agentSessions, DEFAULT_IMAGE, type AgentContainerSession } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
-import { getYoliumSshDir, getGitCredentialsBind, getClaudeOAuthBind } from './project-registry';
+import { getGitCredentialsBind, getClaudeOAuthBind } from './project-registry';
 
 const logger = createLogger('agent-container');
 
@@ -177,12 +177,6 @@ export async function createAgentContainer(
       const containerGitDir = toContainerHomePath(mainGitDir);
       binds.push(`${dockerGitDir}:${containerGitDir}:rw`);
     }
-  }
-
-  // Add SSH keys if available
-  const sshDir = getYoliumSshDir();
-  if (sshDir) {
-    binds.push(`${toDockerPath(sshDir)}:/home/agent/.ssh:rw`);
   }
 
   // Add git credentials

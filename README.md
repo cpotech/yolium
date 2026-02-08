@@ -22,7 +22,7 @@
 - **🔑 Flexible Auth** - Anthropic/OpenAI API keys or Claude Max OAuth for Claude Code
 - **📦 Pre-configured Environment** - Python, Node.js, Java, and common dev tools ready to use ([details](docs/TECHNICAL.md#container-environment))
 - **💾 Persistent Caches** - Package manager caches survive across sessions ([details](docs/TECHNICAL.md#file-mounts--cache))
-- **🔒 Network Restrictions** - Only outbound HTTPS and SSH allowed
+- **🔒 Network Restrictions** - Only outbound HTTPS allowed
 - **🖥️ Cross-Platform** - Windows, macOS, and Linux
 
 > **[📚 Technical Documentation](docs/TECHNICAL.md)** - Detailed architecture, mount paths, and development guide

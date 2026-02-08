@@ -12,7 +12,7 @@ import { loadGitConfig } from '@main/git/git-config';
 import { createWorktree, deleteWorktree, generateBranchName, hasUncommittedChanges } from '@main/git/git-worktree';
 import { docker, sessions, agentSessions, DEFAULT_IMAGE } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
-import { buildPersistentBindMounts, getYoliumSshDir, getGitCredentialsBind, getClaudeOAuthBind } from './project-registry';
+import { buildPersistentBindMounts, getGitCredentialsBind, getClaudeOAuthBind } from './project-registry';
 
 const logger = createLogger('container-lifecycle');
 
@@ -83,10 +83,6 @@ export async function createYolium(
   // Use mountPath for project directory, but use original resolvedFolderPath for cache isolation
   // Pass resolvedFolderPath as originalRepoPath so worktrees can access the main repo's .git
   const binds = buildPersistentBindMounts(mountPath, agent, resolvedFolderPath, worktreePath ? resolvedFolderPath : undefined);
-  const sshDir = getYoliumSshDir();
-  if (sshDir) {
-    binds.push(`${toDockerPath(sshDir)}:/home/agent/.ssh:rw`);
-  }
   // Add git-credentials for HTTPS auth if PAT is configured
   const gitCredBind = getGitCredentialsBind();
   if (gitCredBind) {
