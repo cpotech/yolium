@@ -15,7 +15,7 @@ import { formatLogTimestamp } from '@main/stores/workitem-log-store';
 import { loadGitConfig } from '@main/git/git-config';
 import { docker, agentSessions, DEFAULT_IMAGE, type AgentContainerSession } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
-import { getYoliumSshDir, getGitCredentialsBind } from './project-registry';
+import { getYoliumSshDir, getGitCredentialsBind, getClaudeOAuthBind } from './project-registry';
 
 const logger = createLogger('agent-container');
 
@@ -165,13 +165,8 @@ export async function createAgentContainer(
   const containerProjectPath = getContainerProjectPath(mountPath);
 
   // Build bind mounts for the project (minimal set for headless agent)
-  const homeDir = os.homedir();
-  const claudeDir = path.join(homeDir, '.claude');
-  fs.mkdirSync(claudeDir, { recursive: true });
-
   const binds = [
     `${toDockerPath(mountPath)}:${containerProjectPath}:rw`,
-    `${toDockerPath(claudeDir)}:/home/agent/.claude:rw`,
   ];
 
   // For worktrees, mount the original repo's .git directory so git commands work
@@ -196,6 +191,12 @@ export async function createAgentContainer(
     binds.push(gitCredBind);
   }
 
+  // Add Claude OAuth credentials if enabled
+  const oauthBind = getClaudeOAuthBind();
+  if (oauthBind) {
+    binds.push(oauthBind);
+  }
+
   logger.debug('Agent container bind mounts', { sessionId, binds });
 
   // Encode prompt as base64 to avoid shell escaping issues
@@ -204,6 +205,7 @@ export async function createAgentContainer(
 
   // Load git config for identity env vars (name, email)
   const gitConfig = loadGitConfig();
+  const useOAuth = gitConfig?.useClaudeOAuth && oauthBind;
 
   const container = await docker.createContainer({
     Image: DEFAULT_IMAGE,
@@ -222,11 +224,20 @@ export async function createAgentContainer(
       `AGENT_ITEM_ID=${itemId}`,
       `AGENT_PROVIDER=${agentProvider || 'claude'}`,
       `HOST_HOME=${toContainerHomePath(os.homedir())}`,
-      'CLAUDE_CONFIG_DIR=/home/agent/.claude',
       ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
       ...(worktreePath && originalPath ? [`WORKTREE_REPO_PATH=${toDockerPath(originalPath)}`] : []),
       ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
       ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
+      // Pass API keys as env vars (skip Anthropic key when OAuth is enabled)
+      ...(() => {
+        if (useOAuth) return ['CLAUDE_OAUTH_ENABLED=true'];
+        const key = gitConfig?.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
+        return key ? [`ANTHROPIC_API_KEY=${key}`] : [];
+      })(),
+      ...(() => {
+        const key = gitConfig?.openaiApiKey || process.env.OPENAI_API_KEY;
+        return key ? [`OPENAI_API_KEY=${key}`] : [];
+      })(),
     ],
     HostConfig: {
       CapAdd: ['NET_ADMIN'],

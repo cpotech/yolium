@@ -49,7 +49,7 @@ These resources remain across sessions:
 | **Docker Image** | `yolium:latest` | Rebuilt only when explicitly requested |
 | **Project Caches** | `~/.cache/yolium/<project>/` | npm, pip, maven, gradle caches |
 | **Shell History** | `~/.yolium/projects/<project>/history` | Command history per project |
-| **Tool Configs** | `~/.claude`, `~/.config/opencode` | Claude Code and OpenCode settings |
+| **Tool Configs** | `~/.claude`, `~/.config/opencode` | Claude Code and OpenCode settings (Claude's `~/.claude` is also used for OAuth tokens when Claude Max is enabled) |
 | **Original Project** | Your project directory | Never modified by cleanup |
 
 ### Cleanup Timing
@@ -118,12 +118,23 @@ The AI agent inside the container does **not** have direct access to your host f
 | `~/.cache/yolium/<project>/maven` | `/home/agent/.m2` | Per-project | Maven repository cache |
 | `~/.cache/yolium/<project>/gradle` | `/home/agent/.gradle` | Per-project | Gradle cache |
 | `~/.yolium/projects/<project>/history` | `/home/agent/.yolium_history` | Per-project | Shell command history |
-| `~/.claude` | `/home/agent/.claude` | Global | Claude Code settings & memory |
+| `~/.claude` | `/home/agent/.claude` (interactive) or `/home/agent/.claude-mounted:ro` (agent/review with OAuth) | Global | Claude Code settings, memory, and OAuth tokens |
 | `~/.config/opencode` | `/home/agent/.config/opencode` | Global | OpenCode configuration |
 | `~/.local/share/opencode` | `/home/agent/.local/share/opencode` | Global | OpenCode data |
 | `~/.yolium/ssh` | `/home/agent/.ssh` | Global | SSH keys (optional) |
 
 **This is the only way the agent interacts with your host filesystem.** The agent cannot read your home directory, other projects, or system files - only the explicitly mounted paths above.
+
+### Authentication Methods
+
+Yolium supports two authentication methods for Claude Code agents:
+
+| Method | How It Works | When to Use |
+|--------|-------------|-------------|
+| **Anthropic API Key** | Passed as `ANTHROPIC_API_KEY` env var to the container | Pay-per-token API usage |
+| **Claude Max OAuth** | `~/.claude` mounted read-only, copied to writable location inside container with `CLAUDE_CONFIG_DIR` set | Claude Max subscription ($100/mo) |
+
+These are mutually exclusive -- toggling OAuth on in Settings clears the API key, and vice versa. OAuth credentials are staged securely: mounted read-only at `/home/agent/.claude-mounted`, copied to `/home/agent/.claude` with restricted permissions (directories: 700, files: 600), and cleaned up on container exit.
 
 ### Cache Retention Policy
 
