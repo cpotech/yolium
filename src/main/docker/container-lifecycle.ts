@@ -117,6 +117,7 @@ export async function createYolium(
           `GSD_ENABLED=${gsdEnabled}`,
           `HOST_HOME=${toContainerHomePath(os.homedir())}`,
           'HISTFILE=/home/agent/.yolium_history/zsh_history',
+          'OPENCODE_YOLO=true',  // Skip permission prompts — container is already isolated
           ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
           ...(process.env.YOLIUM_LOG_LEVEL ? [`YOLIUM_LOG_LEVEL=${process.env.YOLIUM_LOG_LEVEL}`] : []),
           ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),

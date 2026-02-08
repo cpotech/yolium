@@ -218,6 +218,7 @@ export async function createAgentContainer(
       `AGENT_ITEM_ID=${itemId}`,
       `AGENT_PROVIDER=${agentProvider || 'claude'}`,
       `HOST_HOME=${toContainerHomePath(os.homedir())}`,
+      'OPENCODE_YOLO=true',  // Skip permission prompts — container is already isolated
       ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
       ...(worktreePath && originalPath ? [`WORKTREE_REPO_PATH=${toDockerPath(originalPath)}`] : []),
       ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),

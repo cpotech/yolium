@@ -158,9 +158,10 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
   // Check if the selected agent is authenticated
   const auth = checkAgentAuth(provider);
   if (!auth.authenticated) {
+    const keyType = provider === 'codex' ? 'OpenAI' : 'Anthropic';
     return {
       sessionId: '',
-      error: `${provider} is not authenticated. Add your ${provider === 'codex' ? 'OpenAI' : 'Anthropic'} API Key in Settings.`,
+      error: `${provider} is not authenticated. Add your ${keyType} API Key in Settings.`,
     };
   }
 

@@ -175,7 +175,8 @@ fi
 cleanup() {
     rm -f /tmp/.git-credentials
     rm -rf /home/agent/.claude
-    rm -f /home/agent/.claude-credentials.json
+    # Note: /home/agent/.claude-credentials.json is a bind mount and cannot be removed;
+    # the actual credentials copy lives under /home/agent/.claude/ (cleaned above).
 }
 trap cleanup EXIT
 
@@ -423,9 +424,11 @@ Be thorough but constructive. Focus on substantive issues, not nitpicks."
         exit $?
     elif [ "$REVIEW_AGENT" = "opencode" ]; then
         log "Running OpenCode for code review"
+        # If no API key, fall back to OpenCode's free model
         if [ -z "$ANTHROPIC_API_KEY" ]; then
-            echo "ERROR: ANTHROPIC_API_KEY not set. Add your Anthropic API Key in Yolium Settings."
-            exit 3
+            log "No ANTHROPIC_API_KEY set, using free model opencode/big-pickle"
+            opencode run -m opencode/big-pickle "$REVIEW_PROMPT"
+            exit $?
         fi
         opencode run "$REVIEW_PROMPT"
         exit $?
@@ -493,12 +496,12 @@ elif [ "$TOOL" = "agent" ]; then
 
     if [ "$AGENT_PROV" = "opencode" ]; then
         log "Starting OpenCode headless agent mode"
+        # If no API key, fall back to OpenCode's free model
         if [ -z "$ANTHROPIC_API_KEY" ]; then
-            echo "ERROR: ANTHROPIC_API_KEY not set. Add your Anthropic API Key in Yolium Settings."
-            exit 3
+            log "No ANTHROPIC_API_KEY set, using free model opencode/big-pickle"
+            opencode run -m opencode/big-pickle "$PROMPT"
+            exit $?
         fi
-        # OpenCode doesn't have the same model mapping as Claude
-        # We pass the model as-is or let OpenCode decide
         opencode run "$PROMPT"
         exit $?
     elif [ "$AGENT_PROV" = "codex" ]; then
@@ -526,14 +529,11 @@ elif [ "$TOOL" = "agent" ]; then
     fi
 elif [ "$TOOL" = "opencode" ]; then
     log "Starting OpenCode"
-    if [ -z "$ANTHROPIC_API_KEY" ]; then
-        echo "No OpenCode authentication found."
-        echo "Add your Anthropic API Key in Yolium Settings."
-        echo "Falling back to shell."
-        exec /bin/zsh
-    fi
     OPENCODE_BIN=$(which opencode)
     log "opencode path: $OPENCODE_BIN"
+    if [ -z "$ANTHROPIC_API_KEY" ]; then
+        log "No ANTHROPIC_API_KEY set, OpenCode will use free models"
+    fi
     echo ""
     echo "Press any key to start OpenCode..."
     read -n 1
