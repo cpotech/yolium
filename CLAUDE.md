@@ -90,7 +90,7 @@ Full API reference with types: [docs/IPC.md](docs/IPC.md).
 
 #### Git (`src/main/git/`)
 - `git-worktree.ts` — Create/delete git worktrees for branch isolation
-- `git-config.ts` — Git credential storage (name, email, PAT)
+- `git-config.ts` — Git credential storage (name, email, PAT, API keys, Claude OAuth detection)
 
 #### Lib (`src/main/lib/`)
 - `logger.ts` — Structured logging with module context

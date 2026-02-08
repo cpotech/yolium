@@ -44,3 +44,4 @@
 
 - Do not commit secrets or `.env` files.
 - Review Docker and Git credential handling changes carefully.
+- API keys are passed as environment variables to containers; OAuth tokens (`~/.claude`) are mounted read-only and staged with restricted permissions.
