@@ -283,9 +283,9 @@
   </g>
 
   <g transform="translate(610, 657)">
-    <text y="0" fill="#8aa8c8" font-size="10">~/.claude (OAuth)</text>
+    <text y="0" fill="#8aa8c8" font-size="10">~/.claude/.credentials.json</text>
     <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
-    <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.claude-mounted</text>
+    <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.claude-credentials.json</text>
   </g>
 
   <!-- Section: Environment Variables (not mounted) -->
