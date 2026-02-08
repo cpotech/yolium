@@ -91,6 +91,8 @@ export function ItemDetailDialog({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isAnswering, setIsAnswering] = useState(false)
   const [isMerging, setIsMerging] = useState(false)
+  const [isCheckingConflicts, setIsCheckingConflicts] = useState(false)
+  const [conflictCheck, setConflictCheck] = useState<{ clean: boolean; conflictingFiles: string[] } | null>(null)
   const [prUrl, setPrUrl] = useState<string | null>(null)
 
   // Refs
@@ -136,6 +138,7 @@ export function ItemDetailDialog({
         setBaseAgentProvider(item.agentProvider)
         setBaseModel(item.model || '')
         setPrUrl(null)
+        setConflictCheck(null)
         prevItemIdRef.current = item.id
       }
     }
@@ -303,6 +306,22 @@ export function ItemDetailDialog({
     }
   }, [agentSession.currentSessionId, onUpdated])
 
+  const handleCheckConflicts = useCallback(async () => {
+    if (!item || !item.branch || isCheckingConflicts) return
+
+    setIsCheckingConflicts(true)
+    setConflictCheck(null)
+    try {
+      const result = await window.electronAPI.git.checkMergeConflicts(projectPath, item.branch)
+      setConflictCheck(result)
+    } catch (error) {
+      console.error('Failed to check merge conflicts:', error)
+      setConflictCheck({ clean: false, conflictingFiles: ['(check failed)'] })
+    } finally {
+      setIsCheckingConflicts(false)
+    }
+  }, [item, isCheckingConflicts, projectPath])
+
   const handleMerge = useCallback(async () => {
     if (!item || !item.branch || !item.worktreePath || isMerging) return
 
@@ -315,15 +334,15 @@ export function ItemDetailDialog({
         : 'No changes detected'
 
       const confirmed = await window.electronAPI.dialog.confirmOkCancel(
-        'Merge & Create PR',
-        `Merge branch "${item.branch}" and push a PR?\n\n${statsMsg}`
+        'Rebase, Merge & Create PR',
+        `Rebase branch "${item.branch}" onto latest default, then merge and push a PR?\n\n${statsMsg}`
       )
       if (!confirmed) {
         setIsMerging(false)
         return
       }
 
-      // Merge, push, and create PR
+      // Rebase, merge, push, and create PR
       const result = await window.electronAPI.git.mergeAndPushPR(
         projectPath,
         item.branch,
@@ -333,7 +352,7 @@ export function ItemDetailDialog({
       )
 
       if (result.success && !result.error) {
-        // Full success: merged, pushed, PR created, worktree cleaned up
+        // Full success: rebased, merged, pushed, PR created, worktree cleaned up
         await window.electronAPI.kanban.updateItem(projectPath, item.id, {
           mergeStatus: 'merged',
           worktreePath: undefined,
@@ -345,6 +364,7 @@ export function ItemDetailDialog({
             `PR created: ${result.prUrl}`
           )
         }
+        setConflictCheck(null)
         onUpdated()
       } else if (result.success && result.error) {
         // Partial success: branch pushed but PR creation failed
@@ -353,12 +373,17 @@ export function ItemDetailDialog({
           worktreePath: undefined,
         })
         setErrorMessage(result.error)
+        setConflictCheck(null)
         onUpdated()
       } else if (result.conflict) {
         await window.electronAPI.kanban.updateItem(projectPath, item.id, {
           mergeStatus: 'conflict',
         })
-        setErrorMessage('Merge conflict detected. Please resolve manually.')
+        const fileList = result.conflictingFiles?.length
+          ? `\nConflicting files:\n${result.conflictingFiles.map(f => `  - ${f}`).join('\n')}`
+          : ''
+        setErrorMessage(`Rebase conflict detected. Please resolve manually.${fileList}`)
+        setConflictCheck({ clean: false, conflictingFiles: result.conflictingFiles || [] })
         onUpdated()
       } else {
         setErrorMessage(result.error || 'Merge failed')
@@ -675,6 +700,41 @@ export function ItemDetailDialog({
                   )}
                   {item.mergeStatus === 'unmerged' && (
                     <div data-testid="merge-status-unmerged">
+                      {/* Conflict pre-check */}
+                      <button
+                        data-testid="check-conflicts-button"
+                        onClick={handleCheckConflicts}
+                        disabled={isCheckingConflicts || isMerging}
+                        className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 text-[var(--color-text-secondary)] rounded-md hover:bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors mb-2"
+                      >
+                        <AlertTriangle size={12} />
+                        {isCheckingConflicts ? 'Checking...' : 'Check Conflicts'}
+                      </button>
+                      {conflictCheck && (
+                        <div data-testid="conflict-check-result" className="mb-2">
+                          {conflictCheck.clean ? (
+                            <div className="flex items-center gap-1 text-xs text-green-400">
+                              <Check size={12} />
+                              <span>Clean — no conflicts</span>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-red-400">
+                              <div className="flex items-center gap-1 mb-1">
+                                <AlertTriangle size={12} />
+                                <span>Conflicts detected</span>
+                              </div>
+                              {conflictCheck.conflictingFiles.length > 0 && (
+                                <ul className="ml-4 space-y-0.5">
+                                  {conflictCheck.conflictingFiles.map((file, i) => (
+                                    <li key={i} className="font-mono text-[10px] truncate" title={file}>{file}</li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {/* Merge button */}
                       <button
                         data-testid="merge-button"
                         onClick={handleMerge}
@@ -682,7 +742,7 @@ export function ItemDetailDialog({
                         className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         <GitMerge size={12} />
-                        {isMerging ? 'Merging & Pushing...' : 'Merge & Push PR'}
+                        {isMerging ? 'Rebasing & Merging...' : 'Rebase, Merge & Push PR'}
                       </button>
                       {item.agentStatus !== 'completed' && item.column !== 'done' && (
                         <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">

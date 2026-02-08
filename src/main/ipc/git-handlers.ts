@@ -18,6 +18,7 @@ import {
   getWorktreeDiffStats,
   cleanupWorktreeAndBranch,
   mergeBranchAndPushPR,
+  checkMergeConflicts,
 } from '@main/git/git-worktree';
 import type { GitConfig } from '@shared/types/git';
 
@@ -134,6 +135,18 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
       const message = err instanceof Error ? err.message : 'Unknown error';
       logger.error('Failed to get diff stats', { projectPath, branchName, error: message });
       return { filesChanged: 0, insertions: 0, deletions: 0 };
+    }
+  });
+
+  // Check if a branch can merge cleanly (conflict pre-check)
+  ipcMain.handle('git:check-merge-conflicts', (_event, projectPath: string, branchName: string) => {
+    logger.info('IPC: git:check-merge-conflicts', { projectPath, branchName });
+    try {
+      return checkMergeConflicts(projectPath, branchName);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      logger.error('Failed to check merge conflicts', { projectPath, branchName, error: message });
+      return { clean: false, conflictingFiles: [`(check failed: ${message})`] };
     }
   });
 
