@@ -267,36 +267,8 @@
 
   <!-- RIGHT COLUMN -->
 
-  <!-- Section: Agent Config -->
-  <g transform="translate(610, 600)">
-    <circle cx="0" cy="0" r="4" fill="#9c27b0"/>
-    <text x="15" y="5" fill="#9c27b0" font-size="12" font-weight="600">AGENT CONFIG</text>
-    <text x="140" y="5" fill="#6a8aa8" font-size="10">(shared across projects)</text>
-    <rect x="305" y="-8" width="24" height="14" rx="3" fill="#28a745" opacity="0.25" stroke="#28a745" stroke-width="0.5"/>
-    <text x="317" y="2" text-anchor="middle" fill="#28a745" font-size="8" font-weight="600">rw</text>
-  </g>
-
-  <g transform="translate(610, 625)">
-    <text y="0" fill="#8aa8c8" font-size="10">~/.claude</text>
-    <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
-    <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.claude</text>
-    <text x="350" y="0" fill="#4a6a8a" font-size="9">(interactive only)</text>
-  </g>
-
-  <g transform="translate(610, 647)">
-    <text y="0" fill="#8aa8c8" font-size="10">~/.config/opencode</text>
-    <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
-    <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.config/opencode</text>
-  </g>
-
-  <g transform="translate(610, 669)">
-    <text y="0" fill="#8aa8c8" font-size="10">~/.local/share/opencode</text>
-    <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
-    <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.local/share/opencode</text>
-  </g>
-
   <!-- Section: Credentials -->
-  <g transform="translate(610, 710)">
+  <g transform="translate(610, 610)">
     <circle cx="0" cy="0" r="4" fill="#ff9800"/>
     <text x="15" y="5" fill="#ff9800" font-size="12" font-weight="600">CREDENTIALS</text>
     <text x="130" y="5" fill="#6a8aa8" font-size="10">(staged, cleaned up on exit)</text>
@@ -304,20 +276,20 @@
     <text x="337" y="2" text-anchor="middle" fill="#ffc107" font-size="8" font-weight="600">ro</text>
   </g>
 
-  <g transform="translate(610, 735)">
+  <g transform="translate(610, 635)">
     <text y="0" fill="#8aa8c8" font-size="10">git-credentials</text>
     <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
     <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.git-credentials-mounted</text>
   </g>
 
-  <g transform="translate(610, 757)">
+  <g transform="translate(610, 657)">
     <text y="0" fill="#8aa8c8" font-size="10">~/.claude (OAuth)</text>
     <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
     <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.claude-mounted</text>
   </g>
 
   <!-- Section: SSH Keys -->
-  <g transform="translate(610, 800)">
+  <g transform="translate(610, 700)">
     <circle cx="0" cy="0" r="4" fill="#28a745"/>
     <text x="15" y="5" fill="#28a745" font-size="12" font-weight="600">SSH KEYS</text>
     <text x="100" y="5" fill="#6a8aa8" font-size="10">(optional)</text>
@@ -325,20 +297,20 @@
     <text x="177" y="2" text-anchor="middle" fill="#28a745" font-size="8" font-weight="600">rw</text>
   </g>
 
-  <g transform="translate(610, 825)">
+  <g transform="translate(610, 725)">
     <text y="0" fill="#8aa8c8" font-size="10">~/.yolium/ssh</text>
     <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
     <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.ssh</text>
   </g>
 
   <!-- Section: Environment Variables (not mounted) -->
-  <g transform="translate(610, 865)">
+  <g transform="translate(610, 770)">
     <circle cx="0" cy="0" r="4" fill="#4a6a8a"/>
     <text x="15" y="5" fill="#4a6a8a" font-size="12" font-weight="600">ENV VARS</text>
     <text x="100" y="5" fill="#4a6a8a" font-size="10">(injected, not mounted)</text>
   </g>
 
-  <g transform="translate(610, 888)">
+  <g transform="translate(610, 795)">
     <text y="0" fill="#4a6a8a" font-size="9">ANTHROPIC_API_KEY, OPENAI_API_KEY, GIT_USER_NAME, GIT_USER_EMAIL</text>
   </g>
 
