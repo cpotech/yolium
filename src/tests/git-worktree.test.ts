@@ -29,6 +29,8 @@ import {
   sanitizeBranchName,
   generatePrBranchName,
   mergeBranchAndPushPR,
+  checkMergeConflicts,
+  rebaseBranchOntoDefault,
 } from '@main/git/git-worktree'
 
 describe('git-worktree', () => {
@@ -359,8 +361,7 @@ describe('git-worktree', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true)
     })
 
-    it('returns conflict result when merge has conflicts', () => {
-      let callCount = 0
+    it('returns conflict result when rebase has conflicts', () => {
       vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
         const command = `${cmd} ${(args || []).join(' ')}`
         // validate branch
@@ -368,23 +369,18 @@ describe('git-worktree', () => {
         // getDefaultBranch
         if (command.includes('symbolic-ref')) throw new Error('no remote')
         if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        if (command.includes('rev-parse --verify origin/main')) return Buffer.from('abc')
         // fetch
         if (command.includes('fetch origin')) return Buffer.from('')
-        // checkout default
-        if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
-        // pull
-        if (command.includes('pull')) return Buffer.from('')
-        // create pr branch
-        if (command.includes('checkout -B')) return Buffer.from('')
-        // merge - fail with conflict
-        if (command.includes('merge') && command.includes('--no-ff')) {
-          const err = new Error('merge failed') as Error & { stderr: Buffer; stdout: Buffer }
+        // rebase - fail with conflict
+        if (command.includes('rebase origin/main')) {
+          const err = new Error('rebase failed') as Error & { stderr: Buffer; stdout: Buffer }
           err.stderr = Buffer.from('CONFLICT (content): Merge conflict in file.ts')
-          err.stdout = Buffer.from('Automatic merge failed')
+          err.stdout = Buffer.from('could not apply abc123')
           throw err
         }
-        // merge --abort
-        if (command.includes('merge --abort')) return Buffer.from('')
+        // rebase --abort
+        if (command.includes('rebase --abort')) return Buffer.from('')
         return Buffer.from('')
       })
 
@@ -407,7 +403,9 @@ describe('git-worktree', () => {
         if (command.startsWith('git check-ref-format')) return Buffer.from('')
         if (command.includes('symbolic-ref')) throw new Error('no remote')
         if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        if (command.includes('rev-parse --verify origin/main')) return Buffer.from('abc')
         if (command.includes('fetch')) return Buffer.from('')
+        if (command.includes('rebase origin/main')) return Buffer.from('')
         if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
         if (command.includes('pull')) return Buffer.from('')
         if (command.includes('checkout -B')) return Buffer.from('')
@@ -438,7 +436,9 @@ describe('git-worktree', () => {
         if (command.startsWith('git check-ref-format')) return Buffer.from('')
         if (command.includes('symbolic-ref')) throw new Error('no remote')
         if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        if (command.includes('rev-parse --verify origin/main')) return Buffer.from('abc')
         if (command.includes('fetch')) return Buffer.from('')
+        if (command.includes('rebase origin/main')) return Buffer.from('')
         if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
         if (command.includes('pull')) return Buffer.from('')
         if (command.includes('checkout -B')) return Buffer.from('')
@@ -471,7 +471,9 @@ describe('git-worktree', () => {
         if (command.startsWith('git check-ref-format')) return Buffer.from('')
         if (command.includes('symbolic-ref')) throw new Error('no remote')
         if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        if (command.includes('rev-parse --verify origin/main')) return Buffer.from('abc')
         if (command.includes('fetch')) return Buffer.from('')
+        if (command.includes('rebase origin/main')) return Buffer.from('')
         if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
         if (command.includes('pull')) return Buffer.from('')
         if (command.includes('checkout -B')) return Buffer.from('')
@@ -506,7 +508,9 @@ describe('git-worktree', () => {
         if (command.startsWith('git check-ref-format')) return Buffer.from('')
         if (command.includes('symbolic-ref')) throw new Error('no remote')
         if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        if (command.includes('rev-parse --verify origin/main')) return Buffer.from('abc')
         if (command.includes('fetch')) return Buffer.from('')
+        if (command.includes('rebase origin/main')) return Buffer.from('')
         if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
         if (command.includes('pull')) return Buffer.from('')
         // checkout -B should handle existing branch without error
@@ -538,7 +542,9 @@ describe('git-worktree', () => {
         if (command.startsWith('git check-ref-format')) return Buffer.from('')
         if (command.includes('symbolic-ref')) throw new Error('no remote')
         if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        if (command.includes('rev-parse --verify origin/main')) return Buffer.from('abc')
         if (command.includes('fetch')) return Buffer.from('')
+        if (command.includes('rebase origin/main')) return Buffer.from('')
         if (command.includes('checkout main')) {
           const err = new Error('checkout failed') as Error & { stderr: Buffer }
           err.stderr = Buffer.from('error: uncommitted changes')
@@ -557,6 +563,255 @@ describe('git-worktree', () => {
 
       expect(result.success).toBe(false)
       expect(result.error).toContain('Failed to checkout main')
+    })
+
+    it('calls rebase before merge and returns rebased flag on success', () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        if (command.includes('symbolic-ref')) throw new Error('no remote')
+        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        if (command.includes('rev-parse --verify origin/main')) return Buffer.from('abc')
+        if (command.includes('fetch')) return Buffer.from('')
+        if (command.includes('rebase origin/main')) return Buffer.from('')
+        if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
+        if (command.includes('pull')) return Buffer.from('')
+        if (command.includes('checkout -B')) return Buffer.from('')
+        if (command.includes('merge') && command.includes('--no-ff')) return Buffer.from('')
+        if (command.includes('push -u')) return Buffer.from('')
+        if (cmd === 'gh') return 'https://github.com/user/repo/pull/50\n'
+        if (command.includes('worktree remove')) return Buffer.from('')
+        if (command.includes('branch -d')) return Buffer.from('')
+        return Buffer.from('')
+      })
+
+      const result = mergeBranchAndPushPR(
+        '/home/user/project',
+        'yolium-123-abc',
+        '/home/user/.yolium/worktrees/proj/yolium-123-abc',
+        'Add feature',
+        'Feature description',
+      )
+
+      expect(result.success).toBe(true)
+      expect(result.rebased).toBe(true)
+      expect(result.prUrl).toBe('https://github.com/user/repo/pull/50')
+    })
+
+    it('returns conflict when rebase fails with conflicts', () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        if (command.includes('symbolic-ref')) throw new Error('no remote')
+        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        if (command.includes('rev-parse --verify origin/main')) return Buffer.from('abc')
+        if (command.includes('fetch')) return Buffer.from('')
+        // Rebase fails with conflict
+        if (command.includes('rebase origin/main')) {
+          const err = new Error('rebase failed') as Error & { stderr: Buffer; stdout: Buffer }
+          err.stderr = Buffer.from('CONFLICT (content): Merge conflict in src/app.ts')
+          err.stdout = Buffer.from('could not apply abc123')
+          throw err
+        }
+        if (command.includes('rebase --abort')) return Buffer.from('')
+        return Buffer.from('')
+      })
+
+      const result = mergeBranchAndPushPR(
+        '/home/user/project',
+        'yolium-123-abc',
+        '/home/user/.yolium/worktrees/proj/yolium-123-abc',
+        'Add feature',
+        'Feature description',
+      )
+
+      expect(result.success).toBe(false)
+      expect(result.conflict).toBe(true)
+      expect(result.conflictingFiles).toContain('src/app.ts')
+    })
+  })
+
+  describe('checkMergeConflicts', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      vi.mocked(execFileSync).mockReturnValue(Buffer.from(''))
+    })
+
+    it('returns clean when merge-tree succeeds (exit code 0)', () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        if (command.includes('symbolic-ref')) throw new Error('no remote')
+        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        // merge-tree succeeds
+        if (command.includes('merge-tree')) return 'abc123def456\n'
+        return Buffer.from('')
+      })
+
+      const result = checkMergeConflicts('/home/user/project', 'feature-branch')
+      expect(result.clean).toBe(true)
+      expect(result.conflictingFiles).toEqual([])
+    })
+
+    it('returns conflicts when merge-tree fails (exit code 1)', () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        if (command.includes('symbolic-ref')) throw new Error('no remote')
+        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        if (command.includes('merge-tree')) {
+          const err = new Error('conflicts') as Error & { status: number; stdout: string; stderr: string }
+          err.status = 1
+          err.stdout = 'abc123def456\nsrc/app.ts\nsrc/index.ts\n'
+          err.stderr = ''
+          throw err
+        }
+        return Buffer.from('')
+      })
+
+      const result = checkMergeConflicts('/home/user/project', 'feature-branch')
+      expect(result.clean).toBe(false)
+      expect(result.conflictingFiles).toContain('src/app.ts')
+      expect(result.conflictingFiles).toContain('src/index.ts')
+    })
+
+    it('falls back to dry-run merge when merge-tree is not available', () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        if (command.includes('symbolic-ref')) throw new Error('no remote')
+        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        // merge-tree not available (different error, not status 1)
+        if (command.includes('merge-tree')) {
+          const err = new Error('unknown command') as Error & { status: number }
+          err.status = 128
+          throw err
+        }
+        // Fallback: checkout default
+        if (command.includes('checkout main')) return Buffer.from('')
+        // Fallback: dry-run merge succeeds
+        if (command.includes('merge --no-commit --no-ff')) return Buffer.from('')
+        // abort
+        if (command.includes('merge --abort')) return Buffer.from('')
+        return Buffer.from('')
+      })
+
+      const result = checkMergeConflicts('/home/user/project', 'feature-branch')
+      expect(result.clean).toBe(true)
+    })
+
+    it('reports conflicts in dry-run merge fallback', () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        if (command.includes('symbolic-ref')) throw new Error('no remote')
+        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        // merge-tree not available
+        if (command.includes('merge-tree')) {
+          const err = new Error('unknown command') as Error & { status: number }
+          err.status = 128
+          throw err
+        }
+        if (command.includes('checkout main')) return Buffer.from('')
+        // dry-run merge fails with conflict
+        if (command.includes('merge --no-commit --no-ff')) {
+          const err = new Error('merge failed') as Error & { stderr: Buffer; stdout: Buffer }
+          err.stderr = Buffer.from('CONFLICT (content): Merge conflict in README.md')
+          err.stdout = Buffer.from('')
+          throw err
+        }
+        if (command.includes('merge --abort')) return Buffer.from('')
+        return Buffer.from('')
+      })
+
+      const result = checkMergeConflicts('/home/user/project', 'feature-branch')
+      expect(result.clean).toBe(false)
+      expect(result.conflictingFiles).toContain('README.md')
+    })
+  })
+
+  describe('rebaseBranchOntoDefault', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      vi.mocked(execFileSync).mockReturnValue(Buffer.from(''))
+    })
+
+    it('returns success when rebase completes cleanly', () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.includes('symbolic-ref')) throw new Error('no remote')
+        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        if (command.includes('rev-parse --verify origin/main')) return Buffer.from('abc')
+        if (command.includes('fetch')) return Buffer.from('')
+        if (command.includes('rebase origin/main')) return Buffer.from('')
+        return Buffer.from('')
+      })
+
+      const result = rebaseBranchOntoDefault('/home/user/worktree', '/home/user/project')
+      expect(result.success).toBe(true)
+    })
+
+    it('returns conflict when rebase fails with conflicts', () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.includes('symbolic-ref')) throw new Error('no remote')
+        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        if (command.includes('rev-parse --verify origin/main')) return Buffer.from('abc')
+        if (command.includes('fetch')) return Buffer.from('')
+        if (command.includes('rebase origin/main')) {
+          const err = new Error('rebase failed') as Error & { stderr: Buffer; stdout: Buffer }
+          err.stderr = Buffer.from('CONFLICT (content): Merge conflict in src/main.ts')
+          err.stdout = Buffer.from('')
+          throw err
+        }
+        if (command.includes('rebase --abort')) return Buffer.from('')
+        return Buffer.from('')
+      })
+
+      const result = rebaseBranchOntoDefault('/home/user/worktree', '/home/user/project')
+      expect(result.success).toBe(false)
+      expect(result.conflict).toBe(true)
+      expect(result.conflictingFiles).toContain('src/main.ts')
+    })
+
+    it('uses local default branch when origin is not available', () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.includes('symbolic-ref')) throw new Error('no remote')
+        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        // origin/main not available
+        if (command.includes('rev-parse --verify origin/main')) throw new Error('not found')
+        if (command.includes('fetch')) throw new Error('no remote')
+        // rebase onto local main
+        if (command.includes('rebase main')) return Buffer.from('')
+        return Buffer.from('')
+      })
+
+      const result = rebaseBranchOntoDefault('/home/user/worktree', '/home/user/project')
+      expect(result.success).toBe(true)
+    })
+
+    it('aborts rebase on failure and returns error', () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.includes('symbolic-ref')) throw new Error('no remote')
+        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        if (command.includes('rev-parse --verify origin/main')) return Buffer.from('abc')
+        if (command.includes('fetch')) return Buffer.from('')
+        if (command.includes('rebase origin/main')) {
+          const err = new Error('rebase error') as Error & { stderr: Buffer; stdout: Buffer }
+          err.stderr = Buffer.from('fatal: some other error')
+          err.stdout = Buffer.from('')
+          throw err
+        }
+        if (command.includes('rebase --abort')) return Buffer.from('')
+        return Buffer.from('')
+      })
+
+      const result = rebaseBranchOntoDefault('/home/user/worktree', '/home/user/project')
+      expect(result.success).toBe(false)
+      expect(result.conflict).toBeUndefined()
+      expect(result.error).toContain('Rebase failed')
     })
   })
 })
