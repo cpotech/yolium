@@ -208,6 +208,11 @@ export function ItemDetailDialog({
   const handleStartAgent = useCallback(async (agentName: string) => {
     if (!item || isStartingAgent) return
 
+    // Auto-save unsaved changes (e.g. agent provider) before starting
+    if (hasUnsavedChanges) {
+      await handleSave()
+    }
+
     setIsStartingAgent(true)
     agentSession.clearAgentOutput()
     agentSession.setCurrentStep(null)
@@ -221,7 +226,7 @@ export function ItemDetailDialog({
         projectPath,
         itemId: item.id,
         goal: item.description,
-        agentProvider: item.agentProvider,
+        agentProvider,
       })
 
       if (result.error) {
@@ -242,7 +247,7 @@ export function ItemDetailDialog({
     } finally {
       setIsStartingAgent(false)
     }
-  }, [item, isStartingAgent, projectPath, onUpdated, agentSession])
+  }, [item, isStartingAgent, projectPath, onUpdated, agentSession, agentProvider, hasUnsavedChanges, handleSave])
 
   const handleAnswerQuestion = useCallback(async () => {
     if (!item || isAnswering || !answerText.trim()) return
@@ -264,6 +269,11 @@ export function ItemDetailDialog({
   const handleResumeAgent = useCallback(async (agentName: string) => {
     if (!item || isStartingAgent) return
 
+    // Auto-save unsaved changes (e.g. agent provider) before resuming
+    if (hasUnsavedChanges) {
+      await handleSave()
+    }
+
     setIsStartingAgent(true)
     agentSession.setCurrentStep(null)
     agentSession.setCurrentDetail(null)
@@ -276,7 +286,7 @@ export function ItemDetailDialog({
         projectPath,
         itemId: item.id,
         goal: item.description,
-        agentProvider: item.agentProvider,
+        agentProvider,
       })
 
       if (result.error) {
@@ -297,7 +307,7 @@ export function ItemDetailDialog({
     } finally {
       setIsStartingAgent(false)
     }
-  }, [item, isStartingAgent, projectPath, onUpdated, agentSession])
+  }, [item, isStartingAgent, projectPath, onUpdated, agentSession, agentProvider, hasUnsavedChanges, handleSave])
 
   const handleStopAgent = useCallback(async () => {
     if (agentSession.currentSessionId) {
