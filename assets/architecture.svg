@@ -129,16 +129,16 @@
   <circle cx="500" cy="397" r="4" fill="#28a745"/>
   <text x="600" y="402" text-anchor="middle" fill="#00a8cc" font-size="11" font-weight="500">Agent: OpenCode</text>
 
-  <!-- === CONTAINER 3: SHELL === -->
+  <!-- === CONTAINER 3: CODEX === -->
   <rect x="840" y="305" width="280" height="125" rx="10" fill="url(#cardGrad)" stroke="#00a8cc" stroke-width="2" filter="url(#shadow)"/>
   <rect x="840" y="305" width="280" height="32" rx="10" fill="#00a8cc" opacity="0.15"/>
   <rect x="840" y="327" width="280" height="10" fill="#00a8cc" opacity="0.15"/>
   <text x="980" y="328" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="600">Container: cli</text>
   <text x="980" y="358" text-anchor="middle" fill="#6a8aa8" font-size="10">(ephemeral, --rm)</text>
-  
+
   <rect x="860" y="380" width="240" height="35" rx="6" fill="#0a1628" stroke="#ffc107" stroke-width="1"/>
   <circle cx="880" cy="397" r="4" fill="#28a745"/>
-  <text x="980" y="402" text-anchor="middle" fill="#ffc107" font-size="11" font-weight="500">Agent: Shell</text>
+  <text x="980" y="402" text-anchor="middle" fill="#ffc107" font-size="11" font-weight="500">Agent: Codex</text>
 
   <!-- Converging lines to bind mounts -->
   <path d="M 220 430 L 220 460 L 600 460" stroke="#ff6b35" stroke-width="2" fill="none"/>
@@ -228,7 +228,7 @@
   <g transform="translate(610, 615)">
     <text y="0" fill="#8aa8c8" font-size="10">~/.claude</text>
     <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
-    <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.claude</text>
+    <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.claude (interactive)</text>
   </g>
 
   <g transform="translate(610, 637)">
@@ -243,36 +243,44 @@
     <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.local/share/opencode</text>
   </g>
 
-  <!-- Section: SSH Keys -->
+  <!-- Section: Credentials -->
   <g transform="translate(610, 700)">
-    <circle cx="0" cy="0" r="4" fill="#28a745"/>
-    <text x="15" y="5" fill="#28a745" font-size="12" font-weight="600">SSH KEYS</text>
-    <text x="100" y="5" fill="#6a8aa8" font-size="10">(optional, read-only)</text>
+    <circle cx="0" cy="0" r="4" fill="#ff9800"/>
+    <text x="15" y="5" fill="#ff9800" font-size="12" font-weight="600">CREDENTIALS</text>
+    <text x="130" y="5" fill="#6a8aa8" font-size="10">(read-only, staged in container)</text>
   </g>
 
   <g transform="translate(610, 725)">
+    <text y="0" fill="#8aa8c8" font-size="10">git-credentials</text>
+    <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
+    <text x="200" y="0" fill="#ffffff" font-size="10">.git-credentials-mounted:ro</text>
+  </g>
+
+  <g transform="translate(610, 747)">
+    <text y="0" fill="#8aa8c8" font-size="10">~/.claude (OAuth)</text>
+    <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
+    <text x="200" y="0" fill="#ffffff" font-size="10">.claude-mounted:ro</text>
+  </g>
+
+  <g transform="translate(610, 769)">
+    <text y="0" fill="#4a6a8a" font-size="9">API keys (ANTHROPIC_API_KEY, OPENAI_API_KEY) passed as env vars</text>
+  </g>
+
+  <g transform="translate(610, 787)">
+    <text y="0" fill="#4a6a8a" font-size="9">Git identity (GIT_USER_NAME, GIT_USER_EMAIL) passed as env vars</text>
+  </g>
+
+  <!-- Section: SSH Keys -->
+  <g transform="translate(610, 820)">
+    <circle cx="0" cy="0" r="4" fill="#28a745"/>
+    <text x="15" y="5" fill="#28a745" font-size="12" font-weight="600">SSH KEYS</text>
+    <text x="100" y="5" fill="#6a8aa8" font-size="10">(optional)</text>
+  </g>
+
+  <g transform="translate(610, 845)">
     <text y="0" fill="#8aa8c8" font-size="10">~/.yolium/ssh</text>
     <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
     <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.ssh</text>
-  </g>
-
-  <!-- Section: Git Config -->
-  <g transform="translate(610, 765)">
-    <circle cx="0" cy="0" r="4" fill="#ff9800"/>
-    <text x="15" y="5" fill="#ff9800" font-size="12" font-weight="600">GIT CONFIG</text>
-    <text x="115" y="5" fill="#6a8aa8" font-size="10">(optional, read-only)</text>
-  </g>
-
-  <g transform="translate(610, 790)">
-    <text y="0" fill="#8aa8c8" font-size="10">~/.gitconfig</text>
-    <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
-    <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.gitconfig</text>
-  </g>
-
-  <g transform="translate(610, 812)">
-    <text y="0" fill="#8aa8c8" font-size="10">~/.config/git</text>
-    <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
-    <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.config/git</text>
   </g>
 
   <!-- === WARNING SECTION === -->
