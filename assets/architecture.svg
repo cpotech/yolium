@@ -1,33 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 970" font-family="'Segoe UI', 'SF Pro Display', -apple-system, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1085" font-family="'Segoe UI', 'SF Pro Display', -apple-system, sans-serif">
   <defs>
-    <!-- Gradients matching Yolium theme -->
+    <!-- Tokyo Dark gradients -->
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#0a1628"/>
-      <stop offset="100%" style="stop-color:#0d1f3c"/>
+      <stop offset="0%" style="stop-color:#06080A"/>
+      <stop offset="100%" style="stop-color:#11121D"/>
     </linearGradient>
     <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#0f2744"/>
-      <stop offset="100%" style="stop-color:#0a1c30"/>
+      <stop offset="0%" style="stop-color:#1A1B2A"/>
+      <stop offset="100%" style="stop-color:#11121D"/>
     </linearGradient>
     <linearGradient id="headerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#1a3a5c"/>
-      <stop offset="100%" style="stop-color:#0f2744"/>
+      <stop offset="0%" style="stop-color:#212234"/>
+      <stop offset="100%" style="stop-color:#1A1B2A"/>
     </linearGradient>
     <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#00a8cc"/>
-      <stop offset="100%" style="stop-color:#0077b6"/>
+      <stop offset="0%" style="stop-color:#7199EE"/>
+      <stop offset="100%" style="stop-color:#5A7FCC"/>
     </linearGradient>
     <linearGradient id="dangerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#dc3545"/>
-      <stop offset="100%" style="stop-color:#a71d2a"/>
+      <stop offset="0%" style="stop-color:#EE6D85"/>
+      <stop offset="100%" style="stop-color:#CC5070"/>
     </linearGradient>
 
     <!-- Arrow Markers -->
-    <marker id="arrowCyan" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L9,3 z" fill="#00a8cc"/>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#7199EE"/>
     </marker>
     <marker id="arrowOrange" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L9,3 z" fill="#ff6b35"/>
+      <path d="M0,0 L0,6 L9,3 z" fill="#F6955B"/>
     </marker>
 
     <!-- Glow effect -->
@@ -38,7 +38,7 @@
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-    
+
     <!-- Shadow -->
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.4"/>
@@ -46,269 +46,309 @@
   </defs>
 
   <!-- Background -->
-  <rect width="1200" height="1040" fill="url(#bgGrad)"/>
+  <rect width="1200" height="1085" fill="url(#bgGrad)"/>
 
   <!-- Subtle grid pattern -->
   <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
-    <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#1a3a5c" stroke-width="0.5" opacity="0.3"/>
+    <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#212234" stroke-width="0.5" opacity="0.3"/>
   </pattern>
-  <rect width="1200" height="1040" fill="url(#grid)"/>
+  <rect width="1200" height="1085" fill="url(#grid)"/>
 
   <!-- === HEADER WITH YOLIUM LOGO === -->
   <g transform="translate(600, 35)">
     <!-- Robot/arcade icon -->
     <g transform="translate(-30, -20)">
-      <rect x="0" y="10" width="60" height="40" rx="6" fill="#0f2744" stroke="#1a3a5c" stroke-width="2"/>
-      <rect x="5" y="15" width="50" height="22" rx="3" fill="#0a1628" stroke="#1a3a5c" stroke-width="1"/>
+      <rect x="0" y="10" width="60" height="40" rx="6" fill="#1A1B2A" stroke="#353945" stroke-width="2"/>
+      <rect x="5" y="15" width="50" height="22" rx="3" fill="#11121D" stroke="#353945" stroke-width="1"/>
       <!-- Eyes -->
-      <rect x="12" y="20" width="10" height="8" rx="2" fill="#00a8cc" opacity="0.8"/>
-      <rect x="38" y="20" width="10" height="8" rx="2" fill="#00a8cc" opacity="0.8"/>
+      <rect x="12" y="20" width="10" height="8" rx="2" fill="#7199EE" opacity="0.8"/>
+      <rect x="38" y="20" width="10" height="8" rx="2" fill="#7199EE" opacity="0.8"/>
       <!-- Red indicator light -->
-      <circle cx="30" cy="5" r="4" fill="#dc3545" filter="url(#glow)"/>
+      <circle cx="30" cy="5" r="4" fill="#EE6D85" filter="url(#glow)"/>
       <!-- Antenna -->
-      <line x1="30" y1="1" x2="30" y2="-6" stroke="#1a3a5c" stroke-width="2"/>
+      <line x1="30" y1="1" x2="30" y2="-6" stroke="#353945" stroke-width="2"/>
     </g>
-    
+
     <!-- YOLIUM text -->
-    <text x="0" y="50" text-anchor="middle" fill="#ffffff" font-size="28" font-weight="600" letter-spacing="8">YOLIUM</text>
-    <text x="0" y="68" text-anchor="middle" fill="#00a8cc" font-size="10" letter-spacing="3">AI AGENTIC SYSTEMS</text>
-    <text x="0" y="82" text-anchor="middle" fill="#4a6a8a" font-size="9" letter-spacing="2">CONTAINER ISOLATION ARCHITECTURE</text>
+    <text x="0" y="50" text-anchor="middle" fill="#A0A8CD" font-size="28" font-weight="600" letter-spacing="8">YOLIUM</text>
+    <text x="0" y="68" text-anchor="middle" fill="#7199EE" font-size="10" letter-spacing="3">AI AGENTIC SYSTEMS</text>
+    <text x="0" y="82" text-anchor="middle" fill="#4A5057" font-size="9" letter-spacing="2">CONTAINER ISOLATION ARCHITECTURE</text>
   </g>
 
   <!-- === MAIN HOST CONTAINER === -->
-  <rect x="40" y="120" width="1120" height="880" rx="12" fill="url(#cardGrad)" stroke="#1a3a5c" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="40" y="120" width="1120" height="960" rx="12" fill="url(#cardGrad)" stroke="#353945" stroke-width="2" filter="url(#shadow)"/>
 
   <!-- Host Header -->
   <rect x="40" y="120" width="1120" height="45" rx="12" fill="url(#headerGrad)"/>
   <rect x="40" y="153" width="1120" height="12" fill="url(#headerGrad)"/>
-  <text x="600" y="150" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="600" letter-spacing="2">HOST MACHINE</text>
+  <text x="600" y="150" text-anchor="middle" fill="#A0A8CD" font-size="16" font-weight="600" letter-spacing="2">HOST MACHINE</text>
 
   <!-- Window controls -->
-  <circle cx="70" cy="142" r="6" fill="#dc3545"/>
-  <circle cx="92" cy="142" r="6" fill="#ffc107"/>
-  <circle cx="114" cy="142" r="6" fill="#28a745"/>
+  <circle cx="70" cy="142" r="6" fill="#EE6D85"/>
+  <circle cx="92" cy="142" r="6" fill="#D7A65F"/>
+  <circle cx="114" cy="142" r="6" fill="#95C561"/>
 
   <!-- === BUILD PHASE === -->
-  <rect x="80" y="185" width="1040" height="55" rx="8" fill="none" stroke="#1a3a5c" stroke-width="1" stroke-dasharray="6,4"/>
-  <text x="100" y="207" fill="#4a6a8a" font-size="10" font-weight="600" letter-spacing="1">BUILD PHASE</text>
+  <rect x="80" y="185" width="1040" height="55" rx="8" fill="none" stroke="#353945" stroke-width="1" stroke-dasharray="6,4"/>
+  <text x="100" y="207" fill="#4A5057" font-size="10" font-weight="600" letter-spacing="1">BUILD PHASE</text>
 
-  <text x="100" y="228" fill="#8aa8c8" font-size="11">src/docker/Dockerfile</text>
-  <path d="M 275 223 L 335 223" stroke="#00a8cc" stroke-width="2" marker-end="url(#arrowCyan)"/>
-  <text x="355" y="228" fill="#00a8cc" font-size="11" font-weight="500">docker build</text>
-  <path d="M 475 223 L 535 223" stroke="#00a8cc" stroke-width="2" marker-end="url(#arrowCyan)"/>
+  <text x="100" y="228" fill="#A0A8CD" font-size="11">src/docker/Dockerfile</text>
+  <path d="M 275 223 L 335 223" stroke="#7199EE" stroke-width="2" marker-end="url(#arrowBlue)"/>
+  <text x="355" y="228" fill="#7199EE" font-size="11" font-weight="500">docker build</text>
+  <path d="M 475 223 L 535 223" stroke="#7199EE" stroke-width="2" marker-end="url(#arrowBlue)"/>
 
   <!-- Docker image box -->
   <rect x="555" y="205" width="190" height="36" rx="6" fill="url(#accentGrad)" filter="url(#shadow)"/>
-  <text x="650" y="229" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="600">yolium:latest</text>
-  <text x="870" y="228" fill="#6a8aa8" font-size="10">(built once, reused)</text>
+  <text x="650" y="229" text-anchor="middle" fill="#11121D" font-size="12" font-weight="600">yolium:latest</text>
+  <text x="870" y="228" fill="#4A5057" font-size="10">(built once, reused)</text>
 
   <!-- Arrows from image to containers -->
-  <path d="M 650 241 L 650 265 L 210 265 L 210 295" stroke="#00a8cc" stroke-width="2" fill="none" marker-end="url(#arrowCyan)"/>
-  <path d="M 650 241 L 650 265 L 470 265 L 470 295" stroke="#00a8cc" stroke-width="2" fill="none" marker-end="url(#arrowCyan)"/>
-  <path d="M 650 241 L 650 265 L 730 265 L 730 295" stroke="#00a8cc" stroke-width="2" fill="none" marker-end="url(#arrowCyan)"/>
-  <path d="M 650 241 L 650 265 L 990 265 L 990 295" stroke="#00a8cc" stroke-width="2" fill="none" marker-end="url(#arrowCyan)"/>
+  <path d="M 650 241 L 650 265 L 210 265 L 210 295" stroke="#7199EE" stroke-width="2" fill="none" marker-end="url(#arrowBlue)"/>
+  <path d="M 650 241 L 650 265 L 470 265 L 470 295" stroke="#7199EE" stroke-width="2" fill="none" marker-end="url(#arrowBlue)"/>
+  <path d="M 650 241 L 650 265 L 730 265 L 730 295" stroke="#7199EE" stroke-width="2" fill="none" marker-end="url(#arrowBlue)"/>
+  <path d="M 650 241 L 650 265 L 990 265 L 990 295" stroke="#7199EE" stroke-width="2" fill="none" marker-end="url(#arrowBlue)"/>
 
   <!-- === CONTAINER 1: CLAUDE CODE === -->
-  <rect x="90" y="305" width="240" height="125" rx="10" fill="url(#cardGrad)" stroke="#00a8cc" stroke-width="2" filter="url(#shadow)"/>
-  <rect x="90" y="305" width="240" height="32" rx="10" fill="#00a8cc" opacity="0.15"/>
-  <rect x="90" y="327" width="240" height="10" fill="#00a8cc" opacity="0.15"/>
-  <text x="210" y="328" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="600">Container: my-app</text>
-  <text x="210" y="358" text-anchor="middle" fill="#6a8aa8" font-size="10">(ephemeral, --rm)</text>
+  <rect x="90" y="305" width="240" height="125" rx="10" fill="url(#cardGrad)" stroke="#7199EE" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="90" y="305" width="240" height="32" rx="10" fill="#7199EE" opacity="0.1"/>
+  <rect x="90" y="327" width="240" height="10" fill="#7199EE" opacity="0.1"/>
+  <text x="210" y="328" text-anchor="middle" fill="#A0A8CD" font-size="11" font-weight="600">Container: my-app</text>
+  <text x="210" y="358" text-anchor="middle" fill="#4A5057" font-size="10">(ephemeral, --rm)</text>
 
-  <rect x="105" y="380" width="210" height="35" rx="6" fill="#0a1628" stroke="#00a8cc" stroke-width="1"/>
-  <circle cx="120" cy="397" r="4" fill="#28a745"/>
-  <text x="210" y="402" text-anchor="middle" fill="#00a8cc" font-size="11" font-weight="500">Claude Code</text>
+  <rect x="105" y="380" width="210" height="35" rx="6" fill="#11121D" stroke="#7199EE" stroke-width="1"/>
+  <circle cx="120" cy="397" r="4" fill="#95C561"/>
+  <text x="210" y="402" text-anchor="middle" fill="#7199EE" font-size="11" font-weight="500">Claude Code</text>
 
   <!-- === CONTAINER 2: OPENCODE === -->
-  <rect x="350" y="305" width="240" height="125" rx="10" fill="url(#cardGrad)" stroke="#00a8cc" stroke-width="2" filter="url(#shadow)"/>
-  <rect x="350" y="305" width="240" height="32" rx="10" fill="#00a8cc" opacity="0.15"/>
-  <rect x="350" y="327" width="240" height="10" fill="#00a8cc" opacity="0.15"/>
-  <text x="470" y="328" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="600">Container: api-svc</text>
-  <text x="470" y="358" text-anchor="middle" fill="#6a8aa8" font-size="10">(ephemeral, --rm)</text>
+  <rect x="350" y="305" width="240" height="125" rx="10" fill="url(#cardGrad)" stroke="#7199EE" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="350" y="305" width="240" height="32" rx="10" fill="#7199EE" opacity="0.1"/>
+  <rect x="350" y="327" width="240" height="10" fill="#7199EE" opacity="0.1"/>
+  <text x="470" y="328" text-anchor="middle" fill="#A0A8CD" font-size="11" font-weight="600">Container: api-svc</text>
+  <text x="470" y="358" text-anchor="middle" fill="#4A5057" font-size="10">(ephemeral, --rm)</text>
 
-  <rect x="365" y="380" width="210" height="35" rx="6" fill="#0a1628" stroke="#00a8cc" stroke-width="1"/>
-  <circle cx="380" cy="397" r="4" fill="#28a745"/>
-  <text x="470" y="402" text-anchor="middle" fill="#00a8cc" font-size="11" font-weight="500">OpenCode</text>
+  <rect x="365" y="380" width="210" height="35" rx="6" fill="#11121D" stroke="#7199EE" stroke-width="1"/>
+  <circle cx="380" cy="397" r="4" fill="#95C561"/>
+  <text x="470" y="402" text-anchor="middle" fill="#7199EE" font-size="11" font-weight="500">OpenCode</text>
 
   <!-- === CONTAINER 3: CODEX === -->
-  <rect x="610" y="305" width="240" height="125" rx="10" fill="url(#cardGrad)" stroke="#00a8cc" stroke-width="2" filter="url(#shadow)"/>
-  <rect x="610" y="305" width="240" height="32" rx="10" fill="#00a8cc" opacity="0.15"/>
-  <rect x="610" y="327" width="240" height="10" fill="#00a8cc" opacity="0.15"/>
-  <text x="730" y="328" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="600">Container: ml-svc</text>
-  <text x="730" y="358" text-anchor="middle" fill="#6a8aa8" font-size="10">(ephemeral, --rm)</text>
+  <rect x="610" y="305" width="240" height="125" rx="10" fill="url(#cardGrad)" stroke="#7199EE" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="610" y="305" width="240" height="32" rx="10" fill="#7199EE" opacity="0.1"/>
+  <rect x="610" y="327" width="240" height="10" fill="#7199EE" opacity="0.1"/>
+  <text x="730" y="328" text-anchor="middle" fill="#A0A8CD" font-size="11" font-weight="600">Container: ml-svc</text>
+  <text x="730" y="358" text-anchor="middle" fill="#4A5057" font-size="10">(ephemeral, --rm)</text>
 
-  <rect x="625" y="380" width="210" height="35" rx="6" fill="#0a1628" stroke="#00a8cc" stroke-width="1"/>
-  <circle cx="640" cy="397" r="4" fill="#28a745"/>
-  <text x="730" y="402" text-anchor="middle" fill="#00a8cc" font-size="11" font-weight="500">Codex</text>
+  <rect x="625" y="380" width="210" height="35" rx="6" fill="#11121D" stroke="#7199EE" stroke-width="1"/>
+  <circle cx="640" cy="397" r="4" fill="#95C561"/>
+  <text x="730" y="402" text-anchor="middle" fill="#7199EE" font-size="11" font-weight="500">Codex</text>
 
   <!-- === CONTAINER 4: SHELL === -->
-  <rect x="870" y="305" width="240" height="125" rx="10" fill="url(#cardGrad)" stroke="#00a8cc" stroke-width="2" filter="url(#shadow)"/>
-  <rect x="870" y="305" width="240" height="32" rx="10" fill="#00a8cc" opacity="0.15"/>
-  <rect x="870" y="327" width="240" height="10" fill="#00a8cc" opacity="0.15"/>
-  <text x="990" y="328" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="600">Container: cli</text>
-  <text x="990" y="358" text-anchor="middle" fill="#6a8aa8" font-size="10">(ephemeral, --rm)</text>
+  <rect x="870" y="305" width="240" height="125" rx="10" fill="url(#cardGrad)" stroke="#7199EE" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="870" y="305" width="240" height="32" rx="10" fill="#7199EE" opacity="0.1"/>
+  <rect x="870" y="327" width="240" height="10" fill="#7199EE" opacity="0.1"/>
+  <text x="990" y="328" text-anchor="middle" fill="#A0A8CD" font-size="11" font-weight="600">Container: cli</text>
+  <text x="990" y="358" text-anchor="middle" fill="#4A5057" font-size="10">(ephemeral, --rm)</text>
 
-  <rect x="885" y="380" width="210" height="35" rx="6" fill="#0a1628" stroke="#ffc107" stroke-width="1"/>
-  <circle cx="900" cy="397" r="4" fill="#28a745"/>
-  <text x="990" y="402" text-anchor="middle" fill="#ffc107" font-size="11" font-weight="500">Shell</text>
+  <rect x="885" y="380" width="210" height="35" rx="6" fill="#11121D" stroke="#D7A65F" stroke-width="1"/>
+  <circle cx="900" cy="397" r="4" fill="#95C561"/>
+  <text x="990" y="402" text-anchor="middle" fill="#D7A65F" font-size="11" font-weight="500">Shell</text>
 
   <!-- Converging lines to bind mounts -->
-  <path d="M 210 430 L 210 460 L 600 460" stroke="#ff6b35" stroke-width="2" fill="none"/>
-  <path d="M 470 430 L 470 460 L 600 460" stroke="#ff6b35" stroke-width="2" fill="none"/>
-  <path d="M 730 430 L 730 460 L 600 460" stroke="#ff6b35" stroke-width="2" fill="none"/>
-  <path d="M 990 430 L 990 460 L 600 460" stroke="#ff6b35" stroke-width="2" fill="none"/>
-  <path d="M 600 460 L 600 490" stroke="#ff6b35" stroke-width="2" fill="none" marker-end="url(#arrowOrange)"/>
+  <path d="M 210 430 L 210 460 L 600 460" stroke="#F6955B" stroke-width="2" fill="none"/>
+  <path d="M 470 430 L 470 460 L 600 460" stroke="#F6955B" stroke-width="2" fill="none"/>
+  <path d="M 730 430 L 730 460 L 600 460" stroke="#F6955B" stroke-width="2" fill="none"/>
+  <path d="M 990 430 L 990 460 L 600 460" stroke="#F6955B" stroke-width="2" fill="none"/>
+  <path d="M 600 460 L 600 490" stroke="#F6955B" stroke-width="2" fill="none" marker-end="url(#arrowOrange)"/>
 
   <!-- === BIND MOUNTS BANNER === -->
-  <rect x="280" y="500" width="640" height="40" rx="8" fill="#ff6b35" filter="url(#shadow)"/>
-  <text x="600" y="527" text-anchor="middle" fill="#ffffff" font-size="13" font-weight="600" letter-spacing="1">BIND MOUNTS (the ONLY host access)</text>
+  <rect x="280" y="500" width="640" height="40" rx="8" fill="#F6955B" filter="url(#shadow)"/>
+  <text x="600" y="527" text-anchor="middle" fill="#11121D" font-size="13" font-weight="600" letter-spacing="1">BIND MOUNTS (the ONLY host access)</text>
 
   <!-- === MOUNT PATHS SECTION === -->
-  <rect x="80" y="560" width="1040" height="370" rx="10" fill="url(#cardGrad)" stroke="#1a3a5c" stroke-width="1"/>
+  <rect x="80" y="560" width="1040" height="390" rx="10" fill="url(#cardGrad)" stroke="#353945" stroke-width="1"/>
 
   <!-- Permission legend -->
   <g transform="translate(920, 575)">
-    <rect x="0" y="-8" width="24" height="14" rx="3" fill="#28a745" opacity="0.25" stroke="#28a745" stroke-width="0.5"/>
-    <text x="12" y="2" text-anchor="middle" fill="#28a745" font-size="8" font-weight="600">rw</text>
-    <text x="30" y="2" fill="#6a8aa8" font-size="9">read-write</text>
-    <rect x="100" y="-8" width="24" height="14" rx="3" fill="#ffc107" opacity="0.25" stroke="#ffc107" stroke-width="0.5"/>
-    <text x="112" y="2" text-anchor="middle" fill="#ffc107" font-size="8" font-weight="600">ro</text>
-    <text x="130" y="2" fill="#6a8aa8" font-size="9">read-only</text>
+    <rect x="0" y="-8" width="24" height="14" rx="3" fill="#95C561" opacity="0.2" stroke="#95C561" stroke-width="0.5"/>
+    <text x="12" y="2" text-anchor="middle" fill="#95C561" font-size="8" font-weight="600">rw</text>
+    <text x="30" y="2" fill="#4A5057" font-size="9">read-write</text>
+    <rect x="100" y="-8" width="24" height="14" rx="3" fill="#D7A65F" opacity="0.2" stroke="#D7A65F" stroke-width="0.5"/>
+    <text x="112" y="2" text-anchor="middle" fill="#D7A65F" font-size="8" font-weight="600">ro</text>
+    <text x="130" y="2" fill="#4A5057" font-size="9">read-only</text>
   </g>
 
   <!-- Divider line -->
-  <line x1="580" y1="595" x2="580" y2="910" stroke="#1a3a5c" stroke-width="1" stroke-dasharray="6,4"/>
+  <line x1="580" y1="595" x2="580" y2="940" stroke="#353945" stroke-width="1" stroke-dasharray="6,4"/>
 
   <!-- LEFT COLUMN -->
 
   <!-- Section: Your Project -->
   <g transform="translate(100, 600)">
-    <circle cx="0" cy="0" r="4" fill="#ff6b35"/>
-    <text x="15" y="5" fill="#ff6b35" font-size="12" font-weight="600">YOUR PROJECT</text>
-    <rect x="160" y="-8" width="24" height="14" rx="3" fill="#28a745" opacity="0.25" stroke="#28a745" stroke-width="0.5"/>
-    <text x="172" y="2" text-anchor="middle" fill="#28a745" font-size="8" font-weight="600">rw</text>
+    <circle cx="0" cy="0" r="4" fill="#F6955B"/>
+    <text x="15" y="5" fill="#F6955B" font-size="12" font-weight="600">YOUR PROJECT</text>
+    <rect x="160" y="-8" width="24" height="14" rx="3" fill="#95C561" opacity="0.2" stroke="#95C561" stroke-width="0.5"/>
+    <text x="172" y="2" text-anchor="middle" fill="#95C561" font-size="8" font-weight="600">rw</text>
   </g>
 
   <g transform="translate(100, 625)">
-    <text y="0" fill="#8aa8c8" font-size="10">~/code/my-app</text>
-    <text x="200" y="0" fill="#00a8cc" font-size="12">→</text>
-    <text x="220" y="0" fill="#ffffff" font-size="10">/home/agent/code/my-app</text>
+    <text y="0" fill="#A0A8CD" font-size="10">~/code/my-app</text>
+    <text x="200" y="0" fill="#7199EE" font-size="12">→</text>
+    <text x="220" y="0" fill="#A0A8CD" font-size="10">/home/agent/code/my-app</text>
   </g>
-  <text x="115" y="650" fill="#4a6a8a" font-size="9">(or worktree: ~/.yolium/worktrees/my-app-abc123)</text>
+  <text x="115" y="650" fill="#4A5057" font-size="9">(or worktree: ~/.yolium/worktrees/my-app-abc123)</text>
 
   <!-- Section: Package Caches -->
   <g transform="translate(100, 680)">
-    <circle cx="0" cy="0" r="4" fill="#00a8cc"/>
-    <text x="15" y="5" fill="#00a8cc" font-size="12" font-weight="600">PACKAGE CACHES</text>
-    <text x="175" y="5" fill="#6a8aa8" font-size="10">(per-project, persistent)</text>
-    <rect x="355" y="-8" width="24" height="14" rx="3" fill="#28a745" opacity="0.25" stroke="#28a745" stroke-width="0.5"/>
-    <text x="367" y="2" text-anchor="middle" fill="#28a745" font-size="8" font-weight="600">rw</text>
+    <circle cx="0" cy="0" r="4" fill="#38A89D"/>
+    <text x="15" y="5" fill="#38A89D" font-size="12" font-weight="600">PACKAGE CACHES</text>
+    <text x="175" y="5" fill="#4A5057" font-size="10">(per-project, persistent)</text>
+    <rect x="355" y="-8" width="24" height="14" rx="3" fill="#95C561" opacity="0.2" stroke="#95C561" stroke-width="0.5"/>
+    <text x="367" y="2" text-anchor="middle" fill="#95C561" font-size="8" font-weight="600">rw</text>
   </g>
 
   <g transform="translate(100, 705)">
-    <text y="0" fill="#8aa8c8" font-size="10">~/.cache/yolium/&lt;project&gt;/npm</text>
-    <text x="200" y="0" fill="#00a8cc" font-size="12">→</text>
-    <text x="220" y="0" fill="#ffffff" font-size="10">/home/agent/.npm</text>
+    <text y="0" fill="#A0A8CD" font-size="10">~/.cache/yolium/&lt;project&gt;/npm</text>
+    <text x="200" y="0" fill="#7199EE" font-size="12">→</text>
+    <text x="220" y="0" fill="#A0A8CD" font-size="10">/home/agent/.npm</text>
   </g>
 
   <g transform="translate(100, 725)">
-    <text y="0" fill="#8aa8c8" font-size="10">~/.cache/yolium/&lt;project&gt;/pip</text>
-    <text x="200" y="0" fill="#00a8cc" font-size="12">→</text>
-    <text x="220" y="0" fill="#ffffff" font-size="10">/home/agent/.cache/pip</text>
+    <text y="0" fill="#A0A8CD" font-size="10">~/.cache/yolium/&lt;project&gt;/pip</text>
+    <text x="200" y="0" fill="#7199EE" font-size="12">→</text>
+    <text x="220" y="0" fill="#A0A8CD" font-size="10">/home/agent/.cache/pip</text>
   </g>
 
   <g transform="translate(100, 745)">
-    <text y="0" fill="#8aa8c8" font-size="10">~/.cache/yolium/&lt;project&gt;/maven</text>
-    <text x="200" y="0" fill="#00a8cc" font-size="12">→</text>
-    <text x="220" y="0" fill="#ffffff" font-size="10">/home/agent/.m2</text>
+    <text y="0" fill="#A0A8CD" font-size="10">~/.cache/yolium/&lt;project&gt;/maven</text>
+    <text x="200" y="0" fill="#7199EE" font-size="12">→</text>
+    <text x="220" y="0" fill="#A0A8CD" font-size="10">/home/agent/.m2</text>
   </g>
 
   <g transform="translate(100, 765)">
-    <text y="0" fill="#8aa8c8" font-size="10">~/.cache/yolium/&lt;project&gt;/gradle</text>
-    <text x="200" y="0" fill="#00a8cc" font-size="12">→</text>
-    <text x="220" y="0" fill="#ffffff" font-size="10">/home/agent/.gradle</text>
+    <text y="0" fill="#A0A8CD" font-size="10">~/.cache/yolium/&lt;project&gt;/gradle</text>
+    <text x="200" y="0" fill="#7199EE" font-size="12">→</text>
+    <text x="220" y="0" fill="#A0A8CD" font-size="10">/home/agent/.gradle</text>
   </g>
 
   <g transform="translate(100, 785)">
-    <text y="0" fill="#8aa8c8" font-size="10">~/.cache/yolium/&lt;project&gt;/nuget</text>
-    <text x="200" y="0" fill="#00a8cc" font-size="12">→</text>
-    <text x="220" y="0" fill="#ffffff" font-size="10">/home/agent/.nuget</text>
+    <text y="0" fill="#A0A8CD" font-size="10">~/.cache/yolium/&lt;project&gt;/nuget</text>
+    <text x="200" y="0" fill="#7199EE" font-size="12">→</text>
+    <text x="220" y="0" fill="#A0A8CD" font-size="10">/home/agent/.nuget</text>
   </g>
 
   <!-- Section: Shell History -->
   <g transform="translate(100, 820)">
-    <circle cx="0" cy="0" r="4" fill="#ffc107"/>
-    <text x="15" y="5" fill="#ffc107" font-size="12" font-weight="600">SHELL HISTORY</text>
-    <text x="145" y="5" fill="#6a8aa8" font-size="10">(per-project, persistent)</text>
-    <rect x="315" y="-8" width="24" height="14" rx="3" fill="#28a745" opacity="0.25" stroke="#28a745" stroke-width="0.5"/>
-    <text x="327" y="2" text-anchor="middle" fill="#28a745" font-size="8" font-weight="600">rw</text>
+    <circle cx="0" cy="0" r="4" fill="#D7A65F"/>
+    <text x="15" y="5" fill="#D7A65F" font-size="12" font-weight="600">SHELL HISTORY</text>
+    <text x="145" y="5" fill="#4A5057" font-size="10">(per-project, persistent)</text>
+    <rect x="315" y="-8" width="24" height="14" rx="3" fill="#95C561" opacity="0.2" stroke="#95C561" stroke-width="0.5"/>
+    <text x="327" y="2" text-anchor="middle" fill="#95C561" font-size="8" font-weight="600">rw</text>
   </g>
 
   <g transform="translate(100, 845)">
-    <text y="0" fill="#8aa8c8" font-size="10">~/.yolium/projects/&lt;project&gt;/history</text>
-    <text x="200" y="0" fill="#00a8cc" font-size="12">→</text>
-    <text x="220" y="0" fill="#ffffff" font-size="10">/home/agent/.yolium_history</text>
+    <text y="0" fill="#A0A8CD" font-size="10">~/.yolium/projects/&lt;project&gt;/history</text>
+    <text x="200" y="0" fill="#7199EE" font-size="12">→</text>
+    <text x="220" y="0" fill="#A0A8CD" font-size="10">/home/agent/.yolium_history</text>
   </g>
 
   <!-- Section: Worktree .git -->
   <g transform="translate(100, 880)">
-    <circle cx="0" cy="0" r="4" fill="#6a8aa8"/>
-    <text x="15" y="5" fill="#6a8aa8" font-size="12" font-weight="600">WORKTREE .git</text>
-    <text x="140" y="5" fill="#4a6a8a" font-size="10">(when using worktrees)</text>
-    <rect x="310" y="-8" width="24" height="14" rx="3" fill="#28a745" opacity="0.25" stroke="#28a745" stroke-width="0.5"/>
-    <text x="322" y="2" text-anchor="middle" fill="#28a745" font-size="8" font-weight="600">rw</text>
+    <circle cx="0" cy="0" r="4" fill="#A485DD"/>
+    <text x="15" y="5" fill="#A485DD" font-size="12" font-weight="600">WORKTREE .git</text>
+    <text x="140" y="5" fill="#4A5057" font-size="10">(when using worktrees)</text>
+    <rect x="310" y="-8" width="24" height="14" rx="3" fill="#95C561" opacity="0.2" stroke="#95C561" stroke-width="0.5"/>
+    <text x="322" y="2" text-anchor="middle" fill="#95C561" font-size="8" font-weight="600">rw</text>
   </g>
 
   <g transform="translate(100, 905)">
-    <text y="0" fill="#8aa8c8" font-size="10">&lt;original-repo&gt;/.git</text>
-    <text x="200" y="0" fill="#00a8cc" font-size="12">→</text>
-    <text x="220" y="0" fill="#ffffff" font-size="10">&lt;container-home&gt;/&lt;repo&gt;/.git</text>
+    <text y="0" fill="#A0A8CD" font-size="10">&lt;original-repo&gt;/.git</text>
+    <text x="200" y="0" fill="#7199EE" font-size="12">→</text>
+    <text x="220" y="0" fill="#A0A8CD" font-size="10">&lt;container-home&gt;/&lt;repo&gt;/.git</text>
   </g>
 
   <!-- RIGHT COLUMN -->
 
-  <!-- Section: Credentials -->
-  <g transform="translate(610, 610)">
-    <circle cx="0" cy="0" r="4" fill="#ff9800"/>
-    <text x="15" y="5" fill="#ff9800" font-size="12" font-weight="600">CREDENTIALS</text>
-    <text x="130" y="5" fill="#6a8aa8" font-size="10">(staged, cleaned up on exit)</text>
-    <rect x="325" y="-8" width="24" height="14" rx="3" fill="#ffc107" opacity="0.25" stroke="#ffc107" stroke-width="0.5"/>
-    <text x="337" y="2" text-anchor="middle" fill="#ffc107" font-size="8" font-weight="600">ro</text>
+  <!-- Section: Credentials (read-only mounts) -->
+  <g transform="translate(610, 600)">
+    <circle cx="0" cy="0" r="4" fill="#F6955B"/>
+    <text x="15" y="5" fill="#F6955B" font-size="12" font-weight="600">CREDENTIALS</text>
+    <rect x="130" y="-8" width="24" height="14" rx="3" fill="#D7A65F" opacity="0.2" stroke="#D7A65F" stroke-width="0.5"/>
+    <text x="142" y="2" text-anchor="middle" fill="#D7A65F" font-size="8" font-weight="600">ro</text>
+    <text x="163" y="5" fill="#4A5057" font-size="10">mounted read-only, staged to writable path, cleaned on exit</text>
   </g>
 
-  <g transform="translate(610, 635)">
-    <text y="0" fill="#8aa8c8" font-size="10">git-credentials</text>
-    <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
-    <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.git-credentials-mounted</text>
+  <!-- Git PAT -->
+  <g transform="translate(625, 628)">
+    <text y="0" fill="#F6955B" font-size="10" font-weight="500">GitHub PAT</text>
+    <text x="80" y="0" fill="#4A5057" font-size="9">(generated from Settings)</text>
+  </g>
+  <g transform="translate(625, 648)">
+    <text y="0" fill="#A0A8CD" font-size="10">~/.yolium/git-credentials</text>
+    <text x="180" y="0" fill="#7199EE" font-size="12">→</text>
+    <text x="200" y="0" fill="#A0A8CD" font-size="10">.git-credentials-mounted</text>
+  </g>
+  <g transform="translate(625, 664)">
+    <text y="0" fill="#95C561" font-size="8">Tip: use fine-grained PAT scoped to specific repos with minimal permissions</text>
   </g>
 
-  <g transform="translate(610, 657)">
-    <text y="0" fill="#8aa8c8" font-size="10">~/.claude (OAuth)</text>
-    <text x="180" y="0" fill="#00a8cc" font-size="12">→</text>
-    <text x="200" y="0" fill="#ffffff" font-size="10">/home/agent/.claude-mounted</text>
+  <!-- Claude OAuth (file only) -->
+  <g transform="translate(625, 688)">
+    <text y="0" fill="#F6955B" font-size="10" font-weight="500">Claude OAuth</text>
+    <text x="90" y="0" fill="#4A5057" font-size="9">(single file — not the ~/.claude directory)</text>
+  </g>
+  <g transform="translate(625, 708)">
+    <text y="0" fill="#A0A8CD" font-size="10">~/.claude/.credentials.json</text>
+    <text x="180" y="0" fill="#7199EE" font-size="12">→</text>
+    <text x="200" y="0" fill="#A0A8CD" font-size="10">.claude-credentials.json</text>
   </g>
 
   <!-- Section: Environment Variables (not mounted) -->
-  <g transform="translate(610, 700)">
-    <circle cx="0" cy="0" r="4" fill="#4a6a8a"/>
-    <text x="15" y="5" fill="#4a6a8a" font-size="12" font-weight="600">ENV VARS</text>
-    <text x="100" y="5" fill="#4a6a8a" font-size="10">(injected, not mounted)</text>
+  <g transform="translate(610, 750)">
+    <circle cx="0" cy="0" r="4" fill="#353945"/>
+    <text x="15" y="5" fill="#4A5057" font-size="12" font-weight="600">ENV VARS</text>
+    <text x="100" y="5" fill="#353945" font-size="10">(injected at container start, never written to disk)</text>
   </g>
 
-  <g transform="translate(610, 725)">
-    <text y="0" fill="#4a6a8a" font-size="9">ANTHROPIC_API_KEY, OPENAI_API_KEY, GIT_USER_NAME, GIT_USER_EMAIL</text>
+  <g transform="translate(625, 778)">
+    <text y="0" fill="#4A5057" font-size="9">ANTHROPIC_API_KEY</text>
+    <text x="120" y="0" fill="#353945" font-size="9">Claude Code / OpenCode</text>
+  </g>
+  <g transform="translate(625, 796)">
+    <text y="0" fill="#4A5057" font-size="9">OPENAI_API_KEY</text>
+    <text x="120" y="0" fill="#353945" font-size="9">Codex CLI</text>
+  </g>
+  <g transform="translate(625, 814)">
+    <text y="0" fill="#4A5057" font-size="9">GIT_USER_NAME, GIT_USER_EMAIL</text>
+    <text x="205" y="0" fill="#353945" font-size="9">git identity</text>
+  </g>
+  <g transform="translate(625, 834)">
+    <text y="0" fill="#95C561" font-size="8">Tip: use usage-limited API keys where possible; revoke and rotate regularly</text>
   </g>
 
   <!-- === NETWORK RESTRICTIONS === -->
-  <rect x="80" y="870" width="1040" height="35" rx="6" fill="#0a1628" stroke="#00a8cc" stroke-width="1"/>
-  <circle cx="105" cy="887" r="4" fill="#00a8cc"/>
-  <text x="125" y="892" fill="#00a8cc" font-size="12" font-weight="600">NETWORK:</text>
-  <text x="210" y="892" fill="#8aa8c8" font-size="11">iptables firewall (NET_ADMIN) — outbound HTTPS (443), DNS (53) only</text>
-  <text x="810" y="892" fill="#4a6a8a" font-size="10">disable: YOLIUM_NETWORK_FULL=true</text>
+  <rect x="80" y="965" width="1040" height="55" rx="6" fill="#11121D" stroke="#7199EE" stroke-width="1"/>
+  <circle cx="105" cy="982" r="4" fill="#7199EE"/>
+  <text x="125" y="987" fill="#7199EE" font-size="12" font-weight="600">OUTBOUND NETWORK</text>
+
+  <!-- Allowed -->
+  <rect x="280" y="972" width="68" height="18" rx="4" fill="#95C561" opacity="0.15" stroke="#95C561" stroke-width="0.5"/>
+  <text x="314" y="985" text-anchor="middle" fill="#95C561" font-size="10" font-weight="600">HTTPS</text>
+  <text x="355" y="985" fill="#4A5057" font-size="9">port 443</text>
+
+  <rect x="420" y="972" width="50" height="18" rx="4" fill="#95C561" opacity="0.15" stroke="#95C561" stroke-width="0.5"/>
+  <text x="445" y="985" text-anchor="middle" fill="#95C561" font-size="10" font-weight="600">DNS</text>
+  <text x="478" y="985" fill="#4A5057" font-size="9">port 53</text>
+
+  <!-- Blocked -->
+  <rect x="550" y="972" width="120" height="18" rx="4" fill="#EE6D85" opacity="0.12" stroke="#EE6D85" stroke-width="0.5"/>
+  <text x="610" y="985" text-anchor="middle" fill="#EE6D85" font-size="10" font-weight="600">ALL ELSE BLOCKED</text>
+
+  <!-- How it works + opt-out -->
+  <text x="115" y="1008" fill="#4A5057" font-size="9">Firewall rules applied at container startup via iptables</text>
+  <text x="810" y="987" fill="#4A5057" font-size="10">disable: YOLIUM_NETWORK_FULL=true</text>
 
   <!-- === WARNING SECTION === -->
-  <rect x="80" y="915" width="1040" height="35" rx="6" fill="#1a0a0a" stroke="#dc3545" stroke-width="1"/>
-  <circle cx="105" cy="932" r="4" fill="#dc3545"/>
-  <text x="125" y="937" fill="#dc3545" font-size="12" font-weight="600">NOT ACCESSIBLE:</text>
-  <text x="280" y="937" fill="#ffcdd2" font-size="11">~/, /etc, /var, other projects, system files — only the mounts above are visible</text>
+  <rect x="80" y="1030" width="1040" height="35" rx="6" fill="#1A1B2A" stroke="#EE6D85" stroke-width="1"/>
+  <circle cx="105" cy="1047" r="4" fill="#EE6D85"/>
+  <text x="125" y="1052" fill="#EE6D85" font-size="12" font-weight="600">NOT ACCESSIBLE:</text>
+  <text x="280" y="1052" fill="#EE6D85" font-size="11" opacity="0.7">~/, /etc, /var, other projects, system files — only the mounts above are visible</text>
 </svg>

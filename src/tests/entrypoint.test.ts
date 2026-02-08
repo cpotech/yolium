@@ -365,18 +365,19 @@ Output: @@YOLIUM:{"type":"complete","summary":"done"}`;
       entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
     });
 
-    it('should check for .claude-mounted directory when CLAUDE_OAUTH_ENABLED is true', () => {
-      expect(entrypointContent).toContain('.claude-mounted');
+    it('should check for .claude-credentials.json file when CLAUDE_OAUTH_ENABLED is true', () => {
+      expect(entrypointContent).toContain('.claude-credentials.json');
       expect(entrypointContent).toContain('CLAUDE_OAUTH_ENABLED');
     });
 
-    it('should copy OAuth credentials from staging mount to agent home', () => {
-      // Should copy from read-only mount to writable location
-      expect(entrypointContent).toContain('cp -r /home/agent/.claude-mounted /home/agent/.claude');
+    it('should copy OAuth credentials file to agent claude config directory', () => {
+      // Should copy single credentials file to minimal ~/.claude directory
+      expect(entrypointContent).toContain('cp /home/agent/.claude-credentials.json /home/agent/.claude/.credentials.json');
     });
 
-    it('should set correct permissions on copied OAuth directory', () => {
+    it('should set correct permissions on OAuth credentials', () => {
       expect(entrypointContent).toContain('chmod 700 /home/agent/.claude');
+      expect(entrypointContent).toContain('chmod 600 /home/agent/.claude/.credentials.json');
     });
 
     it('should export CLAUDE_CONFIG_DIR when OAuth is configured', () => {
