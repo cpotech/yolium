@@ -131,6 +131,10 @@ export interface NewItemParams {
 }
 
 export function addItem(board: KanbanBoard, params: NewItemParams): KanbanItem {
+  if (!params.title.trim()) {
+    throw new Error('Title is required');
+  }
+
   const item: KanbanItem = {
     id: generateId(),
     title: params.title,
@@ -165,6 +169,7 @@ export function updateItem(
   const item = board.items.find(i => i.id === itemId);
   if (!item) return null;
 
+  if (updates.title !== undefined && !updates.title.trim()) return null;
   if (updates.column !== undefined && !VALID_COLUMNS.has(updates.column)) return null;
   if (updates.agentStatus !== undefined && !VALID_AGENT_STATUSES.has(updates.agentStatus)) return null;
   if (updates.mergeStatus !== undefined && !VALID_MERGE_STATUSES.has(updates.mergeStatus)) return null;
