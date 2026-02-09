@@ -185,13 +185,6 @@ export function ItemDetailDialog({
   const handleDelete = useCallback(async () => {
     if (!item || isDeleting) return
 
-    const confirmed = await window.electronAPI.dialog.confirmOkCancel(
-      'Delete Item',
-      `Are you sure you want to delete "${item.title}"? This action cannot be undone.`
-    )
-
-    if (!confirmed) return
-
     setIsDeleting(true)
     try {
       await window.electronAPI.kanban.deleteItem(projectPath, item.id)

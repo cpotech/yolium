@@ -324,8 +324,7 @@ describe('ItemDetailDialog', () => {
     })
   })
 
-  it('should confirm before delete and call kanbanDeleteItem if confirmed', async () => {
-    mockShowConfirmOkCancel.mockResolvedValueOnce(true)
+  it('should delete item immediately without confirmation', async () => {
     mockKanbanDeleteItem.mockResolvedValueOnce(true)
     const onUpdated = vi.fn()
     const onClose = vi.fn()
@@ -345,13 +344,6 @@ describe('ItemDetailDialog', () => {
     fireEvent.click(screen.getByTestId('delete-button'))
 
     await waitFor(() => {
-      expect(mockShowConfirmOkCancel).toHaveBeenCalledWith(
-        'Delete Item',
-        'Are you sure you want to delete "Test Item"? This action cannot be undone.'
-      )
-    })
-
-    await waitFor(() => {
       expect(mockKanbanDeleteItem).toHaveBeenCalledWith('/test/project', 'item-1')
     })
 
@@ -362,32 +354,9 @@ describe('ItemDetailDialog', () => {
     await waitFor(() => {
       expect(onClose).toHaveBeenCalled()
     })
-  })
 
-  it('should not delete if user cancels confirmation', async () => {
-    mockShowConfirmOkCancel.mockResolvedValueOnce(false)
-    const onUpdated = vi.fn()
-    const item = createMockItem()
-
-    render(
-      <ItemDetailDialog
-        isOpen={true}
-        item={item}
-        projectPath="/test/project"
-        onClose={vi.fn()}
-        onUpdated={onUpdated}
-      />
-    )
-
-    // Click delete
-    fireEvent.click(screen.getByTestId('delete-button'))
-
-    await waitFor(() => {
-      expect(mockShowConfirmOkCancel).toHaveBeenCalled()
-    })
-
-    expect(mockKanbanDeleteItem).not.toHaveBeenCalled()
-    expect(onUpdated).not.toHaveBeenCalled()
+    // Should not show confirmation dialog
+    expect(mockShowConfirmOkCancel).not.toHaveBeenCalled()
   })
 
   it('should close dialog on close button click', () => {
@@ -530,7 +499,6 @@ describe('ItemDetailDialog', () => {
   })
 
   it('should trigger delete on Ctrl+Delete', async () => {
-    mockShowConfirmOkCancel.mockResolvedValueOnce(true)
     mockKanbanDeleteItem.mockResolvedValueOnce(true)
     const onClose = vi.fn()
     const onUpdated = vi.fn()
@@ -553,12 +521,11 @@ describe('ItemDetailDialog', () => {
     })
 
     await waitFor(() => {
-      expect(mockShowConfirmOkCancel).toHaveBeenCalled()
-    })
-
-    await waitFor(() => {
       expect(mockKanbanDeleteItem).toHaveBeenCalledWith('/test/project', 'item-1')
     })
+
+    // Should not show confirmation dialog
+    expect(mockShowConfirmOkCancel).not.toHaveBeenCalled()
   })
 
   it('should have aria-modal and role=dialog attributes', () => {
