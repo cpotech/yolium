@@ -73,6 +73,7 @@
     "node-pty": "^1.1.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-markdown": "^10.1.0",
     "sudo-prompt-alt": "^9.3.0"
   }
 }

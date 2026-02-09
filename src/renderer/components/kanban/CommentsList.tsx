@@ -4,7 +4,33 @@
  */
 
 import React from 'react'
+import Markdown from 'react-markdown'
 import type { KanbanComment, CommentSource } from '@shared/types/kanban'
+
+const markdownComponents = {
+  h1: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => <h1 className="text-base font-bold mt-3 mb-1" {...props}>{children}</h1>,
+  h2: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => <h2 className="text-sm font-bold mt-3 mb-1" {...props}>{children}</h2>,
+  h3: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => <h3 className="text-sm font-semibold mt-2 mb-1" {...props}>{children}</h3>,
+  p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => <p className="my-1" {...props}>{children}</p>,
+  ul: ({ children, ...props }: React.HTMLAttributes<HTMLUListElement>) => <ul className="list-disc pl-4 my-1 space-y-0.5" {...props}>{children}</ul>,
+  ol: ({ children, ...props }: React.HTMLAttributes<HTMLOListElement>) => <ol className="list-decimal pl-4 my-1 space-y-0.5" {...props}>{children}</ol>,
+  li: ({ children, ...props }: React.HTMLAttributes<HTMLLIElement>) => <li className="text-sm" {...props}>{children}</li>,
+  code: ({ children, className, ...props }: React.HTMLAttributes<HTMLElement>) => {
+    const isBlock = className?.includes('language-')
+    if (isBlock) {
+      return <code className={`block bg-[var(--color-bg-secondary)] p-2 rounded text-xs font-mono overflow-x-auto ${className || ''}`} {...props}>{children}</code>
+    }
+    return <code className="bg-[var(--color-bg-secondary)] px-1 py-0.5 rounded text-xs font-mono" {...props}>{children}</code>
+  },
+  pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => <pre className="my-1" {...props}>{children}</pre>,
+  strong: ({ children, ...props }: React.HTMLAttributes<HTMLElement>) => <strong className="font-semibold" {...props}>{children}</strong>,
+  a: ({ children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => <a className="text-[var(--color-accent-primary)] hover:underline" {...props}>{children}</a>,
+  table: ({ children, ...props }: React.TableHTMLAttributes<HTMLTableElement>) => <table className="text-xs border-collapse my-2 w-full" {...props}>{children}</table>,
+  th: ({ children, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) => <th className="border border-[var(--color-border-primary)] px-2 py-1 text-left font-semibold bg-[var(--color-bg-secondary)]" {...props}>{children}</th>,
+  td: ({ children, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) => <td className="border border-[var(--color-border-primary)] px-2 py-1" {...props}>{children}</td>,
+  blockquote: ({ children, ...props }: React.BlockquoteHTMLAttributes<HTMLQuoteElement>) => <blockquote className="border-l-2 border-[var(--color-border-secondary)] pl-3 my-1 text-[var(--color-text-secondary)]" {...props}>{children}</blockquote>,
+  hr: (props: React.HTMLAttributes<HTMLHRElement>) => <hr className="border-[var(--color-border-primary)] my-2" {...props} />,
+}
 
 const commentBadgeColors: Record<CommentSource, string> = {
   user: 'bg-green-600',
@@ -110,7 +136,9 @@ export function CommentsList({ comments, onSelectOption }: CommentsListProps): R
                 }
 
                 return (
-                  <p className="text-sm text-[var(--color-text-primary)]">{comment.text}</p>
+                  <div className="text-sm text-[var(--color-text-primary)]">
+                    <Markdown components={markdownComponents}>{comment.text}</Markdown>
+                  </div>
                 )
               })()}
               {comment.options && comment.options.length > 0 && (
