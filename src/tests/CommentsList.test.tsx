@@ -19,6 +19,39 @@ describe('CommentsList', () => {
     expect(screen.getByText('Hi there')).toBeInTheDocument()
   })
 
+  it('should render JSON comments as formatted code blocks', () => {
+    const comments: KanbanComment[] = [
+      {
+        id: 'c1',
+        source: 'agent',
+        text: '{"result":"ok","count":2}',
+        timestamp: new Date().toISOString(),
+      },
+    ]
+
+    render(<CommentsList comments={comments} />)
+
+    const jsonBlock = screen.getByTestId('comment-json-c1')
+    expect(jsonBlock).toBeInTheDocument()
+    expect(jsonBlock.textContent).toBe('{\n  "result": "ok",\n  "count": 2\n}')
+  })
+
+  it('should keep invalid JSON as plain text', () => {
+    const comments: KanbanComment[] = [
+      {
+        id: 'c1',
+        source: 'agent',
+        text: "{'result': 'ok'}",
+        timestamp: new Date().toISOString(),
+      },
+    ]
+
+    render(<CommentsList comments={comments} />)
+
+    expect(screen.queryByTestId('comment-json-c1')).not.toBeInTheDocument()
+    expect(screen.getByText("{'result': 'ok'}").tagName).toBe('P')
+  })
+
   it('should show empty state when no comments', () => {
     render(<CommentsList comments={[]} />)
 
