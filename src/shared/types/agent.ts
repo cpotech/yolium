@@ -31,7 +31,7 @@ export interface AgentDefinition {
 }
 
 // Protocol message types from agent stdout
-export type ProtocolMessageType = 'ask_question' | 'create_item' | 'update_description' | 'complete' | 'error' | 'progress' | 'comment';
+export type ProtocolMessageType = 'ask_question' | 'create_item' | 'update_description' | 'add_comment' | 'complete' | 'error' | 'progress';
 
 export interface ProtocolMessage {
   type: ProtocolMessageType;
@@ -58,6 +58,11 @@ export interface UpdateDescriptionMessage extends ProtocolMessage {
   description: string;
 }
 
+export interface AddCommentMessage extends ProtocolMessage {
+  type: 'add_comment';
+  text: string;
+}
+
 export interface CompleteMessage extends ProtocolMessage {
   type: 'complete';
   summary: string;
@@ -76,7 +81,3 @@ export interface ProgressMessage extends ProtocolMessage {
   maxAttempts?: number;
 }
 
-export interface CommentMessage extends ProtocolMessage {
-  type: 'comment';
-  text: string;
-}

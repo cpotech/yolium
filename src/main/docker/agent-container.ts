@@ -92,7 +92,8 @@ function parseStreamEvent(event: Record<string, unknown>): { display?: string; t
       if (typeof costUsd === 'number') parts.push(`[Cost: $${costUsd.toFixed(4)}]`);
       return {
         display: parts.length > 0 ? parts.join('\n') : undefined,
-        text: result || undefined,
+        // Don't return text — result event duplicates text already processed from assistant events,
+        // which would cause protocol messages to be extracted and handled twice.
       };
     }
 
@@ -358,7 +359,12 @@ export async function createAgentContainer(
     logger.info('Agent output', { sessionId, displayLines: displayParts.length, display: displayStr.slice(0, 500) });
 
     // Forward text content for protocol parsing via callback
-    onOutput?.(textContent || displayStr);
+    // Only send raw text content, never display text — displayStr may contain
+    // duplicate text (e.g., from result events) that would cause protocol messages
+    // to be extracted and handled twice.
+    if (textContent) {
+      onOutput?.(textContent);
+    }
 
     // Forward display text for persistent logging
     onDisplayOutput?.(displayStr);

@@ -36,10 +36,10 @@ import type {
   AskQuestionMessage,
   CreateItemMessage,
   UpdateDescriptionMessage,
+  AddCommentMessage,
   CompleteMessage,
   ErrorMessage,
   ProgressMessage,
-  CommentMessage,
 } from '@shared/types/agent';
 
 const logger = createLogger('agent-runner');
@@ -167,10 +167,13 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     };
   }
 
+  // Use title as fallback when no description is provided
+  const effectiveGoal = goal.trim() || item.title;
+
   const conversationHistory = buildConversationHistory(item);
   const prompt = buildAgentPrompt({
     systemPrompt: agent.systemPrompt,
-    goal,
+    goal: effectiveGoal,
     conversationHistory,
   });
 
@@ -414,6 +417,13 @@ export function handleAgentOutput(sessionId: string, data: string): void {
         break;
       }
 
+      case 'add_comment': {
+        const ac = message as AddCommentMessage;
+        addComment(board, session.itemId, 'agent', ac.text);
+        session.events.emit('commentAdded', ac.text);
+        break;
+      }
+
       case 'complete': {
         const comp = message as CompleteMessage;
         // Move to done column when agent completes successfully
@@ -442,12 +452,6 @@ export function handleAgentOutput(sessionId: string, data: string): void {
         break;
       }
 
-      case 'comment': {
-        const c = message as CommentMessage;
-        addComment(board, session.itemId, 'agent', c.text);
-        session.events.emit('comment', c);
-        break;
-      }
     }
   }
 }

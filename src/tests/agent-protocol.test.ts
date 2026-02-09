@@ -138,24 +138,24 @@ describe('agent-protocol', () => {
       expect(result).toBeNull();
     });
 
-    it('should parse comment message', () => {
-      const json = '{"type":"comment","text":"Found 3 relevant files: auth.ts, middleware.ts, routes.ts"}';
+    it('should parse add_comment message', () => {
+      const json = '{"type":"add_comment","text":"## Analysis\\n\\nThe codebase uses React."}';
       const result = parseProtocolMessage(json);
 
       expect(result).toEqual({
-        type: 'comment',
-        text: 'Found 3 relevant files: auth.ts, middleware.ts, routes.ts',
+        type: 'add_comment',
+        text: '## Analysis\n\nThe codebase uses React.',
       });
     });
 
-    it('should reject comment without text field', () => {
-      const json = '{"type":"comment"}';
+    it('should reject add_comment without text field', () => {
+      const json = '{"type":"add_comment"}';
       const result = parseProtocolMessage(json);
       expect(result).toBeNull();
     });
 
-    it('should reject comment with non-string text', () => {
-      const json = '{"type":"comment","text":42}';
+    it('should reject add_comment with non-string text', () => {
+      const json = '{"type":"add_comment","text":123}';
       const result = parseProtocolMessage(json);
       expect(result).toBeNull();
     });
@@ -244,20 +244,19 @@ Final line`;
       expect(results[1].type).toBe('complete');
     });
 
-    it('should extract comment messages from mixed output', () => {
-      const output = `Starting work...
-@@YOLIUM:{"type":"progress","step":"analyze","detail":"Reading codebase"}
-@@YOLIUM:{"type":"comment","text":"Found auth module using JWT tokens"}
+    it('should extract add_comment messages from output', () => {
+      const output = `Analyzing codebase...
+@@YOLIUM:{"type":"add_comment","text":"Found 3 relevant files"}
+More analysis...
 @@YOLIUM:{"type":"complete","summary":"Done"}`;
 
       const results = extractProtocolMessages(output);
-      expect(results).toHaveLength(3);
-      expect(results[0].type).toBe('progress');
-      expect(results[1]).toEqual({
-        type: 'comment',
-        text: 'Found auth module using JWT tokens',
+      expect(results).toHaveLength(2);
+      expect(results[0]).toEqual({
+        type: 'add_comment',
+        text: 'Found 3 relevant files',
       });
-      expect(results[2].type).toBe('complete');
+      expect(results[1].type).toBe('complete');
     });
 
     it('should extract progress messages from mixed output', () => {

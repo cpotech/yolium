@@ -34,6 +34,18 @@ Creates a Kanban work item in the Backlog.
 | order | number | yes | Execution order (1 = first) |
 | model | string | no | Model override: opus, sonnet, haiku |
 
+### add_comment
+
+Adds a comment to the current work item without pausing execution. Use this to write analysis summaries, progress updates, or final plans to the comment thread.
+
+```json
+{"type":"add_comment","text":"## Analysis\n\nThe codebase uses..."}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| text | string | yes | The comment text (supports markdown) |
+
 ### update_description
 
 Updates the description of the current work item. Agents use this to improve or refine the work item description as they analyze requirements.
