@@ -344,15 +344,15 @@ export function ItemDetailDialog({
         : 'No changes detected'
 
       const confirmed = await window.electronAPI.dialog.confirmOkCancel(
-        'Rebase, Merge & Create PR',
-        `Rebase branch "${item.branch}" onto latest default, then merge and push a PR?\n\n${statsMsg}`
+        'Squash, Merge & Create PR',
+        `Rebase branch "${item.branch}" onto latest default, then squash merge and push a PR?\n\n${statsMsg}`
       )
       if (!confirmed) {
         setIsMerging(false)
         return
       }
 
-      // Rebase, merge, push, and create PR
+      // Rebase, squash merge, push, and create PR
       const result = await window.electronAPI.git.mergeAndPushPR(
         projectPath,
         item.branch,
@@ -704,7 +704,7 @@ export function ItemDetailDialog({
                         disabled={isMerging}
                         className="w-full px-3 py-1.5 text-xs bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
-                        {isMerging ? 'Retrying...' : 'Retry Merge & PR'}
+                        {isMerging ? 'Retrying...' : 'Retry Squash Merge & PR'}
                       </button>
                     </div>
                   )}
@@ -752,7 +752,7 @@ export function ItemDetailDialog({
                         className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         <GitMerge size={12} />
-                        {isMerging ? 'Rebasing & Merging...' : 'Rebase, Merge & Push PR'}
+                        {isMerging ? 'Squashing & Merging...' : 'Squash, Merge & Push PR'}
                       </button>
                       {item.agentStatus !== 'completed' && item.column !== 'done' && (
                         <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">

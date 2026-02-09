@@ -436,7 +436,8 @@ describe('git-worktree', () => {
         if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
         if (command.includes('pull')) return Buffer.from('')
         if (command.includes('checkout -B')) return Buffer.from('')
-        if (command.includes('merge') && command.includes('--no-ff')) return Buffer.from('')
+        if (command.includes('merge') && command.includes('--squash')) return Buffer.from('')
+        if (command.includes('commit -m')) return Buffer.from('')
         if (command.includes('push -u')) {
           const err = new Error('push failed') as Error & { stderr: Buffer }
           err.stderr = Buffer.from('remote: Permission denied')
@@ -469,7 +470,8 @@ describe('git-worktree', () => {
         if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
         if (command.includes('pull')) return Buffer.from('')
         if (command.includes('checkout -B')) return Buffer.from('')
-        if (command.includes('merge') && command.includes('--no-ff')) return Buffer.from('')
+        if (command.includes('merge') && command.includes('--squash')) return Buffer.from('')
+        if (command.includes('commit -m')) return Buffer.from('')
         if (command.includes('push -u')) return Buffer.from('')
         // gh pr create
         if (cmd === 'gh') return 'https://github.com/user/repo/pull/42\n'
@@ -504,7 +506,8 @@ describe('git-worktree', () => {
         if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
         if (command.includes('pull')) return Buffer.from('')
         if (command.includes('checkout -B')) return Buffer.from('')
-        if (command.includes('merge') && command.includes('--no-ff')) return Buffer.from('')
+        if (command.includes('merge') && command.includes('--squash')) return Buffer.from('')
+        if (command.includes('commit -m')) return Buffer.from('')
         if (command.includes('push -u')) return Buffer.from('')
         // gh pr create fails
         if (cmd === 'gh') {
@@ -542,7 +545,8 @@ describe('git-worktree', () => {
         if (command.includes('pull')) return Buffer.from('')
         // checkout -B should handle existing branch without error
         if (command.includes('checkout -B')) return Buffer.from('')
-        if (command.includes('merge') && command.includes('--no-ff')) return Buffer.from('')
+        if (command.includes('merge') && command.includes('--squash')) return Buffer.from('')
+        if (command.includes('commit -m')) return Buffer.from('')
         if (command.includes('push -u')) return Buffer.from('')
         if (cmd === 'gh') return 'https://github.com/user/repo/pull/99\n'
         if (command.includes('worktree remove')) return Buffer.from('')
@@ -604,7 +608,8 @@ describe('git-worktree', () => {
         if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
         if (command.includes('pull')) return Buffer.from('')
         if (command.includes('checkout -B')) return Buffer.from('')
-        if (command.includes('merge') && command.includes('--no-ff')) return Buffer.from('')
+        if (command.includes('merge') && command.includes('--squash')) return Buffer.from('')
+        if (command.includes('commit -m')) return Buffer.from('')
         if (command.includes('push -u')) return Buffer.from('')
         if (cmd === 'gh') return 'https://github.com/user/repo/pull/50\n'
         if (command.includes('worktree remove')) return Buffer.from('')
