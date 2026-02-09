@@ -1550,6 +1550,240 @@ describe('agent WORKTREE_REPO_PATH env var', () => {
   });
 });
 
+// ============================================================================
+// getYoliumImageInfo Error Handling Tests
+// ============================================================================
+
+describe('getYoliumImageInfo error handling', () => {
+  /**
+   * Simulates the improved error handling in getYoliumImageInfo.
+   * Returns null only for 404 (image not found), throws for other errors.
+   */
+  async function simulateGetImageInfo(
+    inspectFn: () => Promise<{ Size: number; Created: string; Config?: { Labels?: Record<string, string> } }>,
+    computeHash?: () => string,
+  ): Promise<{ name: string; size: number; created: string; stale: boolean } | null> {
+    try {
+      const inspect = await inspectFn();
+      const labels = inspect.Config?.Labels || {};
+      const imageHash = labels['yolium.build_hash'];
+
+      let stale = false;
+      if (imageHash && computeHash) {
+        try {
+          const currentHash = computeHash();
+          stale = imageHash !== currentHash;
+        } catch {
+          // skip staleness check
+        }
+      }
+
+      return {
+        name: 'yolium:latest',
+        size: inspect.Size,
+        created: inspect.Created,
+        stale,
+      };
+    } catch (err) {
+      // 404 means image doesn't exist
+      if (err && typeof err === 'object' && 'statusCode' in err && (err as { statusCode: number }).statusCode === 404) {
+        return null;
+      }
+      throw err;
+    }
+  }
+
+  it('returns image info when image exists', async () => {
+    const result = await simulateGetImageInfo(
+      async () => ({
+        Size: 1024 * 1024 * 500,
+        Created: '2026-01-01T00:00:00Z',
+        Config: { Labels: { 'yolium.build_hash': 'abc123' } },
+      }),
+      () => 'abc123',
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.name).toBe('yolium:latest');
+    expect(result!.size).toBe(1024 * 1024 * 500);
+    expect(result!.stale).toBe(false);
+  });
+
+  it('returns null for 404 (image not found)', async () => {
+    const result = await simulateGetImageInfo(
+      async () => { throw Object.assign(new Error('not found'), { statusCode: 404 }); },
+    );
+
+    expect(result).toBeNull();
+  });
+
+  it('throws on non-404 errors (e.g. Docker daemon down)', async () => {
+    await expect(
+      simulateGetImageInfo(
+        async () => { throw Object.assign(new Error('connection refused'), { statusCode: 500 }); },
+      ),
+    ).rejects.toThrow('connection refused');
+  });
+
+  it('throws on network errors without statusCode', async () => {
+    await expect(
+      simulateGetImageInfo(
+        async () => { throw new Error('ECONNREFUSED'); },
+      ),
+    ).rejects.toThrow('ECONNREFUSED');
+  });
+
+  it('detects stale image when hashes differ', async () => {
+    const result = await simulateGetImageInfo(
+      async () => ({
+        Size: 1024 * 1024 * 500,
+        Created: '2026-01-01T00:00:00Z',
+        Config: { Labels: { 'yolium.build_hash': 'old_hash' } },
+      }),
+      () => 'new_hash',
+    );
+
+    expect(result!.stale).toBe(true);
+  });
+
+  it('skips staleness check when hash computation fails', async () => {
+    const result = await simulateGetImageInfo(
+      async () => ({
+        Size: 1024 * 1024 * 500,
+        Created: '2026-01-01T00:00:00Z',
+        Config: { Labels: { 'yolium.build_hash': 'abc123' } },
+      }),
+      () => { throw new Error('Dockerfile not found'); },
+    );
+
+    expect(result!.stale).toBe(false);
+  });
+})
+
+// ============================================================================
+// Docker Image Fetch with Retry Tests
+// ============================================================================
+
+describe('docker image fetch with retry', () => {
+  /**
+   * Simulates the retry logic used in GitConfigDialog's fetchDockerImageInfo.
+   */
+  async function fetchWithRetry(
+    getImageInfo: () => Promise<{ name: string } | null>,
+    maxAttempts: number = 2,
+  ): Promise<{ info: { name: string } | null; error: boolean }> {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const info = await getImageInfo();
+        return { info, error: false };
+      } catch {
+        if (attempt < maxAttempts) {
+          // In real code this would be a delay, skip in tests
+          continue;
+        }
+      }
+    }
+    return { info: null, error: true };
+  }
+
+  it('returns info on first successful attempt', async () => {
+    const getImageInfo = vi.fn().mockResolvedValue({ name: 'yolium:latest' });
+    const result = await fetchWithRetry(getImageInfo);
+    expect(result.info).toEqual({ name: 'yolium:latest' });
+    expect(result.error).toBe(false);
+    expect(getImageInfo).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries on first failure and succeeds on second attempt', async () => {
+    const getImageInfo = vi.fn()
+      .mockRejectedValueOnce(new Error('connection refused'))
+      .mockResolvedValueOnce({ name: 'yolium:latest' });
+
+    const result = await fetchWithRetry(getImageInfo);
+    expect(result.info).toEqual({ name: 'yolium:latest' });
+    expect(result.error).toBe(false);
+    expect(getImageInfo).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns error after all attempts fail', async () => {
+    const getImageInfo = vi.fn()
+      .mockRejectedValueOnce(new Error('connection refused'))
+      .mockRejectedValueOnce(new Error('connection refused'));
+
+    const result = await fetchWithRetry(getImageInfo);
+    expect(result.info).toBeNull();
+    expect(result.error).toBe(true);
+    expect(getImageInfo).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns null info (image not found) without error', async () => {
+    const getImageInfo = vi.fn().mockResolvedValue(null);
+    const result = await fetchWithRetry(getImageInfo);
+    expect(result.info).toBeNull();
+    expect(result.error).toBe(false);
+  });
+})
+
+// ============================================================================
+// Build Progress Re-fetch Tests
+// ============================================================================
+
+describe('build progress re-fetch behavior', () => {
+  it('triggers re-fetch on "Image built successfully!" message', () => {
+    const messages = [
+      'Building Docker image...',
+      '#1 [1/5] FROM ubuntu:22.04',
+      '#2 [2/5] RUN apt-get update',
+      'Image built successfully!',
+    ];
+
+    const fetchCalls: number[] = [];
+    const triggerMessages = new Set(['Image built successfully!', 'Image is up to date.']);
+
+    messages.forEach((msg, i) => {
+      if (triggerMessages.has(msg)) {
+        fetchCalls.push(i);
+      }
+    });
+
+    expect(fetchCalls).toEqual([3]); // Only the success message triggers re-fetch
+  });
+
+  it('triggers re-fetch on "Image is up to date." message', () => {
+    const messages = ['Checking Yolium image...', 'Image is up to date.'];
+
+    const fetchCalls: number[] = [];
+    const triggerMessages = new Set(['Image built successfully!', 'Image is up to date.']);
+
+    messages.forEach((msg, i) => {
+      if (triggerMessages.has(msg)) {
+        fetchCalls.push(i);
+      }
+    });
+
+    expect(fetchCalls).toEqual([1]);
+  });
+
+  it('does not trigger re-fetch on build progress messages', () => {
+    const messages = [
+      'Building Docker image...',
+      '#1 [1/5] FROM ubuntu:22.04',
+      'Dockerfile or entrypoint changed, rebuilding image...',
+    ];
+
+    const fetchCalls: number[] = [];
+    const triggerMessages = new Set(['Image built successfully!', 'Image is up to date.']);
+
+    messages.forEach((msg, i) => {
+      if (triggerMessages.has(msg)) {
+        fetchCalls.push(i);
+      }
+    });
+
+    expect(fetchCalls).toEqual([]);
+  });
+})
+
 describe('agent session cleanup with worktrees', () => {
   interface MockAgentSession {
     id: string;

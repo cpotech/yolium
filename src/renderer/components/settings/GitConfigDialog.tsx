@@ -60,6 +60,8 @@ export function GitConfigDialog({
   const [useClaudeOAuth, setUseClaudeOAuth] = useState(false);
   const [useCodexOAuth, setUseCodexOAuth] = useState(false);
   const [dockerImageInfo, setDockerImageInfo] = useState<{ name: string; size: number; created: string; stale: boolean } | null>(null);
+  const [dockerImageLoading, setDockerImageLoading] = useState(false);
+  const [dockerImageError, setDockerImageError] = useState(false);
 
   // PAT validation: must be a valid github_pat_ or ghp_ token (alphanumeric + underscores only)
   const validatePat = (value: string): { valid: boolean; error?: string } => {
@@ -95,6 +97,43 @@ export function GitConfigDialog({
     return { valid: true };
   };
 
+  // Fetch Docker image info with a single retry on failure
+  const fetchDockerImageInfo = useCallback(async () => {
+    setDockerImageLoading(true);
+    setDockerImageError(false);
+
+    const MAX_ATTEMPTS = 2;
+    const RETRY_DELAY_MS = 1000;
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const info = await window.electronAPI.docker.getImageInfo();
+        setDockerImageInfo(info);
+        setDockerImageLoading(false);
+        return;
+      } catch {
+        if (attempt < MAX_ATTEMPTS) {
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+        }
+      }
+    }
+
+    // All attempts failed
+    setDockerImageLoading(false);
+    setDockerImageError(true);
+  }, []);
+
+  // Re-fetch image info when a build completes while dialog is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const cleanup = window.electronAPI.docker.onBuildProgress((message) => {
+      if (message === 'Image built successfully!' || message === 'Image is up to date.') {
+        fetchDockerImageInfo();
+      }
+    });
+    return cleanup;
+  }, [isOpen, fetchDockerImageInfo]);
+
   // Reset form when dialog opens with new initial values
   useEffect(() => {
     if (isOpen) {
@@ -112,14 +151,17 @@ export function GitConfigDialog({
       setOpenaiKeyCleared(false);
       setUseClaudeOAuth(initialConfig?.useClaudeOAuth ?? false);
       setUseCodexOAuth(initialConfig?.useCodexOAuth ?? false);
-      // Fetch Docker image info
-      window.electronAPI.docker.getImageInfo().then(setDockerImageInfo).catch(() => setDockerImageInfo(null));
+      // Fetch Docker image info with retry
+      setDockerImageLoading(true);
+      setDockerImageError(false);
+      setDockerImageInfo(null);
+      fetchDockerImageInfo();
       // Focus dialog wrapper immediately for keyboard events (e.g. Escape)
       dialogRef.current?.focus();
       // Then move focus to PAT field for better UX
       setTimeout(() => patInputRef.current?.focus(), 50);
     }
-  }, [isOpen, initialConfig]);
+  }, [isOpen, initialConfig, fetchDockerImageInfo]);
 
   const handlePatChange = (value: string) => {
     setGithubPat(value);
@@ -564,7 +606,27 @@ export function GitConfigDialog({
           {(onDeleteImage || onBuildImage) && (
             <div className="border-t border-gray-700 pt-4">
               <p className="text-sm font-medium text-gray-300 mb-3">Docker Image</p>
-              {dockerImageInfo && !imageRemoved ? (
+              {dockerImageLoading ? (
+                <div className="flex items-center gap-2 mb-3 px-3 py-2 text-sm text-gray-400" data-testid="docker-image-loading">
+                  <svg className="animate-spin h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Checking Docker image...
+                </div>
+              ) : dockerImageError ? (
+                <div className="flex items-center gap-2 mb-3" data-testid="docker-image-error">
+                  <p className="text-sm text-gray-500">Failed to check image status.</p>
+                  <button
+                    type="button"
+                    onClick={fetchDockerImageInfo}
+                    className="text-sm text-blue-400 hover:text-blue-300 underline"
+                    data-testid="docker-image-retry"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : dockerImageInfo && !imageRemoved ? (
                 <>
                   <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-gray-700/50 rounded-md">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 shrink-0">
