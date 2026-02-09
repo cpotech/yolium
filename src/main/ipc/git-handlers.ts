@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { IpcMain } from 'electron';
 import { createLogger } from '@main/lib/logger';
-import { loadGitConfig, loadDetectedGitConfig, saveGitConfig } from '@main/git/git-config';
+import { loadGitConfig, loadDetectedGitConfig, saveGitConfig, fetchGitHubUser, hasHostClaudeOAuth, hasHostCodexOAuth } from '@main/git/git-config';
 import {
   isGitRepo,
   hasCommits,
@@ -17,6 +17,8 @@ import {
   mergeWorktreeBranch,
   getWorktreeDiffStats,
   cleanupWorktreeAndBranch,
+  mergeBranchAndPushPR,
+  checkMergeConflicts,
 } from '@main/git/git-worktree';
 import type { GitConfig } from '@shared/types/git';
 
@@ -32,6 +34,9 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     const detectedConfig = loadDetectedGitConfig();
     if (!detectedConfig) return null;
 
+    // Also load stored config to get githubLogin
+    const storedConfig = loadGitConfig();
+
     // Return detected config with source info and flags instead of actual secrets for security
     return {
       name: detectedConfig.name,
@@ -39,16 +44,22 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
       sources: detectedConfig.sources,
       hasPat: !!detectedConfig.githubPat,
       hasOpenaiKey: !!detectedConfig.openaiApiKey,
+      hasAnthropicKey: !!detectedConfig.anthropicApiKey,
+      hasClaudeOAuth: hasHostClaudeOAuth(),
+      useClaudeOAuth: storedConfig?.useClaudeOAuth ?? false,
+      hasCodexOAuth: hasHostCodexOAuth(),
+      useCodexOAuth: storedConfig?.useCodexOAuth ?? false,
+      githubLogin: storedConfig?.githubLogin,
     };
   });
 
-  // Save git config (preserves existing secrets if not provided)
-  ipcMain.handle('git-config:save', (_event, config: GitConfig & { githubPat?: string; openaiApiKey?: string }) => {
+  // Save git config (preserves existing secrets if not provided, auto-derives identity from PAT)
+  ipcMain.handle('git-config:save', async (_event, config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean }) => {
     // Load existing config to preserve secrets if not provided in save
     const existing = loadGitConfig();
     const toSave: GitConfig = {
-      name: config.name,
-      email: config.email,
+      name: existing?.name || '',
+      email: existing?.email || '',
     };
 
     // If new PAT is provided, use it; otherwise preserve existing
@@ -56,7 +67,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
       if (config.githubPat) {
         toSave.githubPat = config.githubPat;
       }
-      // If empty string, PAT is being cleared (don't include it)
+      // If empty string, PAT is being cleared (don't include it, also clear derived identity)
     } else if (existing?.githubPat) {
       // Preserve existing PAT if not explicitly changed
       toSave.githubPat = existing.githubPat;
@@ -71,6 +82,60 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     } else if (existing?.openaiApiKey) {
       // Preserve existing key if not explicitly changed
       toSave.openaiApiKey = existing.openaiApiKey;
+    }
+
+    // If new Anthropic key is provided, use it; otherwise preserve existing
+    if (config.anthropicApiKey !== undefined) {
+      if (config.anthropicApiKey) {
+        toSave.anthropicApiKey = config.anthropicApiKey;
+      }
+      // If empty string, key is being cleared (don't include it)
+    } else if (existing?.anthropicApiKey) {
+      // Preserve existing Anthropic key if not explicitly changed
+      toSave.anthropicApiKey = existing.anthropicApiKey;
+    }
+
+    // Handle Claude OAuth toggle
+    if (config.useClaudeOAuth !== undefined) {
+      toSave.useClaudeOAuth = config.useClaudeOAuth;
+      if (config.useClaudeOAuth) {
+        // When OAuth is enabled, clear Anthropic API key (mutual exclusion)
+        delete toSave.anthropicApiKey;
+      }
+    } else if (existing?.useClaudeOAuth) {
+      toSave.useClaudeOAuth = existing.useClaudeOAuth;
+    }
+
+    // Handle Codex OAuth toggle
+    if (config.useCodexOAuth !== undefined) {
+      toSave.useCodexOAuth = config.useCodexOAuth;
+      if (config.useCodexOAuth) {
+        // When OAuth is enabled, clear OpenAI API key (mutual exclusion)
+        delete toSave.openaiApiKey;
+      }
+    } else if (existing?.useCodexOAuth) {
+      toSave.useCodexOAuth = existing.useCodexOAuth;
+    }
+
+    // Auto-derive git identity from PAT via GitHub API
+    const pat = toSave.githubPat;
+    if (pat) {
+      const githubUser = await fetchGitHubUser(pat);
+      if (githubUser) {
+        toSave.name = githubUser.name;
+        toSave.email = githubUser.email;
+        toSave.githubLogin = githubUser.login;
+        logger.info('Derived git identity from GitHub PAT', { login: githubUser.login });
+      } else {
+        // API call failed — preserve existing identity
+        toSave.name = existing?.name || '';
+        toSave.email = existing?.email || '';
+        toSave.githubLogin = existing?.githubLogin;
+        logger.warn('Failed to fetch GitHub user from PAT, preserving existing identity');
+      }
+    } else {
+      // PAT was cleared — clear derived identity too
+      toSave.githubLogin = undefined;
     }
 
     saveGitConfig(toSave);
@@ -136,6 +201,18 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     }
   });
 
+  // Check if a branch can merge cleanly (conflict pre-check)
+  ipcMain.handle('git:check-merge-conflicts', (_event, projectPath: string, branchName: string) => {
+    logger.info('IPC: git:check-merge-conflicts', { projectPath, branchName });
+    try {
+      return checkMergeConflicts(projectPath, branchName);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      logger.error('Failed to check merge conflicts', { projectPath, branchName, error: message });
+      return { clean: false, conflictingFiles: [`(check failed: ${message})`] };
+    }
+  });
+
   // Clean up a worktree and its branch
   ipcMain.handle('git:cleanup-worktree', (_event, projectPath: string, worktreePath: string, branchName: string) => {
     logger.info('IPC: git:cleanup-worktree', { projectPath, worktreePath, branchName });
@@ -145,6 +222,21 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
       const message = err instanceof Error ? err.message : 'Unknown error';
       logger.error('Failed to cleanup worktree', { projectPath, worktreePath, branchName, error: message });
     }
+  });
+
+  // Merge a worktree branch, push to remote, and create a PR
+  ipcMain.handle('git:merge-and-push-pr', async (
+    _event,
+    projectPath: string,
+    branchName: string,
+    worktreePath: string,
+    itemTitle: string,
+    itemDescription: string,
+  ) => {
+    logger.info('IPC: git:merge-and-push-pr', { projectPath, branchName });
+    return withMergeLock(projectPath, async () => {
+      return mergeBranchAndPushPR(projectPath, branchName, worktreePath, itemTitle, itemDescription);
+    });
   });
 
   // Detect if folder is a git repo, and scan one level deep for nested repos if not

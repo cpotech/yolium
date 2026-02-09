@@ -188,7 +188,7 @@ yolium-desktop
 ## Step 4: First Launch
 
 1. **Docker check** -- Yolium will detect whether Docker is running. If it isn't, it will guide you through setting it up.
-2. **Git settings** -- Configure your name, email, and optionally a GitHub Personal Access Token (PAT) for private repos.
+2. **Git settings** -- Configure your name, email, and optionally a GitHub Personal Access Token (PAT) for private repos. For Claude Code, choose between an Anthropic API key or Claude Max OAuth (if you have a Claude Max subscription and `~/.claude/.credentials.json` on your host). For Codex, choose between an OpenAI API key or Codex OAuth/ChatGPT (if you've run `codex login` and have `~/.codex/auth.json` on your host).
 3. **Create a session** -- Click the **+** button, select a project folder, and choose an AI agent to start working.
 
 ---

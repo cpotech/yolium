@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react'
-import type { ReviewAgentType, CodeReviewStatus } from '@shared/types/agent'
+import type { ReviewAgentProvider, CodeReviewStatus } from '@shared/types/agent'
 import type { GitConfigWithPat } from '@renderer/components/settings/GitConfigDialog'
 
 export interface UseCodeReviewOptions {
@@ -25,7 +25,7 @@ export interface UseCodeReviewResult {
   /** Closes the code review dialog */
   closeDialog: () => void
   /** Starts a code review */
-  startReview: (repoUrl: string, branch: string, agent: ReviewAgentType) => Promise<void>
+  startReview: (repoUrl: string, branch: string, agent: ReviewAgentProvider) => Promise<void>
 }
 
 /**
@@ -50,7 +50,7 @@ export function useCodeReview({ gitConfig }: UseCodeReviewOptions): UseCodeRevie
     setDialogOpen(false)
   }, [])
 
-  const startReview = useCallback(async (repoUrl: string, branch: string, agent: ReviewAgentType) => {
+  const startReview = useCallback(async (repoUrl: string, branch: string, agent: ReviewAgentProvider) => {
     setReviewStatus('starting')
     setReviewError(null)
     setReviewLog([])

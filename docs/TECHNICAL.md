@@ -47,9 +47,9 @@ These resources remain across sessions:
 | Resource | Location | Purpose |
 |----------|----------|---------|
 | **Docker Image** | `yolium:latest` | Rebuilt only when explicitly requested |
-| **Project Caches** | `~/.cache/yolium/<project>/` | npm, pip, maven, gradle caches |
+| **Project Caches** | `~/.cache/yolium/<project>/` | npm, pip, maven, gradle, nuget caches |
 | **Shell History** | `~/.yolium/projects/<project>/history` | Command history per project |
-| **Tool Configs** | `~/.claude`, `~/.config/opencode` | Claude Code and OpenCode settings |
+| **Host Credentials** | `~/.claude/.credentials.json`, `~/.codex/auth.json` | OAuth tokens (mounted read-only into containers when enabled) |
 | **Original Project** | Your project directory | Never modified by cleanup |
 
 ### Cleanup Timing
@@ -110,20 +110,41 @@ zsh configured and ready
 
 The AI agent inside the container does **not** have direct access to your host filesystem. Yolium explicitly mounts only specific directories.
 
-| Host Path | Container Path | Scope | Purpose |
-|-----------|----------------|-------|---------|
-| Your project folder | `/home/agent/<path>` | Per-session | The codebase the agent works on |
-| `~/.cache/yolium/<project>/npm` | `/home/agent/.npm` | Per-project | npm package cache |
-| `~/.cache/yolium/<project>/pip` | `/home/agent/.cache/pip` | Per-project | pip package cache |
-| `~/.cache/yolium/<project>/maven` | `/home/agent/.m2` | Per-project | Maven repository cache |
-| `~/.cache/yolium/<project>/gradle` | `/home/agent/.gradle` | Per-project | Gradle cache |
-| `~/.yolium/projects/<project>/history` | `/home/agent/.yolium_history` | Per-project | Shell command history |
-| `~/.claude` | `/home/agent/.claude` | Global | Claude Code settings & memory |
-| `~/.config/opencode` | `/home/agent/.config/opencode` | Global | OpenCode configuration |
-| `~/.local/share/opencode` | `/home/agent/.local/share/opencode` | Global | OpenCode data |
-| `~/.yolium/ssh` | `/home/agent/.ssh` | Global | SSH keys (optional) |
+| Host Path | Container Path | Permission | Scope | Purpose |
+|-----------|----------------|-----------|-------|---------|
+| Your project folder | `/home/agent/<path>` | rw | Per-session | The codebase the agent works on |
+| `~/.cache/yolium/<project>/npm` | `/home/agent/.npm` | rw | Per-project | npm package cache |
+| `~/.cache/yolium/<project>/pip` | `/home/agent/.cache/pip` | rw | Per-project | pip package cache |
+| `~/.cache/yolium/<project>/maven` | `/home/agent/.m2` | rw | Per-project | Maven repository cache |
+| `~/.cache/yolium/<project>/gradle` | `/home/agent/.gradle` | rw | Per-project | Gradle cache |
+| `~/.cache/yolium/<project>/nuget` | `/home/agent/.nuget` | rw | Per-project | NuGet package cache |
+| `~/.yolium/projects/<project>/history` | `/home/agent/.yolium_history` | rw | Per-project | Shell command history |
+| `<original-repo>/.git` | `<container-home>/<repo>/.git` | rw | Per-session | Git data (worktree mode only) |
+| git-credentials | `/home/agent/.git-credentials-mounted` | ro | Global | GitHub PAT (staged, cleaned on exit) |
+| `~/.claude/.credentials.json` | `/home/agent/.claude-credentials.json` | ro | Global | Claude OAuth token (staged, cleaned on exit) |
+| `~/.codex/auth.json` | `/home/agent/.codex-auth.json` | ro | Global | Codex OAuth token (staged, cleaned on exit) |
 
 **This is the only way the agent interacts with your host filesystem.** The agent cannot read your home directory, other projects, or system files - only the explicitly mounted paths above.
+
+### Authentication Methods
+
+Yolium supports two authentication methods for Claude Code agents:
+
+| Method | How It Works | When to Use |
+|--------|-------------|-------------|
+| **Anthropic API Key** | Passed as `ANTHROPIC_API_KEY` env var to the container | Pay-per-token API usage |
+| **Claude Max OAuth** | `~/.claude/.credentials.json` mounted read-only, copied into a minimal `~/.claude` directory inside container with `CLAUDE_CONFIG_DIR` set | Claude Max subscription ($100/mo) |
+
+These are mutually exclusive -- toggling OAuth on in Settings clears the API key, and vice versa. Only the credentials file is mounted (not the entire `~/.claude` directory): mounted read-only at `/home/agent/.claude-credentials.json`, copied to `/home/agent/.claude/.credentials.json` with restricted permissions (directory: 700, file: 600), and cleaned up on container exit.
+
+Yolium supports two authentication methods for Codex agents:
+
+| Method | How It Works | When to Use |
+|--------|-------------|-------------|
+| **OpenAI API Key** | Passed as `OPENAI_API_KEY` env var to the container | Pay-per-token API usage |
+| **Codex OAuth (ChatGPT)** | `~/.codex/auth.json` mounted read-only, copied into `~/.codex/auth.json` inside container | ChatGPT subscription login via `codex login` |
+
+These are mutually exclusive -- toggling OAuth on in Settings clears the API key, and vice versa. Only `auth.json` is mounted (not the entire `~/.codex` directory): mounted read-only at `/home/agent/.codex-auth.json`, copied to `/home/agent/.codex/auth.json` with restricted permissions (directory: 700, file: 600), and cleaned up on container exit.
 
 ### Cache Retention Policy
 

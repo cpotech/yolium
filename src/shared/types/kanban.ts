@@ -1,5 +1,5 @@
 // src/types/kanban.ts
-import type { KanbanAgentType } from './agent';
+import type { KanbanAgentProvider } from './agent';
 
 export type AgentStatus =
   | 'idle'
@@ -18,6 +18,7 @@ export interface KanbanComment {
   source: CommentSource;
   text: string;
   timestamp: string;
+  options?: string[];
 }
 
 export type MergeStatus = 'unmerged' | 'merged' | 'conflict';
@@ -28,7 +29,8 @@ export interface KanbanItem {
   description: string;
   column: KanbanColumn;
   branch?: string;
-  agentType: KanbanAgentType;
+  agentProvider: KanbanAgentProvider;
+  agentType?: string;
   order: number;
   model?: string;
   agentStatus: AgentStatus;

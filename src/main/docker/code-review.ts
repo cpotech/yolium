@@ -10,10 +10,10 @@ import { spawn } from 'node:child_process';
 import { PassThrough } from 'node:stream';
 import { BrowserWindow } from 'electron';
 import { createLogger } from '@main/lib/logger';
-import { loadGitConfig, generateGitCredentials } from '@main/git/git-config';
+import { loadGitConfig, generateGitCredentials, hasHostClaudeOAuth, hasHostCodexOAuth } from '@main/git/git-config';
 import { docker, sessions, DEFAULT_IMAGE } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
-import { getYoliumSshDir, getGitCredentialsBind } from './project-registry';
+import { getGitCredentialsBind, getClaudeOAuthBind, getCodexOAuthBind } from './project-registry';
 
 const logger = createLogger('code-review');
 
@@ -87,64 +87,33 @@ export async function listRemoteBranches(repoUrl: string): Promise<{ branches: s
 }
 
 /**
- * Check if an agent has cached authentication credentials.
- * For Claude: checks if ~/.claude directory has auth data.
- * For OpenCode: checks if ~/.config/opencode has auth data.
+ * Check if an agent has API key authentication configured.
+ * API keys are passed as environment variables (no host directory scanning).
  *
  * @param agent - Agent name ('claude', 'opencode', or 'codex')
  * @returns Object indicating authentication status
  */
 export function checkAgentAuth(agent: string): { authenticated: boolean } {
-  const homeDir = os.homedir();
+  const storedConfig = loadGitConfig();
 
   if (agent === 'claude') {
-    // Claude stores auth in ~/.claude/credentials.json or similar
-    const claudeDir = path.join(homeDir, '.claude');
-    try {
-      const entries = fs.readdirSync(claudeDir);
-      // If the directory has files beyond just settings, likely authenticated
-      const hasAuth = entries.some(e =>
-        e.includes('credentials') || e.includes('auth') || e === '.credentials.json'
-      );
-      // Also check if there's a non-empty directory (Claude stores session data)
-      const hasContent = entries.length > 0;
-      return { authenticated: hasAuth || hasContent };
-    } catch {
-      return { authenticated: false };
-    }
+    // Claude supports Anthropic API key OR Claude OAuth tokens
+    const hasApiKey = !!(storedConfig?.anthropicApiKey || process.env.ANTHROPIC_API_KEY);
+    const hasOAuth = !!(storedConfig?.useClaudeOAuth && hasHostClaudeOAuth());
+    return { authenticated: hasApiKey || hasOAuth };
   }
 
   if (agent === 'opencode') {
-    const opencodeConfig = path.join(homeDir, '.config', 'opencode');
-    try {
-      const entries = fs.readdirSync(opencodeConfig);
-      return { authenticated: entries.length > 0 };
-    } catch {
-      return { authenticated: false };
-    }
+    // OpenCode has free models (e.g. opencode/big-pickle) so it always works;
+    // with an Anthropic API key it can also use paid Anthropic models.
+    return { authenticated: true };
   }
 
   if (agent === 'codex') {
-    // Codex can authenticate via:
-    // 1. Stored OpenAI API key in Yolium settings
-    // 2. OPENAI_API_KEY environment variable
-    // 3. OAuth tokens in ~/.codex/auth.json (from `codex` login)
-    const storedConfig = loadGitConfig();
-    if (storedConfig?.openaiApiKey || process.env.OPENAI_API_KEY) {
-      return { authenticated: true };
-    }
-    const codexAuthFile = path.join(homeDir, '.codex', 'auth.json');
-    try {
-      const content = fs.readFileSync(codexAuthFile, 'utf-8');
-      const auth = JSON.parse(content);
-      // Check for OAuth tokens or an API key in auth.json
-      if (auth.tokens?.access_token || auth.OPENAI_API_KEY) {
-        return { authenticated: true };
-      }
-    } catch {
-      // auth.json doesn't exist or is invalid
-    }
-    return { authenticated: false };
+    // Codex supports OpenAI API key OR Codex OAuth (ChatGPT) tokens
+    const hasApiKey = !!(storedConfig?.openaiApiKey || process.env.OPENAI_API_KEY);
+    const hasOAuth = !!(storedConfig?.useCodexOAuth && hasHostCodexOAuth());
+    return { authenticated: hasApiKey || hasOAuth };
   }
 
   return { authenticated: false };
@@ -180,33 +149,10 @@ export async function createCodeReviewContainer(
   const containerProjectPath = getContainerProjectPath(tmpDir);
 
   // Build minimal bind mounts (no project cache needed for ephemeral review)
-  const homeDir = os.homedir();
-  const claudeDir = path.join(homeDir, '.claude');
-  const opencodeConfigDir = path.join(homeDir, '.config', 'opencode');
-  const opencodeDataDir = path.join(homeDir, '.local', 'share', 'opencode');
-  fs.mkdirSync(claudeDir, { recursive: true });
-  fs.mkdirSync(opencodeConfigDir, { recursive: true });
-  fs.mkdirSync(opencodeDataDir, { recursive: true });
-
+  // API keys are passed as env vars — no host config directories mounted
   const binds = [
     `${toDockerPath(tmpDir)}:${containerProjectPath}:rw`,
-    `${toDockerPath(claudeDir)}:/home/agent/.claude:rw`,
-    `${toDockerPath(opencodeConfigDir)}:/home/agent/.config/opencode:rw`,
-    `${toDockerPath(opencodeDataDir)}:/home/agent/.local/share/opencode:rw`,
   ];
-
-  // Only mount Codex config for Codex agent (least-privilege)
-  if (agent === 'codex') {
-    const codexDir = path.join(homeDir, '.codex');
-    fs.mkdirSync(codexDir, { recursive: true });
-    binds.push(`${toDockerPath(codexDir)}:/home/agent/.codex:rw`);
-  }
-
-  // Add SSH keys if available
-  const sshDir = getYoliumSshDir();
-  if (sshDir) {
-    binds.push(`${toDockerPath(sshDir)}:/home/agent/.ssh:rw`);
-  }
 
   // Add git credentials
   const gitCredBind = getGitCredentialsBind();
@@ -214,9 +160,23 @@ export async function createCodeReviewContainer(
     binds.push(gitCredBind);
   }
 
+  // Add Claude OAuth credentials if enabled
+  const oauthBind = getClaudeOAuthBind();
+  if (oauthBind) {
+    binds.push(oauthBind);
+  }
+
+  // Add Codex OAuth credentials if enabled
+  const codexOAuthBind = getCodexOAuthBind();
+  if (codexOAuthBind) {
+    binds.push(codexOAuthBind);
+  }
+
   logger.debug('Code review container bind mounts', { sessionId, binds });
 
   const storedConfig = loadGitConfig();
+  const useOAuth = storedConfig?.useClaudeOAuth && oauthBind;
+  const useCodexOAuth = storedConfig?.useCodexOAuth && codexOAuthBind;
 
   const container = await docker.createContainer({
     Image: DEFAULT_IMAGE,
@@ -233,14 +193,21 @@ export async function createCodeReviewContainer(
       `REVIEW_BRANCH=${branch}`,
       `REVIEW_AGENT=${agent}`,
       `HOST_HOME=${toContainerHomePath(os.homedir())}`,
-      'CLAUDE_CONFIG_DIR=/home/agent/.claude',
+      'OPENCODE_YOLO=true',  // Skip permission prompts — container is already isolated
       ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
       ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
       ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
-      ...(agent === 'codex' ? (() => {
-        const key = storedConfig?.openaiApiKey || process.env.OPENAI_API_KEY;
-        return key ? [`OPENAI_API_KEY=${key}`] : [];
-      })() : []),
+      // Pass API keys as env vars for all agents (skip Anthropic key when OAuth is enabled)
+      ...(() => {
+        if (useOAuth) return ['CLAUDE_OAUTH_ENABLED=true'];
+        const anthropicKey = storedConfig?.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
+        return anthropicKey ? [`ANTHROPIC_API_KEY=${anthropicKey}`] : [];
+      })(),
+      ...(() => {
+        if (useCodexOAuth) return ['CODEX_OAUTH_ENABLED=true'];
+        const openaiKey = storedConfig?.openaiApiKey || process.env.OPENAI_API_KEY;
+        return openaiKey ? [`OPENAI_API_KEY=${openaiKey}`] : [];
+      })(),
     ],
     HostConfig: {
       CapAdd: ['NET_ADMIN'],
@@ -278,7 +245,6 @@ export async function createCodeReviewContainer(
 
   const handleOutput = (data: Buffer) => {
     const dataStr = data.toString();
-    logger.debug('Code review output', { sessionId, output: dataStr.slice(0, 200) });
 
     // Detect 401 auth errors from Codex output (missing OPENAI_API_KEY)
     // Scoped to codex agent to avoid false positives from reviewed repo output

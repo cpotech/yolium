@@ -8,6 +8,7 @@ import {
   addItem,
   updateItem,
   addComment,
+  deleteItems,
   buildConversationHistory,
   normalizeForHash,
 } from '@main/stores/kanban-store';
@@ -118,7 +119,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test Item',
         description: 'Do the thing',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 1,
       });
 
@@ -126,6 +127,31 @@ describe('kanban-store', () => {
       expect(item.column).toBe('backlog');
       expect(item.agentStatus).toBe('idle');
       expect(board.items).toContain(item);
+    });
+
+    it('should add item with agentType', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test Item',
+        description: 'Do the thing',
+        agentProvider: 'claude',
+        agentType: 'code-agent',
+        order: 1,
+      });
+
+      expect(item.agentType).toBe('code-agent');
+    });
+
+    it('should add item without agentType', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test Item',
+        description: 'Do the thing',
+        agentProvider: 'claude',
+        order: 1,
+      });
+
+      expect(item.agentType).toBeUndefined();
     });
   });
 
@@ -135,7 +161,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 1,
       });
 
@@ -145,6 +171,54 @@ describe('kanban-store', () => {
       expect(updated.comments).toHaveLength(1);
       expect(updated.comments[0].source).toBe('user');
       expect(updated.comments[0].text).toBe('This is my answer');
+    });
+
+    it('should add comment with options', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentProvider: 'claude',
+        order: 1,
+      });
+
+      addComment(board, item.id, 'agent', 'Which approach?', ['Option A', 'Option B']);
+
+      const updated = board.items.find(i => i.id === item.id)!;
+      expect(updated.comments).toHaveLength(1);
+      expect(updated.comments[0].source).toBe('agent');
+      expect(updated.comments[0].text).toBe('Which approach?');
+      expect(updated.comments[0].options).toEqual(['Option A', 'Option B']);
+    });
+
+    it('should not include options field when options is empty', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentProvider: 'claude',
+        order: 1,
+      });
+
+      addComment(board, item.id, 'agent', 'Just a message', []);
+
+      const updated = board.items.find(i => i.id === item.id)!;
+      expect(updated.comments[0].options).toBeUndefined();
+    });
+
+    it('should not include options field when options is undefined', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentProvider: 'claude',
+        order: 1,
+      });
+
+      addComment(board, item.id, 'user', 'A comment');
+
+      const updated = board.items.find(i => i.id === item.id)!;
+      expect(updated.comments[0].options).toBeUndefined();
     });
   });
 
@@ -175,7 +249,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 0,
       });
 
@@ -188,7 +262,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 0,
       });
 
@@ -201,7 +275,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 0,
       });
 
@@ -215,7 +289,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 0,
       });
 
@@ -229,7 +303,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 0,
       });
 
@@ -243,7 +317,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 0,
         model: 'opus',
       });
@@ -258,12 +332,41 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 0,
       });
 
       const result = updateItem(board, item.id, { model: 'invalid-model' });
       expect(result).toBeNull();
+    });
+
+    it('should accept updating agentType', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      const result = updateItem(board, item.id, { agentType: 'plan-agent' });
+      expect(result).not.toBeNull();
+      expect(result!.agentType).toBe('plan-agent');
+    });
+
+    it('should accept clearing agentType with undefined', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentProvider: 'claude',
+        agentType: 'code-agent',
+        order: 0,
+      });
+
+      const result = updateItem(board, item.id, { agentType: undefined });
+      expect(result).not.toBeNull();
+      expect(result!.agentType).toBeUndefined();
     });
   });
 
@@ -273,7 +376,7 @@ describe('kanban-store', () => {
       const item = addItem(board, {
         title: 'Test',
         description: 'Test',
-        agentType: 'claude',
+        agentProvider: 'claude',
         order: 1,
       });
 
@@ -286,6 +389,66 @@ describe('kanban-store', () => {
       expect(history).toContain('[system]: Agent started');
       expect(history).toContain('[agent]: Which framework?');
       expect(history).toContain('[user]: Use React');
+    });
+  });
+
+  describe('deleteItems', () => {
+    it('should delete multiple items by their IDs', () => {
+      const board = createBoard('/path/to/project');
+      const item1 = addItem(board, { title: 'Item 1', description: 'Desc 1', agentProvider: 'claude', order: 0 });
+      const item2 = addItem(board, { title: 'Item 2', description: 'Desc 2', agentProvider: 'claude', order: 1 });
+      const item3 = addItem(board, { title: 'Item 3', description: 'Desc 3', agentProvider: 'claude', order: 2 });
+
+      const deletedIds = deleteItems(board, [item1.id, item3.id]);
+
+      expect(deletedIds).toHaveLength(2);
+      expect(deletedIds).toContain(item1.id);
+      expect(deletedIds).toContain(item3.id);
+      expect(board.items).toHaveLength(1);
+      expect(board.items[0].id).toBe(item2.id);
+    });
+
+    it('should return empty array when no IDs match', () => {
+      const board = createBoard('/path/to/project');
+      addItem(board, { title: 'Item 1', description: 'Desc 1', agentProvider: 'claude', order: 0 });
+
+      const deletedIds = deleteItems(board, ['nonexistent-id']);
+
+      expect(deletedIds).toHaveLength(0);
+      expect(board.items).toHaveLength(1);
+    });
+
+    it('should handle empty itemIds array', () => {
+      const board = createBoard('/path/to/project');
+      addItem(board, { title: 'Item 1', description: 'Desc 1', agentProvider: 'claude', order: 0 });
+
+      const deletedIds = deleteItems(board, []);
+
+      expect(deletedIds).toHaveLength(0);
+      expect(board.items).toHaveLength(1);
+    });
+
+    it('should only delete items that exist, ignoring unknown IDs', () => {
+      const board = createBoard('/path/to/project');
+      const item1 = addItem(board, { title: 'Item 1', description: 'Desc 1', agentProvider: 'claude', order: 0 });
+      addItem(board, { title: 'Item 2', description: 'Desc 2', agentProvider: 'claude', order: 1 });
+
+      const deletedIds = deleteItems(board, [item1.id, 'nonexistent-id']);
+
+      expect(deletedIds).toHaveLength(1);
+      expect(deletedIds).toContain(item1.id);
+      expect(board.items).toHaveLength(1);
+    });
+
+    it('should delete all items when all IDs are provided', () => {
+      const board = createBoard('/path/to/project');
+      const item1 = addItem(board, { title: 'Item 1', description: 'Desc 1', agentProvider: 'claude', order: 0 });
+      const item2 = addItem(board, { title: 'Item 2', description: 'Desc 2', agentProvider: 'claude', order: 1 });
+
+      const deletedIds = deleteItems(board, [item1.id, item2.id]);
+
+      expect(deletedIds).toHaveLength(2);
+      expect(board.items).toHaveLength(0);
     });
   });
 

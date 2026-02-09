@@ -9,7 +9,7 @@ import type {
   KanbanComment,
   CommentSource,
 } from '@shared/types/kanban';
-import type { KanbanAgentType } from '@shared/types/agent';
+import type { KanbanAgentProvider } from '@shared/types/agent';
 
 const YOLIUM_DIR = path.join(os.homedir(), '.yolium');
 const BOARDS_DIR = path.join(YOLIUM_DIR, 'boards');
@@ -124,7 +124,8 @@ export interface NewItemParams {
   title: string;
   description: string;
   branch?: string;
-  agentType: KanbanAgentType;
+  agentProvider: KanbanAgentProvider;
+  agentType?: string;
   order: number;
   model?: string;
 }
@@ -136,6 +137,7 @@ export function addItem(board: KanbanBoard, params: NewItemParams): KanbanItem {
     description: params.description,
     column: 'backlog',
     branch: params.branch,
+    agentProvider: params.agentProvider,
     agentType: params.agentType,
     order: params.order,
     model: params.model,
@@ -153,11 +155,12 @@ const VALID_COLUMNS = new Set(['backlog', 'ready', 'in-progress', 'done']);
 const VALID_AGENT_STATUSES = new Set(['idle', 'running', 'waiting', 'interrupted', 'completed', 'failed']);
 const VALID_MERGE_STATUSES = new Set(['unmerged', 'merged', 'conflict']);
 const VALID_MODELS = new Set(['opus', 'sonnet', 'haiku']);
+const VALID_AGENT_PROVIDERS = new Set(['claude', 'opencode', 'codex']);
 
 export function updateItem(
   board: KanbanBoard,
   itemId: string,
-  updates: Partial<Pick<KanbanItem, 'title' | 'description' | 'column' | 'branch' | 'model' | 'agentStatus' | 'activeAgentName' | 'agentQuestion' | 'agentQuestionOptions' | 'worktreePath' | 'mergeStatus'>>
+  updates: Partial<Pick<KanbanItem, 'title' | 'description' | 'column' | 'branch' | 'model' | 'agentType' | 'agentStatus' | 'activeAgentName' | 'agentQuestion' | 'agentQuestionOptions' | 'worktreePath' | 'mergeStatus' | 'agentProvider'>>
 ): KanbanItem | null {
   const item = board.items.find(i => i.id === itemId);
   if (!item) return null;
@@ -166,6 +169,7 @@ export function updateItem(
   if (updates.agentStatus !== undefined && !VALID_AGENT_STATUSES.has(updates.agentStatus)) return null;
   if (updates.mergeStatus !== undefined && !VALID_MERGE_STATUSES.has(updates.mergeStatus)) return null;
   if (updates.model !== undefined && updates.model !== '' && !VALID_MODELS.has(updates.model)) return null;
+  if (updates.agentProvider !== undefined && !VALID_AGENT_PROVIDERS.has(updates.agentProvider)) return null;
 
   Object.assign(item, updates, { updatedAt: new Date().toISOString() });
   saveBoard(board);
@@ -176,7 +180,8 @@ export function addComment(
   board: KanbanBoard,
   itemId: string,
   source: CommentSource,
-  text: string
+  text: string,
+  options?: string[]
 ): KanbanComment | null {
   const item = board.items.find(i => i.id === itemId);
   if (!item) return null;
@@ -186,6 +191,7 @@ export function addComment(
     source,
     text,
     timestamp: new Date().toISOString(),
+    ...(options && options.length > 0 ? { options } : {}),
   };
   item.comments.push(comment);
   item.updatedAt = new Date().toISOString();
@@ -206,6 +212,24 @@ export function deleteItem(board: KanbanBoard, itemId: string): boolean {
   board.items.splice(index, 1);
   saveBoard(board);
   return true;
+}
+
+export function deleteItems(board: KanbanBoard, itemIds: string[]): string[] {
+  const idSet = new Set(itemIds);
+  const deletedIds: string[] = [];
+
+  board.items = board.items.filter(item => {
+    if (idSet.has(item.id)) {
+      deletedIds.push(item.id);
+      return false;
+    }
+    return true;
+  });
+
+  if (deletedIds.length > 0) {
+    saveBoard(board);
+  }
+  return deletedIds;
 }
 
 export function deleteBoard(projectPath: string): boolean {

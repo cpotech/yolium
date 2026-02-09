@@ -510,3 +510,411 @@ export function cleanupWorktreeAndBranch(projectPath: string, worktreePath: stri
     }
   }
 }
+
+export interface ConflictCheckResult {
+  /** Whether the branch can merge cleanly into the default branch */
+  clean: boolean;
+  /** List of conflicting files (empty if clean) */
+  conflictingFiles: string[];
+}
+
+/**
+ * Check if a branch can merge cleanly into the default branch without modifying the working tree.
+ * Uses `git merge-tree` (available in Git 2.38+) for a truly side-effect-free check.
+ * Falls back to `git merge --no-commit --no-ff` + abort if merge-tree is unavailable.
+ *
+ * @param projectPath - The repository path
+ * @param branchName - The branch to check
+ * @returns ConflictCheckResult with clean status and list of conflicting files
+ */
+export function checkMergeConflicts(projectPath: string, branchName: string): ConflictCheckResult {
+  validateBranchName(branchName);
+
+  const defaultBranch = getDefaultBranch(projectPath);
+
+  // Try git merge-tree first (Git 2.38+ — side-effect-free)
+  try {
+    const output = execFileSync(
+      'git',
+      ['merge-tree', '--write-tree', '--no-messages', defaultBranch, branchName],
+      { cwd: projectPath, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] },
+    );
+    // Exit code 0 = clean merge
+    return { clean: true, conflictingFiles: [] };
+  } catch (err) {
+    const error = err as { status?: number; stdout?: string; stderr?: string };
+    if (error.status === 1 && error.stdout) {
+      // Exit code 1 = conflicts; stdout lists conflicting files after the tree hash
+      const lines = error.stdout.trim().split('\n');
+      // Lines after the first (tree hash) are conflict info
+      const files = lines.slice(1).filter((l) => l.trim().length > 0);
+      return { clean: false, conflictingFiles: files };
+    }
+    // merge-tree not available or other error — fall back to dry-run merge
+  }
+
+  // Fallback: dry-run merge (modifies index temporarily)
+  try {
+    execFileSync('git', ['checkout', defaultBranch], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch {
+    return { clean: false, conflictingFiles: ['(unable to checkout default branch)'] };
+  }
+
+  try {
+    execFileSync('git', ['merge', '--no-commit', '--no-ff', branchName], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+    // Clean merge — abort it to restore state
+    try {
+      execFileSync('git', ['merge', '--abort'], { cwd: projectPath, stdio: 'ignore' });
+    } catch {
+      // If abort fails, reset
+      try {
+        execFileSync('git', ['reset', '--merge'], { cwd: projectPath, stdio: 'ignore' });
+      } catch {
+        // Best effort
+      }
+    }
+    return { clean: true, conflictingFiles: [] };
+  } catch (err) {
+    const mergeErr = err as { stderr?: Buffer; stdout?: Buffer };
+    const output = (mergeErr.stderr?.toString() || '') + '\n' + (mergeErr.stdout?.toString() || '');
+
+    // Extract conflicting file names from output
+    const conflictingFiles: string[] = [];
+    const regex = /CONFLICT \([^)]+\): (?:Merge conflict in )?(.+)/g;
+    let match;
+    while ((match = regex.exec(output)) !== null) {
+      conflictingFiles.push(match[1].trim());
+    }
+
+    // Abort the failed merge
+    try {
+      execFileSync('git', ['merge', '--abort'], { cwd: projectPath, stdio: 'ignore' });
+    } catch {
+      try {
+        execFileSync('git', ['reset', '--merge'], { cwd: projectPath, stdio: 'ignore' });
+      } catch {
+        // Best effort
+      }
+    }
+
+    return {
+      clean: false,
+      conflictingFiles: conflictingFiles.length > 0 ? conflictingFiles : ['(unknown files)'],
+    };
+  }
+}
+
+export interface RebaseResult {
+  /** Whether the rebase succeeded */
+  success: boolean;
+  /** Error message if rebase failed */
+  error?: string;
+  /** Whether the failure was due to conflicts */
+  conflict?: boolean;
+  /** List of conflicting files */
+  conflictingFiles?: string[];
+}
+
+/**
+ * Rebase a branch onto the latest default branch.
+ * This should be called on the worktree where the branch is checked out.
+ *
+ * @param worktreePath - The worktree path where the branch is checked out
+ * @param projectPath - The main repository path (for fetching)
+ * @returns RebaseResult
+ */
+export function rebaseBranchOntoDefault(worktreePath: string, projectPath: string): RebaseResult {
+  const defaultBranch = getDefaultBranch(projectPath);
+
+  // Fetch latest from remote into the main repo so worktree sees it
+  try {
+    execFileSync('git', ['fetch', 'origin'], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch {
+    // No remote or network error — continue with local state
+  }
+
+  // Rebase the worktree branch onto the latest default
+  // Use origin/<default> if available, otherwise local <default>
+  let rebaseTarget: string;
+  try {
+    execFileSync('git', ['rev-parse', '--verify', `origin/${defaultBranch}`], {
+      cwd: projectPath,
+      stdio: 'ignore',
+    });
+    rebaseTarget = `origin/${defaultBranch}`;
+  } catch {
+    rebaseTarget = defaultBranch;
+  }
+
+  try {
+    execFileSync('git', ['rebase', rebaseTarget], {
+      cwd: worktreePath,
+      stdio: 'pipe',
+    });
+    return { success: true };
+  } catch (err) {
+    const error = err as { stderr?: Buffer; stdout?: Buffer; message?: string };
+    const stderr = error.stderr?.toString() || '';
+    const stdout = error.stdout?.toString() || '';
+    const output = stderr + '\n' + stdout;
+
+    // Extract conflicting files
+    const conflictingFiles: string[] = [];
+    const regex = /CONFLICT \([^)]+\): (?:Merge conflict in )?(.+)/g;
+    let match;
+    while ((match = regex.exec(output)) !== null) {
+      conflictingFiles.push(match[1].trim());
+    }
+
+    // Abort the rebase
+    try {
+      execFileSync('git', ['rebase', '--abort'], {
+        cwd: worktreePath,
+        stdio: 'ignore',
+      });
+    } catch {
+      // Best effort
+    }
+
+    if (output.includes('CONFLICT') || output.includes('could not apply')) {
+      return {
+        success: false,
+        conflict: true,
+        error: 'Rebase conflicts detected. The branch cannot be automatically rebased onto the latest default.',
+        conflictingFiles: conflictingFiles.length > 0 ? conflictingFiles : undefined,
+      };
+    }
+
+    return {
+      success: false,
+      error: `Rebase failed: ${output || error.message || 'Unknown error'}`,
+    };
+  }
+}
+
+export interface MergeAndPushResult {
+  success: boolean;
+  prUrl?: string;
+  prBranch?: string;
+  error?: string;
+  conflict?: boolean;
+  conflictingFiles?: string[];
+  rebased?: boolean;
+}
+
+/**
+ * Generate a well-named PR branch from the worktree branch name.
+ * Strips the 'yolium-{timestamp}-{hash}' prefix and creates a clean name.
+ * If the original branch already has a descriptive name, use it directly.
+ */
+export function generatePrBranchName(worktreeBranch: string, itemTitle: string): string {
+  // If the branch is an auto-generated yolium branch, derive from item title
+  if (/^yolium-\d+-[a-f0-9]+$/.test(worktreeBranch)) {
+    const slug = itemTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .substring(0, 50);
+    return `yolium/${slug || 'changes'}`;
+  }
+  // Otherwise use the existing branch name as-is (user-specified)
+  return worktreeBranch;
+}
+
+/**
+ * Merge a worktree branch into the latest default branch, push to remote, and create a PR.
+ *
+ * Steps:
+ * 1. Fetch latest default branch from remote
+ * 2. Rebase the worktree branch onto the latest default (catches conflicts early, keeps history linear)
+ * 3. Checkout default branch and pull latest
+ * 4. Create a new well-named PR branch from the default branch
+ * 5. Merge the rebased worktree branch into the PR branch (--no-ff)
+ * 6. Push the PR branch to remote
+ * 7. Create a PR using `gh pr create`
+ * 8. On success, clean up worktree and old worktree branch
+ *
+ * @param projectPath - The repository path (main worktree)
+ * @param worktreeBranch - The worktree branch to merge
+ * @param worktreePath - The worktree directory path
+ * @param itemTitle - The kanban item title (used for PR title and branch name)
+ * @param itemDescription - The kanban item description (used for PR body)
+ */
+export function mergeBranchAndPushPR(
+  projectPath: string,
+  worktreeBranch: string,
+  worktreePath: string,
+  itemTitle: string,
+  itemDescription: string,
+): MergeAndPushResult {
+  validateBranchName(worktreeBranch);
+
+  const defaultBranch = getDefaultBranch(projectPath);
+  const prBranch = generatePrBranchName(worktreeBranch, itemTitle);
+
+  // Step 1: Fetch latest from remote
+  try {
+    execFileSync('git', ['fetch', 'origin'], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch {
+    // Fetch may fail if no remote configured — continue anyway
+  }
+
+  // Step 2: Auto-rebase the worktree branch onto the latest default
+  // This catches conflicts early and keeps the history linear
+  const rebaseResult = rebaseBranchOntoDefault(worktreePath, projectPath);
+  if (!rebaseResult.success) {
+    if (rebaseResult.conflict) {
+      return {
+        success: false,
+        conflict: true,
+        conflictingFiles: rebaseResult.conflictingFiles,
+        error: rebaseResult.error || 'Rebase conflicts detected. Please resolve manually.',
+      };
+    }
+    return { success: false, error: rebaseResult.error || 'Rebase failed' };
+  }
+
+  // Step 3: Checkout default branch and pull latest
+  try {
+    execFileSync('git', ['checkout', defaultBranch], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch (err) {
+    const error = err as { stderr?: Buffer; message?: string };
+    const stderr = error.stderr?.toString() || error.message || 'Unknown error';
+    return { success: false, error: `Failed to checkout ${defaultBranch}: ${stderr}` };
+  }
+
+  try {
+    execFileSync('git', ['pull', '--ff-only', 'origin', defaultBranch], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch {
+    // Pull may fail if no remote or if diverged — continue with local state
+  }
+
+  // Step 4: Create the PR branch from default branch
+  try {
+    execFileSync('git', ['checkout', '-B', prBranch], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch (err) {
+    const error = err as { stderr?: Buffer; message?: string };
+    const stderr = error.stderr?.toString() || error.message || 'Unknown error';
+    return { success: false, error: `Failed to create PR branch: ${stderr}` };
+  }
+
+  // Step 5: Merge the rebased worktree branch into the PR branch
+  // After a successful rebase, this merge is guaranteed to be clean
+  try {
+    execFileSync('git', ['merge', worktreeBranch, '--no-ff', '-m', `Merge branch '${worktreeBranch}' for: ${itemTitle}`], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch (err) {
+    const error = err as { stderr?: Buffer; stdout?: Buffer; message?: string };
+    const stderr = error.stderr?.toString() || '';
+    const stdout = error.stdout?.toString() || '';
+    const output = stderr + stdout;
+
+    if (output.includes('CONFLICT') || output.includes('Automatic merge failed')) {
+      try {
+        execFileSync('git', ['merge', '--abort'], { cwd: projectPath, stdio: 'ignore' });
+      } catch {
+        // Ignore
+      }
+      try {
+        execFileSync('git', ['checkout', defaultBranch], { cwd: projectPath, stdio: 'pipe' });
+        execFileSync('git', ['branch', '-D', prBranch], { cwd: projectPath, stdio: 'pipe' });
+      } catch {
+        // Best effort
+      }
+      return { success: false, conflict: true, error: 'Merge conflicts detected. Please resolve manually.' };
+    }
+
+    try {
+      execFileSync('git', ['checkout', defaultBranch], { cwd: projectPath, stdio: 'pipe' });
+      execFileSync('git', ['branch', '-D', prBranch], { cwd: projectPath, stdio: 'pipe' });
+    } catch {
+      // Best effort
+    }
+    return { success: false, error: `Merge failed: ${output || error.message || 'Unknown error'}` };
+  }
+
+  // Step 6: Push the PR branch to remote
+  try {
+    execFileSync('git', ['push', '-u', 'origin', prBranch], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch (err) {
+    const error = err as { stderr?: Buffer; message?: string };
+    const stderr = error.stderr?.toString() || error.message || 'Unknown error';
+    // Clean up: go back to default branch
+    try {
+      execFileSync('git', ['checkout', defaultBranch], {
+        cwd: projectPath,
+        stdio: 'pipe',
+      });
+      execFileSync('git', ['branch', '-D', prBranch], {
+        cwd: projectPath,
+        stdio: 'pipe',
+      });
+    } catch {
+      // Best effort
+    }
+    return { success: false, error: `Failed to push branch: ${stderr}` };
+  }
+
+  // Step 7: Create a PR using gh CLI
+  let prUrl: string | undefined;
+  try {
+    const prBody = itemDescription || itemTitle;
+    const output = execFileSync('gh', ['pr', 'create', '--title', itemTitle, '--body', prBody, '--base', defaultBranch, '--head', prBranch], {
+      cwd: projectPath,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    // gh pr create outputs the PR URL
+    prUrl = output.trim();
+  } catch (err) {
+    const error = err as { stderr?: Buffer; message?: string };
+    const stderr = error.stderr?.toString() || error.message || 'Unknown error';
+    // Branch was pushed successfully — PR creation failed but that's not fatal
+    // User can create PR manually
+    return {
+      success: true,
+      prBranch,
+      error: `Branch pushed but PR creation failed: ${stderr}. Create the PR manually.`,
+    };
+  }
+
+  // Step 8: Clean up worktree and old branch, return to default branch
+  try {
+    execFileSync('git', ['checkout', defaultBranch], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+  } catch {
+    // Best effort
+  }
+
+  cleanupWorktreeAndBranch(projectPath, worktreePath, worktreeBranch);
+
+  return { success: true, prUrl, prBranch, rebased: true };
+}

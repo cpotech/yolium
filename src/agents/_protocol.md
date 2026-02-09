@@ -22,7 +22,7 @@ Pauses agent execution and waits for user input.
 Creates a Kanban work item in the Backlog.
 
 ```json
-{"type":"create_item","title":"Title","description":"Details","branch":"feature/x","agentType":"claude","order":1,"model":"sonnet"}
+{"type":"create_item","title":"Title","description":"Details","branch":"feature/x","agentProvider":"claude","order":1,"model":"sonnet"}
 ```
 
 | Field | Type | Required | Description |
@@ -30,7 +30,7 @@ Creates a Kanban work item in the Backlog.
 | title | string | yes | Short title for the card |
 | description | string | yes | Full instructions |
 | branch | string | no | Suggested branch name |
-| agentType | enum | yes | claude, codex, opencode |
+| agentProvider | enum | yes | claude, codex, opencode |
 | order | number | yes | Execution order (1 = first) |
 | model | string | no | Model override: opus, sonnet, haiku |
 

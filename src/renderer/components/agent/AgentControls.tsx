@@ -104,6 +104,15 @@ export function AgentControls({
     window.electronAPI.agent.listDefinitions().then(setAgents).catch(() => {})
   }, [])
 
+  // Sort agents so the pre-assigned agentType comes first
+  const sortedAgents = item.agentType
+    ? [...agents].sort((a, b) => {
+        if (a.name === item.agentType) return -1
+        if (b.name === item.agentType) return 1
+        return 0
+      })
+    : agents
+
   return (
     <>
       {/* Status Badge */}
@@ -136,9 +145,9 @@ export function AgentControls({
         </label>
 
         {/* Idle - Show all agent buttons */}
-        {item.agentStatus === 'idle' && agents.length > 0 && (
+        {item.agentStatus === 'idle' && sortedAgents.length > 0 && (
           <AgentButtonList
-            agents={agents}
+            agents={sortedAgents}
             isStartingAgent={isStartingAgent}
             onClick={onStartAgent}
             buttonTextPrefix="Run"
@@ -214,7 +223,7 @@ export function AgentControls({
               </button>
               <button
                 data-testid="resume-agent-button"
-                onClick={() => onResumeAgent(item.activeAgentName || 'code-agent')}
+                onClick={() => onResumeAgent(item.activeAgentName || item.agentType || 'code-agent')}
                 disabled={isStartingAgent}
                 className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
@@ -229,7 +238,7 @@ export function AgentControls({
         {item.agentStatus === 'interrupted' && (
           <button
             data-testid="resume-interrupted-button"
-            onClick={() => onResumeAgent(item.activeAgentName || 'code-agent')}
+            onClick={() => onResumeAgent(item.activeAgentName || item.agentType || 'code-agent')}
             disabled={isStartingAgent}
             className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
@@ -245,9 +254,9 @@ export function AgentControls({
               <CheckCircle2 size={14} />
               Agent completed successfully
             </div>
-            {agents.length > 0 && (
+            {sortedAgents.length > 0 && (
               <AgentButtonList
-                agents={agents}
+                agents={sortedAgents}
                 isStartingAgent={isStartingAgent}
                 onClick={onStartAgent}
                 buttonTextPrefix="Run"
@@ -261,9 +270,9 @@ export function AgentControls({
         {item.agentStatus === 'failed' && (
           <div className="space-y-2">
             <div className="text-sm text-red-400">Agent failed</div>
-            {agents.length > 0 && (
+            {sortedAgents.length > 0 && (
               <AgentButtonList
-                agents={agents}
+                agents={sortedAgents}
                 isStartingAgent={isStartingAgent}
                 onClick={onStartAgent}
                 buttonTextPrefix="Run"

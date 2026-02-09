@@ -13,8 +13,6 @@ import {
   getWorktreePath,
   hasCommits,
   isGitRepo,
-  mergeWorktreeBranch,
-  cleanupWorktreeAndBranch,
   sanitizeBranchName,
 } from '@main/git/git-worktree';
 import {
@@ -24,6 +22,10 @@ import {
   addComment,
   buildConversationHistory,
 } from '@main/stores/kanban-store';
+import {
+  appendLog,
+  appendSessionHeader,
+} from '@main/stores/workitem-log-store';
 import {
   createAgentContainer,
   stopAgentContainer,
@@ -101,6 +103,7 @@ export interface StartAgentParams {
   projectPath: string;
   itemId: string;
   goal: string;
+  agentProvider?: string;
   onOutput?: (data: string) => void;
   onQuestion?: (question: AskQuestionMessage) => void;
   onItemCreated?: (item: KanbanItem) => void;
@@ -121,6 +124,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     projectPath,
     itemId,
     goal,
+    agentProvider,
     onOutput,
     onQuestion,
     onItemCreated,
@@ -128,15 +132,6 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     onError,
     onProgress,
   } = params;
-
-  // Check if Claude is authenticated
-  const auth = checkAgentAuth('claude');
-  if (!auth.authenticated) {
-    return {
-      sessionId: '',
-      error: 'Claude is not authenticated. Please authenticate Claude first using an interactive container.',
-    };
-  }
 
   let agent: ParsedAgent;
   try {
@@ -154,6 +149,19 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     return {
       sessionId: '',
       error: `Item not found: ${itemId}`,
+    };
+  }
+
+  // Use provided agentProvider or fall back to the item's stored provider
+  const provider = agentProvider || item.agentProvider || 'claude';
+
+  // Check if the selected agent is authenticated
+  const auth = checkAgentAuth(provider);
+  if (!auth.authenticated) {
+    const keyType = provider === 'codex' ? 'OpenAI' : 'Anthropic';
+    return {
+      sessionId: '',
+      error: `${provider} is not authenticated. Add your ${keyType} API Key in Settings.`,
     };
   }
 
@@ -223,6 +231,9 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
 
   logger.info('Starting agent container', { agentName, projectPath, itemId, model, branchName });
 
+  // Write a session header to the persistent log
+  appendSessionHeader(projectPath, itemId, agentName);
+
   // Create EventEmitter early so callbacks are wired before container output arrives
   const events = new EventEmitter();
   if (onQuestion) events.on('question', onQuestion);
@@ -246,6 +257,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
         model,
         tools: agent.tools,
         itemId,
+        agentProvider: provider,
         ...(worktreePath && { worktreePath, originalPath: worktreeOriginalPath, branchName }),
         ...(agent.timeout && { timeoutMs: agent.timeout * 60 * 1000 }),
       },
@@ -259,6 +271,10 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
           } else {
             outputBuffer.push(data);
           }
+        },
+        onDisplayOutput: (data: string) => {
+          // Persist display output to the work item log file
+          appendLog(projectPath, itemId, data + '\n');
         },
         onProtocolMessage: (message: unknown) => {
           // Protocol messages are handled in handleAgentOutput
@@ -369,7 +385,7 @@ export function handleAgentOutput(sessionId: string, data: string): void {
           agentQuestionOptions: q.options,
           column: 'ready',
         });
-        addComment(board, session.itemId, 'agent', q.text);
+        addComment(board, session.itemId, 'agent', q.text, q.options);
         session.events.emit('question', q);
         break;
       }
@@ -380,7 +396,7 @@ export function handleAgentOutput(sessionId: string, data: string): void {
           title: c.title,
           description: c.description,
           branch: c.branch,
-          agentType: c.agentType,
+          agentProvider: c.agentProvider,
           order: c.order,
           model: c.model,
         });
@@ -393,42 +409,6 @@ export function handleAgentOutput(sessionId: string, data: string): void {
         // Move to done column when agent completes successfully
         updateItem(board, session.itemId, { agentStatus: 'completed', activeAgentName: undefined, column: 'done' });
         addComment(board, session.itemId, 'system', `Completed: ${comp.summary}`);
-
-        // Auto-merge the worktree branch into the default branch
-        const completedItem = board.items.find(i => i.id === session.itemId);
-        if (completedItem?.branch && completedItem.worktreePath) {
-          try {
-            mergeWorktreeBranch(session.projectPath, completedItem.branch);
-            updateItem(board, session.itemId, { mergeStatus: 'merged' });
-            addComment(board, session.itemId, 'system', `Merged branch '${completedItem.branch}' into default branch`);
-
-            // Clean up worktree and branch after successful merge
-            try {
-              cleanupWorktreeAndBranch(session.projectPath, completedItem.worktreePath, completedItem.branch);
-              updateItem(board, session.itemId, { worktreePath: undefined });
-              addComment(board, session.itemId, 'system', 'Cleaned up worktree');
-            } catch (cleanupErr) {
-              logger.warn('Failed to cleanup worktree after merge', {
-                itemId: session.itemId,
-                error: cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr),
-              });
-            }
-          } catch (mergeErr) {
-            const mergeMessage = mergeErr instanceof Error ? mergeErr.message : String(mergeErr);
-            const isConflict = mergeMessage.startsWith('conflict:');
-            updateItem(board, session.itemId, { mergeStatus: isConflict ? 'conflict' : 'unmerged' });
-            addComment(board, session.itemId, 'system',
-              isConflict
-                ? 'Auto-merge failed: conflicts detected. Please merge manually.'
-                : `Auto-merge failed: ${mergeMessage}`
-            );
-            logger.warn('Auto-merge failed', {
-              itemId: session.itemId,
-              branch: completedItem.branch,
-              error: mergeMessage,
-            });
-          }
-        }
 
         session.events.emit('complete', comp.summary);
         break;

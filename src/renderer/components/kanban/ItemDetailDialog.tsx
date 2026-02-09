@@ -4,13 +4,12 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react'
-import { X, GitBranch, Clock, FolderOpen, GitMerge, Check, AlertTriangle, Save, Trash2 } from 'lucide-react'
+import { X, GitBranch, Clock, FolderOpen, GitMerge, GitPullRequest, Check, AlertTriangle, ExternalLink, Save, Trash2 } from 'lucide-react'
 import type { KanbanItem, KanbanColumn } from '@shared/types/kanban'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
 import { CommentsList } from './CommentsList'
 import { AgentLogPanel } from '../agent/AgentLogPanel'
-import { AgentStatusBanner } from '../agent/AgentStatusBanner'
 import { AgentControls } from '../agent/AgentControls'
 
 interface ItemDetailDialogProps {
@@ -28,7 +27,7 @@ const columnOptions: { id: KanbanColumn; label: string }[] = [
   { id: 'done', label: 'Done' },
 ]
 
-const agentTypeLabels: Record<KanbanItem['agentType'], string> = {
+const agentProviderLabels: Record<KanbanItem['agentProvider'], string> = {
   claude: 'Claude',
   codex: 'Codex',
   opencode: 'OpenCode',
@@ -82,6 +81,8 @@ export function ItemDetailDialog({
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [column, setColumn] = useState<KanbanColumn>('backlog')
+  const [agentType, setAgentType] = useState('')
+  const [agentProvider, setAgentProvider] = useState<KanbanItem['agentProvider']>('claude')
   const [model, setModel] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -90,6 +91,9 @@ export function ItemDetailDialog({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isAnswering, setIsAnswering] = useState(false)
   const [isMerging, setIsMerging] = useState(false)
+  const [isCheckingConflicts, setIsCheckingConflicts] = useState(false)
+  const [conflictCheck, setConflictCheck] = useState<{ clean: boolean; conflictingFiles: string[] } | null>(null)
+  const [prUrl, setPrUrl] = useState<string | null>(null)
 
   // Refs
   const answerInputRef = useRef<HTMLTextAreaElement>(null)
@@ -109,9 +113,11 @@ export function ItemDetailDialog({
   const [baseTitle, setBaseTitle] = useState('')
   const [baseDescription, setBaseDescription] = useState('')
   const [baseColumn, setBaseColumn] = useState<KanbanColumn>('backlog')
+  const [baseAgentType, setBaseAgentType] = useState('')
+  const [baseAgentProvider, setBaseAgentProvider] = useState<KanbanItem['agentProvider']>('claude')
   const [baseModel, setBaseModel] = useState('')
 
-  const hasUnsavedChanges = title !== baseTitle || description !== baseDescription || column !== baseColumn || model !== baseModel
+  const hasUnsavedChanges = title !== baseTitle || description !== baseDescription || column !== baseColumn || agentType !== baseAgentType || agentProvider !== baseAgentProvider || model !== baseModel
 
   // Sync editable fields when item data changes
   useEffect(() => {
@@ -122,11 +128,17 @@ export function ItemDetailDialog({
         setTitle(item.title)
         setDescription(item.description)
         setColumn(item.column)
+        setAgentType(item.agentType || '')
+        setAgentProvider(item.agentProvider)
         setModel(item.model || '')
         setBaseTitle(item.title)
         setBaseDescription(item.description)
         setBaseColumn(item.column)
+        setBaseAgentType(item.agentType || '')
+        setBaseAgentProvider(item.agentProvider)
         setBaseModel(item.model || '')
+        setPrUrl(null)
+        setConflictCheck(null)
         prevItemIdRef.current = item.id
       }
     }
@@ -150,11 +162,15 @@ export function ItemDetailDialog({
         title: trimmedTitle,
         description: trimmedDescription,
         column,
+        agentType: agentType || undefined,
+        agentProvider,
         model: model || undefined,
       })
       setBaseTitle(trimmedTitle)
       setBaseDescription(trimmedDescription)
       setBaseColumn(column)
+      setBaseAgentType(agentType)
+      setBaseAgentProvider(agentProvider)
       setBaseModel(model)
       setErrorMessage(null)
       onUpdated()
@@ -164,7 +180,7 @@ export function ItemDetailDialog({
     } finally {
       setIsSaving(false)
     }
-  }, [item, isSaving, projectPath, title, description, column, model, onUpdated])
+  }, [item, isSaving, projectPath, title, description, column, agentType, agentProvider, model, onUpdated])
 
   const handleDelete = useCallback(async () => {
     if (!item || isDeleting) return
@@ -192,6 +208,11 @@ export function ItemDetailDialog({
   const handleStartAgent = useCallback(async (agentName: string) => {
     if (!item || isStartingAgent) return
 
+    // Auto-save unsaved changes (e.g. agent provider) before starting
+    if (hasUnsavedChanges) {
+      await handleSave()
+    }
+
     setIsStartingAgent(true)
     agentSession.clearAgentOutput()
     agentSession.setCurrentStep(null)
@@ -205,6 +226,7 @@ export function ItemDetailDialog({
         projectPath,
         itemId: item.id,
         goal: item.description,
+        agentProvider,
       })
 
       if (result.error) {
@@ -225,7 +247,7 @@ export function ItemDetailDialog({
     } finally {
       setIsStartingAgent(false)
     }
-  }, [item, isStartingAgent, projectPath, onUpdated, agentSession])
+  }, [item, isStartingAgent, projectPath, onUpdated, agentSession, agentProvider, hasUnsavedChanges, handleSave])
 
   const handleAnswerQuestion = useCallback(async () => {
     if (!item || isAnswering || !answerText.trim()) return
@@ -247,6 +269,11 @@ export function ItemDetailDialog({
   const handleResumeAgent = useCallback(async (agentName: string) => {
     if (!item || isStartingAgent) return
 
+    // Auto-save unsaved changes (e.g. agent provider) before resuming
+    if (hasUnsavedChanges) {
+      await handleSave()
+    }
+
     setIsStartingAgent(true)
     agentSession.setCurrentStep(null)
     agentSession.setCurrentDetail(null)
@@ -259,6 +286,7 @@ export function ItemDetailDialog({
         projectPath,
         itemId: item.id,
         goal: item.description,
+        agentProvider,
       })
 
       if (result.error) {
@@ -279,7 +307,7 @@ export function ItemDetailDialog({
     } finally {
       setIsStartingAgent(false)
     }
-  }, [item, isStartingAgent, projectPath, onUpdated, agentSession])
+  }, [item, isStartingAgent, projectPath, onUpdated, agentSession, agentProvider, hasUnsavedChanges, handleSave])
 
   const handleStopAgent = useCallback(async () => {
     if (agentSession.currentSessionId) {
@@ -287,6 +315,22 @@ export function ItemDetailDialog({
       onUpdated()
     }
   }, [agentSession.currentSessionId, onUpdated])
+
+  const handleCheckConflicts = useCallback(async () => {
+    if (!item || !item.branch || isCheckingConflicts) return
+
+    setIsCheckingConflicts(true)
+    setConflictCheck(null)
+    try {
+      const result = await window.electronAPI.git.checkMergeConflicts(projectPath, item.branch)
+      setConflictCheck(result)
+    } catch (error) {
+      console.error('Failed to check merge conflicts:', error)
+      setConflictCheck({ clean: false, conflictingFiles: ['(check failed)'] })
+    } finally {
+      setIsCheckingConflicts(false)
+    }
+  }, [item, isCheckingConflicts, projectPath])
 
   const handleMerge = useCallback(async () => {
     if (!item || !item.branch || !item.worktreePath || isMerging) return
@@ -300,38 +344,63 @@ export function ItemDetailDialog({
         : 'No changes detected'
 
       const confirmed = await window.electronAPI.dialog.confirmOkCancel(
-        'Merge to Main',
-        `Merge branch "${item.branch}"?\n\n${statsMsg}`
+        'Rebase, Merge & Create PR',
+        `Rebase branch "${item.branch}" onto latest default, then merge and push a PR?\n\n${statsMsg}`
       )
       if (!confirmed) {
         setIsMerging(false)
         return
       }
 
-      // Perform the merge
-      const result = await window.electronAPI.git.mergeBranch(projectPath, item.branch)
+      // Rebase, merge, push, and create PR
+      const result = await window.electronAPI.git.mergeAndPushPR(
+        projectPath,
+        item.branch,
+        item.worktreePath,
+        item.title,
+        item.description,
+      )
 
-      if (result.success) {
-        // Clean up worktree and branch
-        await window.electronAPI.git.cleanupWorktree(projectPath, item.worktreePath, item.branch)
-        // Update item: mark as merged, clear worktree path
+      if (result.success && !result.error) {
+        // Full success: rebased, merged, pushed, PR created, worktree cleaned up
         await window.electronAPI.kanban.updateItem(projectPath, item.id, {
           mergeStatus: 'merged',
           worktreePath: undefined,
         })
+        if (result.prUrl) {
+          setPrUrl(result.prUrl)
+          await window.electronAPI.kanban.addComment(
+            projectPath, item.id, 'system',
+            `PR created: ${result.prUrl}`
+          )
+        }
+        setConflictCheck(null)
+        onUpdated()
+      } else if (result.success && result.error) {
+        // Partial success: branch pushed but PR creation failed
+        await window.electronAPI.kanban.updateItem(projectPath, item.id, {
+          mergeStatus: 'merged',
+          worktreePath: undefined,
+        })
+        setErrorMessage(result.error)
+        setConflictCheck(null)
         onUpdated()
       } else if (result.conflict) {
         await window.electronAPI.kanban.updateItem(projectPath, item.id, {
           mergeStatus: 'conflict',
         })
-        setErrorMessage('Merge conflict detected. Please resolve manually.')
+        const fileList = result.conflictingFiles?.length
+          ? `\nConflicting files:\n${result.conflictingFiles.map(f => `  - ${f}`).join('\n')}`
+          : ''
+        setErrorMessage(`Rebase conflict detected. Please resolve manually.${fileList}`)
+        setConflictCheck({ clean: false, conflictingFiles: result.conflictingFiles || [] })
         onUpdated()
       } else {
         setErrorMessage(result.error || 'Merge failed')
       }
     } catch (error) {
-      console.error('Failed to merge:', error)
-      setErrorMessage('Failed to merge branch. Please try again.')
+      console.error('Failed to merge and push PR:', error)
+      setErrorMessage('Failed to merge and push PR. Please try again.')
     } finally {
       setIsMerging(false)
     }
@@ -452,15 +521,8 @@ export function ItemDetailDialog({
                 />
               </div>
 
-              {/* Live Agent Status Banner */}
-              <AgentStatusBanner
-                status={agentSession.liveStatus}
-                detail={agentSession.currentDetail}
-                message={agentSession.liveStatusMessage}
-              />
-
               {/* Comments */}
-              <CommentsList comments={item.comments} />
+              <CommentsList comments={item.comments} onSelectOption={setAnswerText} />
             </div>
           </div>
 
@@ -487,17 +549,34 @@ export function ItemDetailDialog({
 
             {/* Properties */}
             <div className="p-4 space-y-4">
-              {/* Agent Type */}
+              {/* Agent Provider */}
               <div>
-                <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
-                  Agent Type
-                </label>
-                <span
-                  data-testid="agent-type-display"
-                  className="text-sm text-[var(--color-text-primary)]"
+                <label
+                  htmlFor="detail-agent-provider"
+                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
                 >
-                  {item.activeAgentName ? formatAgentRoleLabel(item.activeAgentName) : agentTypeLabels[item.agentType]}
-                </span>
+                  Agent Provider
+                </label>
+                {item.agentStatus !== 'running' && item.agentStatus !== 'waiting' ? (
+                  <select
+                    id="detail-agent-provider"
+                    data-testid="agent-provider-select"
+                    value={agentProvider}
+                    onChange={e => setAgentProvider(e.target.value as KanbanItem['agentProvider'])}
+                    className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+                  >
+                    <option value="claude">Claude</option>
+                    <option value="opencode">OpenCode</option>
+                    <option value="codex">Codex</option>
+                  </select>
+                ) : (
+                  <span
+                    data-testid="agent-provider-display"
+                    className="text-sm text-[var(--color-text-primary)]"
+                  >
+                    {item.activeAgentName ? formatAgentRoleLabel(item.activeAgentName) : agentProviderLabels[item.agentProvider]}
+                  </span>
+                )}
               </div>
 
               {/* Model */}
@@ -595,12 +674,22 @@ export function ItemDetailDialog({
                     Merge Status
                   </label>
                   {item.mergeStatus === 'merged' && (
-                    <div
-                      data-testid="merge-status-merged"
-                      className="flex items-center gap-1 text-sm text-green-400"
-                    >
-                      <Check size={14} />
-                      <span>Merged</span>
+                    <div data-testid="merge-status-merged">
+                      <div className="flex items-center gap-1 text-sm text-green-400">
+                        <Check size={14} />
+                        <span>Merged</span>
+                      </div>
+                      {prUrl && (
+                        <button
+                          data-testid="pr-link"
+                          onClick={() => window.electronAPI.app.openExternal(prUrl)}
+                          className="mt-1.5 w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 text-blue-400 rounded-md hover:bg-blue-600/10 border border-blue-600/30 transition-colors"
+                        >
+                          <GitPullRequest size={12} />
+                          <span>View PR</span>
+                          <ExternalLink size={10} />
+                        </button>
+                      )}
                     </div>
                   )}
                   {item.mergeStatus === 'conflict' && (
@@ -615,12 +704,47 @@ export function ItemDetailDialog({
                         disabled={isMerging}
                         className="w-full px-3 py-1.5 text-xs bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
-                        {isMerging ? 'Merging...' : 'Retry Merge'}
+                        {isMerging ? 'Retrying...' : 'Retry Merge & PR'}
                       </button>
                     </div>
                   )}
                   {item.mergeStatus === 'unmerged' && (
                     <div data-testid="merge-status-unmerged">
+                      {/* Conflict pre-check */}
+                      <button
+                        data-testid="check-conflicts-button"
+                        onClick={handleCheckConflicts}
+                        disabled={isCheckingConflicts || isMerging}
+                        className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 text-[var(--color-text-secondary)] rounded-md hover:bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors mb-2"
+                      >
+                        <AlertTriangle size={12} />
+                        {isCheckingConflicts ? 'Checking...' : 'Check Conflicts'}
+                      </button>
+                      {conflictCheck && (
+                        <div data-testid="conflict-check-result" className="mb-2">
+                          {conflictCheck.clean ? (
+                            <div className="flex items-center gap-1 text-xs text-green-400">
+                              <Check size={12} />
+                              <span>Clean — no conflicts</span>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-red-400">
+                              <div className="flex items-center gap-1 mb-1">
+                                <AlertTriangle size={12} />
+                                <span>Conflicts detected</span>
+                              </div>
+                              {conflictCheck.conflictingFiles.length > 0 && (
+                                <ul className="ml-4 space-y-0.5">
+                                  {conflictCheck.conflictingFiles.map((file, i) => (
+                                    <li key={i} className="font-mono text-[10px] truncate" title={file}>{file}</li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {/* Merge button */}
                       <button
                         data-testid="merge-button"
                         onClick={handleMerge}
@@ -628,7 +752,7 @@ export function ItemDetailDialog({
                         className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         <GitMerge size={12} />
-                        {isMerging ? 'Merging...' : 'Merge to Main'}
+                        {isMerging ? 'Rebasing & Merging...' : 'Rebase, Merge & Push PR'}
                       </button>
                       {item.agentStatus !== 'completed' && item.column !== 'done' && (
                         <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">

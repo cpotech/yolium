@@ -27,7 +27,7 @@ const createMockItem = (overrides: Partial<KanbanItem> = {}): KanbanItem => ({
   title: 'Test Task',
   description: 'Test description',
   column: 'in-progress',
-  agentType: 'claude',
+  agentProvider: 'claude',
   agentStatus: 'idle',
   branch: undefined,
   order: 0,
@@ -237,6 +237,47 @@ describe('AgentControls', () => {
       render(<AgentControls item={item} {...defaultProps} />)
 
       expect(screen.getByTestId('active-agent-name')).toHaveTextContent('Code Agent')
+    })
+  })
+
+  describe('agentType sorting', () => {
+    it('should put pre-assigned agentType first in button list', async () => {
+      const item = createMockItem({ agentStatus: 'idle', agentType: 'plan-agent' })
+      render(<AgentControls item={item} {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('run-plan-agent-button')).toBeInTheDocument()
+      })
+
+      // plan-agent should be first (primary style)
+      const planButton = screen.getByTestId('run-plan-agent-button')
+      expect(planButton.className).toContain('bg-blue-600')
+    })
+
+    it('should keep default order when no agentType is set', async () => {
+      const item = createMockItem({ agentStatus: 'idle', agentType: undefined })
+      render(<AgentControls item={item} {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('run-code-agent-button')).toBeInTheDocument()
+      })
+
+      // code-agent should be first (default order from listDefinitions)
+      const codeButton = screen.getByTestId('run-code-agent-button')
+      expect(codeButton.className).toContain('bg-blue-600')
+    })
+
+    it('should use agentType as resume fallback when activeAgentName is not set', () => {
+      const onResumeAgent = vi.fn()
+      const item = createMockItem({
+        agentStatus: 'interrupted',
+        activeAgentName: undefined,
+        agentType: 'plan-agent',
+      })
+      render(<AgentControls item={item} {...defaultProps} onResumeAgent={onResumeAgent} />)
+
+      fireEvent.click(screen.getByTestId('resume-interrupted-button'))
+      expect(onResumeAgent).toHaveBeenCalledWith('plan-agent')
     })
   })
 })

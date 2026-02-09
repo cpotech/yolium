@@ -38,7 +38,7 @@ export function parseProtocolMessage(json: string): AnyProtocolMessage | null {
           title: parsed.title,
           description: parsed.description,
           branch: parsed.branch,
-          agentType: parsed.agentType || 'claude',
+          agentProvider: parsed.agentProvider || parsed.agentType || 'claude',
           order: typeof parsed.order === 'number' ? parsed.order : 0,
           model: typeof parsed.model === 'string' ? parsed.model : undefined,
         };

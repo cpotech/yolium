@@ -132,7 +132,7 @@ const fs = {
 // Git namespace
 const git = {
   loadConfig: () => ipcRenderer.invoke('git-config:load'),
-  saveConfig: (config: { name: string; email: string; githubPat?: string; openaiApiKey?: string }) =>
+  saveConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean }) =>
     ipcRenderer.invoke('git-config:save', config),
   isRepo: (folderPath: string) => ipcRenderer.invoke('git:is-repo', folderPath),
   getBranch: (folderPath: string) => ipcRenderer.invoke('git:get-branch', folderPath),
@@ -144,6 +144,10 @@ const git = {
     ipcRenderer.invoke('git:worktree-diff-stats', projectPath, branchName),
   cleanupWorktree: (projectPath: string, worktreePath: string, branchName: string) =>
     ipcRenderer.invoke('git:cleanup-worktree', projectPath, worktreePath, branchName),
+  checkMergeConflicts: (projectPath: string, branchName: string) =>
+    ipcRenderer.invoke('git:check-merge-conflicts', projectPath, branchName),
+  mergeAndPushPR: (projectPath: string, branchName: string, worktreePath: string, itemTitle: string, itemDescription: string) =>
+    ipcRenderer.invoke('git:merge-and-push-pr', projectPath, branchName, worktreePath, itemTitle, itemDescription),
   detectNestedRepos: (folderPath: string) =>
     ipcRenderer.invoke('git:detect-nested-repos', folderPath),
 };
@@ -198,7 +202,8 @@ const kanban = {
     title: string;
     description: string;
     branch?: string;
-    agentType: 'claude' | 'codex' | 'opencode';
+    agentProvider: 'claude' | 'codex' | 'opencode';
+    agentType?: string;
     order: number;
     model?: string;
   }) => ipcRenderer.invoke('kanban:add-item', projectPath, params),
@@ -208,6 +213,8 @@ const kanban = {
     ipcRenderer.invoke('kanban:add-comment', projectPath, itemId, source, text),
   deleteItem: (projectPath: string, itemId: string) =>
     ipcRenderer.invoke('kanban:delete-item', projectPath, itemId),
+  deleteItems: (projectPath: string, itemIds: string[]) =>
+    ipcRenderer.invoke('kanban:delete-items', projectPath, itemIds),
   deleteBoard: (projectPath: string) =>
     ipcRenderer.invoke('kanban:delete-board', projectPath),
   onBoardUpdated: (callback: (projectPath: string) => void): CleanupFn => {
@@ -225,12 +232,14 @@ const agent = {
     projectPath: string;
     itemId: string;
     goal: string;
+    agentProvider: string;
   }) => ipcRenderer.invoke('agent:start', params),
   resume: (params: {
     agentName: string;
     projectPath: string;
     itemId: string;
     goal: string;
+    agentProvider: string;
   }) => ipcRenderer.invoke('agent:resume', params),
   answer: (projectPath: string, itemId: string, answer: string) =>
     ipcRenderer.invoke('agent:answer', projectPath, itemId, answer),
@@ -242,6 +251,10 @@ const agent = {
     ipcRenderer.invoke('agent:recover', projectPath),
   listDefinitions: () =>
     ipcRenderer.invoke('agent:list-definitions'),
+  readLog: (projectPath: string, itemId: string) =>
+    ipcRenderer.invoke('agent:read-log', projectPath, itemId),
+  clearLog: (projectPath: string, itemId: string) =>
+    ipcRenderer.invoke('agent:clear-log', projectPath, itemId),
   onOutput: (callback: (sessionId: string, data: string) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, sessionId: string, data: string) =>
       callback(sessionId, data);
@@ -302,6 +315,13 @@ const whisper = {
   downloadModel: (modelSize: string) => ipcRenderer.invoke('whisper:download-model', modelSize),
   deleteModel: (modelSize: string) => ipcRenderer.invoke('whisper:delete-model', modelSize),
   isBinaryAvailable: () => ipcRenderer.invoke('whisper:is-binary-available'),
+  installBinary: () => ipcRenderer.invoke('whisper:install-binary'),
+  onInstallProgress: (callback: (message: string) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, message: string) =>
+      callback(message);
+    ipcRenderer.on('whisper:install-progress', handler);
+    return () => ipcRenderer.removeListener('whisper:install-progress', handler);
+  },
   transcribe: (audioData: number[], modelSize: string) =>
     ipcRenderer.invoke('whisper:transcribe', audioData, modelSize),
   getSelectedModel: () => ipcRenderer.invoke('whisper:get-selected-model'),
@@ -413,8 +433,8 @@ declare global {
         }>;
       };
       git: {
-        loadConfig: () => Promise<{ name: string; email: string; hasPat?: boolean; hasOpenaiKey?: boolean } | null>;
-        saveConfig: (config: { name: string; email: string; githubPat?: string; openaiApiKey?: string }) => Promise<void>;
+        loadConfig: () => Promise<{ name: string; email: string; hasPat?: boolean; hasOpenaiKey?: boolean; hasAnthropicKey?: boolean; hasClaudeOAuth?: boolean; useClaudeOAuth?: boolean; hasCodexOAuth?: boolean; useCodexOAuth?: boolean; githubLogin?: string } | null>;
+        saveConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean }) => Promise<void>;
         isRepo: (folderPath: string) => Promise<{ isRepo: boolean; hasCommits: boolean }>;
         getBranch: (folderPath: string) => Promise<string | null>;
         init: (folderPath: string) => Promise<{ success: boolean; initialized?: boolean; error?: string }>;
@@ -422,6 +442,8 @@ declare global {
         mergeBranch: (projectPath: string, branchName: string) => Promise<{ success: boolean; error?: string; conflict?: boolean }>;
         worktreeDiffStats: (projectPath: string, branchName: string) => Promise<{ filesChanged: number; insertions: number; deletions: number }>;
         cleanupWorktree: (projectPath: string, worktreePath: string, branchName: string) => Promise<void>;
+        checkMergeConflicts: (projectPath: string, branchName: string) => Promise<{ clean: boolean; conflictingFiles: string[] }>;
+        mergeAndPushPR: (projectPath: string, branchName: string, worktreePath: string, itemTitle: string, itemDescription: string) => Promise<{ success: boolean; prUrl?: string; prBranch?: string; error?: string; conflict?: boolean; conflictingFiles?: string[]; rebased?: boolean }>;
         detectNestedRepos: (folderPath: string) => Promise<{
           isRepo: boolean;
           nestedRepos: Array<{ name: string; path: string }>;
@@ -462,7 +484,7 @@ declare global {
             description: string;
             column: 'backlog' | 'ready' | 'in-progress' | 'done';
             branch?: string;
-            agentType: 'claude' | 'codex' | 'opencode';
+            agentProvider: 'claude' | 'codex' | 'opencode';
             order: number;
             model?: string;
             agentStatus: 'idle' | 'running' | 'waiting' | 'interrupted' | 'completed' | 'failed';
@@ -470,7 +492,7 @@ declare global {
             agentQuestionOptions?: string[];
             worktreePath?: string;
             mergeStatus?: 'unmerged' | 'merged' | 'conflict';
-            comments: Array<{ id: string; source: 'user' | 'agent' | 'system'; text: string; timestamp: string }>;
+            comments: Array<{ id: string; source: 'user' | 'agent' | 'system'; text: string; timestamp: string; options?: string[] }>;
             createdAt: string;
             updatedAt: string;
           }>;
@@ -481,13 +503,15 @@ declare global {
           title: string;
           description: string;
           branch?: string;
-          agentType: 'claude' | 'codex' | 'opencode';
+          agentProvider: 'claude' | 'codex' | 'opencode';
+          agentType?: string;
           order: number;
           model?: string;
         }) => Promise<object>;
         updateItem: (projectPath: string, itemId: string, updates: object) => Promise<object | null>;
         addComment: (projectPath: string, itemId: string, source: string, text: string) => Promise<object | null>;
         deleteItem: (projectPath: string, itemId: string) => Promise<boolean>;
+        deleteItems: (projectPath: string, itemIds: string[]) => Promise<string[]>;
         deleteBoard: (projectPath: string) => Promise<{ deleted: boolean }>;
         onBoardUpdated: (callback: (projectPath: string) => void) => CleanupFunction;
       };
@@ -497,12 +521,14 @@ declare global {
           projectPath: string;
           itemId: string;
           goal: string;
+          agentProvider: string;
         }) => Promise<{ sessionId: string; error?: string }>;
         resume: (params: {
           agentName: string;
           projectPath: string;
           itemId: string;
           goal: string;
+          agentProvider: string;
         }) => Promise<{ sessionId: string; error?: string }>;
         answer: (projectPath: string, itemId: string, answer: string) => Promise<void>;
         stop: (sessionId: string) => Promise<void>;
@@ -515,6 +541,8 @@ declare global {
           tools: string[];
           timeout?: number;
         }>>;
+        readLog: (projectPath: string, itemId: string) => Promise<string>;
+        clearLog: (projectPath: string, itemId: string) => Promise<boolean>;
         onOutput: (callback: (sessionId: string, data: string) => void) => CleanupFunction;
         onQuestion: (callback: (sessionId: string, question: { text: string; options?: string[] }) => void) => CleanupFunction;
         onItemCreated: (callback: (sessionId: string, item: object) => void) => CleanupFunction;
@@ -560,6 +588,8 @@ declare global {
         downloadModel: (modelSize: string) => Promise<string>;
         deleteModel: (modelSize: string) => Promise<boolean>;
         isBinaryAvailable: () => Promise<boolean>;
+        installBinary: () => Promise<string>;
+        onInstallProgress: (callback: (message: string) => void) => CleanupFunction;
         transcribe: (audioData: number[], modelSize: string) => Promise<{ text: string; durationSeconds: number }>;
         getSelectedModel: () => Promise<string>;
         saveSelectedModel: (modelSize: string) => Promise<void>;

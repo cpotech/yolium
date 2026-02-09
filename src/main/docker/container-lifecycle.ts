@@ -12,7 +12,7 @@ import { loadGitConfig } from '@main/git/git-config';
 import { createWorktree, deleteWorktree, generateBranchName, hasUncommittedChanges } from '@main/git/git-worktree';
 import { docker, sessions, agentSessions, DEFAULT_IMAGE } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
-import { buildPersistentBindMounts, getYoliumSshDir, getGitCredentialsBind } from './project-registry';
+import { buildPersistentBindMounts, getGitCredentialsBind, getClaudeOAuthBind, getCodexOAuthBind } from './project-registry';
 
 const logger = createLogger('container-lifecycle');
 
@@ -83,20 +83,32 @@ export async function createYolium(
   // Use mountPath for project directory, but use original resolvedFolderPath for cache isolation
   // Pass resolvedFolderPath as originalRepoPath so worktrees can access the main repo's .git
   const binds = buildPersistentBindMounts(mountPath, agent, resolvedFolderPath, worktreePath ? resolvedFolderPath : undefined);
-  const sshDir = getYoliumSshDir();
-  if (sshDir) {
-    binds.push(`${toDockerPath(sshDir)}:/home/agent/.ssh:rw`);
-  }
   // Add git-credentials for HTTPS auth if PAT is configured
   const gitCredBind = getGitCredentialsBind();
   if (gitCredBind) {
     binds.push(gitCredBind);
   }
 
+  // Add Claude OAuth credentials if enabled
+  const oauthBind = getClaudeOAuthBind();
+  if (oauthBind) {
+    binds.push(oauthBind);
+  }
+
+  // Add Codex OAuth credentials if enabled
+  const codexOAuthBind = getCodexOAuthBind();
+  if (codexOAuthBind) {
+    binds.push(codexOAuthBind);
+  }
+
   logger.debug('Container bind mounts', { sessionId, binds });
 
   let container;
   try {
+    const storedConfig = loadGitConfig();
+    const useOAuth = storedConfig?.useClaudeOAuth && oauthBind;
+    const useCodexOAuth = storedConfig?.useCodexOAuth && codexOAuthBind;
+
     container = await docker.createContainer({
       Image: DEFAULT_IMAGE,
       // Cmd is handled by entrypoint based on TOOL env var
@@ -111,20 +123,31 @@ export async function createYolium(
           `TOOL=${agent}`,
           `GSD_ENABLED=${gsdEnabled}`,
           `HOST_HOME=${toContainerHomePath(os.homedir())}`,
-          'CLAUDE_CONFIG_DIR=/home/agent/.claude',
           'HISTFILE=/home/agent/.yolium_history/zsh_history',
+          'OPENCODE_YOLO=true',  // Skip permission prompts — container is already isolated
           ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
           ...(process.env.YOLIUM_LOG_LEVEL ? [`YOLIUM_LOG_LEVEL=${process.env.YOLIUM_LOG_LEVEL}`] : []),
           ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
           ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
           // For worktrees: pass the original repo path so entrypoint can create symlink for git
           ...(worktreePath ? [`WORKTREE_REPO_PATH=${toDockerPath(resolvedFolderPath)}`] : []),
-          // Pass OpenAI API key for Codex agent only (stored config takes precedence over env var)
-          ...(agent === 'codex' ? (() => {
-            const storedConfig = loadGitConfig();
-            const key = storedConfig?.openaiApiKey || process.env.OPENAI_API_KEY;
-            return key ? [`OPENAI_API_KEY=${key}`] : [];
-          })() : []),
+          // Pass API keys as env vars (skip Anthropic key when OAuth is enabled)
+          ...(() => {
+            const envs: string[] = [];
+            if (useOAuth) {
+              envs.push('CLAUDE_OAUTH_ENABLED=true');
+            } else {
+              const anthropicKey = storedConfig?.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
+              if (anthropicKey) envs.push(`ANTHROPIC_API_KEY=${anthropicKey}`);
+            }
+            if (useCodexOAuth) {
+              envs.push('CODEX_OAUTH_ENABLED=true');
+            } else {
+              const openaiKey = storedConfig?.openaiApiKey || process.env.OPENAI_API_KEY;
+              if (openaiKey) envs.push(`OPENAI_API_KEY=${openaiKey}`);
+            }
+            return envs;
+          })(),
         ],
       HostConfig: {
         CapAdd: ['NET_ADMIN'],
@@ -187,14 +210,6 @@ export async function createYolium(
   // Forward stream data to renderer
   stream.on('data', (data: Buffer) => {
     const dataStr = data.toString();
-    // Log escape sequences (terminal queries from OpenCode)
-    if (dataStr.includes('\x1b[') || dataStr.includes('\x1b]')) {
-      logger.debug('Container output (escape seq)', {
-        sessionId,
-        dataLength: dataStr.length,
-        dataHex: data.toString('hex').slice(0, 40)
-      });
-    }
 
     const webContents = BrowserWindow.getAllWindows().find(
       (w) => w.webContents.id === webContentsId

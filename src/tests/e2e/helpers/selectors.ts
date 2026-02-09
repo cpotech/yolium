@@ -116,7 +116,7 @@ export const selectors = {
   newItemTitle: '[data-testid="new-item-dialog"] [data-testid="title-input"]',
   newItemDescription: '[data-testid="new-item-dialog"] [data-testid="description-input"]',
   newItemBranch: '[data-testid="new-item-dialog"] [data-testid="branch-input"]',
-  newItemAgentType: '[data-testid="new-item-dialog"] [data-testid="agent-type-select"]',
+  newItemAgentProvider: '[data-testid="new-item-dialog"] [data-testid="agent-provider-select"]',
   newItemCreate: '[data-testid="new-item-dialog"] [data-testid="create-button"]',
   newItemCancel: '[data-testid="new-item-dialog"] [data-testid="cancel-button"]',
 
@@ -130,7 +130,8 @@ export const selectors = {
   detailDeleteButton: '[data-testid="item-detail-dialog"] [data-testid="delete-button"]',
   detailCloseButton: '[data-testid="item-detail-dialog"] [data-testid="close-button"]',
   detailBranchDisplay: '[data-testid="item-detail-dialog"] [data-testid="branch-display"]',
-  detailAgentType: '[data-testid="item-detail-dialog"] [data-testid="agent-type-display"]',
+  detailAgentProvider: '[data-testid="item-detail-dialog"] [data-testid="agent-provider-display"]',
+  detailAgentProviderSelect: '[data-testid="item-detail-dialog"] [data-testid="agent-provider-select"]',
   detailCreatedAt: '[data-testid="item-detail-dialog"] [data-testid="created-at"]',
   detailCommentsSection: '[data-testid="item-detail-dialog"] [data-testid="comments-section"]',
   detailNoComments: '[data-testid="item-detail-dialog"] [data-testid="no-comments"]',

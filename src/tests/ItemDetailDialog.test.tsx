@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { ItemDetailDialog } from '@renderer/components/kanban/ItemDetailDialog'
 import type { KanbanItem } from '@shared/types/kanban'
 
@@ -35,6 +35,8 @@ beforeEach(() => {
         onError: mockOnAgentError,
         onExit: mockOnAgentExit,
         getActiveSession: vi.fn().mockResolvedValue(null),
+        readLog: vi.fn().mockResolvedValue(''),
+        clearLog: vi.fn().mockResolvedValue(false),
         listDefinitions: vi.fn().mockResolvedValue([
           { name: 'code-agent', description: 'Code execution agent', model: 'sonnet', tools: ['Read', 'Write'] },
           { name: 'plan-agent', description: 'Planning agent', model: 'sonnet', tools: ['Read'] },
@@ -51,7 +53,7 @@ const createMockItem = (overrides: Partial<KanbanItem> = {}): KanbanItem => ({
   description: 'Test description',
   column: 'backlog',
   branch: 'feature/test',
-  agentType: 'claude',
+  agentProvider: 'claude',
   order: 0,
   agentStatus: 'idle',
   comments: [],
@@ -94,7 +96,7 @@ describe('ItemDetailDialog', () => {
       title: 'My Task Title',
       description: 'My task description text',
       branch: 'feature/my-feature',
-      agentType: 'codex',
+      agentProvider: 'codex',
     })
 
     render(
@@ -111,7 +113,7 @@ describe('ItemDetailDialog', () => {
     expect(screen.getByTestId('title-input')).toHaveValue('My Task Title')
     expect(screen.getByTestId('description-input')).toHaveValue('My task description text')
     expect(screen.getByTestId('branch-display')).toHaveTextContent('feature/my-feature')
-    expect(screen.getByTestId('agent-type-display')).toHaveTextContent('Codex')
+    expect(screen.getByTestId('agent-provider-select')).toHaveValue('codex')
   })
 
   it('should render column selector with current column selected', () => {
@@ -311,6 +313,9 @@ describe('ItemDetailDialog', () => {
         title: 'Updated Title',
         description: 'Updated description',
         column: 'ready',
+        agentProvider: 'claude',
+        agentType: undefined,
+        model: undefined,
       })
     })
 
@@ -517,6 +522,9 @@ describe('ItemDetailDialog', () => {
         title: 'Ctrl+Enter Title',
         description: 'Test description',
         column: 'backlog',
+        agentProvider: 'claude',
+        agentType: undefined,
+        model: undefined,
       })
     })
   })
@@ -853,6 +861,8 @@ describe('ItemDetailDialog', () => {
         description: 'Test description',
         column: 'backlog',
         model: 'haiku',
+        agentProvider: 'claude',
+        agentType: undefined,
       })
     })
   })
@@ -953,6 +963,108 @@ describe('ItemDetailDialog', () => {
 
     // Form should reset to new item's values
     expect(screen.getByTestId('title-input')).toHaveValue('Second Item')
+  })
+
+  it('should show editable agent provider when status is completed', () => {
+    const item = createMockItem({ agentStatus: 'completed', agentProvider: 'codex' })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    const select = screen.getByTestId('agent-provider-select')
+    expect(select).toBeInTheDocument()
+    expect(select).toHaveValue('codex')
+  })
+
+  it('should show editable agent provider when status is failed', () => {
+    const item = createMockItem({ agentStatus: 'failed', agentProvider: 'opencode' })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    const select = screen.getByTestId('agent-provider-select')
+    expect(select).toBeInTheDocument()
+    expect(select).toHaveValue('opencode')
+  })
+
+  it('should show editable agent provider when status is interrupted', () => {
+    const item = createMockItem({ agentStatus: 'interrupted' })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    expect(screen.getByTestId('agent-provider-select')).toBeInTheDocument()
+  })
+
+  it('should show read-only agent provider when status is running', () => {
+    const item = createMockItem({ agentStatus: 'running' })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByTestId('agent-provider-select')).not.toBeInTheDocument()
+    expect(screen.getByTestId('agent-provider-display')).toBeInTheDocument()
+  })
+
+  it('should show read-only agent provider when status is waiting', () => {
+    const item = createMockItem({ agentStatus: 'waiting', agentQuestion: 'test?' })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByTestId('agent-provider-select')).not.toBeInTheDocument()
+    expect(screen.getByTestId('agent-provider-display')).toBeInTheDocument()
+  })
+
+  it('should not render agent type dropdown (agent controls handles agent selection)', () => {
+    const item = createMockItem({ agentType: 'code-agent' })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByTestId('agent-type-select')).not.toBeInTheDocument()
   })
 
   it('should preserve description input when same item updates', () => {

@@ -147,3 +147,4 @@ Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`
 - **Audit PAT usage**: Regularly review token activity in GitHub settings
 - **Rotate tokens**: Periodically regenerate agent PATs
 - **Limit repo access**: Only grant agent PAT access to specific repositories
+- **OAuth credentials**: If using Claude Max OAuth, `~/.claude/.credentials.json` is mounted read-only into containers and cleaned up on exit. If using Codex OAuth (ChatGPT), `~/.codex/auth.json` is mounted read-only the same way. Credentials never persist inside containers

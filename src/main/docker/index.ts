@@ -5,7 +5,7 @@
 
 // Re-export types
 export type { ContainerSession, ProjectCacheInfo, CacheStats, CleanupResult } from '@shared/types/docker';
-export type { ReviewAgentType } from '@shared/types/agent';
+export type { ReviewAgentProvider } from '@shared/types/agent';
 export type { AgentContainerSession } from './shared';
 export type { AgentContainerParams, AgentContainerCallbacks } from './agent-container';
 
@@ -36,7 +36,6 @@ export {
   getPersistentPaths,
   ensurePersistentDirs,
   buildPersistentBindMounts,
-  getYoliumSshDir,
   getGitCredentialsBind,
 } from './project-registry';
 

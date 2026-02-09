@@ -11,10 +11,11 @@ import { BrowserWindow } from 'electron';
 import { createLogger } from '@main/lib/logger';
 // deleteWorktree no longer called here — worktrees persist with kanban items
 import { extractProtocolMessages } from '@main/services/agent-protocol';
+import { formatLogTimestamp } from '@main/stores/workitem-log-store';
 import { loadGitConfig } from '@main/git/git-config';
 import { docker, agentSessions, DEFAULT_IMAGE, type AgentContainerSession } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
-import { getYoliumSshDir, getGitCredentialsBind } from './project-registry';
+import { getGitCredentialsBind, getClaudeOAuthBind, getCodexOAuthBind } from './project-registry';
 
 const logger = createLogger('agent-container');
 
@@ -110,6 +111,7 @@ export interface AgentContainerParams {
   model: string;
   tools: string[];
   itemId: string;
+  agentProvider?: string;
   worktreePath?: string;
   originalPath?: string;
   branchName?: string;
@@ -121,6 +123,8 @@ export interface AgentContainerParams {
  */
 export interface AgentContainerCallbacks {
   onOutput?: (data: string) => void;
+  /** Called with display-formatted output text (what users see in the log panel). */
+  onDisplayOutput?: (data: string) => void;
   onProtocolMessage?: (message: unknown) => void;
   onExit?: (code: number) => void;
 }
@@ -137,8 +141,8 @@ export async function createAgentContainer(
   params: AgentContainerParams,
   callbacks: AgentContainerCallbacks = {}
 ): Promise<string> {
-  const { webContentsId, projectPath, agentName, prompt, model, tools, itemId, worktreePath, originalPath, branchName, timeoutMs } = params;
-  const { onOutput, onProtocolMessage, onExit } = callbacks;
+  const { webContentsId, projectPath, agentName, prompt, model, tools, itemId, agentProvider, worktreePath, originalPath, branchName, timeoutMs } = params;
+  const { onOutput, onDisplayOutput, onProtocolMessage, onExit } = callbacks;
 
   const sessionId = `agent-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
@@ -161,13 +165,8 @@ export async function createAgentContainer(
   const containerProjectPath = getContainerProjectPath(mountPath);
 
   // Build bind mounts for the project (minimal set for headless agent)
-  const homeDir = os.homedir();
-  const claudeDir = path.join(homeDir, '.claude');
-  fs.mkdirSync(claudeDir, { recursive: true });
-
   const binds = [
     `${toDockerPath(mountPath)}:${containerProjectPath}:rw`,
-    `${toDockerPath(claudeDir)}:/home/agent/.claude:rw`,
   ];
 
   // For worktrees, mount the original repo's .git directory so git commands work
@@ -180,16 +179,22 @@ export async function createAgentContainer(
     }
   }
 
-  // Add SSH keys if available
-  const sshDir = getYoliumSshDir();
-  if (sshDir) {
-    binds.push(`${toDockerPath(sshDir)}:/home/agent/.ssh:rw`);
-  }
-
   // Add git credentials
   const gitCredBind = getGitCredentialsBind();
   if (gitCredBind) {
     binds.push(gitCredBind);
+  }
+
+  // Add Claude OAuth credentials if enabled
+  const oauthBind = getClaudeOAuthBind();
+  if (oauthBind) {
+    binds.push(oauthBind);
+  }
+
+  // Add Codex OAuth credentials if enabled
+  const codexOAuthBind = getCodexOAuthBind();
+  if (codexOAuthBind) {
+    binds.push(codexOAuthBind);
   }
 
   logger.debug('Agent container bind mounts', { sessionId, binds });
@@ -200,6 +205,8 @@ export async function createAgentContainer(
 
   // Load git config for identity env vars (name, email)
   const gitConfig = loadGitConfig();
+  const useOAuth = gitConfig?.useClaudeOAuth && oauthBind;
+  const useCodexOAuth = gitConfig?.useCodexOAuth && codexOAuthBind;
 
   const container = await docker.createContainer({
     Image: DEFAULT_IMAGE,
@@ -216,12 +223,24 @@ export async function createAgentContainer(
       `AGENT_MODEL=${model}`,
       `AGENT_TOOLS=${tools.join(',')}`,
       `AGENT_ITEM_ID=${itemId}`,
+      `AGENT_PROVIDER=${agentProvider || 'claude'}`,
       `HOST_HOME=${toContainerHomePath(os.homedir())}`,
-      'CLAUDE_CONFIG_DIR=/home/agent/.claude',
+      'OPENCODE_YOLO=true',  // Skip permission prompts — container is already isolated
       ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
       ...(worktreePath && originalPath ? [`WORKTREE_REPO_PATH=${toDockerPath(originalPath)}`] : []),
       ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
       ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
+      // Pass API keys as env vars (skip Anthropic key when OAuth is enabled)
+      ...(() => {
+        if (useOAuth) return ['CLAUDE_OAUTH_ENABLED=true'];
+        const key = gitConfig?.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
+        return key ? [`ANTHROPIC_API_KEY=${key}`] : [];
+      })(),
+      ...(() => {
+        if (useCodexOAuth) return ['CODEX_OAUTH_ENABLED=true'];
+        const key = gitConfig?.openaiApiKey || process.env.OPENAI_API_KEY;
+        return key ? [`OPENAI_API_KEY=${key}`] : [];
+      })(),
     ],
     HostConfig: {
       CapAdd: ['NET_ADMIN'],
@@ -301,8 +320,6 @@ export async function createAgentContainer(
       session.timeoutId = timeoutId;
     }
 
-    logger.debug('Agent raw chunk', { sessionId, chunkLength: dataStr.length });
-
     // Buffer and split on newlines for stream-json parsing
     lineBuffer += dataStr;
     const lines = lineBuffer.split('\n');
@@ -329,11 +346,17 @@ export async function createAgentContainer(
 
     if (displayParts.length === 0) return;
 
-    const displayStr = displayParts.join('\n');
+    // Prepend timestamp to each display line
+    const ts = formatLogTimestamp();
+    const timestampedParts = displayParts.map(line => `${ts} ${line}`);
+    const displayStr = timestampedParts.join('\n');
     logger.info('Agent output', { sessionId, displayLines: displayParts.length, display: displayStr.slice(0, 500) });
 
     // Forward text content for protocol parsing via callback
     onOutput?.(textContent || displayStr);
+
+    // Forward display text for persistent logging
+    onDisplayOutput?.(displayStr);
 
     // Send parsed display output to renderer
     const webContents = BrowserWindow.getAllWindows().find(

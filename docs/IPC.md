@@ -190,8 +190,8 @@ Git repository and config operations.
 
 | Method | Channel | Direction | Description |
 |--------|---------|-----------|-------------|
-| `loadConfig()` | `git-config:load` | invoke | Load git config (name, email, secret flags) |
-| `saveConfig(config)` | `git-config:save` | invoke | Save git config (preserves existing secrets if omitted) |
+| `loadConfig()` | `git-config:load` | invoke | Load git config (name, email, secret flags, OAuth status) |
+| `saveConfig(config)` | `git-config:save` | invoke | Save git config (preserves existing secrets if omitted; OAuth and API key are mutually exclusive) |
 | `isRepo(folderPath)` | `git:is-repo` | invoke | Check if path is a git repo with commits |
 | `getBranch(folderPath)` | `git:get-branch` | invoke | Get current branch name |
 | `init(folderPath)` | `git:init` | invoke | Initialize a new git repo |
@@ -205,13 +205,21 @@ loadConfig(): Promise<{
   email: string;
   hasPat?: boolean;
   hasOpenaiKey?: boolean;
+  hasAnthropicKey?: boolean;
+  useClaudeOAuth?: boolean;   // whether the user has enabled Claude Max OAuth
+  hasClaudeOAuth?: boolean;   // whether ~/.claude/.credentials.json exists on host
+  useCodexOAuth?: boolean;    // whether the user has enabled Codex OAuth (ChatGPT)
+  hasCodexOAuth?: boolean;    // whether ~/.codex/auth.json exists on host
 } | null>
 
 saveConfig(config: {
   name: string;
   email: string;
-  githubPat?: string;     // set to save, omit to preserve existing, empty string to clear
-  openaiApiKey?: string;  // same behavior as githubPat
+  githubPat?: string;        // set to save, omit to preserve existing, empty string to clear
+  openaiApiKey?: string;     // same behavior as githubPat
+  anthropicApiKey?: string;  // same behavior as githubPat
+  useClaudeOAuth?: boolean;  // enable/disable Claude Max OAuth (mutually exclusive with anthropicApiKey)
+  useCodexOAuth?: boolean;   // enable/disable Codex OAuth (mutually exclusive with openaiApiKey)
 }): Promise<void>
 
 isRepo(folderPath: string): Promise<{ isRepo: boolean; hasCommits: boolean }>
@@ -518,7 +526,7 @@ Autonomous PR code review sessions.
 | Method | Channel | Direction | Description |
 |--------|---------|-----------|-------------|
 | `listBranches(repoUrl)` | `code-review:list-branches` | invoke | List remote branches for a repo |
-| `checkAuth(agent)` | `code-review:check-agent-auth` | invoke | Check if agent is authenticated |
+| `checkAuth(agent)` | `code-review:check-agent-auth` | invoke | Check if agent is authenticated (API key or OAuth) |
 | `start(repoUrl, branch, agent, gitConfig?)` | `code-review:start` | invoke | Start a code review session |
 | `onOutput(cb)` | `code-review:output` | event | Review session stdout |
 | `onComplete(cb)` | `code-review:complete` | event | Review session finished |

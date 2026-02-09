@@ -34,6 +34,7 @@ Yolium Desktop is an Electron application that manages Docker containers and ter
 - **IPC security**: Communication between renderer and main process is validated
 - **No remote code execution**: The app does not fetch or execute remote code
 - **Local-only operation**: No network services are exposed by default
+- **Credential isolation**: API keys are passed as environment variables (never written to disk inside containers). OAuth credentials (`~/.claude/.credentials.json` only) are mounted read-only, copied to a minimal staging directory with restricted permissions (700/600), and cleaned up on container exit via an EXIT trap
 
 ## Scope
 
@@ -44,6 +45,7 @@ The following are in scope for security reports:
 - Privilege escalation
 - Code injection vulnerabilities
 - Insecure data storage
+- Credential leakage (API keys, OAuth tokens, PATs)
 
 The following are out of scope:
 

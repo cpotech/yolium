@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { FolderOpen, RefreshCw, Plus, Loader2, X, AlertTriangle, Keyboard, Search, GitBranch, Trash2 } from 'lucide-react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { FolderOpen, RefreshCw, Plus, Loader2, X, AlertTriangle, Keyboard, Search, GitBranch, Trash2, CheckSquare } from 'lucide-react'
 import { KanbanColumn } from './KanbanColumn'
 import { NewItemDialog } from './NewItemDialog'
 import { ItemDetailDialog } from './ItemDetailDialog'
@@ -31,6 +31,8 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     nestedRepos: Array<{ name: string; path: string }>
   } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const lastClickedIdRef = useRef<string | null>(null)
   const viewRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   // Ref to track dialog open state without stale closures
@@ -154,9 +156,66 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     loadBoard()
   }, [loadBoard])
 
-  const handleCardClick = useCallback((item: KanbanItem) => {
-    setSelectedItem(item)
-  }, [])
+  // Compute a flat ordered list of all visible items (used for shift-click range selection)
+  const allVisibleItems = useMemo(() => {
+    if (!board) return [] as KanbanItem[]
+    const query = searchQuery.toLowerCase().trim()
+    return columns.flatMap(col =>
+      board.items
+        .filter(item => item.column === col.id)
+        .filter(item => {
+          if (!query) return true
+          return item.title.toLowerCase().includes(query) || item.description.toLowerCase().includes(query)
+        })
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    )
+  }, [board, searchQuery])
+
+  const handleCardClick = useCallback((item: KanbanItem, event: React.MouseEvent | React.KeyboardEvent) => {
+    const isMetaKey = event.metaKey || event.ctrlKey
+    const isShiftKey = event.shiftKey
+
+    if (isMetaKey) {
+      // Toggle selection of this item
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        if (next.has(item.id)) {
+          next.delete(item.id)
+        } else {
+          next.add(item.id)
+        }
+        return next
+      })
+      lastClickedIdRef.current = item.id
+      return
+    }
+
+    if (isShiftKey && lastClickedIdRef.current) {
+      // Range select between last clicked and current
+      const lastIndex = allVisibleItems.findIndex(i => i.id === lastClickedIdRef.current)
+      const currentIndex = allVisibleItems.findIndex(i => i.id === item.id)
+      if (lastIndex !== -1 && currentIndex !== -1) {
+        const start = Math.min(lastIndex, currentIndex)
+        const end = Math.max(lastIndex, currentIndex)
+        setSelectedIds(prev => {
+          const next = new Set(prev)
+          for (let i = start; i <= end; i++) {
+            next.add(allVisibleItems[i].id)
+          }
+          return next
+        })
+        return
+      }
+    }
+
+    // Plain click: if items are selected, clear selection; otherwise open detail
+    if (selectedIds.size > 0) {
+      setSelectedIds(new Set())
+      lastClickedIdRef.current = null
+    } else {
+      setSelectedItem(item)
+    }
+  }, [selectedIds, allVisibleItems])
 
   const handleDetailClose = useCallback(() => {
     setSelectedItem(null)
@@ -167,6 +226,32 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
   const handleDetailUpdated = useCallback(() => {
     loadBoard()
   }, [loadBoard])
+
+  const handleBulkDelete = useCallback(async () => {
+    if (!projectPath || selectedIds.size === 0) return
+
+    const count = selectedIds.size
+    const confirmed = await window.electronAPI.dialog.confirmOkCancel(
+      'Delete Items',
+      `Are you sure you want to delete ${count} item${count !== 1 ? 's' : ''}? This action cannot be undone.`
+    )
+    if (!confirmed) return
+
+    try {
+      await window.electronAPI.kanban.deleteItems(projectPath, Array.from(selectedIds))
+      setSelectedIds(new Set())
+      lastClickedIdRef.current = null
+      loadBoard()
+    } catch (error) {
+      console.error('Failed to delete items:', error)
+      setErrorMessage('Failed to delete items. Please try again.')
+    }
+  }, [projectPath, selectedIds, loadBoard])
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedIds(new Set())
+    lastClickedIdRef.current = null
+  }, [])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     // Only handle when no dialog is open and no input is focused
@@ -190,8 +275,23 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
       e.preventDefault()
       setShowShortcutsHelp(prev => !prev)
     }
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (selectedIds.size > 0) {
+        e.preventDefault()
+        handleBulkDelete()
+      }
+    }
+    if (e.key === 'a' && (e.metaKey || e.ctrlKey)) {
+      if (allVisibleItems.length > 0) {
+        e.preventDefault()
+        setSelectedIds(new Set(allVisibleItems.map(i => i.id)))
+      }
+    }
     if (e.key === 'Escape') {
-      if (showShortcutsHelp) {
+      if (selectedIds.size > 0) {
+        e.preventDefault()
+        handleClearSelection()
+      } else if (showShortcutsHelp) {
         e.preventDefault()
         setShowShortcutsHelp(false)
       } else if (searchQuery) {
@@ -200,7 +300,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
         viewRef.current?.focus()
       }
     }
-  }, [newItemDialogOpen, selectedItem, loadBoard, showShortcutsHelp, searchQuery])
+  }, [newItemDialogOpen, selectedItem, loadBoard, showShortcutsHelp, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems])
 
   const handleCardDrop = useCallback(async (itemId: string, targetColumn: ColumnId) => {
     if (!projectPath || !board) return
@@ -257,6 +357,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
       projectPath,
       itemId: item.id,
       goal: item.description,
+      agentProvider: item.agentProvider,
     })
     loadBoard()
   }, [projectPath, board, loadBoard])
@@ -273,6 +374,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
       projectPath,
       itemId: item.id,
       goal: item.description,
+      agentProvider: item.agentProvider,
     })
     loadBoard()
   }, [projectPath, board, loadBoard])
@@ -289,6 +391,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
       projectPath,
       itemId: item.id,
       goal: item.description,
+      agentProvider: item.agentProvider,
     })
     loadBoard()
   }, [projectPath, board, loadBoard])
@@ -418,6 +521,37 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
         </div>
       </div>
 
+      {/* Multi-select action bar */}
+      {selectedIds.size > 0 && (
+        <div
+          data-testid="bulk-action-bar"
+          className="flex items-center justify-between px-4 py-2 bg-[var(--color-accent-primary)]/10 border-b border-[var(--color-accent-primary)]/30"
+        >
+          <div className="flex items-center gap-2 text-sm text-[var(--color-accent-primary)]">
+            <CheckSquare size={14} />
+            <span data-testid="selection-count">{selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''} selected</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              data-testid="bulk-delete-button"
+              onClick={handleBulkDelete}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-600/10 rounded-md transition-colors"
+            >
+              <Trash2 size={14} />
+              Delete
+            </button>
+            <button
+              data-testid="clear-selection-button"
+              onClick={handleClearSelection}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-tertiary)] rounded-md transition-colors"
+            >
+              <X size={14} />
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Error banner */}
       {errorMessage && (
         <div
@@ -504,7 +638,11 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
             <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">R</kbd> Refresh board</div>
             <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">/</kbd> Search items</div>
             <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">?</kbd> Toggle shortcuts</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Esc</kbd> Close dialog/overlay</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Ctrl+Click</kbd> Multi-select</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Shift+Click</kbd> Range select</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Ctrl+A</kbd> Select all</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Delete</kbd> Delete selected</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Esc</kbd> Clear selection / close</div>
           </div>
         </div>
       )}
@@ -535,6 +673,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
               columnId={col.id}
               title={col.title}
               items={getColumnItems(col.id)}
+              selectedIds={selectedIds}
               onCardClick={handleCardClick}
               onCardDrop={handleCardDrop}
               onRetryAgent={handleRetryAgent}

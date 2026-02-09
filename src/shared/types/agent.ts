@@ -1,12 +1,13 @@
 // Agent type definitions
 
-export type AgentType = 'claude' | 'opencode' | 'codex' | 'shell';
+// Agent provider: which CLI tool runs the agent (claude, opencode, codex, shell)
+export type AgentProvider = 'claude' | 'opencode' | 'codex' | 'shell';
 
-// Agent types valid for Kanban work items (no shell - shell is for interactive containers only)
-export type KanbanAgentType = Exclude<AgentType, 'shell'>;
+// Agent providers valid for Kanban work items (no shell - shell is for interactive containers only)
+export type KanbanAgentProvider = Exclude<AgentProvider, 'shell'>;
 
 // Agents that support code review (have review capabilities)
-export type ReviewAgentType = 'claude' | 'opencode' | 'codex';
+export type ReviewAgentProvider = 'claude' | 'opencode' | 'codex';
 
 // Code review job status
 export type CodeReviewStatus = 'starting' | 'running' | 'completed' | 'failed';
@@ -15,7 +16,7 @@ export interface CodeReviewJob {
   id: string;
   repoUrl: string;
   branch: string;
-  agent: ReviewAgentType;
+  agent: ReviewAgentProvider;
   status: CodeReviewStatus;
   error?: string;
 }
@@ -47,7 +48,7 @@ export interface CreateItemMessage extends ProtocolMessage {
   title: string;
   description: string;
   branch?: string;
-  agentType: KanbanAgentType;
+  agentProvider: KanbanAgentProvider;
   order: number;
   model?: string;
 }

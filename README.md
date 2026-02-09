@@ -8,7 +8,7 @@
 - One image builds once → many containers spawn from it
 - Containers are ephemeral (`--rm`) - deleted when session ends
 - Agents can ONLY access explicitly mounted directories
-- Package caches isolated per-project, agent config shared globally
+- Package caches isolated per-project, credentials staged read-only per-session
 
 ## ✨ Features
 
@@ -17,11 +17,12 @@
 - **🔀 Parallel Agents** - Each agent gets its own git worktree and branch. Zero conflicts, clean branches ready for PR. ([details](docs/TECHNICAL.md#git-worktrees))
 - **📑 Multi-Tab Terminal** - Run multiple concurrent sessions with a tabbed interface
 - **🐳 Docker Isolation** - Each session runs in its own container, isolated from your host
-- **🤖 AI Agent Selection** - Claude Code, OpenCode, or interactive Shell
+- **🤖 AI Agent Selection** - Claude Code, OpenCode, Codex, or interactive Shell
 - **🔗 Git Integration** - Worktrees, configuration, and GitHub PAT support
+- **🔑 Flexible Auth** - API keys or OAuth for Claude Code (Claude Max) and Codex (ChatGPT)
 - **📦 Pre-configured Environment** - Python, Node.js, Java, and common dev tools ready to use ([details](docs/TECHNICAL.md#container-environment))
 - **💾 Persistent Caches** - Package manager caches survive across sessions ([details](docs/TECHNICAL.md#file-mounts--cache))
-- **🔒 Network Restrictions** - Only outbound HTTPS and SSH allowed
+- **🔒 Network Restrictions** - Only outbound HTTPS allowed
 - **🖥️ Cross-Platform** - Windows, macOS, and Linux
 
 > **[📚 Technical Documentation](docs/TECHNICAL.md)** - Detailed architecture, mount paths, and development guide
@@ -55,7 +56,7 @@ Download the latest release from the [Releases page](https://github.com/yolium-a
 1. Download the latest release for your platform
 2. Install and launch Yolium Desktop
 3. On first run, Yolium will guide you through Docker setup if needed
-4. Configure your Git settings (name, email, optional PAT)
+4. Configure your Git settings (name, email, optional PAT, API keys or OAuth)
 5. Click **+** to create a new session
 6. Select a folder and choose your agent
 

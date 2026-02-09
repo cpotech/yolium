@@ -8,7 +8,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { app } from 'electron';
 import { createLogger } from '@main/lib/logger';
-import { loadGitConfig, generateGitCredentials } from '@main/git/git-config';
+import { loadGitConfig, generateGitCredentials, getHostClaudeCredentialsPath, getHostCodexCredentialsPath } from '@main/git/git-config';
 import { getProjectDirName, toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
 
 const logger = createLogger('project-registry');
@@ -105,12 +105,6 @@ export function getPersistentPaths(projectPath: string) {
       nuget: path.join(cacheBase, 'nuget'),
     },
     history: path.join(historyBase, 'history'),
-    claude: path.join(homeDir, '.claude'),
-    opencode: {
-      config: path.join(homeDir, '.config', 'opencode'),
-      data: path.join(homeDir, '.local', 'share', 'opencode'),
-    },
-    codex: path.join(homeDir, '.codex'),
   };
 }
 
@@ -135,16 +129,6 @@ export function ensurePersistentDirs(paths: ReturnType<typeof getPersistentPaths
 
   // Create history directory
   fs.mkdirSync(paths.history, { recursive: true });
-
-  // Create OpenCode directories
-  fs.mkdirSync(paths.opencode.config, { recursive: true });
-  fs.mkdirSync(paths.opencode.data, { recursive: true });
-
-  // Create Claude directory (might not exist for new users)
-  fs.mkdirSync(paths.claude, { recursive: true });
-
-  // Create Codex directory
-  fs.mkdirSync(paths.codex, { recursive: true });
 }
 
 /**
@@ -178,17 +162,7 @@ export function buildPersistentBindMounts(mountPath: string, agent: string, cach
 
     // Shell history
     `${toDockerPath(paths.history)}:/home/agent/.yolium_history:rw`,
-
-    // Tool configurations
-    `${toDockerPath(paths.claude)}:/home/agent/.claude:rw`,
-    `${toDockerPath(paths.opencode.config)}:/home/agent/.config/opencode:rw`,
-    `${toDockerPath(paths.opencode.data)}:/home/agent/.local/share/opencode:rw`,
   ];
-
-  // Only mount Codex config for Codex agent (least-privilege)
-  if (agent === 'codex') {
-    binds.push(`${toDockerPath(paths.codex)}:/home/agent/.codex:rw`);
-  }
 
   // For worktrees, mount the original repo's .git directory so git commands work
   // The worktree's .git file points to the main repo's .git/worktrees/<name> directory
@@ -207,24 +181,6 @@ export function buildPersistentBindMounts(mountPath: string, agent: string, cach
 }
 
 /**
- * Get the yolium SSH directory path if it exists.
- * @returns SSH directory path or null if not configured
- */
-export function getYoliumSshDir(): string | null {
-  const homeDir = app.getPath('home');
-  const sshDir = path.join(homeDir, '.yolium', 'ssh');
-
-  try {
-    if (fs.statSync(sshDir).isDirectory()) {
-      return sshDir;
-    }
-  } catch {
-    // SSH not configured
-  }
-  return null;
-}
-
-/**
  * Get git-credentials bind mount if PAT is configured.
  * Generates the credentials file from settings.json and returns the mount string.
  *
@@ -240,4 +196,44 @@ export function getGitCredentialsBind(): string | null {
   }
   logger.info('Git credentials file generated', { credPath });
   return `${toDockerPath(credPath)}:/home/agent/.git-credentials-mounted:ro`;
+}
+
+/**
+ * Get Claude OAuth credentials file bind mount if OAuth is enabled.
+ * Mounts only ~/.claude/.credentials.json (not the entire ~/.claude directory).
+ *
+ * @returns Bind mount string or null if OAuth not configured
+ */
+export function getClaudeOAuthBind(): string | null {
+  const gitConfig = loadGitConfig();
+  if (!gitConfig?.useClaudeOAuth) {
+    return null;
+  }
+  const credPath = getHostClaudeCredentialsPath();
+  if (!credPath) {
+    logger.debug('No Claude OAuth credentials to mount (~/.claude/.credentials.json not found)');
+    return null;
+  }
+  logger.info('Claude OAuth credentials file found for mounting', { credPath });
+  return `${toDockerPath(credPath)}:/home/agent/.claude-credentials.json:ro`;
+}
+
+/**
+ * Get Codex OAuth credentials file bind mount if OAuth is enabled.
+ * Mounts only ~/.codex/auth.json (not the entire ~/.codex directory).
+ *
+ * @returns Bind mount string or null if OAuth not configured
+ */
+export function getCodexOAuthBind(): string | null {
+  const gitConfig = loadGitConfig();
+  if (!gitConfig?.useCodexOAuth) {
+    return null;
+  }
+  const authPath = getHostCodexCredentialsPath();
+  if (!authPath) {
+    logger.debug('No Codex OAuth credentials to mount (~/.codex/auth.json not found)');
+    return null;
+  }
+  logger.info('Codex OAuth credentials file found for mounting', { authPath });
+  return `${toDockerPath(authPath)}:/home/agent/.codex-auth.json:ro`;
 }

@@ -15,6 +15,7 @@ export interface DetectedGitConfig extends GitConfig {
     email?: 'system' | 'environment' | 'yolium';
     githubPat?: 'system' | 'environment' | 'yolium';
     openaiApiKey?: 'system' | 'environment' | 'yolium';
+    anthropicApiKey?: 'system' | 'environment' | 'yolium';
   };
 }
 
@@ -50,11 +51,13 @@ function loadEnvironmentGitConfig(): Partial<GitConfig> | null {
   // Check for other potential environment variables
   const githubPat = process.env.GITHUB_TOKEN || process.env.GITHUB_PAT;
   const openaiKey = process.env.OPENAI_API_KEY;
-  
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+
   if (name) config.name = name;
   if (email) config.email = email;
   if (githubPat) config.githubPat = githubPat;
   if (openaiKey) config.openaiApiKey = openaiKey;
+  if (anthropicKey) config.anthropicApiKey = anthropicKey;
   
   return Object.keys(config).length > 0 ? config : null;
 }
@@ -124,7 +127,17 @@ export function loadDetectedGitConfig(): DetectedGitConfig | null {
     detected.sources.openaiApiKey = 'environment';
     hasAnyConfig = true;
   }
-  
+
+  if (yoliumConfig?.anthropicApiKey) {
+    detected.anthropicApiKey = yoliumConfig.anthropicApiKey;
+    detected.sources.anthropicApiKey = 'yolium';
+    hasAnyConfig = true;
+  } else if (envConfig?.anthropicApiKey) {
+    detected.anthropicApiKey = envConfig.anthropicApiKey;
+    detected.sources.anthropicApiKey = 'environment';
+    hasAnyConfig = true;
+  }
+
   return hasAnyConfig ? detected : null;
 }
 
@@ -147,6 +160,78 @@ export function getGitConfigPath(): string {
 }
 
 /**
+ * Check if the host has valid Claude OAuth credentials.
+ * Looks for ~/.claude/.credentials.json with a valid accessToken.
+ *
+ * @returns true if valid OAuth credentials exist on the host
+ */
+export function hasHostClaudeOAuth(): boolean {
+  try {
+    const credPath = path.join(os.homedir(), '.claude', '.credentials.json');
+    if (!fs.existsSync(credPath)) return false;
+    const content = fs.readFileSync(credPath, 'utf-8');
+    const creds = JSON.parse(content);
+    return !!(creds?.claudeAiOauth?.accessToken);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if the host has valid Codex OAuth credentials.
+ * Looks for ~/.codex/auth.json with auth_mode === "chatgpt" and a valid access_token.
+ *
+ * @returns true if valid Codex OAuth credentials exist on the host
+ */
+export function hasHostCodexOAuth(): boolean {
+  try {
+    const authPath = path.join(os.homedir(), '.codex', 'auth.json');
+    if (!fs.existsSync(authPath)) return false;
+    const content = fs.readFileSync(authPath, 'utf-8');
+    const auth = JSON.parse(content);
+    return auth?.auth_mode === 'chatgpt' && !!(auth?.tokens?.access_token);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get the host ~/.codex/auth.json path if it exists.
+ * Used for mounting Codex OAuth credentials into containers.
+ *
+ * @returns Path to the auth file or null if it doesn't exist
+ */
+export function getHostCodexCredentialsPath(): string | null {
+  const authPath = path.join(os.homedir(), '.codex', 'auth.json');
+  try {
+    if (fs.statSync(authPath).isFile()) {
+      return authPath;
+    }
+  } catch {
+    // File doesn't exist
+  }
+  return null;
+}
+
+/**
+ * Get the host ~/.claude/.credentials.json path if it exists.
+ * Used for mounting OAuth credentials into containers.
+ *
+ * @returns Path to the credentials file or null if it doesn't exist
+ */
+export function getHostClaudeCredentialsPath(): string | null {
+  const credPath = path.join(os.homedir(), '.claude', '.credentials.json');
+  try {
+    if (fs.statSync(credPath).isFile()) {
+      return credPath;
+    }
+  } catch {
+    // File doesn't exist
+  }
+  return null;
+}
+
+/**
  * Load git config from file.
  * Returns null if the file doesn't exist or is invalid.
  */
@@ -161,17 +246,51 @@ export function loadGitConfig(): GitConfig | null {
     const content = fs.readFileSync(configPath, 'utf-8');
     const config = JSON.parse(content);
 
-    // Validate the config has required fields
-    if (typeof config.name === 'string' && typeof config.email === 'string') {
-      return {
-        name: config.name,
-        email: config.email,
+    // Config is valid if it has any meaningful field
+    if (typeof config === 'object' && config !== null) {
+      const result: GitConfig = {
+        name: typeof config.name === 'string' ? config.name : '',
+        email: typeof config.email === 'string' ? config.email : '',
         ...(typeof config.githubPat === 'string' && config.githubPat ? { githubPat: config.githubPat } : {}),
         ...(typeof config.openaiApiKey === 'string' && config.openaiApiKey ? { openaiApiKey: config.openaiApiKey } : {}),
+        ...(typeof config.anthropicApiKey === 'string' && config.anthropicApiKey ? { anthropicApiKey: config.anthropicApiKey } : {}),
+        ...(typeof config.githubLogin === 'string' && config.githubLogin ? { githubLogin: config.githubLogin } : {}),
+        ...(config.useClaudeOAuth === true ? { useClaudeOAuth: true } : {}),
+        ...(config.useCodexOAuth === true ? { useCodexOAuth: true } : {}),
       };
+
+      // Return config if it has at least one meaningful value
+      const hasMeaningful = result.name || result.email || result.githubPat || result.openaiApiKey || result.anthropicApiKey || result.useClaudeOAuth || result.useCodexOAuth;
+      return hasMeaningful ? result : null;
     }
 
     return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetch GitHub user identity from a PAT via the GitHub API.
+ * Returns { name, email, login } or null on any error.
+ */
+export async function fetchGitHubUser(pat: string): Promise<{ name: string; email: string; login: string } | null> {
+  try {
+    const response = await fetch('https://api.github.com/user', {
+      headers: {
+        Authorization: `Bearer ${pat}`,
+        Accept: 'application/vnd.github+json',
+      },
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const login: string = data.login || '';
+    const name: string = data.name || login;
+    const email: string = data.email || (login ? `${login}@users.noreply.github.com` : '');
+
+    return { name, email, login };
   } catch {
     return null;
   }

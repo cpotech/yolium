@@ -69,3 +69,9 @@ export const WHISPER_MODELS: Record<WhisperModelSize, { name: string; fileName: 
 
 /** Base URL for downloading whisper models from Hugging Face */
 export const WHISPER_MODEL_BASE_URL = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main';
+
+/** whisper.cpp release version for binary downloads */
+export const WHISPER_CPP_VERSION = 'v1.8.3';
+
+/** GitHub release download base URL for whisper.cpp binaries */
+export const WHISPER_CPP_RELEASE_URL = `https://github.com/ggml-org/whisper.cpp/releases/download/${WHISPER_CPP_VERSION}`;

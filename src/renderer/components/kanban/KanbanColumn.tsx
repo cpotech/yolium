@@ -6,7 +6,8 @@ interface KanbanColumnProps {
   columnId: ColumnId
   title: string
   items: KanbanItem[]
-  onCardClick: (item: KanbanItem) => void
+  selectedIds?: Set<string>
+  onCardClick: (item: KanbanItem, event: React.MouseEvent | React.KeyboardEvent) => void
   onCardDrop?: (itemId: string, targetColumn: ColumnId) => void
   onRetryAgent?: (itemId: string) => void
   onResumeAgent?: (itemId: string) => void
@@ -24,6 +25,7 @@ export function KanbanColumn({
   columnId,
   title,
   items,
+  selectedIds,
   onCardClick,
   onCardDrop,
   onRetryAgent,
@@ -107,6 +109,7 @@ export function KanbanColumn({
             <KanbanCard
               key={item.id}
               item={item}
+              isSelected={selectedIds?.has(item.id)}
               onClick={onCardClick}
               onRetryAgent={onRetryAgent}
               onResumeAgent={onResumeAgent}

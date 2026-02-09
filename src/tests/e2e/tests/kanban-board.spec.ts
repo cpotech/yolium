@@ -64,19 +64,19 @@ test.describe('Kanban Board', () => {
   /**
    * Create an item via IPC and refresh the board.
    */
-  async function createItemViaIPC(title: string, description: string, opts?: { branch?: string; agentType?: 'claude' | 'codex' | 'opencode' }): Promise<{ id: string }> {
+  async function createItemViaIPC(title: string, description: string, opts?: { branch?: string; agentProvider?: 'claude' | 'codex' | 'opencode' }): Promise<{ id: string }> {
     const { window } = ctx;
     const item = await window.evaluate(
-      async (params: { path: string; title: string; desc: string; branch?: string; agentType?: string }) => {
+      async (params: { path: string; title: string; desc: string; branch?: string; agentProvider?: string }) => {
         return window.electronAPI.kanban.addItem(params.path, {
           title: params.title,
           description: params.desc,
           branch: params.branch,
-          agentType: (params.agentType || 'claude') as 'claude' | 'codex' | 'opencode',
+          agentProvider: (params.agentProvider || 'claude') as 'claude' | 'codex' | 'opencode',
           order: 0,
         });
       },
-      { path: testRepoPath, title, desc: description, branch: opts?.branch, agentType: opts?.agentType }
+      { path: testRepoPath, title, desc: description, branch: opts?.branch, agentProvider: opts?.agentProvider }
     ) as { id: string };
 
     await window.click(selectors.kanbanRefreshButton);
@@ -215,7 +215,7 @@ test.describe('Kanban Board', () => {
 
   test('should show correct item details in dialog', async () => {
     await openKanbanBoard();
-    await createItemViaIPC('My Task', 'Do the thing', { branch: 'feat/thing', agentType: 'codex' });
+    await createItemViaIPC('My Task', 'Do the thing', { branch: 'feat/thing', agentProvider: 'codex' });
     const { window } = ctx;
 
     await window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
@@ -225,7 +225,7 @@ test.describe('Kanban Board', () => {
     await expect(window.locator(selectors.detailTitle)).toHaveValue('My Task');
     await expect(window.locator(selectors.detailDescription)).toHaveValue('Do the thing');
     await expect(window.locator(selectors.detailStatusBadge)).toContainText('idle');
-    await expect(window.locator(selectors.detailAgentType)).toContainText('Codex');
+    await expect(window.locator(selectors.detailAgentProviderSelect)).toHaveValue('codex');
     await expect(window.locator(selectors.detailBranchDisplay)).toContainText('feat/thing');
     await expect(window.locator(selectors.detailNoComments)).toBeVisible();
   });
@@ -364,11 +364,11 @@ test.describe('Kanban Board', () => {
     await window.evaluate(async (repoPath: string) => {
       await window.electronAPI.kanban.addItem(repoPath, {
         title: 'Backlog Item 1', description: 'Desc 1',
-        agentType: 'claude', order: 0,
+        agentProvider: 'claude', order: 0,
       });
       await window.electronAPI.kanban.addItem(repoPath, {
         title: 'Backlog Item 2', description: 'Desc 2',
-        agentType: 'claude', order: 1,
+        agentProvider: 'claude', order: 1,
       });
     }, testRepoPath);
 
@@ -411,13 +411,13 @@ test.describe('Kanban Board', () => {
     // Create 3 items
     await window.evaluate(async (repoPath: string) => {
       await window.electronAPI.kanban.addItem(repoPath, {
-        title: 'Item 1', description: 'D', agentType: 'claude', order: 0,
+        title: 'Item 1', description: 'D', agentProvider: 'claude', order: 0,
       });
       await window.electronAPI.kanban.addItem(repoPath, {
-        title: 'Item 2', description: 'D', agentType: 'claude', order: 1,
+        title: 'Item 2', description: 'D', agentProvider: 'claude', order: 1,
       });
       await window.electronAPI.kanban.addItem(repoPath, {
-        title: 'Item 3', description: 'D', agentType: 'claude', order: 2,
+        title: 'Item 3', description: 'D', agentProvider: 'claude', order: 2,
       });
     }, testRepoPath);
 
@@ -436,7 +436,7 @@ test.describe('Kanban Board', () => {
 
   test('should display agent type badge on card', async () => {
     await openKanbanBoard();
-    await createItemViaIPC('Codex Task', 'Use codex', { agentType: 'codex' });
+    await createItemViaIPC('Codex Task', 'Use codex', { agentProvider: 'codex' });
     const { window } = ctx;
 
     const card = window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first();

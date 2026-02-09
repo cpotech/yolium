@@ -29,7 +29,6 @@ export function registerContainerHandlers(ipcMain: IpcMain): void {
 
   // Write to container stdin
   ipcMain.on('yolium:write', (_event, sessionId: string, data: string) => {
-    logger.debug('IPC: yolium:write', { sessionId, dataLength: data.length, dataHex: Buffer.from(data).toString('hex').slice(0, 20) });
     writeToContainer(sessionId, data);
   });
 

@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react'
-import type { AgentType } from '@renderer/components/agent/AgentSelectDialog'
+import type { AgentProvider } from '@renderer/components/agent/AgentSelectDialog'
 import type { GitConfigWithPat } from '@renderer/components/settings/GitConfigDialog'
 import type { PathDialogMode } from './useDialogState'
 import type { SidebarProject } from '@renderer/stores/sidebar-store'
@@ -47,7 +47,7 @@ export interface UseAgentCreationResult {
   /** Handle path confirmation from PathInputDialog */
   handlePathConfirm: (path: string) => Promise<void>
   /** Handle agent selection from AgentSelectDialog */
-  handleAgentSelect: (agent: AgentType, gsdEnabled: boolean, worktreeEnabled: boolean, branchName: string | null) => void
+  handleAgentSelect: (agent: AgentProvider, gsdEnabled: boolean, worktreeEnabled: boolean, branchName: string | null) => void
   /** Handle agent dialog cancel (Escape - cancels entire flow) */
   handleAgentDialogCancel: () => void
   /** Handle agent dialog back (returns to path dialog) */
@@ -82,7 +82,7 @@ export function useAgentCreation({
   // Create yolium with selected agent
   const createYoliumWithAgent = useCallback(async (
     folderPath: string,
-    agent: AgentType,
+    agent: AgentProvider,
     gsdEnabled: boolean,
     worktreeEnabled: boolean = false,
     branchName: string | null = null
@@ -146,7 +146,7 @@ export function useAgentCreation({
   }, [addTab, updateContainerState, gitConfig, buildCancelledRef, setBuildProgress, setBuildError, setImageRemoved, setSidebarProjects])
 
   // Handle agent selection from dialog
-  const handleAgentSelect = useCallback((agent: AgentType, gsdEnabled: boolean, worktreeEnabled: boolean, branchName: string | null) => {
+  const handleAgentSelect = useCallback((agent: AgentProvider, gsdEnabled: boolean, worktreeEnabled: boolean, branchName: string | null) => {
     if (pendingFolderPath) {
       createYoliumWithAgent(pendingFolderPath, agent, gsdEnabled, worktreeEnabled, branchName)
     }

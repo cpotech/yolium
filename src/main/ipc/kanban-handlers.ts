@@ -11,10 +11,12 @@ import {
   updateItem,
   addComment,
   deleteItem,
+  deleteItems,
   deleteBoard,
 } from '@main/stores/kanban-store';
 import { deleteWorktree } from '@main/git/git-worktree';
 import { backfillWorktreePaths, stopAllAgentsForProject } from '@main/services/agent-runner';
+import { deleteLog } from '@main/stores/workitem-log-store';
 import { createLogger } from '@main/lib/logger';
 import type { KanbanItem } from '@shared/types/kanban';
 
@@ -36,7 +38,8 @@ export function registerKanbanHandlers(ipcMain: IpcMain): void {
     title: string;
     description: string;
     branch?: string;
-    agentType: 'claude' | 'codex' | 'opencode';
+    agentProvider: 'claude' | 'codex' | 'opencode';
+    agentType?: string;
     order: number;
     model?: string;
   }) => {
@@ -87,9 +90,39 @@ export function registerKanbanHandlers(ipcMain: IpcMain): void {
       }
     }
 
+    // Clean up persistent log file
+    deleteLog(projectPath, itemId);
+
     const result = deleteItem(board, itemId);
     event.sender.send('kanban:board-updated', projectPath);
     return result;
+  });
+
+  // Delete multiple items (bulk delete with cleanup)
+  ipcMain.handle('kanban:delete-items', (event, projectPath: string, itemIds: string[]) => {
+    const board = getOrCreateBoard(projectPath);
+
+    // Clean up worktrees and log files before deleting
+    for (const itemId of itemIds) {
+      const item = board.items.find(i => i.id === itemId);
+      if (item?.worktreePath) {
+        try {
+          deleteWorktree(projectPath, item.worktreePath);
+          logger.info('Cleaned up worktree on bulk delete', { itemId, worktreePath: item.worktreePath });
+        } catch (err) {
+          logger.error('Failed to clean up worktree on bulk delete', {
+            itemId,
+            worktreePath: item.worktreePath,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+      deleteLog(projectPath, itemId);
+    }
+
+    const deletedIds = deleteItems(board, itemIds);
+    event.sender.send('kanban:board-updated', projectPath);
+    return deletedIds;
   });
 
   // Delete entire board (stops agents, cleans up worktrees, removes board file)
@@ -116,7 +149,14 @@ export function registerKanbanHandlers(ipcMain: IpcMain): void {
       }
     }
 
-    // 3. Delete the board file
+    // 3. Clean up persistent log files for all items
+    if (board) {
+      for (const item of board.items) {
+        deleteLog(projectPath, item.id);
+      }
+    }
+
+    // 4. Delete the board file
     const deleted = deleteBoard(projectPath);
     return { deleted };
   });
