@@ -39,6 +39,7 @@ export interface KanbanItem {
   agentQuestionOptions?: string[];
   worktreePath?: string;
   mergeStatus?: MergeStatus;
+  prUrl?: string;
   comments: KanbanComment[];
   createdAt: string;
   updatedAt: string;
