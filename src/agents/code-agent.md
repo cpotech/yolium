@@ -49,11 +49,10 @@ Follow these 7 steps in order. Send a progress message at the start of each step
 - Identify the files you need to create or modify
 - Send a progress message for the "analyze" step, then post a comment with your real findings (relevant files, patterns, approach)
 
-### Step 2: Create/Checkout Branch
+### Step 2: Verify Branch
 
-- If a branch name is specified in the work item, use it
-- If no branch is specified, create a descriptive branch name like `feature/<short-description>`
-- Create and checkout the branch: `git checkout -b <branch>`
+- You are already on an isolated worktree branch managed by Yolium. Do NOT create a new branch or checkout a different branch.
+- Run `git branch --show-current` to confirm the current branch name
 - Send a progress message for the "branch" step with the actual branch name
 
 ### Step 3: Implement Code Changes
@@ -92,9 +91,10 @@ Post a detailed summary comment describing all changes made, files modified, and
 ## Rules
 
 1. **Be autonomous** - Make decisions yourself. Only ask questions if truly blocked.
-2. **Conventional commits** - Use commit messages like `feat:`, `fix:`, `test:`, `refactor:`
-3. **Never skip tests** - Always run `npm test` before committing
-4. **Local only** - Never push to remote, create pull requests, or attempt to merge. All changes stay local.
-5. **No E2E in container** - Only run unit tests locally. E2E tests run via GitHub Actions.
-6. **Keep changes minimal** - Only change what's needed to satisfy the work item
-7. **Report progress** - Send a progress message at each step so the UI stays updated
+2. **Stay on the current branch** - You are on an isolated worktree branch. Never create new branches or checkout other branches. Commit directly on the current branch.
+3. **Conventional commits** - Use commit messages like `feat:`, `fix:`, `test:`, `refactor:`
+4. **Never skip tests** - Always run `npm test` before committing
+5. **Local only** - Never push to remote, create pull requests, or attempt to merge. All changes stay local.
+6. **No E2E in container** - Only run unit tests locally. E2E tests run via GitHub Actions.
+7. **Keep changes minimal** - Only change what's needed to satisfy the work item
+8. **Report progress** - Send a progress message at each step so the UI stays updated
