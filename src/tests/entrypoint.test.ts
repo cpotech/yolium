@@ -143,14 +143,14 @@ describe('entrypoint.sh', () => {
     });
 
     it('should direct users to Yolium Settings for authentication', () => {
-      // When OPENAI_API_KEY is empty, entrypoint should direct users to Yolium Settings
+      // When OPENAI_API_KEY is empty and no OAuth, entrypoint should direct users to Yolium Settings
       expect(entrypointContent).toContain('Yolium Settings');
-      expect(entrypointContent).not.toContain('.codex/auth.json');
     });
 
-    it('should not mount or reference host codex config', () => {
-      // Should not reference codex login (API keys are passed via env vars now)
-      expect(entrypointContent).not.toContain('codex login');
+    it('should support Codex OAuth as alternative to API key', () => {
+      // Codex auth check should accept either OPENAI_API_KEY or OAuth credentials
+      expect(entrypointContent).toContain('.codex/auth.json');
+      expect(entrypointContent).toContain('CODEX_OAUTH_ENABLED');
     });
 
     it('should show Codex CLI version in banner', () => {
@@ -166,11 +166,11 @@ describe('entrypoint.sh', () => {
     });
 
     it('should validate auth before running codex exec in code review', () => {
-      // The code review codex path should check OPENAI_API_KEY before running codex exec
+      // The code review codex path should check OPENAI_API_KEY or OAuth before running codex exec
       const reviewCodexSection = entrypointContent.split('REVIEW_AGENT" = "codex"')[1]?.split('exit $?')[0];
       expect(reviewCodexSection).toBeDefined();
       expect(reviewCodexSection).toContain('OPENAI_API_KEY');
-      expect(reviewCodexSection).not.toContain('.codex/auth.json');
+      expect(reviewCodexSection).toContain('.codex/auth.json');
     });
 
     it('should exit with code 3 when no codex auth is found in code review', () => {
