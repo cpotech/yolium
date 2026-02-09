@@ -214,7 +214,8 @@ export async function ensureImage(
 
 /**
  * Get info about the yolium Docker image, including staleness check.
- * @returns Image info or null if not found
+ * @returns Image info or null if the image does not exist
+ * @throws Error if Docker API fails for reasons other than image not found
  */
 export async function getYoliumImageInfo(): Promise<{
   name: string;
@@ -253,10 +254,16 @@ export async function getYoliumImageInfo(): Promise<{
       stale,
     };
   } catch (err) {
-    logger.debug('Image not found', {
+    // 404 means the image doesn't exist — return null
+    if (err && typeof err === 'object' && 'statusCode' in err && (err as { statusCode: number }).statusCode === 404) {
+      logger.debug('Image not found');
+      return null;
+    }
+    // Any other error (Docker daemon down, network issue, etc.) — propagate
+    logger.warn('Failed to get image info', {
       error: err instanceof Error ? err.message : String(err),
     });
-    return null;
+    throw err;
   }
 }
 
