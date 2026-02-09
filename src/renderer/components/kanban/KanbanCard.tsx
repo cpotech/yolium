@@ -207,13 +207,17 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
         <h3 className="font-bold text-[13px] text-white leading-tight line-clamp-2">{item.title}</h3>
         <span
           data-testid="agent-type-badge"
-          className="flex-shrink-0 px-1.5 py-0.5 text-[10px] font-medium rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
+          className={`flex-shrink-0 px-1.5 py-0.5 text-[10px] font-medium rounded bg-[var(--color-bg-tertiary)] ${
+            !item.activeAgentName && !item.agentType
+              ? 'text-[var(--color-text-tertiary)] opacity-60'
+              : 'text-[var(--color-text-secondary)]'
+          }`}
         >
           {item.activeAgentName
             ? formatAgentRoleLabel(item.activeAgentName)
             : item.agentType
               ? formatAgentRoleLabel(item.agentType)
-              : agentProviderLabels[item.agentProvider]}
+              : 'No agent'}
         </span>
       </div>
 

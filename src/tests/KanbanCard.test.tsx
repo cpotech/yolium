@@ -29,32 +29,49 @@ describe('KanbanCard', () => {
     expect(screen.getByText('My Task Title')).toBeInTheDocument()
   })
 
-  it('should render agent type badge', () => {
+  it('should show "No agent" badge when agentType is not set', () => {
     const item = createMockItem({ agentProvider: 'claude' })
     render(<KanbanCard item={item} onClick={vi.fn()} />)
 
-    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('Claude')
+    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('No agent')
   })
 
-  it('should render codex agent type badge', () => {
+  it('should show "No agent" badge for codex provider when agentType is not set', () => {
     const item = createMockItem({ agentProvider: 'codex' })
     render(<KanbanCard item={item} onClick={vi.fn()} />)
 
-    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('Codex')
+    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('No agent')
   })
 
-  it('should render opencode agent type badge', () => {
+  it('should show "No agent" badge for opencode provider when agentType is not set', () => {
     const item = createMockItem({ agentProvider: 'opencode' })
     render(<KanbanCard item={item} onClick={vi.fn()} />)
 
-    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('OpenCode')
+    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('No agent')
   })
 
-  it('should render claude agent type badge for default', () => {
+  it('should show dimmed styling when no agent is assigned', () => {
     const item = createMockItem({ agentProvider: 'claude' })
     render(<KanbanCard item={item} onClick={vi.fn()} />)
 
-    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('Claude')
+    const badge = screen.getByTestId('agent-type-badge')
+    expect(badge).toHaveClass('opacity-60')
+  })
+
+  it('should not show dimmed styling when agentType is set', () => {
+    const item = createMockItem({ agentProvider: 'claude', agentType: 'code-agent' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    const badge = screen.getByTestId('agent-type-badge')
+    expect(badge).not.toHaveClass('opacity-60')
+  })
+
+  it('should not show dimmed styling when activeAgentName is set', () => {
+    const item = createMockItem({ agentProvider: 'claude', activeAgentName: 'code-agent' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    const badge = screen.getByTestId('agent-type-badge')
+    expect(badge).not.toHaveClass('opacity-60')
   })
 
   it('should show agent role label when activeAgentName is set', () => {
@@ -71,11 +88,11 @@ describe('KanbanCard', () => {
     expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('Plan')
   })
 
-  it('should fall back to runtime label when activeAgentName is not set', () => {
+  it('should show "No agent" when activeAgentName and agentType are not set', () => {
     const item = createMockItem({ agentProvider: 'codex', activeAgentName: undefined })
     render(<KanbanCard item={item} onClick={vi.fn()} />)
 
-    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('Codex')
+    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('No agent')
   })
 
   it('should show agentType label when agentType is set and no activeAgentName', () => {
@@ -99,11 +116,11 @@ describe('KanbanCard', () => {
     expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('Code')
   })
 
-  it('should fall back to agentProvider when agentType is not set', () => {
+  it('should show "No agent" when agentType is not set regardless of provider', () => {
     const item = createMockItem({ agentProvider: 'opencode', agentType: undefined })
     render(<KanbanCard item={item} onClick={vi.fn()} />)
 
-    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('OpenCode')
+    expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('No agent')
   })
 
   it('should show branch when set', () => {
