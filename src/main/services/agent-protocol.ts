@@ -1,15 +1,16 @@
 import type {
   AskQuestionMessage,
   CreateItemMessage,
+  UpdateDescriptionMessage,
   CompleteMessage,
   ErrorMessage,
   ProgressMessage,
 } from '@shared/types/agent';
 
 const PROTOCOL_PREFIX = '@@YOLIUM:';
-const VALID_TYPES = ['ask_question', 'create_item', 'complete', 'error', 'progress'] as const;
+const VALID_TYPES = ['ask_question', 'create_item', 'update_description', 'complete', 'error', 'progress'] as const;
 
-type AnyProtocolMessage = AskQuestionMessage | CreateItemMessage | CompleteMessage | ErrorMessage | ProgressMessage;
+type AnyProtocolMessage = AskQuestionMessage | CreateItemMessage | UpdateDescriptionMessage | CompleteMessage | ErrorMessage | ProgressMessage;
 
 export function parseProtocolMessage(json: string): AnyProtocolMessage | null {
   try {
@@ -30,17 +31,24 @@ export function parseProtocolMessage(json: string): AnyProtocolMessage | null {
         };
 
       case 'create_item':
-        if (typeof parsed.title !== 'string' || typeof parsed.description !== 'string') {
+        if (typeof parsed.title !== 'string') {
           return null;
         }
         return {
           type: 'create_item',
           title: parsed.title,
-          description: parsed.description,
+          description: typeof parsed.description === 'string' ? parsed.description : '',
           branch: parsed.branch,
           agentProvider: parsed.agentProvider || parsed.agentType || 'claude',
           order: typeof parsed.order === 'number' ? parsed.order : 0,
           model: typeof parsed.model === 'string' ? parsed.model : undefined,
+        };
+
+      case 'update_description':
+        if (typeof parsed.description !== 'string') return null;
+        return {
+          type: 'update_description',
+          description: parsed.description,
         };
 
       case 'complete':

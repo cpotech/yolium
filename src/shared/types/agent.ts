@@ -31,7 +31,7 @@ export interface AgentDefinition {
 }
 
 // Protocol message types from agent stdout
-export type ProtocolMessageType = 'ask_question' | 'create_item' | 'complete' | 'error' | 'progress';
+export type ProtocolMessageType = 'ask_question' | 'create_item' | 'update_description' | 'complete' | 'error' | 'progress';
 
 export interface ProtocolMessage {
   type: ProtocolMessageType;
@@ -46,11 +46,16 @@ export interface AskQuestionMessage extends ProtocolMessage {
 export interface CreateItemMessage extends ProtocolMessage {
   type: 'create_item';
   title: string;
-  description: string;
+  description?: string;
   branch?: string;
   agentProvider: KanbanAgentProvider;
   order: number;
   model?: string;
+}
+
+export interface UpdateDescriptionMessage extends ProtocolMessage {
+  type: 'update_description';
+  description: string;
 }
 
 export interface CompleteMessage extends ProtocolMessage {

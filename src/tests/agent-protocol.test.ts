@@ -101,6 +101,43 @@ describe('agent-protocol', () => {
       expect(parseProtocolMessage('{"type":"progress","detail":"something"}')).toBeNull();
     });
 
+    it('should parse create_item without description (defaults to empty string)', () => {
+      const json = '{"type":"create_item","title":"Task","agentProvider":"claude","order":1}';
+      const result = parseProtocolMessage(json);
+
+      expect(result).toEqual({
+        type: 'create_item',
+        title: 'Task',
+        description: '',
+        branch: undefined,
+        agentProvider: 'claude',
+        order: 1,
+        model: undefined,
+      });
+    });
+
+    it('should parse update_description message', () => {
+      const json = '{"type":"update_description","description":"Improved description with more detail"}';
+      const result = parseProtocolMessage(json);
+
+      expect(result).toEqual({
+        type: 'update_description',
+        description: 'Improved description with more detail',
+      });
+    });
+
+    it('should reject update_description without description field', () => {
+      const json = '{"type":"update_description"}';
+      const result = parseProtocolMessage(json);
+      expect(result).toBeNull();
+    });
+
+    it('should reject update_description with non-string description', () => {
+      const json = '{"type":"update_description","description":123}';
+      const result = parseProtocolMessage(json);
+      expect(result).toBeNull();
+    });
+
     it('should parse create_item with model field', () => {
       const json = '{"type":"create_item","title":"Task","description":"Do it","agentProvider":"claude","order":1,"model":"opus"}';
       const result = parseProtocolMessage(json);
@@ -169,6 +206,20 @@ Final line`;
       const results = extractProtocolMessages(output);
       expect(results).toHaveLength(1);
       expect(results[0].type).toBe('complete');
+    });
+
+    it('should extract update_description messages from output', () => {
+      const output = `Working on improvements...
+@@YOLIUM:{"type":"update_description","description":"Refined task description"}
+@@YOLIUM:{"type":"complete","summary":"Done"}`;
+
+      const results = extractProtocolMessages(output);
+      expect(results).toHaveLength(2);
+      expect(results[0]).toEqual({
+        type: 'update_description',
+        description: 'Refined task description',
+      });
+      expect(results[1].type).toBe('complete');
     });
 
     it('should extract progress messages from mixed output', () => {
