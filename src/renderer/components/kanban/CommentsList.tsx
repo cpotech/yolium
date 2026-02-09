@@ -12,6 +12,28 @@ const commentBadgeColors: Record<CommentSource, string> = {
   system: 'bg-gray-600',
 }
 
+function getPrettyJson(text: string): string | null {
+  const trimmed = text.trim()
+  const startsWithObject = trimmed.startsWith('{') && trimmed.endsWith('}')
+  const startsWithArray = trimmed.startsWith('[') && trimmed.endsWith(']')
+
+  if (!startsWithObject && !startsWithArray) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed)
+
+    if (parsed === null || typeof parsed !== 'object') {
+      return null
+    }
+
+    return JSON.stringify(parsed, null, 2)
+  } catch {
+    return null
+  }
+}
+
 /**
  * Format a timestamp as a relative time string.
  * @param isoString - ISO 8601 timestamp string
@@ -73,7 +95,24 @@ export function CommentsList({ comments, onSelectOption }: CommentsListProps): R
                   {formatTimestamp(comment.timestamp)}
                 </span>
               </div>
-              <p className="text-sm text-[var(--color-text-primary)]">{comment.text}</p>
+              {(() => {
+                const prettyJson = getPrettyJson(comment.text)
+
+                if (prettyJson) {
+                  return (
+                    <pre
+                      data-testid={`comment-json-${comment.id}`}
+                      className="text-sm text-[var(--color-text-primary)] font-mono whitespace-pre-wrap bg-[var(--color-bg-secondary)] p-2 rounded border border-[var(--color-border-primary)]"
+                    >
+                      {prettyJson}
+                    </pre>
+                  )
+                }
+
+                return (
+                  <p className="text-sm text-[var(--color-text-primary)]">{comment.text}</p>
+                )
+              })()}
               {comment.options && comment.options.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
                   {comment.options.map((option, idx) => (
