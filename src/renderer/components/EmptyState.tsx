@@ -1,67 +1,23 @@
 import React from 'react';
-import { Plus, FolderPlus, ShieldCheck, Layers, Terminal, Puzzle, Globe, Plug, Lock, Code, HardDrive, GitBranch, Sun, Moon } from 'lucide-react';
+import { Plus, FolderPlus, Terminal, Folder, ArrowRight, Sun, Moon } from 'lucide-react';
 import { useTheme } from '@renderer/theme';
+import type { SidebarProject } from '@renderer/stores/sidebar-store';
 
 interface EmptyStateProps {
   onNewTab: () => void;
   onCreateProject?: () => void;
+  projects?: SidebarProject[];
+  onProjectClick?: (path: string) => void;
 }
 
-const features = [
-  {
-    icon: Layers,
-    title: 'Parallel Environments',
-    description: 'Run multiple agents without conflicts',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Sandbox Safety',
-    description: 'Agents only access container, not host (except persistent cache)',
-  },
-  {
-    icon: Terminal,
-    title: 'Direct Intervention',
-    description: 'Drop into any terminal to see state and take control',
-  },
-  {
-    icon: Puzzle,
-    title: 'Universal Compatibility',
-    description: 'Claude Code, OpenCode, or Shell - your choice',
-  },
-  {
-    icon: Globe,
-    title: 'Web Access',
-    description: 'Browse any website via HTTPS',
-  },
-  {
-    icon: Lock,
-    title: 'Network Firewall',
-    description: 'Only HTTPS traffic allowed outbound',
-  },
-  {
-    icon: Plug,
-    title: 'MCP Compatible',
-    description: 'MCP config auto-detected',
-  },
-  {
-    icon: Code,
-    title: 'Multi-Language Ready',
-    description: 'Python, Node.js, and Java pre-installed',
-  },
-  {
-    icon: HardDrive,
-    title: 'Package Cache Shared',
-    description: 'npm, pip, Maven caches persist across sessions',
-  },
-  {
-    icon: GitBranch,
-    title: 'Git Ready',
-    description: 'HTTPS credentials and worktrees ready',
-  },
-];
+/** Extract folder name from a full path (handles / and \ separators). */
+function getFolderName(path: string): string {
+  return path.split(/[/\\]/).filter(Boolean).pop() || path;
+}
 
-export function EmptyState({ onNewTab, onCreateProject }: EmptyStateProps): React.ReactElement {
+export function EmptyState({ onNewTab, onCreateProject, projects, onProjectClick }: EmptyStateProps): React.ReactElement {
   const { theme, toggleTheme } = useTheme();
+  const hasProjects = projects && projects.length > 0;
 
   return (
     <div data-testid="empty-state" className="relative flex flex-col items-center justify-center h-full overflow-y-auto bg-[var(--color-bg-primary)] text-[var(--color-text-muted)] px-4 py-8">
@@ -79,9 +35,8 @@ export function EmptyState({ onNewTab, onCreateProject }: EmptyStateProps): Reac
         )}
       </button>
 
-      {/* Hero section - Cyberdyne/Skynet corporate logo */}
-      <div className="mb-8 relative select-none">
-        {/* Hexagonal frame - Cyberdyne style */}
+      {/* Compact hero section */}
+      <div className="mb-6 relative select-none">
         <div className="relative flex flex-col items-center">
           {/* Outer hexagon glow */}
           <div
@@ -111,7 +66,7 @@ export function EmptyState({ onNewTab, onCreateProject }: EmptyStateProps): Reac
             </defs>
           </svg>
 
-          {/* Red core - Skynet eye */}
+          {/* Red core */}
           <div
             className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full z-10"
             style={{
@@ -122,7 +77,6 @@ export function EmptyState({ onNewTab, onCreateProject }: EmptyStateProps): Reac
 
           {/* Main text */}
           <div className="relative mt-12">
-            {/* Horizontal line loading effect - like T-800 vision */}
             <div
               className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none"
               style={{
@@ -142,7 +96,7 @@ export function EmptyState({ onNewTab, onCreateProject }: EmptyStateProps): Reac
               YOLIUM
             </div>
 
-            {/* Main text - cold blue steel */}
+            {/* Main text */}
             <div
               className="relative text-5xl sm:text-6xl font-bold tracking-[0.2em]"
               style={{
@@ -165,180 +119,99 @@ export function EmptyState({ onNewTab, onCreateProject }: EmptyStateProps): Reac
             </div>
           </div>
 
-          {/* Underline with data stream effect */}
+          {/* Underline */}
           <div className="mt-3 flex items-center gap-2">
             <div className="h-px w-12 bg-gradient-to-r from-transparent to-cyan-500" />
             <div
               className="text-[9px] tracking-[0.3em] uppercase"
-              style={{
-                fontFamily: 'monospace',
-                color: '#0088cc',
-              }}
+              style={{ fontFamily: 'monospace', color: '#0088cc' }}
             >
               AI AGENTIC SYSTEMS
             </div>
             <div className="h-px w-12 bg-gradient-to-l from-transparent to-cyan-500" />
           </div>
-
-          {/* Model number */}
-          <div
-            className="mt-1 text-[8px] tracking-[0.2em] opacity-50"
-            style={{
-              fontFamily: 'monospace',
-              color: '#446688',
-            }}
-          >
-            MODEL YOLO • AGENTIC ORCHESTRATION GOVERNANCE
-          </div>
         </div>
       </div>
-      <h1 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-1 flex items-center justify-center gap-4">
-        {/* Parallel AI Cores in containment cells */}
-        <div className="relative">
-          {/* Ambient glow */}
-          <div
-            className="absolute inset-0 blur-lg opacity-50"
-            style={{
-              background: 'radial-gradient(circle, rgba(0,170,255,0.5) 0%, transparent 70%)',
-              transform: 'scale(2)',
-            }}
-          />
 
-          <svg
-            viewBox="0 0 56 32"
-            className="relative w-14 h-8"
-            style={{
-              filter: 'drop-shadow(0 0 4px rgba(0,170,255,0.6))',
-            }}
-          >
-            <defs>
-              {/* Chrome cell gradient */}
-              <linearGradient id="cellMetal" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#607080" />
-                <stop offset="50%" stopColor="#203040" />
-                <stop offset="100%" stopColor="#101820" />
-              </linearGradient>
-
-              {/* AI core glow */}
-              <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#ff3300" />
-                <stop offset="70%" stopColor="#cc0000" />
-                <stop offset="100%" stopColor="#440000" />
-              </radialGradient>
-            </defs>
-
-            {/* Three containment cells */}
-            {[0, 1, 2].map((i) => (
-              <g key={i} transform={`translate(${i * 18 + 2}, 2)`}>
-                {/* Cell frame */}
-                <rect
-                  x="0" y="0" width="16" height="28" rx="2"
-                  fill="url(#cellMetal)"
-                  stroke="#4080a0"
-                  strokeWidth="0.5"
-                />
-
-                {/* Inner containment border */}
-                <rect
-                  x="2" y="2" width="12" height="24" rx="1"
-                  fill="none"
-                  stroke="#0af"
-                  strokeWidth="0.3"
-                  opacity="0.6"
-                />
-
-                {/* AI Core - the "eye" */}
-                <circle cx="8" cy="10" r="4" fill="url(#coreGlow)">
-                  <animate
-                    attributeName="opacity"
-                    values="1;0.5;1"
-                    dur={`${1.5 + i * 0.3}s`}
-                    repeatCount="indefinite"
-                  />
-                </circle>
-                <circle cx="8" cy="10" r="1.5" fill="#fff" opacity="0.9" />
-
-                {/* Status bars */}
-                <rect x="4" y="18" width="8" height="1.5" rx="0.5" fill="#0a3040" />
-                <rect x="4" y="18" width={6 - i} height="1.5" rx="0.5" fill="#0af" opacity="0.8">
-                  <animate
-                    attributeName="width"
-                    values={`${4 + i};${7 - i};${4 + i}`}
-                    dur={`${2 + i * 0.5}s`}
-                    repeatCount="indefinite"
-                  />
-                </rect>
-
-                <rect x="4" y="21" width="8" height="1.5" rx="0.5" fill="#0a3040" />
-                <rect x="4" y="21" width={5} height="1.5" rx="0.5" fill="#0f0" opacity="0.6">
-                  <animate
-                    attributeName="opacity"
-                    values="0.6;1;0.6"
-                    dur={`${1 + i * 0.2}s`}
-                    repeatCount="indefinite"
-                  />
-                </rect>
-
-                {/* Cell number */}
-                <text
-                  x="8" y="27"
-                  textAnchor="middle"
-                  fontSize="3"
-                  fill="#4080a0"
-                  fontFamily="monospace"
-                >
-                  {`0${i + 1}`}
-                </text>
-              </g>
-            ))}
-          </svg>
-        </div>
-
-        <span>Run AI agents in parallel—each safely containerized.</span>
-      </h1>
       <p className="text-sm text-[var(--color-text-muted)] mb-8 text-center">
-        Claude Code, OpenCode, and Shell in isolated Docker containers
+        Run AI agents in parallel &mdash; each safely containerized.
       </p>
 
-      {/* Feature cards - grid layout */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-8 max-w-3xl w-full">
-        {features.map(({ icon: Icon, title, description }) => (
-          <div
-            key={title}
-            className="bg-[var(--color-bg-secondary)] rounded-lg p-3 border border-[var(--color-border-primary)]"
-          >
-            <div className="flex items-center gap-2 mb-1.5">
-              <Icon size={18} className="text-[var(--color-accent-primary)] flex-shrink-0" />
-              <div className="text-[var(--color-text-primary)] font-medium text-sm">{title}</div>
-            </div>
-            <div className="text-[var(--color-text-muted)] text-xs leading-relaxed">{description}</div>
-          </div>
-        ))}
-      </div>
-
       {/* CTA buttons */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onNewTab}
-          className="flex flex-col items-center gap-1 px-5 py-2.5 bg-[var(--color-accent-primary)] hover:bg-[var(--color-accent-hover)] text-white font-medium rounded-lg transition-colors"
-        >
-          <span className="flex items-center gap-2">
-            <Plus size={18} />
-            New Yolium
-          </span>
-          <kbd className="text-[10px] opacity-70 font-mono">Ctrl+Shift+T</kbd>
-        </button>
+      <div className="flex items-center gap-3 mb-8">
         {onCreateProject && (
           <button
             onClick={onCreateProject}
-            className="flex flex-col items-center gap-1 px-5 py-2.5 bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] font-medium rounded-lg border border-[var(--color-border-primary)] transition-colors"
+            className="flex flex-col items-center gap-1 px-5 py-2.5 bg-[var(--color-accent-primary)] hover:bg-[var(--color-accent-hover)] text-white font-medium rounded-lg transition-colors"
           >
             <span className="flex items-center gap-2">
               <FolderPlus size={18} />
               Create Project
             </span>
-            <kbd className="text-[10px] text-[var(--color-text-muted)] font-mono">Ctrl+Shift+P</kbd>
+            <kbd className="text-[10px] opacity-70 font-mono">Ctrl+Shift+P</kbd>
           </button>
+        )}
+        <button
+          onClick={onNewTab}
+          className="flex flex-col items-center gap-1 px-5 py-2.5 bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] font-medium rounded-lg border border-[var(--color-border-primary)] transition-colors"
+        >
+          <span className="flex items-center gap-2">
+            <Terminal size={18} />
+            New Terminal
+          </span>
+          <kbd className="text-[10px] text-[var(--color-text-muted)] font-mono">Ctrl+Shift+T</kbd>
+        </button>
+      </div>
+
+      {/* Recent projects or getting started */}
+      <div className="max-w-lg w-full">
+        {hasProjects ? (
+          <>
+            <h2 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">
+              Recent Projects
+            </h2>
+            <div className="flex flex-col gap-1.5">
+              {projects.map((project) => (
+                <button
+                  key={project.path}
+                  data-testid={`recent-project-${project.path}`}
+                  onClick={() => onProjectClick?.(project.path)}
+                  className="group flex items-center gap-3 px-3 py-2.5 bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-tertiary)] rounded-lg border border-[var(--color-border-primary)] hover:border-[var(--color-accent-primary)] transition-colors text-left"
+                >
+                  <Folder size={16} className="text-[var(--color-accent-primary)] flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-[var(--color-text-primary)] truncate">
+                      {getFolderName(project.path)}
+                    </div>
+                    <div className="text-xs text-[var(--color-text-muted)] truncate">
+                      {project.path}
+                    </div>
+                  </div>
+                  <ArrowRight size={14} className="text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="text-center">
+            <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+              Get started
+            </h2>
+            <div className="flex flex-col gap-2 text-xs text-[var(--color-text-muted)]">
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-[var(--color-accent-primary)]/20 text-[var(--color-accent-primary)] flex items-center justify-center text-[10px] font-bold">1</span>
+                <span><strong className="text-[var(--color-text-secondary)]">Create a project</strong> to set up a kanban board for managing work items</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-[var(--color-accent-primary)]/20 text-[var(--color-accent-primary)] flex items-center justify-center text-[10px] font-bold">2</span>
+                <span><strong className="text-[var(--color-text-secondary)]">Add work items</strong> and assign AI agents (Claude Code, OpenCode, or Shell)</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-[var(--color-accent-primary)]/20 text-[var(--color-accent-primary)] flex items-center justify-center text-[10px] font-bold">3</span>
+                <span><strong className="text-[var(--color-text-secondary)]">Agents work in parallel</strong> &mdash; each in its own Docker container with an isolated git branch</span>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
