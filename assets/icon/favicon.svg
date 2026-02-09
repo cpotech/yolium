@@ -10,7 +10,7 @@
       <stop offset="100%" stop-color="#2563eb"/>
     </linearGradient>
     <filter id="glow">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
       <feMerge>
         <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
@@ -28,29 +28,29 @@
   <!-- Background -->
   <rect width="512" height="512" rx="88" fill="url(#bg)"/>
 
-  <!-- Subtle boundary circle -->
-  <circle cx="256" cy="256" r="190" fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.08"/>
-
-  <!-- Hexagram (two overlapping triangles) -->
+  <!-- Isometric cube faces (3D shading: top brightest, left mid, right darkest) -->
   <g filter="url(#glow)">
-    <!-- Up triangle -->
-    <polygon points="256,106 386,331 126,331"
-             fill="#3b82f6" fill-opacity="0.05"
-             stroke="url(#blue)" stroke-width="2.5" stroke-linejoin="round"/>
-    <!-- Down triangle -->
-    <polygon points="386,181 256,406 126,181"
-             fill="#3b82f6" fill-opacity="0.05"
-             stroke="url(#blue)" stroke-width="2.5" stroke-linejoin="round"/>
+    <polygon points="117,176 256,96 395,176 256,256" fill="#3b82f6" fill-opacity="0.15"/>
+    <polygon points="117,176 256,256 256,416 117,336" fill="#3b82f6" fill-opacity="0.10"/>
+    <polygon points="395,176 395,336 256,416 256,256" fill="#3b82f6" fill-opacity="0.06"/>
+  </g>
+
+  <!-- Cube wireframe -->
+  <g fill="none" stroke="url(#blue)" stroke-width="2.5" stroke-linejoin="round" filter="url(#glow)">
+    <polygon points="256,96 395,176 395,336 256,416 117,336 117,176"/>
+    <line x1="256" y1="96" x2="256" y2="416"/>
+    <line x1="395" y1="176" x2="117" y2="336"/>
+    <line x1="117" y1="176" x2="395" y2="336"/>
   </g>
 
   <!-- Vertex nodes -->
   <g fill="#60a5fa">
-    <circle cx="256" cy="106" r="2.5"/>
-    <circle cx="386" cy="181" r="2.5"/>
-    <circle cx="386" cy="331" r="2.5"/>
-    <circle cx="256" cy="406" r="2.5"/>
-    <circle cx="126" cy="331" r="2.5"/>
-    <circle cx="126" cy="181" r="2.5"/>
+    <circle cx="256" cy="96" r="3"/>
+    <circle cx="395" cy="176" r="3"/>
+    <circle cx="395" cy="336" r="3"/>
+    <circle cx="256" cy="416" r="3"/>
+    <circle cx="117" cy="336" r="3"/>
+    <circle cx="117" cy="176" r="3"/>
   </g>
 
   <!-- Center node -->
