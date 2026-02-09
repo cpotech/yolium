@@ -92,7 +92,8 @@ function parseStreamEvent(event: Record<string, unknown>): { display?: string; t
       if (typeof costUsd === 'number') parts.push(`[Cost: $${costUsd.toFixed(4)}]`);
       return {
         display: parts.length > 0 ? parts.join('\n') : undefined,
-        text: result || undefined,
+        // Don't return text — result event duplicates text already processed from assistant events,
+        // which would cause protocol messages to be extracted and handled twice.
       };
     }
 
