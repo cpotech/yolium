@@ -359,7 +359,12 @@ export async function createAgentContainer(
     logger.info('Agent output', { sessionId, displayLines: displayParts.length, display: displayStr.slice(0, 500) });
 
     // Forward text content for protocol parsing via callback
-    onOutput?.(textContent || displayStr);
+    // Only send raw text content, never display text — displayStr may contain
+    // duplicate text (e.g., from result events) that would cause protocol messages
+    // to be extracted and handled twice.
+    if (textContent) {
+      onOutput?.(textContent);
+    }
 
     // Forward display text for persistent logging
     onDisplayOutput?.(displayStr);
