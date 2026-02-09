@@ -153,6 +153,30 @@ describe('kanban-store', () => {
 
       expect(item.agentType).toBeUndefined();
     });
+
+    it('should throw on empty title', () => {
+      const board = createBoard('/path/to/project');
+      expect(() =>
+        addItem(board, {
+          title: '',
+          description: 'Do the thing',
+          agentProvider: 'claude',
+          order: 1,
+        })
+      ).toThrow('Title is required');
+    });
+
+    it('should throw on whitespace-only title', () => {
+      const board = createBoard('/path/to/project');
+      expect(() =>
+        addItem(board, {
+          title: '   ',
+          description: 'Do the thing',
+          agentProvider: 'claude',
+          order: 1,
+        })
+      ).toThrow('Title is required');
+    });
   });
 
   describe('addComment', () => {
@@ -367,6 +391,46 @@ describe('kanban-store', () => {
       const result = updateItem(board, item.id, { agentType: undefined });
       expect(result).not.toBeNull();
       expect(result!.agentType).toBeUndefined();
+    });
+
+    it('should reject empty title on update', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      const result = updateItem(board, item.id, { title: '' });
+      expect(result).toBeNull();
+    });
+
+    it('should reject whitespace-only title on update', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      const result = updateItem(board, item.id, { title: '   ' });
+      expect(result).toBeNull();
+    });
+
+    it('should accept valid title on update', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      const result = updateItem(board, item.id, { title: 'New Title' });
+      expect(result).not.toBeNull();
+      expect(result!.title).toBe('New Title');
     });
   });
 

@@ -1067,6 +1067,99 @@ describe('ItemDetailDialog', () => {
     expect(screen.queryByTestId('agent-type-select')).not.toBeInTheDocument()
   })
 
+  it('should disable save button when title is empty', () => {
+    const item = createMockItem({ title: 'Some Title' })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    // Save button should be enabled initially
+    expect(screen.getByTestId('save-button')).not.toBeDisabled()
+
+    // Clear title
+    fireEvent.change(screen.getByTestId('title-input'), {
+      target: { value: '' },
+    })
+
+    // Save button should be disabled
+    expect(screen.getByTestId('save-button')).toBeDisabled()
+  })
+
+  it('should disable save button when title is whitespace-only', () => {
+    const item = createMockItem({ title: 'Some Title' })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    // Set title to whitespace only
+    fireEvent.change(screen.getByTestId('title-input'), {
+      target: { value: '   ' },
+    })
+
+    // Save button should be disabled
+    expect(screen.getByTestId('save-button')).toBeDisabled()
+  })
+
+  it('should not submit on Ctrl+Enter when title is empty', async () => {
+    const item = createMockItem({ title: 'Some Title' })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    // Clear title
+    fireEvent.change(screen.getByTestId('title-input'), {
+      target: { value: '' },
+    })
+
+    // Press Ctrl+Enter
+    fireEvent.keyDown(screen.getByTestId('item-detail-dialog').parentElement!, {
+      key: 'Enter',
+      ctrlKey: true,
+    })
+
+    // updateItem should NOT have been called
+    expect(mockKanbanUpdateItem).not.toHaveBeenCalled()
+  })
+
+  it('should show required marker on title label', () => {
+    const item = createMockItem()
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    const titleLabel = screen.getByText('Title', { exact: false })
+    expect(titleLabel.querySelector('.text-red-400')).not.toBeNull()
+    expect(titleLabel.querySelector('.text-red-400')!.textContent).toBe('*')
+  })
+
   it('should preserve description input when same item updates', () => {
     const item = createMockItem({ id: 'item-1', description: 'Original description' })
 
