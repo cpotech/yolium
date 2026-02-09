@@ -9,7 +9,7 @@ import * as os from 'node:os';
 import { BrowserWindow } from 'electron';
 import { createLogger } from '@main/lib/logger';
 import { loadGitConfig } from '@main/git/git-config';
-import { createWorktree, deleteWorktree, generateBranchName, hasUncommittedChanges } from '@main/git/git-worktree';
+import { createWorktree, deleteWorktree, generateBranchName, hasUncommittedChanges, fixWorktreeGitFile } from '@main/git/git-worktree';
 import { docker, sessions, agentSessions, DEFAULT_IMAGE } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
 import { buildPersistentBindMounts, getGitCredentialsBind, getClaudeOAuthBind, getCodexOAuthBind } from './project-registry';
@@ -226,6 +226,11 @@ export async function createYolium(
     if (session) {
       session.state = 'stopped';
 
+      // Re-fix worktree .git paths — the Linux container rewrites them to /c/ style
+      if (process.platform === 'win32' && session.worktreePath) {
+        fixWorktreeGitFile(session.worktreePath);
+      }
+
       // Get exit code from container
       let exitCode = 0;
       try {
@@ -316,6 +321,11 @@ export async function stopYolium(sessionId: string): Promise<void> {
     logger.error('Error stopping container', { sessionId, error: err instanceof Error ? err.message : String(err) });
   }
 
+  // Re-fix worktree .git paths — the Linux container rewrites them to /c/ style
+  if (process.platform === 'win32' && session.worktreePath) {
+    fixWorktreeGitFile(session.worktreePath);
+  }
+
   sessions.delete(sessionId);
 }
 
@@ -391,6 +401,11 @@ export async function closeAllContainers(): Promise<void> {
         await container.remove();
       } catch {
         // Container may already be removed
+      }
+
+      // Re-fix worktree .git paths — the Linux container rewrites them to /c/ style
+      if (process.platform === 'win32' && session.worktreePath) {
+        fixWorktreeGitFile(session.worktreePath);
       }
     } catch (err) {
       logger.error('Error during agent container cleanup', {

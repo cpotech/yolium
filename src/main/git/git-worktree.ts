@@ -50,7 +50,7 @@ function msys2ToWindowsPath(p: string): string {
  * 1. `<worktree>/.git` — contains `gitdir: <path to .git/worktrees/<name>>`
  * 2. `<main-repo>/.git/worktrees/<name>/gitdir` — contains path back to worktree
  */
-function fixWorktreeGitFile(worktreePath: string): void {
+export function fixWorktreeGitFile(worktreePath: string): void {
   // Fix the worktree's .git file (forward reference: worktree → main repo)
   const gitFile = path.join(worktreePath, '.git');
   let resolvedGitdir: string | null = null;
