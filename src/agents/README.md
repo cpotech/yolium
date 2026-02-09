@@ -25,9 +25,10 @@ System prompt content here...
 
 ## Available Agents
 
-| Agent | Model | Purpose |
-|-------|-------|---------|
-| plan-agent | opus | Decomposes goals into work items |
+| Agent | Provider | Purpose |
+|-------|----------|---------|
+| plan-agent | Claude, Codex, OpenCode | Analyzes codebase and produces implementation plans |
+| code-agent | Claude, Codex, OpenCode | Implements code changes, writes tests, and commits locally |
 
 ## Adding New Agents
 
@@ -39,5 +40,6 @@ System prompt content here...
 ## Files
 
 - `plan-agent.md` - Plan Agent definition
+- `code-agent.md` - Code Agent definition
 - `_protocol.md` - Protocol reference (not loaded as agent)
 - `README.md` - This file
