@@ -35,6 +35,7 @@ import type { KanbanBoard, KanbanItem } from '@shared/types/kanban';
 import type {
   AskQuestionMessage,
   CreateItemMessage,
+  UpdateDescriptionMessage,
   CompleteMessage,
   ErrorMessage,
   ProgressMessage,
@@ -394,13 +395,21 @@ export function handleAgentOutput(sessionId: string, data: string): void {
         const c = message as CreateItemMessage;
         const newItem = addItem(board, {
           title: c.title,
-          description: c.description,
+          description: c.description || '',
           branch: c.branch,
           agentProvider: c.agentProvider,
           order: c.order,
           model: c.model,
         });
         session.events.emit('itemCreated', newItem);
+        break;
+      }
+
+      case 'update_description': {
+        const ud = message as UpdateDescriptionMessage;
+        updateItem(board, session.itemId, { description: ud.description });
+        addComment(board, session.itemId, 'agent', `Updated description`);
+        session.events.emit('descriptionUpdated', ud.description);
         break;
       }
 
