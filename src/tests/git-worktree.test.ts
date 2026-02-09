@@ -195,7 +195,7 @@ describe('git-worktree', () => {
   })
 
   describe('createWorktree', () => {
-    it('fixes MSYS2 paths in .git file on Windows', () => {
+    it('fixes MSYS2 paths in .git file and back-reference gitdir on Windows', () => {
       const projectPath = '/home/user/project'
       const branchName = 'my-branch'
       const worktreePath = getWorktreePath(projectPath, branchName)
@@ -205,9 +205,18 @@ describe('git-worktree', () => {
       Object.defineProperty(process, 'platform', { value: 'win32', configurable: true })
 
       vi.mocked(fs.existsSync).mockReturnValue(false)
-      vi.mocked(fs.readFileSync).mockReturnValue(
-        'gitdir: /c/Users/gaming/repos/project/.git/worktrees/my-branch\n'
-      )
+      vi.mocked(fs.readFileSync).mockImplementation((filePath: unknown) => {
+        const p = String(filePath)
+        if (p.endsWith('.git')) {
+          // Worktree's .git file with MSYS2 path
+          return 'gitdir: /c/Users/gaming/repos/project/.git/worktrees/my-branch\n'
+        }
+        if (p.endsWith('gitdir')) {
+          // Back-reference file with MSYS2 path
+          return '/c/Users/gaming/.yolium/worktrees/proj/my-branch\n'
+        }
+        return ''
+      })
       vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
         const command = `${cmd} ${(args || []).join(' ')}`
         if (command.startsWith('git check-ref-format')) return Buffer.from('')
@@ -220,6 +229,7 @@ describe('git-worktree', () => {
 
       createWorktree(projectPath, branchName)
 
+      // Verify .git file was fixed
       expect(fs.readFileSync).toHaveBeenCalledWith(
         path.join(worktreePath, '.git'),
         'utf-8'
@@ -229,10 +239,20 @@ describe('git-worktree', () => {
         'gitdir: C:/Users/gaming/repos/project/.git/worktrees/my-branch\n'
       )
 
+      // Verify back-reference gitdir file was also fixed
+      expect(fs.readFileSync).toHaveBeenCalledWith(
+        path.join('C:/Users/gaming/repos/project/.git/worktrees/my-branch', 'gitdir'),
+        'utf-8'
+      )
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        path.join('C:/Users/gaming/repos/project/.git/worktrees/my-branch', 'gitdir'),
+        'C:/Users/gaming/.yolium/worktrees/proj/my-branch\n'
+      )
+
       Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true })
     })
 
-    it('does not rewrite .git file when path is already Windows-native', () => {
+    it('does not rewrite files when paths are already Windows-native', () => {
       const projectPath = '/home/user/project'
       const branchName = 'my-branch'
 
@@ -240,9 +260,16 @@ describe('git-worktree', () => {
       Object.defineProperty(process, 'platform', { value: 'win32', configurable: true })
 
       vi.mocked(fs.existsSync).mockReturnValue(false)
-      vi.mocked(fs.readFileSync).mockReturnValue(
-        'gitdir: C:/Users/gaming/repos/project/.git/worktrees/my-branch\n'
-      )
+      vi.mocked(fs.readFileSync).mockImplementation((filePath: unknown) => {
+        const p = String(filePath)
+        if (p.endsWith('.git')) {
+          return 'gitdir: C:/Users/gaming/repos/project/.git/worktrees/my-branch\n'
+        }
+        if (p.endsWith('gitdir')) {
+          return 'C:/Users/gaming/.yolium/worktrees/proj/my-branch\n'
+        }
+        return ''
+      })
       vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
         const command = `${cmd} ${(args || []).join(' ')}`
         if (command.startsWith('git check-ref-format')) return Buffer.from('')

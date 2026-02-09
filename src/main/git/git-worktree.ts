@@ -39,13 +39,21 @@ function msys2ToWindowsPath(p: string): string {
 }
 
 /**
- * Fix the .git file in a worktree to use Windows-native paths.
+ * Fix the .git file in a worktree to use Windows-native paths, and also fix the
+ * reverse `gitdir` file in the main repo's `.git/worktrees/<name>/` directory.
+ *
  * Git for Windows may write MSYS2-style paths (/c/Users/...) when invoked from
  * a Git Bash/MSYS2 context. These paths break worktree detection for native
- * Windows tools (lazygit, VS Code, etc.).
+ * Windows tools (lazygit, VS Code, etc.) and cause "not a git repository" errors.
+ *
+ * Two files are fixed:
+ * 1. `<worktree>/.git` — contains `gitdir: <path to .git/worktrees/<name>>`
+ * 2. `<main-repo>/.git/worktrees/<name>/gitdir` — contains path back to worktree
  */
 function fixWorktreeGitFile(worktreePath: string): void {
+  // Fix the worktree's .git file (forward reference: worktree → main repo)
   const gitFile = path.join(worktreePath, '.git');
+  let resolvedGitdir: string | null = null;
   try {
     const content = fs.readFileSync(gitFile, 'utf-8').trim();
     if (content.startsWith('gitdir: /')) {
@@ -54,9 +62,29 @@ function fixWorktreeGitFile(worktreePath: string): void {
       if (fixed !== gitdir) {
         fs.writeFileSync(gitFile, `gitdir: ${fixed}\n`);
       }
+      resolvedGitdir = fixed;
+    } else if (content.startsWith('gitdir: ')) {
+      resolvedGitdir = content.replace('gitdir: ', '');
     }
   } catch {
     // Best-effort — don't fail worktree creation over this
+  }
+
+  // Fix the back-reference gitdir file (reverse reference: main repo → worktree)
+  // Located at <main-repo>/.git/worktrees/<name>/gitdir
+  if (resolvedGitdir) {
+    try {
+      const backRefFile = path.join(resolvedGitdir, 'gitdir');
+      const backRefContent = fs.readFileSync(backRefFile, 'utf-8').trim();
+      if (backRefContent.startsWith('/')) {
+        const fixed = msys2ToWindowsPath(backRefContent);
+        if (fixed !== backRefContent) {
+          fs.writeFileSync(backRefFile, `${fixed}\n`);
+        }
+      }
+    } catch {
+      // Best-effort — the back-reference file may not exist yet or be inaccessible
+    }
   }
 }
 
