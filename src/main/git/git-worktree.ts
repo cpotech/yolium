@@ -766,7 +766,7 @@ export function generatePrBranchName(worktreeBranch: string, itemTitle: string):
  * 2. Rebase the worktree branch onto the latest default (catches conflicts early, keeps history linear)
  * 3. Checkout default branch and pull latest
  * 4. Create a new well-named PR branch from the default branch
- * 5. Merge the rebased worktree branch into the PR branch (--no-ff)
+ * 5. Squash merge the rebased worktree branch into the PR branch
  * 6. Push the PR branch to remote
  * 7. Create a PR using `gh pr create`
  * 8. On success, clean up worktree and old worktree branch
@@ -847,10 +847,14 @@ export function mergeBranchAndPushPR(
     return { success: false, error: `Failed to create PR branch: ${stderr}` };
   }
 
-  // Step 5: Merge the rebased worktree branch into the PR branch
-  // After a successful rebase, this merge is guaranteed to be clean
+  // Step 5: Squash merge the rebased worktree branch into the PR branch
+  // After a successful rebase, this squash merge is guaranteed to be clean
   try {
-    execFileSync('git', ['merge', worktreeBranch, '--no-ff', '-m', `Merge branch '${worktreeBranch}' for: ${itemTitle}`], {
+    execFileSync('git', ['merge', '--squash', worktreeBranch], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+    execFileSync('git', ['commit', '-m', `Squash merge branch '${worktreeBranch}' for: ${itemTitle}`], {
       cwd: projectPath,
       stdio: 'pipe',
     });
