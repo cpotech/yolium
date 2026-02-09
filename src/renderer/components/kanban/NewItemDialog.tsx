@@ -59,7 +59,7 @@ export function NewItemDialog({
     }
   }, [isOpen])
 
-  const canSubmit = title.trim().length > 0 && description.trim().length > 0
+  const canSubmit = title.trim().length > 0
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit || isSubmitting) return
@@ -68,7 +68,7 @@ export function NewItemDialog({
     try {
       await window.electronAPI.kanban.addItem(projectPath, {
         title: title.trim(),
-        description: description.trim(),
+        description: description.trim() || '',
         branch: branch.trim() || undefined,
         agentProvider,
         ...(agentType && { agentType }),
@@ -183,7 +183,7 @@ export function NewItemDialog({
                   htmlFor="new-item-description"
                   className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
                 >
-                  Description <span className="text-red-400">*</span>
+                  Description <span className="normal-case tracking-normal">(optional)</span>
                 </label>
                 <textarea
                   id="new-item-description"

@@ -28,11 +28,23 @@ Creates a Kanban work item in the Backlog.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | title | string | yes | Short title for the card |
-| description | string | yes | Full instructions |
+| description | string | no | Full instructions (defaults to empty) |
 | branch | string | no | Suggested branch name |
 | agentProvider | enum | yes | claude, codex, opencode |
 | order | number | yes | Execution order (1 = first) |
 | model | string | no | Model override: opus, sonnet, haiku |
+
+### update_description
+
+Updates the description of the current work item. Agents use this to improve or refine the work item description as they analyze requirements.
+
+```json
+{"type":"update_description","description":"Updated detailed description of the work item"}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| description | string | yes | New description text for the work item |
 
 ### progress
 

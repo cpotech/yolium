@@ -69,7 +69,7 @@ describe('NewItemDialog', () => {
     expect(createButton).toBeDisabled()
   })
 
-  it('should have create button disabled when description is empty', () => {
+  it('should enable create button when title is provided but description is empty', () => {
     render(
       <NewItemDialog
         isOpen={true}
@@ -85,7 +85,7 @@ describe('NewItemDialog', () => {
     })
 
     const createButton = screen.getByTestId('create-button')
-    expect(createButton).toBeDisabled()
+    expect(createButton).not.toBeDisabled()
   })
 
   it('should enable create button when title and description are provided', () => {
@@ -178,6 +178,36 @@ describe('NewItemDialog', () => {
       expect(mockKanbanAddItem).toHaveBeenCalledWith('/test/project', {
         title: 'My Task',
         description: 'Description',
+        branch: undefined,
+        agentProvider: 'claude',
+        order: 0,
+      })
+    })
+  })
+
+  it('should call kanbanAddItem with empty description when description is not provided', async () => {
+    mockKanbanAddItem.mockResolvedValueOnce({ id: 'new-item-1' })
+    const onCreated = vi.fn()
+
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={onCreated}
+      />
+    )
+
+    fireEvent.change(screen.getByTestId('title-input'), {
+      target: { value: 'Title Only Task' },
+    })
+
+    fireEvent.click(screen.getByTestId('create-button'))
+
+    await waitFor(() => {
+      expect(mockKanbanAddItem).toHaveBeenCalledWith('/test/project', {
+        title: 'Title Only Task',
+        description: '',
         branch: undefined,
         agentProvider: 'claude',
         order: 0,
