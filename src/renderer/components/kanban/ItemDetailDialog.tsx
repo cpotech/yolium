@@ -76,8 +76,10 @@ export function ItemDetailDialog({
   const [isDeleting, setIsDeleting] = useState(false)
   const [isStartingAgent, setIsStartingAgent] = useState(false)
   const [answerText, setAnswerText] = useState('')
+  const [commentText, setCommentText] = useState('')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isAnswering, setIsAnswering] = useState(false)
+  const [isAddingComment, setIsAddingComment] = useState(false)
   const [isMerging, setIsMerging] = useState(false)
   const [isCheckingConflicts, setIsCheckingConflicts] = useState(false)
   const [conflictCheck, setConflictCheck] = useState<{ clean: boolean; conflictingFiles: string[] } | null>(null)
@@ -127,6 +129,7 @@ export function ItemDetailDialog({
         setBaseModel(item.model || '')
         setPrUrl(item.prUrl || null)
         setConflictCheck(null)
+        setCommentText('')
         prevItemIdRef.current = item.id
       }
     }
@@ -229,6 +232,24 @@ export function ItemDetailDialog({
       setIsStartingAgent(false)
     }
   }, [item, isStartingAgent, projectPath, onUpdated, agentSession, agentProvider, hasUnsavedChanges, handleSave])
+
+  const handleAddComment = useCallback(async () => {
+    if (!item || isAddingComment || !commentText.trim()) return
+
+    setIsAddingComment(true)
+    try {
+      const trimmedComment = commentText.trim()
+      await window.electronAPI.kanban.addComment(projectPath, item.id, 'user', trimmedComment)
+      setCommentText('')
+      setErrorMessage(null)
+      onUpdated()
+    } catch (error) {
+      console.error('Failed to add comment:', error)
+      setErrorMessage('Failed to add comment. Please try again.')
+    } finally {
+      setIsAddingComment(false)
+    }
+  }, [item, isAddingComment, commentText, projectPath, onUpdated])
 
   const handleAnswerQuestion = useCallback(async () => {
     if (!item || isAnswering || !answerText.trim()) return
@@ -505,6 +526,41 @@ export function ItemDetailDialog({
 
               {/* Comments */}
               <CommentsList comments={item.comments} onSelectOption={setAnswerText} />
+
+              {/* Add comment */}
+              <div className="mt-4">
+                <label
+                  htmlFor="comment-input"
+                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
+                >
+                  Add Comment
+                </label>
+                <textarea
+                  id="comment-input"
+                  data-testid="comment-input"
+                  value={commentText}
+                  onChange={e => setCommentText(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                      e.preventDefault()
+                      handleAddComment()
+                    }
+                  }}
+                  rows={3}
+                  placeholder="Write a comment..."
+                  className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
+                />
+                <div className="flex justify-end mt-2">
+                  <button
+                    data-testid="comment-submit"
+                    onClick={handleAddComment}
+                    disabled={isAddingComment || !commentText.trim()}
+                    className="px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isAddingComment ? 'Posting...' : 'Post Comment'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 

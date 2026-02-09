@@ -9,6 +9,7 @@ import type { KanbanItem } from '@shared/types/kanban'
 // Mock the electronAPI
 const mockKanbanUpdateItem = vi.fn()
 const mockKanbanDeleteItem = vi.fn()
+const mockKanbanAddComment = vi.fn()
 const mockShowConfirmOkCancel = vi.fn()
 const mockOnAgentOutput = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
 const mockOnAgentProgress = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
@@ -24,6 +25,7 @@ beforeEach(() => {
       kanban: {
         updateItem: mockKanbanUpdateItem,
         deleteItem: mockKanbanDeleteItem,
+        addComment: mockKanbanAddComment,
       },
       dialog: {
         confirmOkCancel: mockShowConfirmOkCancel,
@@ -165,6 +167,36 @@ describe('ItemDetailDialog', () => {
     expect(userBadge).toHaveTextContent('user')
     expect(agentBadge).toHaveTextContent('agent')
     expect(systemBadge).toHaveTextContent('system')
+  })
+
+  it('should allow adding a user comment', async () => {
+    mockKanbanAddComment.mockResolvedValueOnce(undefined)
+    const onUpdated = vi.fn()
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={createMockItem()}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={onUpdated}
+      />
+    )
+
+    const commentInput = screen.getByTestId('comment-input')
+    fireEvent.change(commentInput, { target: { value: 'New comment' } })
+    fireEvent.click(screen.getByTestId('comment-submit'))
+
+    await waitFor(() => {
+      expect(mockKanbanAddComment).toHaveBeenCalledWith(
+        '/test/project',
+        'item-1',
+        'user',
+        'New comment'
+      )
+    })
+    expect(onUpdated).toHaveBeenCalled()
+    expect(commentInput).toHaveValue('')
   })
 
   it('should show agent status with correct color for idle', () => {
