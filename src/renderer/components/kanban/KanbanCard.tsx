@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { GitBranch, Loader2, AlertCircle, CheckCircle, XCircle, MessageSquare, RotateCcw, Play } from 'lucide-react'
-import type { KanbanItem, AgentStatus } from '@shared/types/kanban'
+import { GitBranch, GitMerge, Loader2, AlertCircle, AlertTriangle, CheckCircle, XCircle, MessageSquare, RotateCcw, Play, ExternalLink } from 'lucide-react'
+import type { KanbanItem, AgentStatus, MergeStatus } from '@shared/types/kanban'
 
 interface KanbanCardProps {
   item: KanbanItem
@@ -75,10 +75,47 @@ function getStatusConfig(status: AgentStatus): StatusConfig | null {
   }
 }
 
+interface MergeStatusConfig {
+  icon: React.ReactNode
+  text: string
+  colorClass: string
+}
+
+function getMergeStatusConfig(status: MergeStatus): MergeStatusConfig {
+  switch (status) {
+    case 'unmerged':
+      return {
+        icon: <GitBranch size={12} />,
+        text: 'Unmerged',
+        colorClass: 'text-blue-400',
+      }
+    case 'merged':
+      return {
+        icon: <GitMerge size={12} />,
+        text: 'Merged',
+        colorClass: 'text-green-400',
+      }
+    case 'conflict':
+      return {
+        icon: <AlertTriangle size={12} />,
+        text: 'Conflict',
+        colorClass: 'text-red-400',
+      }
+  }
+}
+
 export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgent, onResumeAgent, onRunAgainAgent }: KanbanCardProps): React.ReactElement {
   const statusConfig = getStatusConfig(item.agentStatus)
+  const mergeStatusConfig = item.mergeStatus ? getMergeStatusConfig(item.mergeStatus) : null
   const [isDragging, setIsDragging] = useState(false)
   const isRunning = item.agentStatus === 'running'
+
+  const handlePrLinkClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (item.prUrl) {
+      window.electronAPI.app.openExternal(item.prUrl)
+    }
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -199,7 +236,7 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
         {item.description}
       </p>
 
-      {/* Footer: Status indicator, action button, and comment count */}
+      {/* Footer: Status indicator, action button, merge status, and comment count */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           {statusConfig ? (
@@ -212,6 +249,25 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
             </div>
           ) : <div />}
           {getActionButton()}
+          {mergeStatusConfig && (
+            <div
+              data-testid="merge-status-indicator"
+              className={`flex items-center gap-1 text-[11px] ${mergeStatusConfig.colorClass}`}
+            >
+              {mergeStatusConfig.icon}
+              <span>{mergeStatusConfig.text}</span>
+              {item.mergeStatus === 'merged' && item.prUrl && (
+                <button
+                  data-testid="pr-link-btn"
+                  onClick={handlePrLinkClick}
+                  title="Open pull request"
+                  className="p-0.5 rounded hover:bg-green-500/20 hover:text-green-300 transition-colors"
+                >
+                  <ExternalLink size={11} />
+                </button>
+              )}
+            </div>
+          )}
         </div>
         {item.comments.length > 0 && (
           <div
