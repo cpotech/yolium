@@ -208,6 +208,8 @@ loadConfig(): Promise<{
   hasAnthropicKey?: boolean;
   useClaudeOAuth?: boolean;   // whether the user has enabled Claude Max OAuth
   hasClaudeOAuth?: boolean;   // whether ~/.claude/.credentials.json exists on host
+  useCodexOAuth?: boolean;    // whether the user has enabled Codex OAuth (ChatGPT)
+  hasCodexOAuth?: boolean;    // whether ~/.codex/auth.json exists on host
 } | null>
 
 saveConfig(config: {
@@ -217,6 +219,7 @@ saveConfig(config: {
   openaiApiKey?: string;     // same behavior as githubPat
   anthropicApiKey?: string;  // same behavior as githubPat
   useClaudeOAuth?: boolean;  // enable/disable Claude Max OAuth (mutually exclusive with anthropicApiKey)
+  useCodexOAuth?: boolean;   // enable/disable Codex OAuth (mutually exclusive with openaiApiKey)
 }): Promise<void>
 
 isRepo(folderPath: string): Promise<{ isRepo: boolean; hasCommits: boolean }>
