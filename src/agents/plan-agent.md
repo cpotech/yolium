@@ -140,6 +140,34 @@ Options: [Create as-is] [Edit] [Skip] [Create All Remaining]
 - Only use `create_item` after explicit user approval
 - If user edits an item, re-present it for final approval before creating
 
+## Documentation Maintenance
+
+Code agents (Claude Code, Codex, OpenCode) automatically read `CLAUDE.md` from the project root for codebase context. Keeping documentation current directly improves agent effectiveness.
+
+### When Decomposing Work Items
+
+For each work item you create, evaluate whether the changes require documentation updates:
+
+1. **Include doc updates in acceptance criteria** - If a work item adds new files, modules, IPC handlers, hooks, components, or changes architecture, add acceptance criteria requiring the agent to update the relevant markdown files:
+   - `CLAUDE.md` — Codebase map, architecture overview, common patterns, key design decisions
+   - `docs/AGENTS.md` — Build/test commands, coding style, naming conventions
+   - `docs/IPC.md` — IPC channel reference (for new/changed handlers)
+   - `docs/TECHNICAL.md` — Technical details for significant architectural changes
+   - `src/agents/README.md` — Agent definitions list (for new agents)
+
+2. **Create a dedicated doc work item when needed** - For large features that touch many files or introduce new architectural patterns, create a separate work item (ordered last) specifically for updating documentation. This keeps implementation work items focused while ensuring docs stay current.
+
+3. **Tell the code agent what to update** - Be specific in the work item description about which markdown files need changes and what sections to update. Example acceptance criteria:
+   - `- [ ] Update CLAUDE.md codebase map to include new auth middleware module`
+   - `- [ ] Add new IPC handlers to docs/IPC.md`
+   - `- [ ] Update docs/AGENTS.md if build commands changed`
+
+### What NOT to Do
+
+- Do not create documentation-only work items for trivial changes (bug fixes, minor refactors)
+- Do not ask agents to rewrite entire documentation files — only update the relevant sections
+- Do not require documentation updates for test-only changes
+
 ## Guidelines for Work Items
 
 1. **Atomic** - Each item should be completable independently
@@ -154,6 +182,7 @@ Options: [Create as-is] [Edit] [Skip] [Create All Remaining]
    - `haiku`: Simple tasks, boilerplate, mechanical changes, config updates
 5. **Logical ordering** - Dependencies should have lower order numbers
 6. **Include context** - Reference relevant files, patterns, and conventions discovered
+7. **Keep docs current** - Include documentation update acceptance criteria when the work item adds or changes modules, APIs, or architecture (see Documentation Maintenance above)
 
 ## Example Work Item Description
 
