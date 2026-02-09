@@ -12,7 +12,7 @@ import { loadGitConfig } from '@main/git/git-config';
 import { createWorktree, deleteWorktree, generateBranchName, hasUncommittedChanges } from '@main/git/git-worktree';
 import { docker, sessions, agentSessions, DEFAULT_IMAGE } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
-import { buildPersistentBindMounts, getGitCredentialsBind, getClaudeOAuthBind } from './project-registry';
+import { buildPersistentBindMounts, getGitCredentialsBind, getClaudeOAuthBind, getCodexOAuthBind } from './project-registry';
 
 const logger = createLogger('container-lifecycle');
 
@@ -95,12 +95,19 @@ export async function createYolium(
     binds.push(oauthBind);
   }
 
+  // Add Codex OAuth credentials if enabled
+  const codexOAuthBind = getCodexOAuthBind();
+  if (codexOAuthBind) {
+    binds.push(codexOAuthBind);
+  }
+
   logger.debug('Container bind mounts', { sessionId, binds });
 
   let container;
   try {
     const storedConfig = loadGitConfig();
     const useOAuth = storedConfig?.useClaudeOAuth && oauthBind;
+    const useCodexOAuth = storedConfig?.useCodexOAuth && codexOAuthBind;
 
     container = await docker.createContainer({
       Image: DEFAULT_IMAGE,
@@ -133,8 +140,12 @@ export async function createYolium(
               const anthropicKey = storedConfig?.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
               if (anthropicKey) envs.push(`ANTHROPIC_API_KEY=${anthropicKey}`);
             }
-            const openaiKey = storedConfig?.openaiApiKey || process.env.OPENAI_API_KEY;
-            if (openaiKey) envs.push(`OPENAI_API_KEY=${openaiKey}`);
+            if (useCodexOAuth) {
+              envs.push('CODEX_OAUTH_ENABLED=true');
+            } else {
+              const openaiKey = storedConfig?.openaiApiKey || process.env.OPENAI_API_KEY;
+              if (openaiKey) envs.push(`OPENAI_API_KEY=${openaiKey}`);
+            }
             return envs;
           })(),
         ],

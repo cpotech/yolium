@@ -178,6 +178,42 @@ export function hasHostClaudeOAuth(): boolean {
 }
 
 /**
+ * Check if the host has valid Codex OAuth credentials.
+ * Looks for ~/.codex/auth.json with auth_mode === "chatgpt" and a valid access_token.
+ *
+ * @returns true if valid Codex OAuth credentials exist on the host
+ */
+export function hasHostCodexOAuth(): boolean {
+  try {
+    const authPath = path.join(os.homedir(), '.codex', 'auth.json');
+    if (!fs.existsSync(authPath)) return false;
+    const content = fs.readFileSync(authPath, 'utf-8');
+    const auth = JSON.parse(content);
+    return auth?.auth_mode === 'chatgpt' && !!(auth?.tokens?.access_token);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get the host ~/.codex/auth.json path if it exists.
+ * Used for mounting Codex OAuth credentials into containers.
+ *
+ * @returns Path to the auth file or null if it doesn't exist
+ */
+export function getHostCodexCredentialsPath(): string | null {
+  const authPath = path.join(os.homedir(), '.codex', 'auth.json');
+  try {
+    if (fs.statSync(authPath).isFile()) {
+      return authPath;
+    }
+  } catch {
+    // File doesn't exist
+  }
+  return null;
+}
+
+/**
  * Get the host ~/.claude/.credentials.json path if it exists.
  * Used for mounting OAuth credentials into containers.
  *
@@ -220,10 +256,11 @@ export function loadGitConfig(): GitConfig | null {
         ...(typeof config.anthropicApiKey === 'string' && config.anthropicApiKey ? { anthropicApiKey: config.anthropicApiKey } : {}),
         ...(typeof config.githubLogin === 'string' && config.githubLogin ? { githubLogin: config.githubLogin } : {}),
         ...(config.useClaudeOAuth === true ? { useClaudeOAuth: true } : {}),
+        ...(config.useCodexOAuth === true ? { useCodexOAuth: true } : {}),
       };
 
       // Return config if it has at least one meaningful value
-      const hasMeaningful = result.name || result.email || result.githubPat || result.openaiApiKey || result.anthropicApiKey || result.useClaudeOAuth;
+      const hasMeaningful = result.name || result.email || result.githubPat || result.openaiApiKey || result.anthropicApiKey || result.useClaudeOAuth || result.useCodexOAuth;
       return hasMeaningful ? result : null;
     }
 

@@ -6,7 +6,7 @@ export type { GitConfigWithPat } from '@shared/types/git';
 interface GitConfigDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean }) => void;
+  onSave: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean }) => void;
   initialConfig?: GitConfigWithPat | null;
   onDeleteImage?: () => void;
   onBuildImage?: () => void;
@@ -58,6 +58,7 @@ export function GitConfigDialog({
   const [openaiKeyError, setOpenaiKeyError] = useState<string | null>(null);
   const [openaiKeyCleared, setOpenaiKeyCleared] = useState(false);
   const [useClaudeOAuth, setUseClaudeOAuth] = useState(false);
+  const [useCodexOAuth, setUseCodexOAuth] = useState(false);
   const [dockerImageInfo, setDockerImageInfo] = useState<{ name: string; size: number; created: string; stale: boolean } | null>(null);
 
   // PAT validation: must be a valid github_pat_ or ghp_ token (alphanumeric + underscores only)
@@ -110,6 +111,7 @@ export function GitConfigDialog({
       setOpenaiKeyError(null);
       setOpenaiKeyCleared(false);
       setUseClaudeOAuth(initialConfig?.useClaudeOAuth ?? false);
+      setUseCodexOAuth(initialConfig?.useCodexOAuth ?? false);
       // Fetch Docker image info
       window.electronAPI.docker.getImageInfo().then(setDockerImageInfo).catch(() => setDockerImageInfo(null));
       // Focus dialog wrapper immediately for keyboard events (e.g. Escape)
@@ -152,7 +154,10 @@ export function GitConfigDialog({
     setOpenaiApiKey(value);
     const result = validateOpenaiKey(value);
     setOpenaiKeyError(result.error || null);
-    if (value) setOpenaiKeyCleared(false);
+    if (value) {
+      setOpenaiKeyCleared(false);
+      setUseCodexOAuth(false);  // Mutual exclusion: typing API key disables OAuth
+    }
   };
 
   const handleClearOpenaiKey = () => {
@@ -173,7 +178,7 @@ export function GitConfigDialog({
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      const config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean } = {};
+      const config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean } = {};
       if (githubPat.trim()) {
         config.githubPat = githubPat.trim();
       } else if (patCleared) {
@@ -190,19 +195,25 @@ export function GitConfigDialog({
           config.anthropicApiKey = '';  // Explicitly signal to clear the key
         }
       }
-      if (openaiApiKey.trim()) {
-        config.openaiApiKey = openaiApiKey.trim();
-      } else if (openaiKeyCleared) {
-        config.openaiApiKey = '';  // Explicitly signal to clear the key
+      if (useCodexOAuth) {
+        config.useCodexOAuth = true;
+        config.openaiApiKey = '';  // Clear API key when OAuth is enabled
+      } else {
+        config.useCodexOAuth = false;
+        if (openaiApiKey.trim()) {
+          config.openaiApiKey = openaiApiKey.trim();
+        } else if (openaiKeyCleared) {
+          config.openaiApiKey = '';  // Explicitly signal to clear the key
+        }
       }
       onSave(config);
     },
-    [githubPat, patCleared, useClaudeOAuth, anthropicApiKey, anthropicKeyCleared, openaiApiKey, openaiKeyCleared, onSave]
+    [githubPat, patCleared, useClaudeOAuth, anthropicApiKey, anthropicKeyCleared, useCodexOAuth, openaiApiKey, openaiKeyCleared, onSave]
   );
 
   if (!isOpen) return null;
 
-  const isValid = validatePat(githubPat).valid && (useClaudeOAuth || validateAnthropicKey(anthropicApiKey).valid) && validateOpenaiKey(openaiApiKey).valid;
+  const isValid = validatePat(githubPat).valid && (useClaudeOAuth || validateAnthropicKey(anthropicApiKey).valid) && (useCodexOAuth || validateOpenaiKey(openaiApiKey).valid);
 
   // Show derived identity when PAT is configured and not being cleared
   const showIdentity = initialConfig?.githubLogin && !patCleared;
@@ -431,11 +442,60 @@ export function GitConfigDialog({
             </p>
           </div>
 
+          {/* Codex OAuth (ChatGPT) Toggle */}
+          <div className="border-t border-gray-700 pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <label htmlFor="codex-oauth-toggle" className="text-sm font-medium text-gray-300">
+                  Codex OAuth (ChatGPT)
+                </label>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Use your ChatGPT login instead of an OpenAI API key
+                </p>
+              </div>
+              <button
+                id="codex-oauth-toggle"
+                type="button"
+                role="switch"
+                aria-checked={useCodexOAuth}
+                disabled={!initialConfig?.hasCodexOAuth && !useCodexOAuth}
+                onClick={() => {
+                  const newValue = !useCodexOAuth;
+                  setUseCodexOAuth(newValue);
+                  if (newValue) {
+                    // Mutual exclusion: enabling OAuth clears OpenAI key
+                    setOpenaiApiKey('');
+                    setOpenaiKeyError(null);
+                    setOpenaiKeyCleared(true);
+                  }
+                }}
+                data-testid="codex-oauth-toggle"
+                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${
+                  useCodexOAuth ? 'bg-blue-600' : 'bg-gray-600'
+                } ${!initialConfig?.hasCodexOAuth && !useCodexOAuth ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${
+                    useCodexOAuth ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+            {!initialConfig?.hasCodexOAuth && !useCodexOAuth && (
+              <p className="mt-1 text-xs text-yellow-400">
+                No OAuth credentials found. Run <span className="font-mono">codex login</span> on your host to authenticate first.
+              </p>
+            )}
+          </div>
+
           {/* OpenAI API Key */}
           <div className="border-t border-gray-700 pt-4">
             <label htmlFor="openai-key" className="block text-sm font-medium text-gray-300 mb-1">
               OpenAI API Key
-              {initialConfig?.hasOpenaiKey && !openaiApiKey && !openaiKeyCleared && (
+              {useCodexOAuth && (
+                <span className="ml-2 text-xs text-blue-400">(using OAuth)</span>
+              )}
+              {!useCodexOAuth && initialConfig?.hasOpenaiKey && !openaiApiKey && !openaiKeyCleared && (
                 <span className="ml-2 text-xs text-green-400">
                   {initialConfig?.sources?.openaiApiKey
                     ? getSourceDisplay(initialConfig.sources.openaiApiKey).text
@@ -449,31 +509,34 @@ export function GitConfigDialog({
                 type={showOpenaiKey ? 'text' : 'password'}
                 value={openaiApiKey}
                 onChange={(e) => handleOpenaiKeyChange(e.target.value)}
-                placeholder={initialConfig?.hasOpenaiKey ? '(keep existing key)' : 'sk-...'}
+                placeholder={useCodexOAuth ? '(disabled — using OAuth)' : initialConfig?.hasOpenaiKey ? '(keep existing key)' : 'sk-...'}
+                disabled={useCodexOAuth}
                 data-testid="openai-key-input"
                 className={`w-full px-3 py-2 pr-20 bg-gray-700 border rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm ${
                   openaiKeyError ? 'border-red-500' : 'border-gray-600'
-                }`}
+                } ${useCodexOAuth ? 'opacity-50 cursor-not-allowed' : ''}`}
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => setShowOpenaiKey(!showOpenaiKey)}
-                  className="p-1 text-gray-400 hover:text-white transition-colors"
-                  title={showOpenaiKey ? 'Hide key' : 'Show key'}
-                >
-                  {showOpenaiKey ? (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
-                {(openaiApiKey || (initialConfig?.hasOpenaiKey && !openaiKeyCleared)) && (
+                {!useCodexOAuth && (
+                  <button
+                    type="button"
+                    onClick={() => setShowOpenaiKey(!showOpenaiKey)}
+                    className="p-1 text-gray-400 hover:text-white transition-colors"
+                    title={showOpenaiKey ? 'Hide key' : 'Show key'}
+                  >
+                    {showOpenaiKey ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                )}
+                {!useCodexOAuth && (openaiApiKey || (initialConfig?.hasOpenaiKey && !openaiKeyCleared)) && (
                   <button
                     type="button"
                     onClick={handleClearOpenaiKey}
@@ -487,11 +550,13 @@ export function GitConfigDialog({
                 )}
               </div>
             </div>
-            {openaiKeyError && (
+            {!useCodexOAuth && openaiKeyError && (
               <p className="mt-1 text-xs text-red-400">{openaiKeyError}</p>
             )}
             <p className="mt-1 text-xs text-gray-500">
-              Required for the Codex agent. Passed only to Codex containers.
+              {useCodexOAuth
+                ? 'Codex will use your ChatGPT OAuth session.'
+                : 'Required for the Codex agent. Passed only to Codex containers.'}
             </p>
           </div>
 

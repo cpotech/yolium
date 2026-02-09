@@ -10,10 +10,10 @@ import { spawn } from 'node:child_process';
 import { PassThrough } from 'node:stream';
 import { BrowserWindow } from 'electron';
 import { createLogger } from '@main/lib/logger';
-import { loadGitConfig, generateGitCredentials, hasHostClaudeOAuth } from '@main/git/git-config';
+import { loadGitConfig, generateGitCredentials, hasHostClaudeOAuth, hasHostCodexOAuth } from '@main/git/git-config';
 import { docker, sessions, DEFAULT_IMAGE } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
-import { getGitCredentialsBind, getClaudeOAuthBind } from './project-registry';
+import { getGitCredentialsBind, getClaudeOAuthBind, getCodexOAuthBind } from './project-registry';
 
 const logger = createLogger('code-review');
 
@@ -110,8 +110,10 @@ export function checkAgentAuth(agent: string): { authenticated: boolean } {
   }
 
   if (agent === 'codex') {
-    // Codex uses OpenAI API key
-    return { authenticated: !!(storedConfig?.openaiApiKey || process.env.OPENAI_API_KEY) };
+    // Codex supports OpenAI API key OR Codex OAuth (ChatGPT) tokens
+    const hasApiKey = !!(storedConfig?.openaiApiKey || process.env.OPENAI_API_KEY);
+    const hasOAuth = !!(storedConfig?.useCodexOAuth && hasHostCodexOAuth());
+    return { authenticated: hasApiKey || hasOAuth };
   }
 
   return { authenticated: false };
@@ -164,10 +166,17 @@ export async function createCodeReviewContainer(
     binds.push(oauthBind);
   }
 
+  // Add Codex OAuth credentials if enabled
+  const codexOAuthBind = getCodexOAuthBind();
+  if (codexOAuthBind) {
+    binds.push(codexOAuthBind);
+  }
+
   logger.debug('Code review container bind mounts', { sessionId, binds });
 
   const storedConfig = loadGitConfig();
   const useOAuth = storedConfig?.useClaudeOAuth && oauthBind;
+  const useCodexOAuth = storedConfig?.useCodexOAuth && codexOAuthBind;
 
   const container = await docker.createContainer({
     Image: DEFAULT_IMAGE,
@@ -195,6 +204,7 @@ export async function createCodeReviewContainer(
         return anthropicKey ? [`ANTHROPIC_API_KEY=${anthropicKey}`] : [];
       })(),
       ...(() => {
+        if (useCodexOAuth) return ['CODEX_OAUTH_ENABLED=true'];
         const openaiKey = storedConfig?.openaiApiKey || process.env.OPENAI_API_KEY;
         return openaiKey ? [`OPENAI_API_KEY=${openaiKey}`] : [];
       })(),

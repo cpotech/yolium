@@ -15,7 +15,7 @@ import { formatLogTimestamp } from '@main/stores/workitem-log-store';
 import { loadGitConfig } from '@main/git/git-config';
 import { docker, agentSessions, DEFAULT_IMAGE, type AgentContainerSession } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
-import { getGitCredentialsBind, getClaudeOAuthBind } from './project-registry';
+import { getGitCredentialsBind, getClaudeOAuthBind, getCodexOAuthBind } from './project-registry';
 
 const logger = createLogger('agent-container');
 
@@ -191,6 +191,12 @@ export async function createAgentContainer(
     binds.push(oauthBind);
   }
 
+  // Add Codex OAuth credentials if enabled
+  const codexOAuthBind = getCodexOAuthBind();
+  if (codexOAuthBind) {
+    binds.push(codexOAuthBind);
+  }
+
   logger.debug('Agent container bind mounts', { sessionId, binds });
 
   // Encode prompt as base64 to avoid shell escaping issues
@@ -200,6 +206,7 @@ export async function createAgentContainer(
   // Load git config for identity env vars (name, email)
   const gitConfig = loadGitConfig();
   const useOAuth = gitConfig?.useClaudeOAuth && oauthBind;
+  const useCodexOAuth = gitConfig?.useCodexOAuth && codexOAuthBind;
 
   const container = await docker.createContainer({
     Image: DEFAULT_IMAGE,
@@ -230,6 +237,7 @@ export async function createAgentContainer(
         return key ? [`ANTHROPIC_API_KEY=${key}`] : [];
       })(),
       ...(() => {
+        if (useCodexOAuth) return ['CODEX_OAUTH_ENABLED=true'];
         const key = gitConfig?.openaiApiKey || process.env.OPENAI_API_KEY;
         return key ? [`OPENAI_API_KEY=${key}`] : [];
       })(),

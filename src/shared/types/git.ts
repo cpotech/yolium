@@ -8,6 +8,7 @@ export interface GitConfig {
   anthropicApiKey?: string;  // Optional Anthropic API Key for Claude/OpenCode agents
   githubLogin?: string;  // GitHub username derived from PAT via API
   useClaudeOAuth?: boolean;  // Use Claude Max OAuth tokens instead of Anthropic API key
+  useCodexOAuth?: boolean;  // Use Codex OAuth (ChatGPT) tokens instead of OpenAI API key
 }
 
 export interface GitConfigWithPat extends GitConfig {
@@ -15,6 +16,7 @@ export interface GitConfigWithPat extends GitConfig {
   hasOpenaiKey?: boolean;  // Used by IPC to indicate OpenAI key exists without exposing it
   hasAnthropicKey?: boolean;  // Used by IPC to indicate Anthropic key exists without exposing it
   hasClaudeOAuth?: boolean;  // Whether ~/.claude/.credentials.json exists on host with valid tokens
+  hasCodexOAuth?: boolean;  // Whether ~/.codex/auth.json exists on host with valid OAuth tokens
   githubLogin?: string;  // GitHub username derived from PAT
   sources?: {
     name?: 'system' | 'environment' | 'yolium';

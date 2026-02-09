@@ -218,6 +218,19 @@ if [ -f "/home/agent/.claude-credentials.json" ] && [ "${CLAUDE_OAUTH_ENABLED:-}
     log "Claude OAuth credentials staged at /home/agent/.claude/.credentials.json"
 fi
 
+# Configure Codex OAuth if credentials file is mounted and enabled
+# Only the auth.json file is bind-mounted read-only (not the entire ~/.codex directory).
+# Create a minimal ~/.codex directory and copy just the auth file into it.
+if [ -f "/home/agent/.codex-auth.json" ] && [ "${CODEX_OAUTH_ENABLED:-}" = "true" ]; then
+    log "Setting up Codex OAuth credentials..."
+    mkdir -p /home/agent/.codex
+    chmod 700 /home/agent/.codex
+    cp /home/agent/.codex-auth.json /home/agent/.codex/auth.json
+    chmod 600 /home/agent/.codex/auth.json
+    add_status "✅ Codex OAuth credentials configured"
+    log "Codex OAuth credentials staged at /home/agent/.codex/auth.json"
+fi
+
 # Create CLAUDE.md with Yolium container environment info
 cat > /home/agent/CLAUDE.md << 'CLAUDEMD'
 # Yolium Container Environment
@@ -434,9 +447,9 @@ Be thorough but constructive. Focus on substantive issues, not nitpicks."
         exit $?
     elif [ "$REVIEW_AGENT" = "codex" ]; then
         log "Running Codex for code review"
-        if [ -z "$OPENAI_API_KEY" ]; then
+        if [ -z "$OPENAI_API_KEY" ] && [ ! -f "$HOME/.codex/auth.json" ]; then
             echo "ERROR: No Codex authentication found."
-            echo "Add your OpenAI API Key in Yolium Settings."
+            echo "Add your OpenAI API Key or enable Codex OAuth (ChatGPT) in Yolium Settings."
             exit 3
         fi
         # Use danger-full-access sandbox — Codex's Landlock sandbox panics on
@@ -506,9 +519,9 @@ elif [ "$TOOL" = "agent" ]; then
         exit $?
     elif [ "$AGENT_PROV" = "codex" ]; then
         log "Starting Codex headless agent mode"
-        if [ -z "$OPENAI_API_KEY" ]; then
+        if [ -z "$OPENAI_API_KEY" ] && [ ! -f "$HOME/.codex/auth.json" ]; then
             echo "ERROR: No Codex authentication found."
-            echo "Add your OpenAI API Key in Yolium Settings."
+            echo "Add your OpenAI API Key or enable Codex OAuth (ChatGPT) in Yolium Settings."
             exit 3
         fi
         # Use danger-full-access sandbox — Codex's Landlock sandbox panics on
@@ -544,9 +557,9 @@ elif [ "$TOOL" = "opencode" ]; then
     exit 1
 elif [ "$TOOL" = "codex" ]; then
     log "Starting Codex"
-    if [ -z "$OPENAI_API_KEY" ]; then
+    if [ -z "$OPENAI_API_KEY" ] && [ ! -f "$HOME/.codex/auth.json" ]; then
         echo "No Codex authentication found."
-        echo "Add your OpenAI API Key in Yolium Settings."
+        echo "Add your OpenAI API Key or enable Codex OAuth (ChatGPT) in Yolium Settings."
         echo "Falling back to shell."
         exec /bin/zsh
     fi
