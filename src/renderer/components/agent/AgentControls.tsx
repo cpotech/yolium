@@ -210,7 +210,7 @@ export function AgentControls({
               onChange={e => onSetAnswerText(e.target.value)}
               placeholder="Type your answer..."
               rows={2}
-              className="w-full px-2 py-1.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)] rounded text-sm text-white placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent-primary)]"
+              className="w-full px-2 py-1.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)] rounded text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent-primary)]"
             />
             <div className="flex gap-2">
               <button

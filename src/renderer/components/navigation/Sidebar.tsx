@@ -49,7 +49,7 @@ export function Sidebar({
       <button
         data-testid="collapse-toggle"
         onClick={onToggleCollapse}
-        className="flex items-center justify-center p-2 text-[var(--color-text-secondary)] hover:text-white border-t border-[var(--color-border-primary)]"
+        className="flex items-center justify-center p-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] border-t border-[var(--color-border-primary)]"
       >
         {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </button>

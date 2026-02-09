@@ -464,7 +464,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search... (/)"
-              className="w-40 pl-8 pr-3 py-1.5 text-sm bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:w-56 transition-all"
+              className="w-40 pl-8 pr-3 py-1.5 text-sm bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:w-56 transition-all"
               onKeyDown={e => {
                 if (e.key === 'Escape') {
                   e.stopPropagation()
@@ -476,7 +476,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
             {searchQuery && (
               <button
                 onClick={() => { setSearchQuery(''); viewRef.current?.focus() }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-[var(--color-text-tertiary)] hover:text-white"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
               >
                 <X size={12} />
               </button>
@@ -497,7 +497,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
             data-testid="refresh-button"
             onClick={handleRefresh}
             title="Refresh (R)"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-tertiary)] rounded-md transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] rounded-md transition-colors"
           >
             <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
             Refresh
@@ -536,7 +536,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
             <button
               data-testid="clear-selection-button"
               onClick={handleClearSelection}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-tertiary)] rounded-md transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] rounded-md transition-colors"
             >
               <X size={14} />
               Clear
@@ -558,7 +558,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
           <button
             data-testid="dismiss-error"
             onClick={() => setErrorMessage(null)}
-            className="p-1 hover:text-white transition-colors"
+            className="p-1 hover:text-[var(--color-text-primary)] transition-colors"
           >
             <X size={14} />
           </button>
@@ -618,11 +618,11 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
           className="px-4 py-3 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border-primary)] text-sm"
         >
           <div className="flex items-center justify-between mb-2">
-            <h3 className="font-medium text-white flex items-center gap-2">
+            <h3 className="font-medium text-[var(--color-text-primary)] flex items-center gap-2">
               <Keyboard size={14} />
               Keyboard Shortcuts
             </h3>
-            <button onClick={() => setShowShortcutsHelp(false)} className="p-1 text-[var(--color-text-secondary)] hover:text-white">
+            <button onClick={() => setShowShortcutsHelp(false)} className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">
               <X size={14} />
             </button>
           </div>

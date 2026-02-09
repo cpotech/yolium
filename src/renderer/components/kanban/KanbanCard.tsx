@@ -204,7 +204,7 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
     >
       {/* Header: Title and Agent Badge */}
       <div className="flex items-start justify-between gap-2 mb-2">
-        <h3 className="font-bold text-[13px] text-white leading-tight line-clamp-2">{item.title}</h3>
+        <h3 className="font-bold text-[13px] text-[var(--color-text-primary)] leading-tight line-clamp-2">{item.title}</h3>
         <span
           data-testid="agent-type-badge"
           className={`flex-shrink-0 px-1.5 py-0.5 text-[10px] font-medium rounded bg-[var(--color-bg-tertiary)] ${
