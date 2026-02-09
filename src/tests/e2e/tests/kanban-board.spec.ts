@@ -279,16 +279,10 @@ test.describe('Kanban Board', () => {
     ).toContainText('Move Me');
   });
 
-  test('should delete item via dialog', async () => {
+  test('should delete item via dialog without confirmation', async () => {
     await openKanbanBoard();
     await createItemViaIPC('Delete Me', 'Item to delete');
     const { window } = ctx;
-
-    // Mock the native confirmation dialog to return true
-    await ctx.app.evaluate(({ ipcMain }) => {
-      ipcMain.removeHandler('dialog:confirm-ok-cancel');
-      ipcMain.handle('dialog:confirm-ok-cancel', () => true);
-    });
 
     // Open dialog and delete
     await window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
@@ -301,30 +295,6 @@ test.describe('Kanban Board', () => {
     await expect(
       window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard)
     ).toHaveCount(0);
-  });
-
-  test('should not delete when confirmation is cancelled', async () => {
-    await openKanbanBoard();
-    await createItemViaIPC('Keep Me', 'Item to keep');
-    const { window } = ctx;
-
-    // Mock dialog to return false (user cancels)
-    await ctx.app.evaluate(({ ipcMain }) => {
-      ipcMain.removeHandler('dialog:confirm-ok-cancel');
-      ipcMain.handle('dialog:confirm-ok-cancel', () => false);
-    });
-
-    // Open dialog and try to delete
-    await window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
-    await window.click(selectors.detailDeleteButton);
-
-    // Dialog should remain open and card should still exist
-    await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
-    await window.click(selectors.detailCloseButton);
-
-    await expect(
-      window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard)
-    ).toHaveCount(1);
   });
 
   test('should close detail dialog with Escape', async () => {
