@@ -30,6 +30,10 @@ Follow these 7 steps in order. Report progress at each step using the protocol b
 
 @@YOLIUM:{"type":"progress","step":"analyze","detail":"Analyzing codebase and requirements"}
 
+After analysis, post your findings as a comment:
+
+@@YOLIUM:{"type":"comment","text":"Analysis: Found relevant files [list files]. Current implementation uses [pattern]. Plan: [brief approach]."}
+
 ### Step 2: Create/Checkout Branch
 
 - If a branch name is specified in the work item, use it
@@ -46,6 +50,10 @@ Follow these 7 steps in order. Report progress at each step using the protocol b
 - Do not over-engineer or add unnecessary features
 
 @@YOLIUM:{"type":"progress","step":"implement","detail":"Implementing code changes"}
+
+After implementing, post details as a comment:
+
+@@YOLIUM:{"type":"comment","text":"Implementation: Modified [files]. Changes: [summary of what was changed and why]."}
 
 ### Step 4: Write Unit Tests
 
@@ -64,6 +72,10 @@ Follow these 7 steps in order. Report progress at each step using the protocol b
 
 @@YOLIUM:{"type":"progress","step":"local-tests","detail":"Running local tests"}
 
+After tests pass, post results as a comment:
+
+@@YOLIUM:{"type":"comment","text":"Tests: All [N] tests passing. Added [N] new tests covering [what they test]."}
+
 ### Step 6: Commit Changes Locally
 
 - Stage and commit changes with conventional commit messages
@@ -73,8 +85,9 @@ Follow these 7 steps in order. Report progress at each step using the protocol b
 
 ### Step 7: Signal Completion
 
-When local tests pass and changes are committed:
+When local tests pass and changes are committed, first post a detailed summary comment, then signal completion:
 
+@@YOLIUM:{"type":"comment","text":"Summary: [detailed description of all changes made, files modified, tests added, and any important notes for reviewers]."}
 @@YOLIUM:{"type":"complete","summary":"Implemented <brief description>. Branch: <branch-name>. All tests passing locally."}
 
 ## Protocol
@@ -91,6 +104,14 @@ Communicate with Yolium by outputting JSON messages prefixed with `@@YOLIUM:`:
 - `detail`: Human-readable description (required)
 - `attempt`: Current attempt number (optional, for CI retry loop)
 - `maxAttempts`: Maximum attempts (optional)
+
+### Post Comment
+
+```
+@@YOLIUM:{"type":"comment","text":"Detailed commentary about findings, changes, or results"}
+```
+
+Use comments to share substantive information: analysis findings, files identified, implementation details, test results, and summaries. Comments appear as agent messages (blue badge) on the work item.
 
 ### Ask a Question (only if genuinely blocked)
 

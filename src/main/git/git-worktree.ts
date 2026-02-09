@@ -736,7 +736,6 @@ export interface MergeAndPushResult {
   error?: string;
   conflict?: boolean;
   conflictingFiles?: string[];
-  rebased?: boolean;
 }
 
 /**
@@ -763,13 +762,12 @@ export function generatePrBranchName(worktreeBranch: string, itemTitle: string):
  *
  * Steps:
  * 1. Fetch latest default branch from remote
- * 2. Rebase the worktree branch onto the latest default (catches conflicts early, keeps history linear)
- * 3. Checkout default branch and pull latest
- * 4. Create a new well-named PR branch from the default branch
- * 5. Squash merge the rebased worktree branch into the PR branch
- * 6. Push the PR branch to remote
- * 7. Create a PR using `gh pr create`
- * 8. On success, clean up worktree and old worktree branch
+ * 2. Checkout default branch and pull latest
+ * 3. Create a new well-named PR branch from the default branch
+ * 4. Squash merge the worktree branch into the PR branch
+ * 5. Push the PR branch to remote
+ * 6. Create a PR using `gh pr create`
+ * 7. On success, clean up worktree and old worktree branch
  *
  * @param projectPath - The repository path (main worktree)
  * @param worktreeBranch - The worktree branch to merge
@@ -799,22 +797,7 @@ export function mergeBranchAndPushPR(
     // Fetch may fail if no remote configured — continue anyway
   }
 
-  // Step 2: Auto-rebase the worktree branch onto the latest default
-  // This catches conflicts early and keeps the history linear
-  const rebaseResult = rebaseBranchOntoDefault(worktreePath, projectPath);
-  if (!rebaseResult.success) {
-    if (rebaseResult.conflict) {
-      return {
-        success: false,
-        conflict: true,
-        conflictingFiles: rebaseResult.conflictingFiles,
-        error: rebaseResult.error || 'Rebase conflicts detected. Please resolve manually.',
-      };
-    }
-    return { success: false, error: rebaseResult.error || 'Rebase failed' };
-  }
-
-  // Step 3: Checkout default branch and pull latest
+  // Step 2: Checkout default branch and pull latest
   try {
     execFileSync('git', ['checkout', defaultBranch], {
       cwd: projectPath,
@@ -835,7 +818,7 @@ export function mergeBranchAndPushPR(
     // Pull may fail if no remote or if diverged — continue with local state
   }
 
-  // Step 4: Create the PR branch from default branch
+  // Step 3: Create the PR branch from default branch
   try {
     execFileSync('git', ['checkout', '-B', prBranch], {
       cwd: projectPath,
@@ -847,8 +830,7 @@ export function mergeBranchAndPushPR(
     return { success: false, error: `Failed to create PR branch: ${stderr}` };
   }
 
-  // Step 5: Squash merge the rebased worktree branch into the PR branch
-  // After a successful rebase, this squash merge is guaranteed to be clean
+  // Step 4: Squash merge the worktree branch into the PR branch
   try {
     execFileSync('git', ['merge', '--squash', worktreeBranch], {
       cwd: projectPath,
@@ -888,7 +870,7 @@ export function mergeBranchAndPushPR(
     return { success: false, error: `Merge failed: ${output || error.message || 'Unknown error'}` };
   }
 
-  // Step 6: Push the PR branch to remote
+  // Step 5: Push the PR branch to remote
   try {
     execFileSync('git', ['push', '-u', 'origin', prBranch], {
       cwd: projectPath,
@@ -913,7 +895,7 @@ export function mergeBranchAndPushPR(
     return { success: false, error: `Failed to push branch: ${stderr}` };
   }
 
-  // Step 7: Create a PR using gh CLI
+  // Step 6: Create a PR using gh CLI
   let prUrl: string | undefined;
   try {
     const prBody = itemDescription || itemTitle;
@@ -936,7 +918,7 @@ export function mergeBranchAndPushPR(
     };
   }
 
-  // Step 8: Clean up worktree and old branch, return to default branch
+  // Step 7: Clean up worktree and old branch, return to default branch
   try {
     execFileSync('git', ['checkout', defaultBranch], {
       cwd: projectPath,
@@ -948,5 +930,5 @@ export function mergeBranchAndPushPR(
 
   cleanupWorktreeAndBranch(projectPath, worktreePath, worktreeBranch);
 
-  return { success: true, prUrl, prBranch, rebased: true };
+  return { success: true, prUrl, prBranch };
 }

@@ -138,6 +138,28 @@ describe('agent-protocol', () => {
       expect(result).toBeNull();
     });
 
+    it('should parse comment message', () => {
+      const json = '{"type":"comment","text":"Found 3 relevant files: auth.ts, middleware.ts, routes.ts"}';
+      const result = parseProtocolMessage(json);
+
+      expect(result).toEqual({
+        type: 'comment',
+        text: 'Found 3 relevant files: auth.ts, middleware.ts, routes.ts',
+      });
+    });
+
+    it('should reject comment without text field', () => {
+      const json = '{"type":"comment"}';
+      const result = parseProtocolMessage(json);
+      expect(result).toBeNull();
+    });
+
+    it('should reject comment with non-string text', () => {
+      const json = '{"type":"comment","text":42}';
+      const result = parseProtocolMessage(json);
+      expect(result).toBeNull();
+    });
+
     it('should parse create_item with model field', () => {
       const json = '{"type":"create_item","title":"Task","description":"Do it","agentProvider":"claude","order":1,"model":"opus"}';
       const result = parseProtocolMessage(json);
@@ -220,6 +242,22 @@ Final line`;
         description: 'Refined task description',
       });
       expect(results[1].type).toBe('complete');
+    });
+
+    it('should extract comment messages from mixed output', () => {
+      const output = `Starting work...
+@@YOLIUM:{"type":"progress","step":"analyze","detail":"Reading codebase"}
+@@YOLIUM:{"type":"comment","text":"Found auth module using JWT tokens"}
+@@YOLIUM:{"type":"complete","summary":"Done"}`;
+
+      const results = extractProtocolMessages(output);
+      expect(results).toHaveLength(3);
+      expect(results[0].type).toBe('progress');
+      expect(results[1]).toEqual({
+        type: 'comment',
+        text: 'Found auth module using JWT tokens',
+      });
+      expect(results[2].type).toBe('complete');
     });
 
     it('should extract progress messages from mixed output', () => {

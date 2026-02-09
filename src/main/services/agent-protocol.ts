@@ -5,12 +5,13 @@ import type {
   CompleteMessage,
   ErrorMessage,
   ProgressMessage,
+  CommentMessage,
 } from '@shared/types/agent';
 
 const PROTOCOL_PREFIX = '@@YOLIUM:';
-const VALID_TYPES = ['ask_question', 'create_item', 'update_description', 'complete', 'error', 'progress'] as const;
+const VALID_TYPES = ['ask_question', 'create_item', 'update_description', 'complete', 'error', 'progress', 'comment'] as const;
 
-type AnyProtocolMessage = AskQuestionMessage | CreateItemMessage | UpdateDescriptionMessage | CompleteMessage | ErrorMessage | ProgressMessage;
+type AnyProtocolMessage = AskQuestionMessage | CreateItemMessage | UpdateDescriptionMessage | CompleteMessage | ErrorMessage | ProgressMessage | CommentMessage;
 
 export function parseProtocolMessage(json: string): AnyProtocolMessage | null {
   try {
@@ -74,6 +75,10 @@ export function parseProtocolMessage(json: string): AnyProtocolMessage | null {
           attempt: typeof parsed.attempt === 'number' ? parsed.attempt : undefined,
           maxAttempts: typeof parsed.maxAttempts === 'number' ? parsed.maxAttempts : undefined,
         };
+
+      case 'comment':
+        if (typeof parsed.text !== 'string') return null;
+        return { type: 'comment', text: parsed.text };
 
       default:
         return null;

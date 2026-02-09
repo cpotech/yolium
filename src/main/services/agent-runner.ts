@@ -39,6 +39,7 @@ import type {
   CompleteMessage,
   ErrorMessage,
   ProgressMessage,
+  CommentMessage,
 } from '@shared/types/agent';
 
 const logger = createLogger('agent-runner');
@@ -438,6 +439,13 @@ export function handleAgentOutput(sessionId: string, data: string): void {
           : `[${prog.step}] ${prog.detail}`;
         addComment(board, session.itemId, 'system', detail);
         session.events.emit('progress', prog);
+        break;
+      }
+
+      case 'comment': {
+        const c = message as CommentMessage;
+        addComment(board, session.itemId, 'agent', c.text);
+        session.events.emit('comment', c);
         break;
       }
     }
