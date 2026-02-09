@@ -175,9 +175,8 @@ fi
 cleanup() {
     rm -f /tmp/.git-credentials
     rm -rf /home/agent/.claude
-    rm -rf /home/agent/.codex
-    # Note: bind-mounted files (.claude-credentials.json, .codex-auth.json) cannot be removed;
-    # the actual credentials copies live under ~/.claude/ and ~/.codex/ (cleaned above).
+    # Note: /home/agent/.claude-credentials.json is a bind mount and cannot be removed;
+    # the actual credentials copy lives under /home/agent/.claude/ (cleaned above).
 }
 trap cleanup EXIT
 
