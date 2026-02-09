@@ -230,13 +230,6 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
   const handleBulkDelete = useCallback(async () => {
     if (!projectPath || selectedIds.size === 0) return
 
-    const count = selectedIds.size
-    const confirmed = await window.electronAPI.dialog.confirmOkCancel(
-      'Delete Items',
-      `Are you sure you want to delete ${count} item${count !== 1 ? 's' : ''}? This action cannot be undone.`
-    )
-    if (!confirmed) return
-
     try {
       await window.electronAPI.kanban.deleteItems(projectPath, Array.from(selectedIds))
       setSelectedIds(new Set())
