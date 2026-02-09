@@ -74,6 +74,17 @@ export interface AgentSession {
 const sessions = new Map<string, AgentSession>();
 
 /**
+ * Track processed protocol messages per session to prevent duplicates.
+ * Some providers (e.g., Codex) repeat their full output as a result dump,
+ * causing protocol messages to be extracted and handled twice.
+ */
+const processedProtocolMessages = new Map<string, Set<string>>();
+
+function cleanupSessionDedup(sessionId: string): void {
+  processedProtocolMessages.delete(sessionId);
+}
+
+/**
  * Clear all sessions from memory. Call on app startup to prevent
  * stale sessions from accumulating after crashes.
  */
@@ -82,6 +93,7 @@ export function clearSessions(): void {
     session.events.removeAllListeners();
   }
   sessions.clear();
+  processedProtocolMessages.clear();
 }
 
 const MODEL_MAP: Record<string, string> = {
@@ -315,6 +327,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
           }
 
           sessions.delete(sessionId);
+          cleanupSessionDedup(sessionId);
         },
       }
     );
@@ -379,7 +392,21 @@ export function handleAgentOutput(sessionId: string, data: string): void {
   const messages = extractProtocolMessages(data);
   const board = getOrCreateBoard(session.projectPath);
 
+  // Get or create dedup set for this session
+  if (!processedProtocolMessages.has(sessionId)) {
+    processedProtocolMessages.set(sessionId, new Set());
+  }
+  const seen = processedProtocolMessages.get(sessionId)!;
+
   for (const message of messages) {
+    // Deduplicate: skip exact duplicate messages (e.g., Codex repeats output in result dump)
+    const messageKey = JSON.stringify(message);
+    if (seen.has(messageKey)) {
+      logger.debug('Skipping duplicate protocol message', { sessionId, type: message.type });
+      continue;
+    }
+    seen.add(messageKey);
+
     switch (message.type) {
       case 'ask_question': {
         const q = message as AskQuestionMessage;
@@ -499,6 +526,7 @@ export async function stopAgent(sessionId: string): Promise<void> {
   }
 
   sessions.delete(sessionId);
+  cleanupSessionDedup(sessionId);
 }
 
 /**
