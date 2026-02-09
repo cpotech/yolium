@@ -568,7 +568,11 @@ export function ItemDetailDialog({
                     data-testid="agent-provider-display"
                     className="text-sm text-[var(--color-text-primary)]"
                   >
-                    {item.activeAgentName ? formatAgentRoleLabel(item.activeAgentName) : agentProviderLabels[item.agentProvider]}
+                    {item.activeAgentName
+                      ? formatAgentRoleLabel(item.activeAgentName)
+                      : item.agentType
+                        ? formatAgentRoleLabel(item.agentType)
+                        : 'No agent'}
                   </span>
                 )}
               </div>
