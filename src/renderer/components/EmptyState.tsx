@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, FolderPlus, Terminal, Folder, ArrowRight, Sun, Moon } from 'lucide-react';
+import { FolderPlus, Terminal, Folder, ArrowRight, Sun, Moon } from 'lucide-react';
 import { useTheme } from '@renderer/theme';
 import type { SidebarProject } from '@renderer/stores/sidebar-store';
 
@@ -35,55 +35,187 @@ export function EmptyState({ onNewTab, onCreateProject, projects, onProjectClick
         )}
       </button>
 
-      {/* Compact hero section */}
+      {/* Metatron's Cube hero */}
       <div className="mb-6 relative select-none">
         <div className="relative flex flex-col items-center">
-          {/* Outer hexagon glow */}
+          {/* Ambient glow behind logo */}
           <div
             className="absolute -inset-8 opacity-30"
             style={{
-              background: 'radial-gradient(circle at 50% 50%, #00aaff 0%, transparent 60%)',
+              background: 'radial-gradient(circle at 50% 30%, #00aaff 0%, transparent 60%)',
             }}
           />
 
-          {/* Hexagon border */}
+          {/* Metatron's Cube logo */}
           <svg
-            className="absolute -top-6 left-1/2 -translate-x-1/2 w-24 h-24 opacity-60"
-            viewBox="0 0 100 100"
+            width="140"
+            height="140"
+            viewBox="0 0 200 200"
+            className="relative"
+            style={{ filter: 'drop-shadow(0 0 6px rgba(0,136,255,0.4))' }}
           >
-            <polygon
-              points="50,2 95,25 95,75 50,98 5,75 5,25"
-              fill="none"
-              stroke="url(#hexGradient)"
-              strokeWidth="1"
-            />
             <defs>
-              <linearGradient id="hexGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#ffffff" />
-                <stop offset="50%" stopColor="#0088ff" />
-                <stop offset="100%" stopColor="#003366" />
+              <linearGradient id="metatronLine" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#0066aa" stopOpacity="0.3" />
+                <stop offset="50%" stopColor="#00aaff" stopOpacity="0.6" />
+                <stop offset="100%" stopColor="#0066aa" stopOpacity="0.3" />
               </linearGradient>
+              <radialGradient id="metatronCore" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#ff2200" />
+                <stop offset="60%" stopColor="#cc0000" />
+                <stop offset="100%" stopColor="#660000" />
+              </radialGradient>
+              <filter id="nodeGlow">
+                <feGaussianBlur stdDeviation="2" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
             </defs>
+
+            {/* Outer energy ring */}
+            <circle cx="100" cy="100" r="85" fill="none" stroke="#0044aa" strokeWidth="0.5" opacity="0.3">
+              <animate attributeName="r" values="83;87;83" dur="4s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.3;0.15;0.3" dur="4s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Connecting lines — sacred geometry mesh */}
+            <g stroke="url(#metatronLine)" strokeWidth="0.5" fill="none" opacity="0.7">
+              {/* Center to inner ring */}
+              <line x1="100" y1="100" x2="100" y2="60" />
+              <line x1="100" y1="100" x2="134.6" y2="80" />
+              <line x1="100" y1="100" x2="134.6" y2="120" />
+              <line x1="100" y1="100" x2="100" y2="140" />
+              <line x1="100" y1="100" x2="65.4" y2="120" />
+              <line x1="100" y1="100" x2="65.4" y2="80" />
+              {/* Center to outer ring */}
+              <line x1="100" y1="100" x2="100" y2="30" />
+              <line x1="100" y1="100" x2="160.6" y2="65" />
+              <line x1="100" y1="100" x2="160.6" y2="135" />
+              <line x1="100" y1="100" x2="100" y2="170" />
+              <line x1="100" y1="100" x2="39.4" y2="135" />
+              <line x1="100" y1="100" x2="39.4" y2="65" />
+              {/* Inner hexagon */}
+              <line x1="100" y1="60" x2="134.6" y2="80" />
+              <line x1="134.6" y1="80" x2="134.6" y2="120" />
+              <line x1="134.6" y1="120" x2="100" y2="140" />
+              <line x1="100" y1="140" x2="65.4" y2="120" />
+              <line x1="65.4" y1="120" x2="65.4" y2="80" />
+              <line x1="65.4" y1="80" x2="100" y2="60" />
+              {/* Outer hexagon */}
+              <line x1="100" y1="30" x2="160.6" y2="65" />
+              <line x1="160.6" y1="65" x2="160.6" y2="135" />
+              <line x1="160.6" y1="135" x2="100" y2="170" />
+              <line x1="100" y1="170" x2="39.4" y2="135" />
+              <line x1="39.4" y1="135" x2="39.4" y2="65" />
+              <line x1="39.4" y1="65" x2="100" y2="30" />
+              {/* Inner-to-outer connections */}
+              <line x1="100" y1="60" x2="100" y2="30" />
+              <line x1="100" y1="60" x2="160.6" y2="65" />
+              <line x1="100" y1="60" x2="39.4" y2="65" />
+              <line x1="134.6" y1="80" x2="160.6" y2="65" />
+              <line x1="134.6" y1="80" x2="160.6" y2="135" />
+              <line x1="134.6" y1="80" x2="100" y2="30" />
+              <line x1="134.6" y1="120" x2="160.6" y2="135" />
+              <line x1="134.6" y1="120" x2="100" y2="170" />
+              <line x1="100" y1="140" x2="100" y2="170" />
+              <line x1="100" y1="140" x2="39.4" y2="135" />
+              <line x1="65.4" y1="120" x2="39.4" y2="135" />
+              <line x1="65.4" y1="120" x2="100" y2="170" />
+              <line x1="65.4" y1="80" x2="39.4" y2="65" />
+              <line x1="65.4" y1="80" x2="100" y2="30" />
+              {/* Cross-through lines (Star of David) */}
+              <line x1="100" y1="30" x2="100" y2="170" />
+              <line x1="39.4" y1="65" x2="160.6" y2="135" />
+              <line x1="160.6" y1="65" x2="39.4" y2="135" />
+              {/* Additional cross connections */}
+              <line x1="65.4" y1="80" x2="160.6" y2="65" />
+              <line x1="134.6" y1="80" x2="39.4" y2="65" />
+              <line x1="134.6" y1="120" x2="39.4" y2="135" />
+              <line x1="65.4" y1="120" x2="39.4" y2="65" />
+            </g>
+
+            {/* Outer ring circles */}
+            <g opacity="0.5">
+              <circle cx="100" cy="30" r="18" fill="none" stroke="#0088cc" strokeWidth="0.5" />
+              <circle cx="160.6" cy="65" r="18" fill="none" stroke="#0088cc" strokeWidth="0.5" />
+              <circle cx="160.6" cy="135" r="18" fill="none" stroke="#0088cc" strokeWidth="0.5" />
+              <circle cx="100" cy="170" r="18" fill="none" stroke="#0088cc" strokeWidth="0.5" />
+              <circle cx="39.4" cy="135" r="18" fill="none" stroke="#0088cc" strokeWidth="0.5" />
+              <circle cx="39.4" cy="65" r="18" fill="none" stroke="#0088cc" strokeWidth="0.5" />
+            </g>
+
+            {/* Inner ring circles */}
+            <g opacity="0.4">
+              <circle cx="100" cy="60" r="12" fill="none" stroke="#00aadd" strokeWidth="0.5" />
+              <circle cx="134.6" cy="80" r="12" fill="none" stroke="#00aadd" strokeWidth="0.5" />
+              <circle cx="134.6" cy="120" r="12" fill="none" stroke="#00aadd" strokeWidth="0.5" />
+              <circle cx="100" cy="140" r="12" fill="none" stroke="#00aadd" strokeWidth="0.5" />
+              <circle cx="65.4" cy="120" r="12" fill="none" stroke="#00aadd" strokeWidth="0.5" />
+              <circle cx="65.4" cy="80" r="12" fill="none" stroke="#00aadd" strokeWidth="0.5" />
+            </g>
+
+            {/* Outer node dots — sequential pulse */}
+            <g filter="url(#nodeGlow)">
+              <circle cx="100" cy="30" r="3" fill="#0088cc" opacity="0.8">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" begin="0s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="160.6" cy="65" r="3" fill="#0088cc" opacity="0.8">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" begin="0.33s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="160.6" cy="135" r="3" fill="#0088cc" opacity="0.8">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" begin="0.66s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="100" cy="170" r="3" fill="#0088cc" opacity="0.8">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" begin="1s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="39.4" cy="135" r="3" fill="#0088cc" opacity="0.8">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" begin="1.33s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="39.4" cy="65" r="3" fill="#0088cc" opacity="0.8">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" begin="1.66s" repeatCount="indefinite" />
+              </circle>
+            </g>
+
+            {/* Inner node dots — staggered pulse */}
+            <g filter="url(#nodeGlow)">
+              <circle cx="100" cy="60" r="2" fill="#00aadd" opacity="0.7">
+                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="2.5s" begin="0.2s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="134.6" cy="80" r="2" fill="#00aadd" opacity="0.7">
+                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="2.5s" begin="0.6s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="134.6" cy="120" r="2" fill="#00aadd" opacity="0.7">
+                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="2.5s" begin="1s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="100" cy="140" r="2" fill="#00aadd" opacity="0.7">
+                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="2.5s" begin="1.4s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="65.4" cy="120" r="2" fill="#00aadd" opacity="0.7">
+                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="2.5s" begin="1.8s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="65.4" cy="80" r="2" fill="#00aadd" opacity="0.7">
+                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="2.5s" begin="2.2s" repeatCount="indefinite" />
+              </circle>
+            </g>
+
+            {/* Center core — red eye */}
+            <circle cx="100" cy="100" r="8" fill="url(#metatronCore)" opacity="0.9">
+              <animate attributeName="r" values="7;9;7" dur="3s" repeatCount="indefinite" />
+            </circle>
+            <circle cx="100" cy="100" r="3" fill="#fff" opacity="0.85">
+              <animate attributeName="opacity" values="0.85;0.5;0.85" dur="2s" repeatCount="indefinite" />
+            </circle>
+            {/* Core pulse ring */}
+            <circle cx="100" cy="100" r="14" fill="none" stroke="#ff0000" strokeWidth="0.5" opacity="0.3">
+              <animate attributeName="r" values="12;16;12" dur="3s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.3;0.1;0.3" dur="3s" repeatCount="indefinite" />
+            </circle>
           </svg>
 
-          {/* Red core */}
-          <div
-            className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full z-10"
-            style={{
-              background: 'radial-gradient(circle, #ff0000 0%, #aa0000 100%)',
-              boxShadow: '0 0 8px #ff0000, 0 0 16px #ff0000, 0 0 32px #ff3300',
-            }}
-          />
-
           {/* Main text */}
-          <div className="relative mt-12">
-            <div
-              className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none"
-              style={{
-                background: 'repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0,170,255,0.5) 3px, rgba(0,170,255,0.5) 4px)',
-              }}
-            />
-
+          <div className="relative mt-4">
             {/* Shadow layer */}
             <div
               className="absolute inset-0 text-5xl sm:text-6xl font-bold tracking-[0.2em]"
