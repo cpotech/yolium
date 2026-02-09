@@ -13,6 +13,7 @@ import { createLogger } from '@main/lib/logger';
 import { extractProtocolMessages } from '@main/services/agent-protocol';
 import { formatLogTimestamp } from '@main/stores/workitem-log-store';
 import { loadGitConfig } from '@main/git/git-config';
+import { fixWorktreeGitFile } from '@main/git/git-worktree';
 import { docker, agentSessions, DEFAULT_IMAGE, type AgentContainerSession } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
 import { getGitCredentialsBind, getClaudeOAuthBind, getCodexOAuthBind } from './project-registry';
@@ -283,6 +284,10 @@ export async function createAgentContainer(
         } catch {
           // Container may already be stopped
         }
+        // Re-fix worktree .git paths — the Linux container rewrites them to /c/ style
+        if (process.platform === 'win32' && session.worktreePath) {
+          fixWorktreeGitFile(session.worktreePath);
+        }
         onExit?.(124); // Timeout exit code
       }
     }, effectiveTimeoutMs);
@@ -396,6 +401,11 @@ export async function createAgentContainer(
 
       session.state = 'stopped';
 
+      // Re-fix worktree .git paths — the Linux container rewrites them to /c/ style
+      if (process.platform === 'win32' && session.worktreePath) {
+        fixWorktreeGitFile(session.worktreePath);
+      }
+
       let exitCode = 0;
       try {
         const info = await container.inspect();
@@ -484,6 +494,11 @@ export async function stopAgentContainer(sessionId: string): Promise<void> {
 
   // Worktree is NOT deleted here — it persists with the kanban item
   // and gets cleaned up on merge or item deletion
+
+  // Re-fix worktree .git paths — the Linux container rewrites them to /c/ style
+  if (process.platform === 'win32' && session.worktreePath) {
+    fixWorktreeGitFile(session.worktreePath);
+  }
 
   agentSessions.delete(sessionId);
 }
