@@ -345,14 +345,14 @@ export function ItemDetailDialog({
 
       const confirmed = await window.electronAPI.dialog.confirmOkCancel(
         'Squash, Merge & Create PR',
-        `Rebase branch "${item.branch}" onto latest default, then squash merge and push a PR?\n\n${statsMsg}`
+        `Squash merge branch "${item.branch}" and push a PR?\n\n${statsMsg}`
       )
       if (!confirmed) {
         setIsMerging(false)
         return
       }
 
-      // Rebase, squash merge, push, and create PR
+      // Squash merge, push, and create PR
       const result = await window.electronAPI.git.mergeAndPushPR(
         projectPath,
         item.branch,
@@ -362,7 +362,7 @@ export function ItemDetailDialog({
       )
 
       if (result.success && !result.error) {
-        // Full success: rebased, merged, pushed, PR created, worktree cleaned up
+        // Full success: merged, pushed, PR created, worktree cleaned up
         await window.electronAPI.kanban.updateItem(projectPath, item.id, {
           mergeStatus: 'merged',
           worktreePath: undefined,
@@ -392,7 +392,7 @@ export function ItemDetailDialog({
         const fileList = result.conflictingFiles?.length
           ? `\nConflicting files:\n${result.conflictingFiles.map(f => `  - ${f}`).join('\n')}`
           : ''
-        setErrorMessage(`Rebase conflict detected. Please resolve manually.${fileList}`)
+        setErrorMessage(`Merge conflict detected. Please resolve manually.${fileList}`)
         setConflictCheck({ clean: false, conflictingFiles: result.conflictingFiles || [] })
         onUpdated()
       } else {

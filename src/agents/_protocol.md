@@ -61,6 +61,18 @@ Reports real-time step progress from the agent (does not pause execution).
 | attempt | number | no | Current attempt number (for retry loops) |
 | maxAttempts | number | no | Maximum retry attempts |
 
+### comment
+
+Posts detailed commentary to the work item (shown as agent message). Use this to share analysis findings, implementation details, test results, and other substantive information with the user.
+
+```json
+{"type":"comment","text":"Found 3 relevant files: src/auth.ts, src/middleware.ts, src/routes/login.ts. The auth module uses JWT tokens with a 24h expiry."}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| text | string | yes | The commentary text to post |
+
 ### complete
 
 Signals successful completion.
