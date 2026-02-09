@@ -530,7 +530,7 @@ function App(): React.ReactElement {
           {tabs.length === 0 ? (
             <>
               <div className="flex-1 min-h-0">
-                <EmptyState onNewTab={handleNewYolium} onCreateProject={handleAddProject} />
+                <EmptyState onNewTab={handleNewYolium} onCreateProject={handleAddProject} projects={sidebarProjects} onProjectClick={handleProjectClick} />
               </div>
               {/* Minimal status bar for empty state */}
               <div className="flex items-center justify-end h-7 px-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)] text-xs shrink-0 gap-2">
