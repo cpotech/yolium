@@ -137,7 +137,7 @@ export function ItemDetailDialog({
         setBaseAgentType(item.agentType || '')
         setBaseAgentProvider(item.agentProvider)
         setBaseModel(item.model || '')
-        setPrUrl(null)
+        setPrUrl(item.prUrl || null)
         setConflictCheck(null)
         prevItemIdRef.current = item.id
       }
@@ -359,6 +359,7 @@ export function ItemDetailDialog({
         await window.electronAPI.kanban.updateItem(projectPath, item.id, {
           mergeStatus: 'merged',
           worktreePath: undefined,
+          prUrl: result.prUrl,
         })
         if (result.prUrl) {
           setPrUrl(result.prUrl)
