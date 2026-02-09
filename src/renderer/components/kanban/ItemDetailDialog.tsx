@@ -423,7 +423,7 @@ export function ItemDetailDialog({
         e.preventDefault()
         handleClose()
       }
-      if (e.key === 'Enter' && e.ctrlKey && !isSaving) {
+      if (e.key === 'Enter' && e.ctrlKey && !isSaving && title.trim().length > 0) {
         e.preventDefault()
         handleSave()
       }
@@ -435,7 +435,7 @@ export function ItemDetailDialog({
         trapFocus(e, dialogRef.current)
       }
     },
-    [handleClose, isSaving, handleSave, isDeleting, handleDelete]
+    [handleClose, isSaving, handleSave, isDeleting, handleDelete, title]
   )
 
   if (!isOpen || !item) return null
@@ -490,7 +490,7 @@ export function ItemDetailDialog({
                   htmlFor="detail-title"
                   className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
                 >
-                  Title
+                  Title <span className="text-red-400">*</span>
                 </label>
                 <input
                   id="detail-title"
@@ -779,7 +779,7 @@ export function ItemDetailDialog({
                 <button
                   data-testid="save-button"
                   onClick={handleSave}
-                  disabled={isSaving}
+                  disabled={isSaving || !title.trim()}
                   title="Ctrl+Enter"
                   className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
                     hasUnsavedChanges
