@@ -34,18 +34,6 @@ const agentProviderLabels: Record<KanbanItem['agentProvider'], string> = {
 }
 
 /**
- * Extract display label from agent definition name.
- * e.g., 'code-agent' → 'Code', 'plan-agent' → 'Plan'
- */
-function formatAgentRoleLabel(agentName: string): string {
-  return agentName
-    .replace(/-agent$/, '')
-    .split('-')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-}
-
-/**
  * Format a timestamp as a relative time string.
  * @param isoString - ISO 8601 timestamp string
  * @returns Human-readable relative time
@@ -568,11 +556,7 @@ export function ItemDetailDialog({
                     data-testid="agent-provider-display"
                     className="text-sm text-[var(--color-text-primary)]"
                   >
-                    {item.activeAgentName
-                      ? formatAgentRoleLabel(item.activeAgentName)
-                      : item.agentType
-                        ? formatAgentRoleLabel(item.agentType)
-                        : 'No agent'}
+                    {agentProviderLabels[item.agentProvider]}
                   </span>
                 )}
               </div>
