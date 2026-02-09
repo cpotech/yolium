@@ -412,4 +412,86 @@ describe('KanbanCard', () => {
     expect(screen.queryByTestId('resume-agent-card-btn')).not.toBeInTheDocument()
     expect(screen.queryByTestId('run-again-card-btn')).not.toBeInTheDocument()
   })
+
+  // Merge status indicator tests
+  it('should not show merge status indicator when mergeStatus is undefined', () => {
+    const item = createMockItem({ mergeStatus: undefined })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.queryByTestId('merge-status-indicator')).not.toBeInTheDocument()
+  })
+
+  it('should show unmerged indicator with blue styling', () => {
+    const item = createMockItem({ mergeStatus: 'unmerged' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    const indicator = screen.getByTestId('merge-status-indicator')
+    expect(indicator).toBeInTheDocument()
+    expect(indicator).toHaveTextContent('Unmerged')
+    expect(indicator).toHaveClass('text-blue-400')
+  })
+
+  it('should show merged indicator with green styling', () => {
+    const item = createMockItem({ mergeStatus: 'merged' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    const indicator = screen.getByTestId('merge-status-indicator')
+    expect(indicator).toBeInTheDocument()
+    expect(indicator).toHaveTextContent('Merged')
+    expect(indicator).toHaveClass('text-green-400')
+  })
+
+  it('should show conflict indicator with red styling', () => {
+    const item = createMockItem({ mergeStatus: 'conflict' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    const indicator = screen.getByTestId('merge-status-indicator')
+    expect(indicator).toBeInTheDocument()
+    expect(indicator).toHaveTextContent('Conflict')
+    expect(indicator).toHaveClass('text-red-400')
+  })
+
+  it('should show PR link button for merged items with prUrl', () => {
+    const mockOpenExternal = vi.fn()
+    Object.defineProperty(window, 'electronAPI', {
+      value: { app: { openExternal: mockOpenExternal } },
+      writable: true,
+    })
+
+    const item = createMockItem({ mergeStatus: 'merged', prUrl: 'https://github.com/org/repo/pull/42' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    const prLink = screen.getByTestId('pr-link-btn')
+    expect(prLink).toBeInTheDocument()
+  })
+
+  it('should not show PR link button for merged items without prUrl', () => {
+    const item = createMockItem({ mergeStatus: 'merged', prUrl: undefined })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.queryByTestId('pr-link-btn')).not.toBeInTheDocument()
+  })
+
+  it('should call openExternal when PR link button is clicked', () => {
+    const mockOpenExternal = vi.fn()
+    Object.defineProperty(window, 'electronAPI', {
+      value: { app: { openExternal: mockOpenExternal } },
+      writable: true,
+    })
+
+    const item = createMockItem({ mergeStatus: 'merged', prUrl: 'https://github.com/org/repo/pull/42' })
+    const onClick = vi.fn()
+    render(<KanbanCard item={item} onClick={onClick} />)
+
+    fireEvent.click(screen.getByTestId('pr-link-btn'))
+    expect(mockOpenExternal).toHaveBeenCalledWith('https://github.com/org/repo/pull/42')
+    expect(onClick).not.toHaveBeenCalled() // stopPropagation should prevent card click
+  })
+
+  it('should not show PR link button for unmerged items', () => {
+    const item = createMockItem({ mergeStatus: 'unmerged', prUrl: 'https://github.com/org/repo/pull/42' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.queryByTestId('pr-link-btn')).not.toBeInTheDocument()
+  })
 })
