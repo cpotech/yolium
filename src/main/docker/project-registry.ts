@@ -8,7 +8,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { app } from 'electron';
 import { createLogger } from '@main/lib/logger';
-import { loadGitConfig, generateGitCredentials, getHostClaudeCredentialsPath } from '@main/git/git-config';
+import { loadGitConfig, generateGitCredentials, getHostClaudeCredentialsPath, getHostCodexCredentialsPath } from '@main/git/git-config';
 import { getProjectDirName, toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
 
 const logger = createLogger('project-registry');
@@ -216,4 +216,24 @@ export function getClaudeOAuthBind(): string | null {
   }
   logger.info('Claude OAuth credentials file found for mounting', { credPath });
   return `${toDockerPath(credPath)}:/home/agent/.claude-credentials.json:ro`;
+}
+
+/**
+ * Get Codex OAuth credentials file bind mount if OAuth is enabled.
+ * Mounts only ~/.codex/auth.json (not the entire ~/.codex directory).
+ *
+ * @returns Bind mount string or null if OAuth not configured
+ */
+export function getCodexOAuthBind(): string | null {
+  const gitConfig = loadGitConfig();
+  if (!gitConfig?.useCodexOAuth) {
+    return null;
+  }
+  const authPath = getHostCodexCredentialsPath();
+  if (!authPath) {
+    logger.debug('No Codex OAuth credentials to mount (~/.codex/auth.json not found)');
+    return null;
+  }
+  logger.info('Codex OAuth credentials file found for mounting', { authPath });
+  return `${toDockerPath(authPath)}:/home/agent/.codex-auth.json:ro`;
 }

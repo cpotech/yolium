@@ -132,7 +132,7 @@ const fs = {
 // Git namespace
 const git = {
   loadConfig: () => ipcRenderer.invoke('git-config:load'),
-  saveConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean }) =>
+  saveConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean }) =>
     ipcRenderer.invoke('git-config:save', config),
   isRepo: (folderPath: string) => ipcRenderer.invoke('git:is-repo', folderPath),
   getBranch: (folderPath: string) => ipcRenderer.invoke('git:get-branch', folderPath),
@@ -433,8 +433,8 @@ declare global {
         }>;
       };
       git: {
-        loadConfig: () => Promise<{ name: string; email: string; hasPat?: boolean; hasOpenaiKey?: boolean; hasAnthropicKey?: boolean; hasClaudeOAuth?: boolean; useClaudeOAuth?: boolean; githubLogin?: string } | null>;
-        saveConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean }) => Promise<void>;
+        loadConfig: () => Promise<{ name: string; email: string; hasPat?: boolean; hasOpenaiKey?: boolean; hasAnthropicKey?: boolean; hasClaudeOAuth?: boolean; useClaudeOAuth?: boolean; hasCodexOAuth?: boolean; useCodexOAuth?: boolean; githubLogin?: string } | null>;
+        saveConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean }) => Promise<void>;
         isRepo: (folderPath: string) => Promise<{ isRepo: boolean; hasCommits: boolean }>;
         getBranch: (folderPath: string) => Promise<string | null>;
         init: (folderPath: string) => Promise<{ success: boolean; initialized?: boolean; error?: string }>;

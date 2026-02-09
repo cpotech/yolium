@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { IpcMain } from 'electron';
 import { createLogger } from '@main/lib/logger';
-import { loadGitConfig, loadDetectedGitConfig, saveGitConfig, fetchGitHubUser, hasHostClaudeOAuth } from '@main/git/git-config';
+import { loadGitConfig, loadDetectedGitConfig, saveGitConfig, fetchGitHubUser, hasHostClaudeOAuth, hasHostCodexOAuth } from '@main/git/git-config';
 import {
   isGitRepo,
   hasCommits,
@@ -47,12 +47,14 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
       hasAnthropicKey: !!detectedConfig.anthropicApiKey,
       hasClaudeOAuth: hasHostClaudeOAuth(),
       useClaudeOAuth: storedConfig?.useClaudeOAuth ?? false,
+      hasCodexOAuth: hasHostCodexOAuth(),
+      useCodexOAuth: storedConfig?.useCodexOAuth ?? false,
       githubLogin: storedConfig?.githubLogin,
     };
   });
 
   // Save git config (preserves existing secrets if not provided, auto-derives identity from PAT)
-  ipcMain.handle('git-config:save', async (_event, config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean }) => {
+  ipcMain.handle('git-config:save', async (_event, config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean }) => {
     // Load existing config to preserve secrets if not provided in save
     const existing = loadGitConfig();
     const toSave: GitConfig = {
@@ -102,6 +104,17 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
       }
     } else if (existing?.useClaudeOAuth) {
       toSave.useClaudeOAuth = existing.useClaudeOAuth;
+    }
+
+    // Handle Codex OAuth toggle
+    if (config.useCodexOAuth !== undefined) {
+      toSave.useCodexOAuth = config.useCodexOAuth;
+      if (config.useCodexOAuth) {
+        // When OAuth is enabled, clear OpenAI API key (mutual exclusion)
+        delete toSave.openaiApiKey;
+      }
+    } else if (existing?.useCodexOAuth) {
+      toSave.useCodexOAuth = existing.useCodexOAuth;
     }
 
     // Auto-derive git identity from PAT via GitHub API

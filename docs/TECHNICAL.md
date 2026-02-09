@@ -49,7 +49,7 @@ These resources remain across sessions:
 | **Docker Image** | `yolium:latest` | Rebuilt only when explicitly requested |
 | **Project Caches** | `~/.cache/yolium/<project>/` | npm, pip, maven, gradle, nuget caches |
 | **Shell History** | `~/.yolium/projects/<project>/history` | Command history per project |
-| **Host Credentials** | `~/.claude/.credentials.json` | Claude Max OAuth tokens (mounted read-only into containers when enabled) |
+| **Host Credentials** | `~/.claude/.credentials.json`, `~/.codex/auth.json` | OAuth tokens (mounted read-only into containers when enabled) |
 | **Original Project** | Your project directory | Never modified by cleanup |
 
 ### Cleanup Timing
@@ -122,6 +122,7 @@ The AI agent inside the container does **not** have direct access to your host f
 | `<original-repo>/.git` | `<container-home>/<repo>/.git` | rw | Per-session | Git data (worktree mode only) |
 | git-credentials | `/home/agent/.git-credentials-mounted` | ro | Global | GitHub PAT (staged, cleaned on exit) |
 | `~/.claude/.credentials.json` | `/home/agent/.claude-credentials.json` | ro | Global | Claude OAuth token (staged, cleaned on exit) |
+| `~/.codex/auth.json` | `/home/agent/.codex-auth.json` | ro | Global | Codex OAuth token (staged, cleaned on exit) |
 
 **This is the only way the agent interacts with your host filesystem.** The agent cannot read your home directory, other projects, or system files - only the explicitly mounted paths above.
 
@@ -135,6 +136,15 @@ Yolium supports two authentication methods for Claude Code agents:
 | **Claude Max OAuth** | `~/.claude/.credentials.json` mounted read-only, copied into a minimal `~/.claude` directory inside container with `CLAUDE_CONFIG_DIR` set | Claude Max subscription ($100/mo) |
 
 These are mutually exclusive -- toggling OAuth on in Settings clears the API key, and vice versa. Only the credentials file is mounted (not the entire `~/.claude` directory): mounted read-only at `/home/agent/.claude-credentials.json`, copied to `/home/agent/.claude/.credentials.json` with restricted permissions (directory: 700, file: 600), and cleaned up on container exit.
+
+Yolium supports two authentication methods for Codex agents:
+
+| Method | How It Works | When to Use |
+|--------|-------------|-------------|
+| **OpenAI API Key** | Passed as `OPENAI_API_KEY` env var to the container | Pay-per-token API usage |
+| **Codex OAuth (ChatGPT)** | `~/.codex/auth.json` mounted read-only, copied into `~/.codex/auth.json` inside container | ChatGPT subscription login via `codex login` |
+
+These are mutually exclusive -- toggling OAuth on in Settings clears the API key, and vice versa. Only `auth.json` is mounted (not the entire `~/.codex` directory): mounted read-only at `/home/agent/.codex-auth.json`, copied to `/home/agent/.codex/auth.json` with restricted permissions (directory: 700, file: 600), and cleaned up on container exit.
 
 ### Cache Retention Policy
 
