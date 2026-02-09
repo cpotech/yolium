@@ -71,6 +71,10 @@ export function registerAgentHandlers(ipcMain: IpcMain): void {
         win?.webContents.send('kanban:board-updated', params.projectPath);
       });
 
+      events.on('descriptionUpdated', () => {
+        win?.webContents.send('kanban:board-updated', params.projectPath);
+      });
+
       events.on('complete', (summary: string) => {
         win?.webContents.send('agent:complete', result.sessionId, summary);
         win?.webContents.send('kanban:board-updated', params.projectPath);
@@ -131,6 +135,10 @@ export function registerAgentHandlers(ipcMain: IpcMain): void {
       });
 
       events.on('commentAdded', () => {
+        win?.webContents.send('kanban:board-updated', params.projectPath);
+      });
+
+      events.on('descriptionUpdated', () => {
         win?.webContents.send('kanban:board-updated', params.projectPath);
       });
 
