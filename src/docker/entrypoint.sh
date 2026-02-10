@@ -456,7 +456,7 @@ Be thorough but constructive. Focus on substantive issues, not nitpicks."
         # kernels where Landlock is compiled but not functional.
         # Docker already provides container-level isolation.
         # See: https://github.com/openai/codex/issues/2267
-        codex exec --sandbox danger-full-access "$REVIEW_PROMPT"
+        codex exec -c 'model_reasoning_effort="high"' --sandbox danger-full-access "$REVIEW_PROMPT"
         exit $?
     else
         echo "ERROR: Unknown review agent: $REVIEW_AGENT"
@@ -524,10 +524,17 @@ elif [ "$TOOL" = "agent" ]; then
             echo "Add your OpenAI API Key or enable Codex OAuth (ChatGPT) in Yolium Settings."
             exit 3
         fi
+        # Configure Codex for autonomous agent work — default reasoning effort
+        # is "none" which causes the agent to stop after analysis without
+        # implementing changes. Set via both config.toml and -c flag for reliability.
+        mkdir -p "$HOME/.codex"
+        cat > "$HOME/.codex/config.toml" << 'CODEXCFG'
+model_reasoning_effort = "high"
+CODEXCFG
         # Use danger-full-access sandbox — Codex's Landlock sandbox panics on
         # kernels where Landlock is compiled but not functional.
         # Docker already provides container-level isolation.
-        codex exec --sandbox danger-full-access "$PROMPT"
+        codex exec -c 'model_reasoning_effort="high"' --sandbox danger-full-access "$PROMPT"
         exit $?
     else
         log "Starting Claude Code agent"

@@ -435,6 +435,30 @@ export async function createAgentContainer(
 
   // Handle completion
   stream.on('end', async () => {
+    // Flush any remaining data in the line buffer (e.g., last line without trailing newline)
+    if (lineBuffer.trim()) {
+      const trimmed = lineBuffer.trim();
+      lineBuffer = '';
+      // Process as raw text (non-JSON lines go through catch, same as handleOutput)
+      try {
+        const event = JSON.parse(trimmed);
+        const parsed = parseStreamEvent(event);
+        if (parsed.text) {
+          onOutput?.(parsed.text + '\n');
+          const protocolMsgs = extractProtocolMessages(parsed.text);
+          for (const msg of protocolMsgs) {
+            onProtocolMessage?.(msg);
+          }
+        }
+      } catch {
+        onOutput?.(trimmed + '\n');
+        const protocolMsgs = extractProtocolMessages(trimmed);
+        for (const msg of protocolMsgs) {
+          onProtocolMessage?.(msg);
+        }
+      }
+    }
+
     const session = agentSessions.get(sessionId);
     if (session) {
       // Clear timeout
