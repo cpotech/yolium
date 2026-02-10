@@ -15,6 +15,7 @@ import {
   isGitRepo,
   sanitizeBranchName,
 } from '@main/git/git-worktree';
+import { loadGitConfig } from '@main/git/git-config';
 import {
   getOrCreateBoard,
   addItem,
@@ -111,6 +112,29 @@ export function resolveModel(itemModel: string | undefined, agentModel: string):
   return MODEL_MAP[shortName] || shortName;
 }
 
+/**
+ * Get a human-readable model name for display in comments.
+ * For Claude, shows the short model name (opus, sonnet, haiku).
+ * For non-Claude providers, shows the provider's actual model.
+ */
+export function getDisplayModel(provider: string, itemModel: string | undefined, agentModel: string): string {
+  const shortName = itemModel || agentModel;
+  if (provider === 'claude') {
+    return shortName;
+  }
+  if (provider === 'opencode') {
+    const gitConfig = loadGitConfig();
+    if (!gitConfig?.anthropicApiKey && !process.env.ANTHROPIC_API_KEY) {
+      return 'kimi-k2.5-free';
+    }
+    return shortName;
+  }
+  if (provider === 'codex') {
+    return 'codex-default';
+  }
+  return shortName;
+}
+
 export interface StartAgentParams {
   webContentsId: number;
   agentName: string;
@@ -191,7 +215,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
 
   // Update item status to running and move to in-progress column
   updateItem(board, itemId, { agentStatus: 'running', activeAgentName: agentName, column: 'in-progress' });
-  const displayModel = item.model || agent.model;
+  const displayModel = getDisplayModel(provider, item.model, agent.model);
   addComment(board, itemId, 'system', `${agentName} started (${provider}/${displayModel})`);
 
   // Create or reuse worktree for branch isolation (best-effort, graceful fallback)
