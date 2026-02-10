@@ -126,6 +126,7 @@ export interface AgentContainerParams {
   projectPath: string;
   agentName: string;
   prompt: string;
+  goal?: string; // Separate goal text for non-Claude providers that need a focused prompt
   model: string;
   tools: string[];
   itemId: string;
@@ -159,7 +160,7 @@ export async function createAgentContainer(
   params: AgentContainerParams,
   callbacks: AgentContainerCallbacks = {}
 ): Promise<string> {
-  const { webContentsId, projectPath, agentName, prompt, model, tools, itemId, agentProvider, worktreePath, originalPath, branchName, timeoutMs } = params;
+  const { webContentsId, projectPath, agentName, prompt, goal, model, tools, itemId, agentProvider, worktreePath, originalPath, branchName, timeoutMs } = params;
   const { onOutput, onDisplayOutput, onProtocolMessage, onExit } = callbacks;
 
   const sessionId = `agent-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -219,6 +220,7 @@ export async function createAgentContainer(
 
   // Encode prompt as base64 to avoid shell escaping issues
   const promptBase64 = Buffer.from(prompt).toString('base64');
+  const goalBase64 = goal ? Buffer.from(goal).toString('base64') : undefined;
   logger.info('Agent prompt encoded', { sessionId, promptLength: prompt.length, base64Length: promptBase64.length });
 
   // Load git config for identity env vars (name, email)
@@ -242,6 +244,7 @@ export async function createAgentContainer(
       `AGENT_TOOLS=${tools.join(',')}`,
       `AGENT_ITEM_ID=${itemId}`,
       `AGENT_PROVIDER=${agentProvider || 'claude'}`,
+      ...(goalBase64 ? [`AGENT_GOAL=${goalBase64}`] : []),
       `HOST_HOME=${toContainerHomePath(os.homedir())}`,
       'OPENCODE_YOLO=true',  // Skip permission prompts — container is already isolated
       ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),

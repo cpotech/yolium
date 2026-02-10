@@ -271,6 +271,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
         projectPath,
         agentName,
         prompt,
+        goal: effectiveGoal,
         model,
         tools: agent.tools,
         itemId,
