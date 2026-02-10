@@ -38,6 +38,9 @@ out/
 # Planning (local-only)
 .planning/
 
+# Agent instructions (written by entrypoint for non-Claude providers)
+.yolium-agent-instructions.md
+
 # E2E test results
 src/tests/e2e-results/
 
