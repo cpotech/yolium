@@ -502,6 +502,7 @@ declare global {
             createdAt: string;
             updatedAt: string;
           }>;
+          lastAgentName?: string;
           createdAt: string;
           updatedAt: string;
         }>;

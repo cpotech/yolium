@@ -9,6 +9,7 @@ import { SpeechToTextButton } from './SpeechToTextButton';
 
 interface StatusBarProps {
   folderPath: string;
+  lastAgentName?: string;
   containerState?: ContainerState;
   onStop?: () => void;
   onShowShortcuts: () => void;
@@ -24,8 +25,16 @@ interface StatusBarProps {
   tokenUsage?: AgentTokenUsage;
 }
 
+function formatAgentLabel(name: string): string {
+  return name
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 export function StatusBar({
   folderPath,
+  lastAgentName,
   containerState,
   onStop,
   onShowShortcuts,
@@ -51,11 +60,25 @@ export function StatusBar({
   const hasTokenUsage = !!tokenUsage && (
     tokenUsage.inputTokens > 0 || tokenUsage.outputTokens > 0 || tokenUsage.costUsd > 0
   );
+  const lastAgentLabel = lastAgentName ? formatAgentLabel(lastAgentName) : null;
 
   return (
     <div data-testid="status-bar" className="flex items-center justify-between h-7 px-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)] text-xs shrink-0">
-      {/* Left: folder path + git branch + state */}
+      {/* Left: last agent + folder path + git branch + state */}
       <div className="flex items-center gap-2 text-[var(--color-text-secondary)] truncate overflow-hidden min-w-0">
+        {lastAgentLabel && (
+          <>
+            <span
+              data-testid="status-last-agent"
+              className="flex items-center gap-1 text-[var(--color-text-secondary)] min-w-0"
+              title={`Last agent: ${lastAgentLabel}`}
+            >
+              <span className="text-[var(--color-text-muted)]">Last agent:</span>
+              <span className="truncate max-w-[120px]">{lastAgentLabel}</span>
+            </span>
+            <span className="text-[var(--color-text-muted)]">|</span>
+          </>
+        )}
         <span data-testid="status-path" className="truncate max-w-[300px]" title={folderPath}>
           {folderPath}
         </span>

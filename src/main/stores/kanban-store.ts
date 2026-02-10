@@ -120,6 +120,15 @@ export function getOrCreateBoard(projectPath: string): KanbanBoard {
   return getBoard(projectPath) || createBoard(projectPath);
 }
 
+export function updateBoard(
+  board: KanbanBoard,
+  updates: Partial<Pick<KanbanBoard, 'lastAgentName'>>
+): KanbanBoard {
+  Object.assign(board, updates, { updatedAt: new Date().toISOString() });
+  saveBoard(board);
+  return board;
+}
+
 export interface NewItemParams {
   title: string;
   description: string;
