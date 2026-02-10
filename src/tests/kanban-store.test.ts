@@ -6,6 +6,7 @@ import {
   getBoard,
   deleteBoard,
   addItem,
+  updateBoard,
   updateItem,
   addComment,
   deleteItems,
@@ -110,6 +111,16 @@ describe('kanban-store', () => {
 
       // Both should write to the same file path (same hash)
       expect(path1).toBe(path2);
+    });
+  });
+
+  describe('updateBoard', () => {
+    it('should update board metadata', () => {
+      const board = createBoard('/path/to/project');
+
+      updateBoard(board, { lastAgentName: 'code-agent' });
+
+      expect(board.lastAgentName).toBe('code-agent');
     });
   });
 

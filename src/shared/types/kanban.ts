@@ -49,6 +49,7 @@ export interface KanbanBoard {
   id: string;
   projectPath: string;
   items: KanbanItem[];
+  lastAgentName?: string;
   createdAt: string;
   updatedAt: string;
 }

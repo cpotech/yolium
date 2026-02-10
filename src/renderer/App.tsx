@@ -7,6 +7,7 @@ import { useDialogState } from '@renderer/hooks/useDialogState';
 import { useAgentCreation } from '@renderer/hooks/useAgentCreation';
 import { useCodeReview } from '@renderer/hooks/useCodeReview';
 import { useAgentCostTracker } from '@renderer/hooks/useAgentCostTracker';
+import { useLastAgentTracker } from '@renderer/hooks/useLastAgentTracker';
 import { useKeyboardShortcuts } from '@renderer/hooks/useKeyboardShortcuts';
 import { useGitBranchPolling } from '@renderer/hooks/useGitBranchPolling';
 import { TabBar } from '@renderer/components/tabs/TabBar';
@@ -56,7 +57,12 @@ function App(): React.ReactElement {
     () => tabs.filter(t => t.type === 'kanban').map(t => t.cwd),
     [tabs]
   );
+  const trackedProjectPaths = useMemo(
+    () => tabs.map(t => t.cwd).filter((path): path is string => !!path),
+    [tabs]
+  );
   const { tokenUsageByProject } = useAgentCostTracker(kanbanProjectPaths);
+  const { getLastAgentName } = useLastAgentTracker(trackedProjectPaths);
 
   // Whisper speech-to-text
   const whisper = useWhisper();
@@ -613,6 +619,7 @@ function App(): React.ReactElement {
                       />
                       <StatusBar
                         folderPath={tab.cwd}
+                        lastAgentName={getLastAgentName(tab.cwd)}
                         tokenUsage={tokenUsageByProject[tab.cwd]}
                         onShowShortcuts={dialogs.openShortcutsDialog}
                         onOpenSettings={dialogs.openGitConfigDialog}
@@ -647,6 +654,7 @@ function App(): React.ReactElement {
                     </div>
                     <StatusBar
                       folderPath={tab.cwd}
+                      lastAgentName={getLastAgentName(tab.cwd)}
                       containerState={tab.containerState}
                       onStop={() => handleStopYolium(tab.id)}
                       onShowShortcuts={dialogs.openShortcutsDialog}
