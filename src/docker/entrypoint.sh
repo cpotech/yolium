@@ -437,14 +437,12 @@ Be thorough but constructive. Focus on substantive issues, not nitpicks."
         exit $?
     elif [ "$REVIEW_AGENT" = "opencode" ]; then
         log "Running OpenCode for code review"
-        # If no API key, fall back to OpenCode's free model
+        # If no API key, fall back to OpenCode's free Kimi K2.5 model
         if [ -z "$ANTHROPIC_API_KEY" ]; then
-            log "No ANTHROPIC_API_KEY set, using free model opencode/big-pickle"
-            opencode run -m opencode/big-pickle "$REVIEW_PROMPT"
-            exit $?
+            log "No ANTHROPIC_API_KEY set, using free model opencode/kimi-k2.5-free"
+            exec opencode run -m opencode/kimi-k2.5-free "$REVIEW_PROMPT"
         fi
-        opencode run "$REVIEW_PROMPT"
-        exit $?
+        exec opencode run "$REVIEW_PROMPT"
     elif [ "$REVIEW_AGENT" = "codex" ]; then
         log "Running Codex for code review"
         if [ -z "$OPENAI_API_KEY" ] && [ ! -f "$HOME/.codex/auth.json" ]; then
@@ -478,11 +476,18 @@ elif [ "$TOOL" = "agent" ]; then
         exit 1
     fi
 
-    # Decode base64 prompt
+    # Decode base64 prompt (full system prompt + goal + conversation history)
     PROMPT=$(echo "$AGENT_PROMPT" | base64 -d)
     if [ $? -ne 0 ]; then
         echo "ERROR: Failed to decode AGENT_PROMPT (invalid base64)"
         exit 1
+    fi
+
+    # Decode separate goal text (for non-Claude providers that need a focused prompt)
+    GOAL=""
+    if [ -n "$AGENT_GOAL" ]; then
+        GOAL=$(echo "$AGENT_GOAL" | base64 -d)
+        log "Goal decoded successfully (length: ${#GOAL})"
     fi
 
     log "Prompt decoded successfully (length: ${#PROMPT})"
@@ -509,14 +514,31 @@ elif [ "$TOOL" = "agent" ]; then
 
     if [ "$AGENT_PROV" = "opencode" ]; then
         log "Starting OpenCode headless agent mode"
-        # If no API key, fall back to OpenCode's free model
+
+        # Write full agent instructions to a file for OpenCode to read.
+        # Non-Claude models don't follow long system prompts in a single user message well.
+        # By writing instructions to a file and passing a focused goal, the model gets:
+        # 1. A clear, short task as its primary prompt
+        # 2. Full instructions available via Read tool
+        INSTRUCTIONS_FILE="$PROJECT_DIR/.yolium-agent-instructions.md"
+        echo "$PROMPT" > "$INSTRUCTIONS_FILE"
+        log "Agent instructions written to $INSTRUCTIONS_FILE"
+
+        # Build a focused run prompt: goal + instruction to read the full protocol
+        RUN_PROMPT="You are a Yolium AI agent. Your task:
+
+$GOAL
+
+IMPORTANT: Read the file .yolium-agent-instructions.md in the project root FIRST. It contains your full instructions, process steps, and the @@YOLIUM: protocol you MUST use to communicate progress.
+
+Start by reading that file, then follow the process described in it step by step."
+
+        # Select model
         if [ -z "$ANTHROPIC_API_KEY" ]; then
-            log "No ANTHROPIC_API_KEY set, using free model opencode/big-pickle"
-            opencode run -m opencode/big-pickle "$PROMPT"
-            exit $?
+            log "No ANTHROPIC_API_KEY set, using free model opencode/kimi-k2.5-free"
+            exec opencode run -m opencode/kimi-k2.5-free "$RUN_PROMPT"
         fi
-        opencode run "$PROMPT"
-        exit $?
+        exec opencode run -m "$MODEL_ID" "$RUN_PROMPT"
     elif [ "$AGENT_PROV" = "codex" ]; then
         log "Starting Codex headless agent mode"
         if [ -z "$OPENAI_API_KEY" ] && [ ! -f "$HOME/.codex/auth.json" ]; then
