@@ -56,7 +56,17 @@ function formatToolUse(name: string, input: Record<string, unknown> | undefined)
  *
  * @returns display text for UI, and raw text content for protocol parsing
  */
-function parseStreamEvent(event: Record<string, unknown>): { display?: string; text?: string } {
+export interface ParsedStreamEvent {
+  display?: string;
+  text?: string;
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+    costUsd: number;
+  };
+}
+
+export function parseStreamEvent(event: Record<string, unknown>): ParsedStreamEvent {
   switch (event.type) {
     case 'system':
       return { display: '[Agent] Session started' };
@@ -87,11 +97,17 @@ function parseStreamEvent(event: Record<string, unknown>): { display?: string; t
     case 'result': {
       const result = event.result as string | undefined;
       const costUsd = event.cost_usd as number | undefined;
+      const usage = event.usage as { input_tokens?: number; output_tokens?: number } | undefined;
+      const inputTokens = usage?.input_tokens ?? 0;
+      const outputTokens = usage?.output_tokens ?? 0;
       const parts: string[] = [];
       if (result) parts.push(result);
       if (typeof costUsd === 'number') parts.push(`[Cost: $${costUsd.toFixed(4)}]`);
       return {
         display: parts.length > 0 ? parts.join('\n') : undefined,
+        ...(typeof costUsd === 'number' || inputTokens > 0 || outputTokens > 0
+          ? { usage: { inputTokens, outputTokens, costUsd: costUsd ?? 0 } }
+          : {}),
         // Don't return text — result event duplicates text already processed from assistant events,
         // which would cause protocol messages to be extracted and handled twice.
       };
@@ -332,6 +348,7 @@ export async function createAgentContainer(
     lineBuffer = lines.pop() || ''; // Keep incomplete last line in buffer
 
     const displayParts: string[] = [];
+    const usageParts: Array<NonNullable<ParsedStreamEvent['usage']>> = [];
     let textContent = '';
 
     for (const line of lines) {
@@ -343,6 +360,7 @@ export async function createAgentContainer(
         const parsed = parseStreamEvent(event);
         if (parsed.display) displayParts.push(parsed.display);
         if (parsed.text) textContent += parsed.text + '\n';
+        if (parsed.usage) usageParts.push(parsed.usage);
       } catch {
         // Not JSON — forward as raw text (e.g., entrypoint echo messages, stderr)
         displayParts.push(trimmed);
@@ -350,13 +368,16 @@ export async function createAgentContainer(
       }
     }
 
-    if (displayParts.length === 0) return;
+    if (displayParts.length === 0 && usageParts.length === 0) return;
 
-    // Prepend timestamp to each display line
-    const ts = formatLogTimestamp();
-    const timestampedParts = displayParts.map(line => `${ts} ${line}`);
-    const displayStr = timestampedParts.join('\n');
-    logger.info('Agent output', { sessionId, displayLines: displayParts.length, display: displayStr.slice(0, 500) });
+    let displayStr = '';
+    if (displayParts.length > 0) {
+      // Prepend timestamp to each display line
+      const ts = formatLogTimestamp();
+      const timestampedParts = displayParts.map(line => `${ts} ${line}`);
+      displayStr = timestampedParts.join('\n');
+      logger.info('Agent output', { sessionId, displayLines: displayParts.length, display: displayStr.slice(0, 500) });
+    }
 
     // Forward text content for protocol parsing via callback
     // Only send raw text content, never display text — displayStr may contain
@@ -367,7 +388,9 @@ export async function createAgentContainer(
     }
 
     // Forward display text for persistent logging
-    onDisplayOutput?.(displayStr);
+    if (displayStr) {
+      onDisplayOutput?.(displayStr);
+    }
 
     // Send parsed display output to renderer
     const webContents = BrowserWindow.getAllWindows().find(
@@ -375,7 +398,21 @@ export async function createAgentContainer(
     )?.webContents;
 
     if (webContents && !webContents.isDestroyed()) {
-      webContents.send('agent:output', sessionId, displayStr);
+      if (displayStr) {
+        webContents.send('agent:output', sessionId, displayStr);
+      }
+
+      if (usageParts.length > 0) {
+        const combined = usageParts.reduce(
+          (acc, usage) => ({
+            inputTokens: acc.inputTokens + usage.inputTokens,
+            outputTokens: acc.outputTokens + usage.outputTokens,
+            costUsd: acc.costUsd + usage.costUsd,
+          }),
+          { inputTokens: 0, outputTokens: 0, costUsd: 0 }
+        );
+        webContents.send('agent:cost-update', sessionId, resolvedProjectPath, combined);
+      }
     }
 
     // Parse and forward protocol messages from text content
