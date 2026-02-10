@@ -1,8 +1,10 @@
 import React from 'react';
 import { Square, Loader2, Keyboard, GitBranch, TreeDeciduous, Sun, Moon, GitPullRequest, Settings } from 'lucide-react';
 import type { ContainerState } from '@shared/types/tabs';
+import type { AgentTokenUsage } from '@shared/types/agent';
 import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper';
 import { useTheme } from '@renderer/theme';
+import { formatTokenCount, formatUsdCost } from '@renderer/utils/formatTokens';
 import { SpeechToTextButton } from './SpeechToTextButton';
 
 interface StatusBarProps {
@@ -19,6 +21,7 @@ interface StatusBarProps {
   whisperSelectedModel?: WhisperModelSize;
   onToggleRecording?: () => void;
   onOpenModelDialog?: () => void;
+  tokenUsage?: AgentTokenUsage;
 }
 
 export function StatusBar({
@@ -34,6 +37,7 @@ export function StatusBar({
   whisperSelectedModel = 'small',
   onToggleRecording,
   onOpenModelDialog,
+  tokenUsage,
 }: StatusBarProps): React.ReactElement {
   const stateDisplay: Record<ContainerState, { text: string; className: string }> = {
     starting: { text: 'Starting...', className: 'text-[var(--color-status-warning)]' },
@@ -44,6 +48,9 @@ export function StatusBar({
 
   const containerInfo = containerState ? stateDisplay[containerState] : null;
   const { theme, toggleTheme } = useTheme();
+  const hasTokenUsage = !!tokenUsage && (
+    tokenUsage.inputTokens > 0 || tokenUsage.outputTokens > 0 || tokenUsage.costUsd > 0
+  );
 
   return (
     <div data-testid="status-bar" className="flex items-center justify-between h-7 px-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)] text-xs shrink-0">
@@ -77,6 +84,14 @@ export function StatusBar({
                 <Loader2 size={12} className="inline mr-1 animate-spin" />
               )}
               {containerInfo.text}
+            </span>
+          </>
+        )}
+        {hasTokenUsage && tokenUsage && (
+          <>
+            <span className="text-[var(--color-text-muted)]">|</span>
+            <span data-testid="status-token-usage" className="text-[var(--color-text-secondary)]">
+              Tokens: {formatTokenCount(tokenUsage.inputTokens)} in / {formatTokenCount(tokenUsage.outputTokens)} out | {formatUsdCost(tokenUsage.costUsd)}
             </span>
           </>
         )}

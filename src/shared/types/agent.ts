@@ -21,6 +21,12 @@ export interface CodeReviewJob {
   error?: string;
 }
 
+export interface AgentTokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+}
+
 // Agent definition from markdown frontmatter
 export interface AgentDefinition {
   name: string;
@@ -80,4 +86,3 @@ export interface ProgressMessage extends ProtocolMessage {
   attempt?: number;
   maxAttempts?: number;
 }
-
