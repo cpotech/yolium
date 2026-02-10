@@ -26,6 +26,12 @@ vi.mock('node:os', () => ({
   platform: vi.fn(() => 'linux'),
 }));
 
+// Mock git-config for getDisplayModel tests
+const mockLoadGitConfig = vi.fn();
+vi.mock('@main/git/git-config', () => ({
+  loadGitConfig: (...args: unknown[]) => mockLoadGitConfig(...args),
+}));
+
 vi.mock('node:path', async () => {
   const actual = await vi.importActual<typeof import('node:path')>('node:path');
   return {
@@ -34,7 +40,7 @@ vi.mock('node:path', async () => {
   };
 });
 
-import { buildAgentPrompt, resolveModel, stopAllAgentsForProject, clearSessions } from '@main/services/agent-runner';
+import { buildAgentPrompt, resolveModel, getDisplayModel, stopAllAgentsForProject, clearSessions } from '@main/services/agent-runner';
 import { createBoard, addItem, updateItem, addComment } from '@main/stores/kanban-store';
 
 describe('agent-runner', () => {
@@ -84,6 +90,61 @@ describe('agent-runner', () => {
     it('should pass through unknown model names as-is', () => {
       const result = resolveModel(undefined, 'some-custom-model');
       expect(result).toBe('some-custom-model');
+    });
+  });
+
+  describe('getDisplayModel', () => {
+    const originalEnv = process.env;
+
+    beforeEach(() => {
+      mockLoadGitConfig.mockReset();
+      process.env = { ...originalEnv };
+      delete process.env.ANTHROPIC_API_KEY;
+    });
+
+    afterAll(() => {
+      process.env = originalEnv;
+    });
+
+    it('should return short model name for claude provider', () => {
+      expect(getDisplayModel('claude', undefined, 'opus')).toBe('opus');
+    });
+
+    it('should use item model override for claude provider', () => {
+      expect(getDisplayModel('claude', 'sonnet', 'opus')).toBe('sonnet');
+    });
+
+    it('should return codex-default for codex provider', () => {
+      expect(getDisplayModel('codex', undefined, 'opus')).toBe('codex-default');
+    });
+
+    it('should return codex-default for codex provider even with item model', () => {
+      expect(getDisplayModel('codex', 'sonnet', 'opus')).toBe('codex-default');
+    });
+
+    it('should return short model name for opencode with anthropic API key in config', () => {
+      mockLoadGitConfig.mockReturnValue({ anthropicApiKey: 'sk-ant-test-key' });
+      expect(getDisplayModel('opencode', undefined, 'opus')).toBe('opus');
+    });
+
+    it('should return short model name for opencode with anthropic API key in env', () => {
+      mockLoadGitConfig.mockReturnValue(null);
+      process.env.ANTHROPIC_API_KEY = 'sk-ant-env-key';
+      expect(getDisplayModel('opencode', undefined, 'sonnet')).toBe('sonnet');
+    });
+
+    it('should return kimi-k2.5-free for opencode without any anthropic API key', () => {
+      mockLoadGitConfig.mockReturnValue(null);
+      expect(getDisplayModel('opencode', undefined, 'opus')).toBe('kimi-k2.5-free');
+    });
+
+    it('should return kimi-k2.5-free for opencode with config but no anthropic key', () => {
+      mockLoadGitConfig.mockReturnValue({ name: 'test', email: 'test@test.com' });
+      expect(getDisplayModel('opencode', undefined, 'opus')).toBe('kimi-k2.5-free');
+    });
+
+    it('should return short model name for unknown provider', () => {
+      expect(getDisplayModel('unknown-provider', undefined, 'opus')).toBe('opus');
     });
   });
 
