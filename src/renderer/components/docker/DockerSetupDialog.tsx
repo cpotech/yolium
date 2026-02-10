@@ -207,26 +207,26 @@ export function DockerSetupDialog({
 
     if (platform === 'linux') {
       return (
-        <div className="w-full mt-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
-          <h3 className="text-sm font-medium text-gray-300 mb-3">
+        <div className="w-full mt-4 p-4 bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border-primary)]">
+          <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-3">
             Install Docker on {platformName}
           </h3>
 
           <div className="space-y-3">
             <div>
-              <p className="text-sm text-gray-400 mb-2">
+              <p className="text-sm text-[var(--color-text-secondary)] mb-2">
                 <strong>Option 1: Docker Engine</strong> (Recommended for Linux)
               </p>
-              <code className="block text-xs bg-gray-800 p-2 rounded text-green-400 overflow-x-auto">
+              <code className="block text-xs bg-[var(--color-bg-secondary)] p-2 rounded text-green-400 overflow-x-auto">
                 curl -fsSL https://get.docker.com | sh
               </code>
             </div>
 
-            <div className="border-t border-gray-700 pt-3">
-              <p className="text-sm text-gray-400 mb-2">
+            <div className="border-t border-[var(--color-border-primary)] pt-3">
+              <p className="text-sm text-[var(--color-text-secondary)] mb-2">
                 <strong>Option 2: Docker Desktop</strong>
               </p>
-              <ol className="text-sm text-gray-400 space-y-1 list-decimal list-inside">
+              <ol className="text-sm text-[var(--color-text-secondary)] space-y-1 list-decimal list-inside">
                 <li>Download Docker Desktop for Linux</li>
                 <li>Install the .deb or .rpm package</li>
                 <li>Start Docker Desktop</li>
@@ -234,7 +234,7 @@ export function DockerSetupDialog({
             </div>
           </div>
 
-          <p className="text-xs text-gray-500 mt-3">
+          <p className="text-xs text-[var(--color-text-muted)] mt-3">
             After installing, restart Yolium Desktop.
           </p>
         </div>
@@ -243,11 +243,11 @@ export function DockerSetupDialog({
 
     // Windows and macOS - Docker Desktop required
     return (
-      <div className="w-full mt-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
-        <h3 className="text-sm font-medium text-gray-300 mb-2">
+      <div className="w-full mt-4 p-4 bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border-primary)]">
+        <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-2">
           Install Docker Desktop for {platformName}
         </h3>
-        <ol className="text-sm text-gray-400 space-y-2 list-decimal list-inside">
+        <ol className="text-sm text-[var(--color-text-secondary)] space-y-2 list-decimal list-inside">
           <li>Download Docker Desktop</li>
           <li>Run the installer and follow the prompts</li>
           <li>Start Docker Desktop</li>
@@ -266,7 +266,7 @@ export function DockerSetupDialog({
         <button
           data-testid="docker-retry-button"
           onClick={handleRetry}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-md transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-hover)] text-[var(--color-text-primary)] rounded-md transition-colors"
         >
           <RefreshCw className="w-4 h-4" />
           Retry
@@ -299,7 +299,7 @@ export function DockerSetupDialog({
         return (
           <div className="flex flex-col items-center gap-4">
             <Loader2 className="w-12 h-12 text-blue-400 animate-spin" />
-            <p className="text-gray-300 text-center">{state.message}</p>
+            <p className="text-[var(--color-text-primary)] text-center">{state.message}</p>
           </div>
         );
 
@@ -307,7 +307,7 @@ export function DockerSetupDialog({
         return (
           <div className="flex flex-col items-center gap-4">
             <CheckCircle className="w-12 h-12 text-green-400" />
-            <p className="text-gray-300 text-center">{state.message}</p>
+            <p className="text-[var(--color-text-primary)] text-center">{state.message}</p>
           </div>
         );
 
@@ -315,9 +315,9 @@ export function DockerSetupDialog({
         return (
           <div className="flex flex-col items-center gap-4 w-full">
             <AlertCircle className="w-12 h-12 text-red-400" />
-            <p className="text-gray-300 text-center font-medium">{state.message}</p>
+            <p className="text-[var(--color-text-primary)] text-center font-medium">{state.message}</p>
             {state.error && (
-              <p className="text-sm text-gray-400 text-center">{state.error}</p>
+              <p className="text-sm text-[var(--color-text-secondary)] text-center">{state.error}</p>
             )}
 
             {renderManualInstructions()}
@@ -329,7 +329,7 @@ export function DockerSetupDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div data-testid="docker-setup-dialog" className="bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-6 max-w-md w-full mx-4">
+      <div data-testid="docker-setup-dialog" className="bg-[var(--color-bg-secondary)] rounded-lg shadow-xl border border-[var(--color-border-primary)] p-6 max-w-md w-full mx-4">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <svg
@@ -341,8 +341,8 @@ export function DockerSetupDialog({
             <path d="M13.983 11.078h2.119a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.119a.186.186 0 00-.185.186v1.887c0 .102.083.185.185.185zm-2.954-5.43h2.118a.186.186 0 00.186-.185V3.576a.186.186 0 00-.186-.186h-2.118a.186.186 0 00-.185.186v1.887c0 .102.082.185.185.185zm0 2.716h2.118a.186.186 0 00.186-.185V6.292a.186.186 0 00-.186-.186h-2.118a.186.186 0 00-.185.186v1.887c0 .102.082.185.185.185zm-2.955 0h2.119a.186.186 0 00.185-.185V6.292a.186.186 0 00-.185-.186H8.074a.186.186 0 00-.185.186v1.887c0 .102.082.185.185.185zm0 2.714h2.119a.186.186 0 00.185-.185V9.006a.186.186 0 00-.185-.186H8.074a.186.186 0 00-.185.186v1.887c0 .102.082.185.185.185zm-2.955 0h2.118a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186H5.119a.186.186 0 00-.185.186v1.887c0 .102.082.185.185.185zm0 2.714h2.118a.186.186 0 00.186-.185v-1.887a.186.186 0 00-.186-.186H5.119a.186.186 0 00-.185.186v1.887c0 .102.082.185.185.185zm-2.956 0h2.119a.186.186 0 00.185-.185v-1.887a.186.186 0 00-.185-.186H2.163a.186.186 0 00-.185.186v1.887c0 .102.083.185.185.185zm21.298-1.82c-.449-.39-1.482-.59-2.27-.376-.117-1.086-.736-2.031-1.438-2.79l-.292-.29-.29.293c-.577.577-.888 1.38-.847 2.194.031.586.206 1.123.515 1.582-.237.139-.501.262-.787.368-.556.208-1.141.314-1.74.314H.055l-.022.19c-.117 1.193.077 2.386.569 3.482l.238.451.003.006c1.333 2.392 3.685 3.59 6.985 3.574 6.305-.031 10.983-2.942 13.152-8.283 1.218.066 2.418-.362 3.018-1.35l.148-.238-.288-.227z" />
           </svg>
           <div>
-            <h2 className="text-lg font-semibold text-white">Docker Setup</h2>
-            <p className="text-sm text-gray-400">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Docker Setup</h2>
+            <p className="text-sm text-[var(--color-text-secondary)]">
               Yolium requires Docker to run
             </p>
           </div>

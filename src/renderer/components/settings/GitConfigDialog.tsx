@@ -269,18 +269,18 @@ export function GitConfigDialog({
     >
       <form
         onSubmit={handleSubmit}
-        className="bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-6 max-w-md w-full mx-4"
+        className="bg-[var(--color-bg-secondary)] rounded-lg shadow-xl border border-[var(--color-border-primary)] p-6 max-w-md w-full mx-4"
         data-testid="git-config-dialog"
       >
-        <h2 className="text-lg font-semibold text-white mb-2">Settings</h2>
-        <p className="text-sm text-gray-400 mb-4">
+        <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-2">Settings</h2>
+        <p className="text-sm text-[var(--color-text-secondary)] mb-4">
           Configure credentials for Yolium containers.
         </p>
 
         <div className="space-y-4">
           {/* GitHub PAT — primary position */}
           <div>
-            <label htmlFor="github-pat" className="block text-sm font-medium text-gray-300 mb-1">
+            <label htmlFor="github-pat" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
               GitHub PAT
               {initialConfig?.hasPat && !githubPat && !patCleared && (
                 <span className="ml-2 text-xs text-green-400">
@@ -299,15 +299,15 @@ export function GitConfigDialog({
                 onChange={(e) => handlePatChange(e.target.value)}
                 placeholder={initialConfig?.hasPat ? '(keep existing token)' : 'github_pat_XXXXX or ghp_XXXXX'}
                 data-testid="git-pat-input"
-                className={`w-full px-3 py-2 pr-20 bg-gray-700 border rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm ${
-                  patError ? 'border-red-500' : 'border-gray-600'
+                className={`w-full px-3 py-2 pr-20 bg-[var(--color-bg-tertiary)] border rounded-md text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm ${
+                  patError ? 'border-red-500' : 'border-[var(--color-border-secondary)]'
                 }`}
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
                 <button
                   type="button"
                   onClick={() => setShowPat(!showPat)}
-                  className="p-1 text-gray-400 hover:text-white transition-colors"
+                  className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
                   title={showPat ? 'Hide token' : 'Show token'}
                 >
                   {showPat ? (
@@ -325,7 +325,7 @@ export function GitConfigDialog({
                   <button
                     type="button"
                     onClick={handleClearPat}
-                    className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+                    className="p-1 text-[var(--color-text-secondary)] hover:text-red-400 transition-colors"
                     title="Clear token"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -338,7 +338,7 @@ export function GitConfigDialog({
             {patError && (
               <p className="mt-1 text-xs text-red-400">{patError}</p>
             )}
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
               Enables HTTPS git operations and derives your git identity.{' '}
               <a
                 href="#"
@@ -356,24 +356,24 @@ export function GitConfigDialog({
 
           {/* Derived GitHub Identity */}
           {showIdentity && (
-            <div className="px-3 py-2 bg-gray-700/50 rounded-md" data-testid="github-identity">
+            <div className="px-3 py-2 bg-[var(--color-bg-tertiary)]/50 rounded-md" data-testid="github-identity">
               <p className="text-sm text-green-400">
                 Authenticated as <span className="font-mono font-semibold">{initialConfig?.githubLogin}</span>
               </p>
               {initialConfig?.name && (
-                <p className="text-xs text-gray-400 mt-1">{initialConfig.name} &lt;{initialConfig.email}&gt;</p>
+                <p className="text-xs text-[var(--color-text-secondary)] mt-1">{initialConfig.name} &lt;{initialConfig.email}&gt;</p>
               )}
             </div>
           )}
 
           {/* Claude Max OAuth Toggle */}
-          <div className="border-t border-gray-700 pt-4">
+          <div className="border-t border-[var(--color-border-primary)] pt-4">
             <div className="flex items-center justify-between">
               <div>
-                <label htmlFor="claude-oauth-toggle" className="text-sm font-medium text-gray-300">
+                <label htmlFor="claude-oauth-toggle" className="text-sm font-medium text-[var(--color-text-primary)]">
                   Claude Max (OAuth)
                 </label>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                   Use your Claude Max subscription instead of an API key
                 </p>
               </div>
@@ -394,8 +394,8 @@ export function GitConfigDialog({
                   }
                 }}
                 data-testid="claude-oauth-toggle"
-                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${
-                  useClaudeOAuth ? 'bg-blue-600' : 'bg-gray-600'
+                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[var(--color-bg-secondary)] ${
+                  useClaudeOAuth ? 'bg-blue-600' : 'bg-[var(--color-bg-hover)]'
                 } ${!initialConfig?.hasClaudeOAuth && !useClaudeOAuth ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
               >
                 <span
@@ -413,8 +413,8 @@ export function GitConfigDialog({
           </div>
 
           {/* Anthropic API Key */}
-          <div className="border-t border-gray-700 pt-4">
-            <label htmlFor="anthropic-key" className="block text-sm font-medium text-gray-300 mb-1">
+          <div className="border-t border-[var(--color-border-primary)] pt-4">
+            <label htmlFor="anthropic-key" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
               Anthropic API Key
               {useClaudeOAuth && (
                 <span className="ml-2 text-xs text-blue-400">(using OAuth)</span>
@@ -436,8 +436,8 @@ export function GitConfigDialog({
                 placeholder={useClaudeOAuth ? '(disabled — using OAuth)' : initialConfig?.hasAnthropicKey ? '(keep existing key)' : 'sk-ant-...'}
                 disabled={useClaudeOAuth}
                 data-testid="anthropic-key-input"
-                className={`w-full px-3 py-2 pr-20 bg-gray-700 border rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm ${
-                  anthropicKeyError ? 'border-red-500' : 'border-gray-600'
+                className={`w-full px-3 py-2 pr-20 bg-[var(--color-bg-tertiary)] border rounded-md text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm ${
+                  anthropicKeyError ? 'border-red-500' : 'border-[var(--color-border-secondary)]'
                 } ${useClaudeOAuth ? 'opacity-50 cursor-not-allowed' : ''}`}
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
@@ -445,7 +445,7 @@ export function GitConfigDialog({
                   <button
                     type="button"
                     onClick={() => setShowAnthropicKey(!showAnthropicKey)}
-                    className="p-1 text-gray-400 hover:text-white transition-colors"
+                    className="p-1 text-[var(--color-text-secondary)] hover:text-white transition-colors"
                     title={showAnthropicKey ? 'Hide key' : 'Show key'}
                   >
                     {showAnthropicKey ? (
@@ -464,7 +464,7 @@ export function GitConfigDialog({
                   <button
                     type="button"
                     onClick={handleClearAnthropicKey}
-                    className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+                    className="p-1 text-[var(--color-text-secondary)] hover:text-red-400 transition-colors"
                     title="Clear key"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -477,7 +477,7 @@ export function GitConfigDialog({
             {!useClaudeOAuth && anthropicKeyError && (
               <p className="mt-1 text-xs text-red-400">{anthropicKeyError}</p>
             )}
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
               {useClaudeOAuth
                 ? 'Claude Code will use your Claude Max OAuth session.'
                 : 'Required for Claude Code and OpenCode agents.'}
@@ -485,13 +485,13 @@ export function GitConfigDialog({
           </div>
 
           {/* Codex OAuth (ChatGPT) Toggle */}
-          <div className="border-t border-gray-700 pt-4">
+          <div className="border-t border-[var(--color-border-primary)] pt-4">
             <div className="flex items-center justify-between">
               <div>
-                <label htmlFor="codex-oauth-toggle" className="text-sm font-medium text-gray-300">
+                <label htmlFor="codex-oauth-toggle" className="text-sm font-medium text-[var(--color-text-primary)]">
                   Codex OAuth (ChatGPT)
                 </label>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                   Use your ChatGPT login instead of an OpenAI API key
                 </p>
               </div>
@@ -512,8 +512,8 @@ export function GitConfigDialog({
                   }
                 }}
                 data-testid="codex-oauth-toggle"
-                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${
-                  useCodexOAuth ? 'bg-blue-600' : 'bg-gray-600'
+                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[var(--color-bg-secondary)] ${
+                  useCodexOAuth ? 'bg-blue-600' : 'bg-[var(--color-bg-hover)]'
                 } ${!initialConfig?.hasCodexOAuth && !useCodexOAuth ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
               >
                 <span
@@ -531,8 +531,8 @@ export function GitConfigDialog({
           </div>
 
           {/* OpenAI API Key */}
-          <div className="border-t border-gray-700 pt-4">
-            <label htmlFor="openai-key" className="block text-sm font-medium text-gray-300 mb-1">
+          <div className="border-t border-[var(--color-border-primary)] pt-4">
+            <label htmlFor="openai-key" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
               OpenAI API Key
               {useCodexOAuth && (
                 <span className="ml-2 text-xs text-blue-400">(using OAuth)</span>
@@ -554,8 +554,8 @@ export function GitConfigDialog({
                 placeholder={useCodexOAuth ? '(disabled — using OAuth)' : initialConfig?.hasOpenaiKey ? '(keep existing key)' : 'sk-...'}
                 disabled={useCodexOAuth}
                 data-testid="openai-key-input"
-                className={`w-full px-3 py-2 pr-20 bg-gray-700 border rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm ${
-                  openaiKeyError ? 'border-red-500' : 'border-gray-600'
+                className={`w-full px-3 py-2 pr-20 bg-[var(--color-bg-tertiary)] border rounded-md text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm ${
+                  openaiKeyError ? 'border-red-500' : 'border-[var(--color-border-secondary)]'
                 } ${useCodexOAuth ? 'opacity-50 cursor-not-allowed' : ''}`}
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
@@ -563,7 +563,7 @@ export function GitConfigDialog({
                   <button
                     type="button"
                     onClick={() => setShowOpenaiKey(!showOpenaiKey)}
-                    className="p-1 text-gray-400 hover:text-white transition-colors"
+                    className="p-1 text-[var(--color-text-secondary)] hover:text-white transition-colors"
                     title={showOpenaiKey ? 'Hide key' : 'Show key'}
                   >
                     {showOpenaiKey ? (
@@ -582,7 +582,7 @@ export function GitConfigDialog({
                   <button
                     type="button"
                     onClick={handleClearOpenaiKey}
-                    className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+                    className="p-1 text-[var(--color-text-secondary)] hover:text-red-400 transition-colors"
                     title="Clear key"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -595,7 +595,7 @@ export function GitConfigDialog({
             {!useCodexOAuth && openaiKeyError && (
               <p className="mt-1 text-xs text-red-400">{openaiKeyError}</p>
             )}
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
               {useCodexOAuth
                 ? 'Codex will use your ChatGPT OAuth session.'
                 : 'Required for the Codex agent. Passed only to Codex containers.'}
@@ -604,11 +604,11 @@ export function GitConfigDialog({
 
           {/* Docker Image Management */}
           {(onDeleteImage || onBuildImage) && (
-            <div className="border-t border-gray-700 pt-4">
-              <p className="text-sm font-medium text-gray-300 mb-3">Docker Image</p>
+            <div className="border-t border-[var(--color-border-primary)] pt-4">
+              <p className="text-sm font-medium text-[var(--color-text-primary)] mb-3">Docker Image</p>
               {dockerImageLoading ? (
-                <div className="flex items-center gap-2 mb-3 px-3 py-2 text-sm text-gray-400" data-testid="docker-image-loading">
-                  <svg className="animate-spin h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <div className="flex items-center gap-2 mb-3 px-3 py-2 text-sm text-[var(--color-text-secondary)]" data-testid="docker-image-loading">
+                  <svg className="animate-spin h-4 w-4 text-[var(--color-text-secondary)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -616,7 +616,7 @@ export function GitConfigDialog({
                 </div>
               ) : dockerImageError ? (
                 <div className="flex items-center gap-2 mb-3" data-testid="docker-image-error">
-                  <p className="text-sm text-gray-500">Failed to check image status.</p>
+                  <p className="text-sm text-[var(--color-text-muted)]">Failed to check image status.</p>
                   <button
                     type="button"
                     onClick={fetchDockerImageInfo}
@@ -628,14 +628,14 @@ export function GitConfigDialog({
                 </div>
               ) : dockerImageInfo && !imageRemoved ? (
                 <>
-                  <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-gray-700/50 rounded-md">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 shrink-0">
+                  <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-[var(--color-bg-tertiary)]/50 rounded-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--color-text-secondary)] shrink-0">
                       <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
                       <path d="m3.3 7 8.7 5 8.7-5" />
                       <path d="M12 22V12" />
                     </svg>
-                    <span className="text-sm text-white font-mono">{dockerImageInfo.name}</span>
-                    <span className="text-xs text-gray-500 ml-auto">
+                    <span className="text-sm text-[var(--color-text-primary)] font-mono">{dockerImageInfo.name}</span>
+                    <span className="text-xs text-[var(--color-text-muted)] ml-auto">
                       {(dockerImageInfo.size / (1024 * 1024)).toFixed(0)} MB
                     </span>
                   </div>
@@ -646,7 +646,7 @@ export function GitConfigDialog({
                   )}
                 </>
               ) : (
-                <p className="text-sm text-gray-500 mb-3">No image found</p>
+                <p className="text-sm text-[var(--color-text-muted)] mb-3">No image found</p>
               )}
               <div className="flex gap-2">
                 {onBuildImage && (
@@ -687,7 +687,7 @@ export function GitConfigDialog({
 
         </div>
 
-        <p className="mt-4 text-xs text-gray-500">
+        <p className="mt-4 text-xs text-[var(--color-text-muted)]">
           Changes apply to new terminals only. Restart existing terminals to use the new settings.
         </p>
 
@@ -696,7 +696,7 @@ export function GitConfigDialog({
             type="button"
             onClick={onClose}
             data-testid="git-config-cancel"
-            className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+            className="px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
           >
             Cancel
           </button>

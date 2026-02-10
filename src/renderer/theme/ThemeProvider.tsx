@@ -49,6 +49,7 @@ function generateCSSVariables(tokens: ThemeTokens): Record<string, string> {
     '--color-text-primary': colors.text.primary,
     '--color-text-secondary': colors.text.secondary,
     '--color-text-muted': colors.text.muted,
+    '--color-text-tertiary': colors.text.muted,
     '--color-text-disabled': colors.text.disabled,
     '--color-border-primary': colors.border.primary,
     '--color-border-secondary': colors.border.secondary,

@@ -96,21 +96,21 @@ export function KeyboardShortcutsDialog({
       onClick={handleBackdropClick}
       tabIndex={-1}
     >
-      <div className="bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto" data-testid="shortcuts-dialog">
-        <h2 className="text-lg font-semibold text-white mb-4">Keyboard Shortcuts</h2>
+      <div className="bg-[var(--color-bg-secondary)] rounded-lg shadow-xl border border-[var(--color-border-primary)] p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto" data-testid="shortcuts-dialog">
+        <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">Keyboard Shortcuts</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {shortcutGroups.map((group) => (
             <div key={group.title}>
-              <h3 className="text-sm font-medium text-gray-400 mb-2">{group.title}</h3>
+              <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">{group.title}</h3>
               <div className="space-y-1">
                 {group.shortcuts.map((shortcut) => (
                   <div
                     key={shortcut.keys}
                     className="flex items-center justify-between py-1"
                   >
-                    <span className="text-gray-300 text-sm">{shortcut.description}</span>
-                    <kbd className="px-2 py-0.5 rounded bg-gray-700 text-gray-200 text-xs font-mono border border-gray-600">
+                    <span className="text-[var(--color-text-primary)] text-sm">{shortcut.description}</span>
+                    <kbd className="px-2 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] text-xs font-mono border border-[var(--color-border-secondary)]">
                       {shortcut.keys}
                     </kbd>
                   </div>

@@ -152,9 +152,9 @@ export function CodeReviewDialog({
       onKeyDown={handleKeyDown}
       tabIndex={-1}
     >
-      <div data-testid="code-review-dialog" className="bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-6 max-w-md w-full mx-4">
-        <h2 className="text-lg font-semibold text-white mb-2">PR Code Review</h2>
-        <p className="text-sm text-gray-400 mb-4">
+      <div data-testid="code-review-dialog" className="bg-[var(--color-bg-secondary)] rounded-lg shadow-xl border border-[var(--color-border-primary)] p-6 max-w-md w-full mx-4">
+        <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-2">PR Code Review</h2>
+        <p className="text-sm text-[var(--color-text-secondary)] mb-4">
           Run an AI agent to review a branch and post comments to the PR.
         </p>
 
@@ -180,7 +180,7 @@ export function CodeReviewDialog({
 
         {/* Repo URL */}
         <div className="mb-3">
-          <label className="block text-sm text-gray-400 mb-1">Repository URL</label>
+          <label className="block text-sm text-[var(--color-text-secondary)] mb-1">Repository URL</label>
           <div className="flex gap-2">
             <input
               ref={inputRef}
@@ -190,13 +190,13 @@ export function CodeReviewDialog({
               onChange={e => setRepoUrl(e.target.value)}
               placeholder="https://github.com/owner/repo"
               disabled={isReviewRunning || !hasGitCredentials}
-              className="flex-1 px-3 py-2 text-sm rounded bg-gray-700 border border-gray-600 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+              className="flex-1 px-3 py-2 text-sm rounded bg-[var(--color-bg-tertiary)] border border-[var(--color-border-secondary)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-blue-500 disabled:opacity-50"
             />
             <button
               data-testid="review-fetch-button"
               onClick={handleFetchBranches}
               disabled={!repoUrl.trim() || loadingBranches || isReviewRunning || !hasGitCredentials}
-              className="px-3 py-2 text-sm bg-gray-600 text-white rounded hover:bg-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-2 text-sm bg-[var(--color-bg-hover)] text-[var(--color-text-primary)] rounded hover:bg-[var(--color-bg-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loadingBranches ? (
                 <Loader2 size={14} className="animate-spin" />
@@ -212,14 +212,14 @@ export function CodeReviewDialog({
 
         {/* Branch selection */}
         <div className="mb-3">
-          <label className="block text-sm text-gray-400 mb-1">Branch</label>
+          <label className="block text-sm text-[var(--color-text-secondary)] mb-1">Branch</label>
           {branches.length > 0 ? (
             <select
               data-testid="review-branch-select"
               value={branch}
               onChange={e => setBranch(e.target.value)}
               disabled={isReviewRunning}
-              className="w-full px-3 py-2 text-sm rounded bg-gray-700 border border-gray-600 text-gray-200 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-bg-tertiary)] border border-[var(--color-border-secondary)] text-[var(--color-text-primary)] focus:outline-none focus:border-blue-500 disabled:opacity-50"
             >
               {branches.map(b => (
                 <option key={b} value={b}>{b}</option>
@@ -233,14 +233,14 @@ export function CodeReviewDialog({
               onChange={e => setBranch(e.target.value)}
               placeholder="Enter branch name or fetch branches above"
               disabled={isReviewRunning || !hasGitCredentials}
-              className="w-full px-3 py-2 text-sm rounded bg-gray-700 border border-gray-600 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-bg-tertiary)] border border-[var(--color-border-secondary)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-blue-500 disabled:opacity-50"
             />
           )}
         </div>
 
         {/* Agent selection */}
         <div className="mb-4">
-          <label className="block text-sm text-gray-400 mb-1">Review Agent</label>
+          <label className="block text-sm text-[var(--color-text-secondary)] mb-1">Review Agent</label>
           <div className="flex gap-2">
             <button
               data-testid="review-agent-claude"
@@ -249,7 +249,7 @@ export function CodeReviewDialog({
               className={`flex-1 px-3 py-2 text-sm rounded transition-colors ${
                 selectedAgent === 'claude'
                   ? 'bg-blue-600 text-white ring-2 ring-blue-500'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)]'
               } disabled:opacity-50`}
             >
               Claude Code
@@ -261,7 +261,7 @@ export function CodeReviewDialog({
               className={`flex-1 px-3 py-2 text-sm rounded transition-colors ${
                 selectedAgent === 'opencode'
                   ? 'bg-blue-600 text-white ring-2 ring-blue-500'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)]'
               } disabled:opacity-50`}
             >
               OpenCode
@@ -273,7 +273,7 @@ export function CodeReviewDialog({
               className={`flex-1 px-3 py-2 text-sm rounded transition-colors ${
                 selectedAgent === 'codex'
                   ? 'bg-blue-600 text-white ring-2 ring-blue-500'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)]'
               } disabled:opacity-50`}
             >
               Codex
@@ -307,7 +307,7 @@ export function CodeReviewDialog({
 
         {/* Container log output */}
         {reviewLog.length > 0 && (
-          <div data-testid="review-log" className="mb-4 max-h-48 overflow-y-auto rounded-md bg-gray-950 border border-gray-700 p-2 font-mono text-xs text-gray-400">
+          <div data-testid="review-log" className="mb-4 max-h-48 overflow-y-auto rounded-md bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] p-2 font-mono text-xs text-[var(--color-text-secondary)]">
             {reviewLog.map((line, i) => (
               <div key={i} className="whitespace-pre-wrap break-all">{line}</div>
             ))}
@@ -320,7 +320,7 @@ export function CodeReviewDialog({
           <button
             data-testid="review-cancel-button"
             onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+            className="px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
           >
             {isReviewRunning ? 'Close' : 'Cancel'}
           </button>

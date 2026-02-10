@@ -47,13 +47,13 @@ export function PathInputDialog({
     >
       <div
         data-testid="path-dialog"
-        className="bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-4 max-w-lg w-full mx-4"
+        className="bg-[var(--color-bg-secondary)] rounded-lg shadow-xl border border-[var(--color-border-primary)] p-4 max-w-lg w-full mx-4"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center gap-2 mb-3">
           <svg
-            className="w-5 h-5 text-gray-400"
+            className="w-5 h-5 text-[var(--color-text-secondary)]"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -65,7 +65,7 @@ export function PathInputDialog({
               d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
             />
           </svg>
-          <h2 className="text-lg font-semibold text-white">Select Project Folder</h2>
+          <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Select Project Folder</h2>
         </div>
 
         {/* Input */}
@@ -78,7 +78,7 @@ export function PathInputDialog({
             onChange={nav.handleInputChange}
             onKeyDown={nav.handleKeyDown}
             placeholder="Enter path (e.g., ~/projects/)"
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-md text-white font-mono text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-secondary)] rounded-md text-[var(--color-text-primary)] font-mono text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             autoFocus
           />
         </div>
@@ -123,26 +123,26 @@ export function PathInputDialog({
 
         {/* Empty state */}
         {nav.inputValue && nav.filteredSuggestions.length === 0 && !nav.error && (
-          <div className="mt-2 py-4 text-center text-gray-500 text-sm">
+          <div className="mt-2 py-4 text-center text-[var(--color-text-muted)] text-sm">
             No subdirectories found
           </div>
         )}
 
         {/* Show hidden toggle and New Folder button */}
         <div className="mt-3 flex items-center justify-between">
-          <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+          <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] cursor-pointer">
             <input
               type="checkbox"
               checked={nav.showHidden}
               onChange={e => nav.setShowHidden(e.target.checked)}
-              className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-800"
+              className="rounded border-[var(--color-border-secondary)] bg-[var(--color-bg-tertiary)] text-blue-500 focus:ring-blue-500 focus:ring-offset-[var(--color-bg-secondary)]"
             />
             Show hidden folders
           </label>
           {!nav.isCreatingFolder && (
             <button
               onClick={nav.startFolderCreation}
-              className="flex items-center gap-1.5 px-2 py-1 text-sm text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+              className="flex items-center gap-1.5 px-2 py-1 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] rounded transition-colors"
               title="Create new folder (Ctrl+N)"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -159,23 +159,23 @@ export function PathInputDialog({
         </div>
 
         {/* Footer */}
-        <div className="mt-4 pt-3 border-t border-gray-700 flex items-center justify-between">
-          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
-            <span><kbd className="px-1 py-0.5 bg-gray-700 rounded text-gray-400">Tab</kbd> complete</span>
-            <span><kbd className="px-1 py-0.5 bg-gray-700 rounded text-gray-400">Esc</kbd> back</span>
-            <span><kbd className="px-1 py-0.5 bg-gray-700 rounded text-gray-400">^N</kbd> new folder</span>
+        <div className="mt-4 pt-3 border-t border-[var(--color-border-primary)] flex items-center justify-between">
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--color-text-muted)]">
+            <span><kbd className="px-1 py-0.5 bg-[var(--color-bg-tertiary)] rounded text-[var(--color-text-secondary)]">Tab</kbd> complete</span>
+            <span><kbd className="px-1 py-0.5 bg-[var(--color-bg-tertiary)] rounded text-[var(--color-text-secondary)]">Esc</kbd> back</span>
+            <span><kbd className="px-1 py-0.5 bg-[var(--color-bg-tertiary)] rounded text-[var(--color-text-secondary)]">^N</kbd> new folder</span>
             {favorites.length > 0 && (
-              <span><kbd className="px-1 py-0.5 bg-gray-700 rounded text-gray-400">^#</kbd> favorite</span>
+              <span><kbd className="px-1 py-0.5 bg-[var(--color-bg-tertiary)] rounded text-[var(--color-text-secondary)]">^#</kbd> favorite</span>
             )}
           </div>
           <div className="flex gap-2">
             <button
               data-testid="path-cancel"
               onClick={onCancel}
-              className="px-3 py-1.5 text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-2"
+              className="px-3 py-1.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors flex items-center gap-2"
             >
               Cancel
-              <kbd className="text-xs bg-gray-700 px-1.5 py-0.5 rounded text-gray-500">Esc</kbd>
+              <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">Esc</kbd>
             </button>
             <button
               data-testid="path-next"
@@ -185,7 +185,7 @@ export function PathInputDialog({
                 }
               }}
               disabled={!nav.inputValue.trim()}
-              className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:text-gray-400 text-white rounded-md transition-colors flex items-center gap-2"
+              className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 disabled:bg-[var(--color-bg-hover)] disabled:text-[var(--color-text-secondary)] text-white rounded-md transition-colors flex items-center gap-2"
             >
               Next
               <kbd className="text-xs bg-blue-700 px-1.5 py-0.5 rounded text-blue-300 disabled:bg-gray-500">↵</kbd>

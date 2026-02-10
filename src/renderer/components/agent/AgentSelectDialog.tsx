@@ -133,11 +133,11 @@ export function AgentSelectDialog({
       onKeyDown={handleKeyDown}
       tabIndex={-1}
     >
-      <div data-testid="agent-dialog" className="bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-6 max-w-md w-full mx-4">
-        <h2 className="text-lg font-semibold text-white mb-2">Select Agent</h2>
-        <p className="text-sm text-gray-400 mb-4">
+      <div data-testid="agent-dialog" className="bg-[var(--color-bg-secondary)] rounded-lg shadow-xl border border-[var(--color-border-primary)] p-6 max-w-md w-full mx-4">
+        <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-2">Select Agent</h2>
+        <p className="text-sm text-[var(--color-text-secondary)] mb-4">
           Choose which coding agent to run in{' '}
-          <span className="text-gray-200 font-mono">{folderName}</span>
+          <span className="text-[var(--color-text-primary)] font-mono">{folderName}</span>
         </p>
 
         <div className="space-y-2">
@@ -149,22 +149,22 @@ export function AgentSelectDialog({
               className={`w-full flex items-center gap-3 p-3 rounded-md transition-colors text-left group ${
                 selectedAgent === 'claude'
                   ? 'bg-blue-600 ring-2 ring-blue-500'
-                  : 'bg-gray-700 hover:bg-gray-600'
+                  : 'bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-hover)]'
               } focus:outline-none focus:ring-2 focus:ring-blue-500`}
             >
-              <span className="text-gray-500 text-sm font-mono">1</span>
+              <span className="text-[var(--color-text-muted)] text-sm font-mono">1</span>
               <div className="flex-1">
-                <div className="text-white font-medium">Claude Code</div>
-                <div className="text-gray-400 text-sm">Anthropic's Claude CLI agent</div>
+                <div className="text-[var(--color-text-primary)] font-medium">Claude Code</div>
+                <div className="text-[var(--color-text-secondary)] text-sm">Anthropic's Claude CLI agent</div>
               </div>
             </button>
             {selectedAgent === 'claude' && (
-              <label data-testid="gsd-toggle" className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer mt-1 ml-7">
+              <label data-testid="gsd-toggle" className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] cursor-pointer mt-1 ml-7">
                 <input
                   type="checkbox"
                   checked={gsdEnabled}
                   onChange={e => setGsdEnabled(e.target.checked)}
-                  className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-800"
+                  className="rounded border-[var(--color-border-secondary)] bg-[var(--color-bg-tertiary)] text-blue-500 focus:ring-blue-500 focus:ring-offset-[var(--color-bg-secondary)]"
                 />
                 Enable GSD plugin
               </label>
@@ -177,13 +177,13 @@ export function AgentSelectDialog({
             className={`w-full flex items-center gap-3 p-3 rounded-md transition-colors text-left group ${
               selectedAgent === 'opencode'
                 ? 'bg-blue-600 ring-2 ring-blue-500'
-                : 'bg-gray-700 hover:bg-gray-600'
+                : 'bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-hover)]'
             } focus:outline-none focus:ring-2 focus:ring-blue-500`}
           >
-            <span className="text-gray-500 text-sm font-mono">2</span>
+            <span className="text-[var(--color-text-muted)] text-sm font-mono">2</span>
             <div className="flex-1">
               <div className="text-white font-medium">OpenCode</div>
-              <div className="text-gray-400 text-sm">Open-source coding agent</div>
+              <div className="text-[var(--color-text-secondary)] text-sm">Open-source coding agent</div>
             </div>
           </button>
 
@@ -193,13 +193,13 @@ export function AgentSelectDialog({
             className={`w-full flex items-center gap-3 p-3 rounded-md transition-colors text-left group ${
               selectedAgent === 'codex'
                 ? 'bg-blue-600 ring-2 ring-blue-500'
-                : 'bg-gray-700 hover:bg-gray-600'
+                : 'bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-hover)]'
             } focus:outline-none focus:ring-2 focus:ring-blue-500`}
           >
-            <span className="text-gray-500 text-sm font-mono">3</span>
+            <span className="text-[var(--color-text-muted)] text-sm font-mono">3</span>
             <div className="flex-1">
               <div className="text-white font-medium">Codex</div>
-              <div className="text-gray-400 text-sm">OpenAI's Codex CLI agent</div>
+              <div className="text-[var(--color-text-secondary)] text-sm">OpenAI's Codex CLI agent</div>
             </div>
           </button>
 
@@ -209,20 +209,20 @@ export function AgentSelectDialog({
             className={`w-full flex items-center gap-3 p-3 rounded-md transition-colors text-left group ${
               selectedAgent === 'shell'
                 ? 'bg-blue-600 ring-2 ring-blue-500'
-                : 'bg-gray-700 hover:bg-gray-600'
+                : 'bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-hover)]'
             } focus:outline-none focus:ring-2 focus:ring-blue-500`}
           >
-            <span className="text-gray-500 text-sm font-mono">4</span>
+            <span className="text-[var(--color-text-muted)] text-sm font-mono">4</span>
             <div className="flex-1">
               <div className="text-white font-medium">Shell</div>
-              <div className="text-gray-400 text-sm">Interactive zsh terminal</div>
+              <div className="text-[var(--color-text-secondary)] text-sm">Interactive zsh terminal</div>
             </div>
           </button>
         </div>
 
         {/* Options section */}
-        <div className="border-t border-gray-700 pt-4 mt-4">
-          <div className="text-xs text-gray-500 mb-2">Options</div>
+        <div className="border-t border-[var(--color-border-primary)] pt-4 mt-4">
+          <div className="text-xs text-[var(--color-text-muted)] mb-2">Options</div>
           {(() => {
             const isDisabled = gitStatus === null || !gitStatus.isRepo || !gitStatus.hasCommits;
             const tooltipText = gitStatus === null
@@ -237,7 +237,7 @@ export function AgentSelectDialog({
               <label
                 data-testid="worktree-toggle"
                 className={`flex items-center gap-2 text-sm cursor-pointer ${
-                  isDisabled ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400'
+                  isDisabled ? 'text-[var(--color-text-disabled)] cursor-not-allowed' : 'text-[var(--color-text-secondary)]'
                 }`}
                 title={tooltipText}
               >
@@ -246,11 +246,11 @@ export function AgentSelectDialog({
                   checked={worktreeEnabled}
                   onChange={e => setWorktreeEnabled(e.target.checked)}
                   disabled={isDisabled}
-                  className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-800 disabled:opacity-50"
+                  className="rounded border-[var(--color-border-secondary)] bg-[var(--color-bg-tertiary)] text-blue-500 focus:ring-blue-500 focus:ring-offset-[var(--color-bg-secondary)] disabled:opacity-50"
                 />
                 Use git worktree
-                {gitStatus === null && <span className="text-xs text-gray-600">(checking...)</span>}
-                {gitStatus && gitStatus.isRepo && !gitStatus.hasCommits && <span className="text-xs text-gray-600">(no commits)</span>}
+                {gitStatus === null && <span className="text-xs text-[var(--color-text-disabled)]">(checking...)</span>}
+                {gitStatus && gitStatus.isRepo && !gitStatus.hasCommits && <span className="text-xs text-[var(--color-text-disabled)]">(no commits)</span>}
               </label>
             );
           })()}
@@ -266,9 +266,9 @@ export function AgentSelectDialog({
                   setBranchName(nextValue);
                   setBranchError(validateBranchName(nextValue));
                 }}
-                className="mt-2 ml-6 w-[calc(100%-1.5rem)] px-2 py-1 text-sm rounded bg-gray-700 border border-gray-600 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                className="mt-2 ml-6 w-[calc(100%-1.5rem)] px-2 py-1 text-sm rounded bg-[var(--color-bg-tertiary)] border border-[var(--color-border-secondary)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-blue-500"
               />
-              <div data-testid="worktree-branch-helper" className="mt-1 ml-6 text-xs text-gray-500">
+              <div data-testid="worktree-branch-helper" className="mt-1 ml-6 text-xs text-[var(--color-text-muted)]">
                 Creates a new branch for this session.
               </div>
               {branchError && (
@@ -284,13 +284,13 @@ export function AgentSelectDialog({
                 data-testid="init-git-button"
                 onClick={handleInitGit}
                 disabled={isInitializing}
-                className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors disabled:opacity-50"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
                 {isInitializing ? 'Initializing...' : 'Initialize git repository'}
-                {!isInitializing && <kbd className="text-xs bg-gray-700 px-1 py-0.5 rounded text-gray-500">i</kbd>}
+                {!isInitializing && <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1 py-0.5 rounded text-[var(--color-text-muted)]">i</kbd>}
               </button>
               {initError && <div className="mt-1 text-xs text-red-400">{initError}</div>}
             </div>
@@ -301,10 +301,10 @@ export function AgentSelectDialog({
           <button
             data-testid="agent-back"
             onClick={onBack}
-            className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-2"
+            className="px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors flex items-center gap-2"
           >
             Back
-            <kbd className="text-xs bg-gray-700 px-1.5 py-0.5 rounded text-gray-500">Esc</kbd>
+            <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">Esc</kbd>
           </button>
           <button
             data-testid="agent-start"

@@ -89,7 +89,7 @@ export function StatusBar({
           <button
             data-testid="stop-button"
             onClick={onStop}
-            className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-tertiary)] transition-colors"
+            className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
             title="Stop yolium"
           >
             <Square size={10} className="fill-current" />
@@ -101,7 +101,7 @@ export function StatusBar({
         {onStop && containerState === 'crashed' && (
           <button
             onClick={onStop}
-            className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-tertiary)] transition-colors"
+            className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
             title="Close and restart"
           >
             <span className="hidden sm:inline">Close</span>

@@ -458,11 +458,11 @@ export function ItemDetailDialog({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
-          <h2 className="text-base font-semibold text-white truncate min-w-0">{item.title || 'Untitled Item'}</h2>
+          <h2 className="text-base font-semibold text-[var(--color-text-primary)] truncate min-w-0">{item.title || 'Untitled Item'}</h2>
           <button
             data-testid="close-button"
             onClick={handleClose}
-            className="p-1.5 text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-primary)] rounded transition-colors flex-shrink-0"
+            className="p-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded transition-colors flex-shrink-0"
             title="Esc to close"
           >
             <X size={18} />
@@ -475,7 +475,7 @@ export function ItemDetailDialog({
             <span>{errorMessage}</span>
             <button
               onClick={() => setErrorMessage(null)}
-              className="p-1 hover:text-white transition-colors"
+              className="p-1 hover:text-[var(--color-text-primary)] transition-colors"
             >
               <X size={14} />
             </button>
@@ -502,7 +502,7 @@ export function ItemDetailDialog({
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                   autoFocus
-                  className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+                  className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
                 />
               </div>
 
@@ -520,7 +520,7 @@ export function ItemDetailDialog({
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                   rows={10}
-                  className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
+                  className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
                 />
               </div>
 
@@ -548,7 +548,7 @@ export function ItemDetailDialog({
                   }}
                   rows={3}
                   placeholder="Write a comment..."
-                  className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
+                  className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
                 />
                 <div className="flex justify-end mt-2">
                   <button
@@ -601,7 +601,7 @@ export function ItemDetailDialog({
                     data-testid="agent-provider-select"
                     value={agentProvider}
                     onChange={e => setAgentProvider(e.target.value as KanbanItem['agentProvider'])}
-                    className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+                    className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
                   >
                     <option value="claude">Claude</option>
                     <option value="opencode">OpenCode</option>
@@ -630,7 +630,7 @@ export function ItemDetailDialog({
                   data-testid="model-select"
                   value={model}
                   onChange={e => setModel(e.target.value)}
-                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
                 >
                   <option value="">Agent default</option>
                   <option value="opus">Opus (most capable)</option>
@@ -652,7 +652,7 @@ export function ItemDetailDialog({
                   data-testid="column-select"
                   value={column}
                   onChange={e => setColumn(e.target.value as KanbanColumn)}
-                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
                 >
                   {columnOptions
                     .filter(option => {

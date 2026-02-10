@@ -72,7 +72,7 @@ export function KanbanColumn({
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border-primary)]">
-        <h2 className="text-sm font-semibold text-white">{title}</h2>
+        <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h2>
         <div className="flex items-center gap-1.5">
           {runningCount > 0 && (
             <span
