@@ -20,6 +20,7 @@ import {
   getOrCreateBoard,
   addItem,
   updateItem,
+  updateBoard,
   addComment,
   buildConversationHistory,
 } from '@main/stores/kanban-store';
@@ -215,6 +216,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
 
   // Update item status to running and move to in-progress column
   updateItem(board, itemId, { agentStatus: 'running', activeAgentName: agentName, column: 'in-progress' });
+  updateBoard(board, { lastAgentName: agentName });
   const displayModel = getDisplayModel(provider, item.model, agent.model);
   addComment(board, itemId, 'system', `${agentName} started (${provider}/${displayModel})`);
 
