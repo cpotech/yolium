@@ -305,7 +305,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
           if (code === 0) {
             // Success - check if already marked as completed
             if (exitItem && exitItem.agentStatus === 'running') {
-              updateItem(exitBoard, itemId, { agentStatus: 'completed', activeAgentName: undefined });
+              updateItem(exitBoard, itemId, { agentStatus: 'completed', activeAgentName: undefined, column: 'done' });
               addComment(exitBoard, itemId, 'system', 'Agent finished successfully');
               events.emit('complete', 'Agent finished successfully');
             }
