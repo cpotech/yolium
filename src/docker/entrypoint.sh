@@ -454,7 +454,8 @@ Be thorough but constructive. Focus on substantive issues, not nitpicks."
         # kernels where Landlock is compiled but not functional.
         # Docker already provides container-level isolation.
         # See: https://github.com/openai/codex/issues/2267
-        exec codex exec --sandbox danger-full-access "$REVIEW_PROMPT"
+        codex exec -c 'model_reasoning_effort="high"' --sandbox danger-full-access "$REVIEW_PROMPT"
+        exit $?
     else
         echo "ERROR: Unknown review agent: $REVIEW_AGENT"
         exit 1
@@ -545,24 +546,18 @@ Start by reading that file, then follow the process described in it step by step
             echo "Add your OpenAI API Key or enable Codex OAuth (ChatGPT) in Yolium Settings."
             exit 3
         fi
-
-        # Write full agent instructions to a file for Codex to read
-        INSTRUCTIONS_FILE="$PROJECT_DIR/.yolium-agent-instructions.md"
-        echo "$PROMPT" > "$INSTRUCTIONS_FILE"
-        log "Agent instructions written to $INSTRUCTIONS_FILE"
-
-        RUN_PROMPT="You are a Yolium AI agent. Your task:
-
-$GOAL
-
-IMPORTANT: Read the file .yolium-agent-instructions.md in the project root FIRST. It contains your full instructions, process steps, and the @@YOLIUM: protocol you MUST use to communicate progress.
-
-Start by reading that file, then follow the process described in it step by step."
-
+        # Configure Codex for autonomous agent work — default reasoning effort
+        # is "none" which causes the agent to stop after analysis without
+        # implementing changes. Set via both config.toml and -c flag for reliability.
+        mkdir -p "$HOME/.codex"
+        cat > "$HOME/.codex/config.toml" << 'CODEXCFG'
+model_reasoning_effort = "high"
+CODEXCFG
         # Use danger-full-access sandbox — Codex's Landlock sandbox panics on
         # kernels where Landlock is compiled but not functional.
         # Docker already provides container-level isolation.
-        exec codex exec --sandbox danger-full-access "$RUN_PROMPT"
+        codex exec -c 'model_reasoning_effort="high"' --sandbox danger-full-access "$PROMPT"
+        exit $?
     else
         log "Starting Claude Code agent"
         if [ -z "$ANTHROPIC_API_KEY" ] && [ ! -f "$HOME/.claude/.credentials.json" ]; then

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseProtocolMessage, extractProtocolMessages } from '@main/services/agent-protocol';
+import { parseProtocolMessage, extractProtocolMessages, extractFirstJsonObject } from '@main/services/agent-protocol';
 
 describe('agent-protocol', () => {
   describe('parseProtocolMessage', () => {
@@ -160,6 +160,16 @@ describe('agent-protocol', () => {
       expect(result).toBeNull();
     });
 
+    it('should parse comment as alias for add_comment', () => {
+      const json = '{"type":"comment","text":"Access: I can read/write files."}';
+      const result = parseProtocolMessage(json);
+
+      expect(result).toEqual({
+        type: 'add_comment',
+        text: 'Access: I can read/write files.',
+      });
+    });
+
     it('should parse create_item with model field', () => {
       const json = '{"type":"create_item","title":"Task","description":"Do it","agentProvider":"claude","order":1,"model":"opus"}';
       const result = parseProtocolMessage(json);
@@ -271,6 +281,88 @@ Some log output
       expect(results[0].type).toBe('progress');
       expect(results[1].type).toBe('progress');
       expect(results[2].type).toBe('complete');
+    });
+
+    it('should extract multiple protocol messages concatenated on a single line (Codex format)', () => {
+      // Codex CLI concatenates multiple @@YOLIUM: messages on one stdout line
+      const output = '@@YOLIUM:{"type":"add_comment","text":"Analysis summary"}\\n@@YOLIUM:{"type":"ask_question","text":"What should I do?"}';
+
+      const results = extractProtocolMessages(output);
+      expect(results).toHaveLength(2);
+      expect(results[0]).toEqual({
+        type: 'add_comment',
+        text: 'Analysis summary',
+      });
+      expect(results[1]).toEqual({
+        type: 'ask_question',
+        text: 'What should I do?',
+      });
+    });
+
+    it('should handle Codex duplicate output with multiple messages per line', () => {
+      // Codex repeats its full output as a result dump — each copy has messages on one line
+      const output = `codex
+@@YOLIUM:{"type":"add_comment","text":"Found files"}\\n@@YOLIUM:{"type":"complete","summary":"Done"}
+@@YOLIUM:{"type":"add_comment","text":"Found files"}\\n@@YOLIUM:{"type":"complete","summary":"Done"}
+tokens used
+5000`;
+
+      const results = extractProtocolMessages(output);
+      // Should find 4 messages (2 per line × 2 lines) — dedup happens in agent-runner, not here
+      expect(results).toHaveLength(4);
+      expect(results[0].type).toBe('add_comment');
+      expect(results[1].type).toBe('complete');
+    });
+
+    it('should handle protocol message with trailing text after JSON', () => {
+      const output = '@@YOLIUM:{"type":"complete","summary":"Done"} some trailing text';
+
+      const results = extractProtocolMessages(output);
+      expect(results).toHaveLength(1);
+      expect(results[0]).toEqual({
+        type: 'complete',
+        summary: 'Done',
+      });
+    });
+  });
+
+  describe('extractFirstJsonObject', () => {
+    it('should extract a simple JSON object', () => {
+      expect(extractFirstJsonObject('{"a":1}')).toBe('{"a":1}');
+    });
+
+    it('should extract JSON with trailing text', () => {
+      expect(extractFirstJsonObject('{"a":1}extra')).toBe('{"a":1}');
+    });
+
+    it('should handle nested objects', () => {
+      expect(extractFirstJsonObject('{"a":{"b":2}}')).toBe('{"a":{"b":2}}');
+    });
+
+    it('should handle strings with braces', () => {
+      expect(extractFirstJsonObject('{"text":"hello {world}"}')).toBe('{"text":"hello {world}"}');
+    });
+
+    it('should handle escaped quotes in strings', () => {
+      expect(extractFirstJsonObject('{"text":"say \\"hi\\""}rest')).toBe('{"text":"say \\"hi\\""}');
+    });
+
+    it('should handle escaped backslashes', () => {
+      expect(extractFirstJsonObject('{"path":"C:\\\\Users"}rest')).toBe('{"path":"C:\\\\Users"}');
+    });
+
+    it('should return null for no JSON object', () => {
+      expect(extractFirstJsonObject('no json here')).toBeNull();
+    });
+
+    it('should return null for unbalanced braces', () => {
+      expect(extractFirstJsonObject('{"incomplete')).toBeNull();
+    });
+
+    it('should handle JSON with newline escape sequences in text', () => {
+      const input = '{"type":"add_comment","text":"line1\\nline2\\nline3"}trailing';
+      const result = extractFirstJsonObject(input);
+      expect(result).toBe('{"type":"add_comment","text":"line1\\nline2\\nline3"}');
     });
   });
 });

@@ -356,6 +356,15 @@ Output: @@YOLIUM:{"type":"complete","summary":"done"}`;
       expect(agentBlock).toContain('elif [ "$AGENT_PROV" = "codex" ]');
       expect(agentBlock).toContain('codex exec');
     });
+
+    it('should configure reasoning effort for Codex agent mode', () => {
+      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
+      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+
+      const agentBlock = entrypointContent.split('AGENT_PROV" = "codex"')[1]?.split('exit $?')[0];
+      expect(agentBlock).toContain('model_reasoning_effort');
+      expect(agentBlock).toContain('high');
+    });
   });
 
   describe('Claude OAuth support', () => {

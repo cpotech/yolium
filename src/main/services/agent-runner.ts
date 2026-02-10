@@ -191,7 +191,8 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
 
   // Update item status to running and move to in-progress column
   updateItem(board, itemId, { agentStatus: 'running', activeAgentName: agentName, column: 'in-progress' });
-  addComment(board, itemId, 'system', `${agentName} started`);
+  const displayModel = item.model || agent.model;
+  addComment(board, itemId, 'system', `${agentName} started (${provider}/${displayModel})`);
 
   // Create or reuse worktree for branch isolation (best-effort, graceful fallback)
   const resolvedProjectPath = path.resolve(projectPath);
@@ -246,6 +247,27 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
   // Resolve model: item-level model overrides agent-level model
   const model = resolveModel(item.model, agent.model);
 
+  // For non-Claude providers, write system prompt to an instructions file
+  // and build a shorter goal-focused prompt. Non-Claude CLIs (Codex, OpenCode)
+  // work better with a file reference than receiving the full system prompt inline.
+  let agentPrompt = prompt;
+  if (provider !== 'claude') {
+    const instructionsFile = `.yolium-${agentName}-instructions.md`;
+    const writePath = worktreePath || resolvedProjectPath;
+    try {
+      fs.writeFileSync(path.join(writePath, instructionsFile), agent.systemPrompt);
+      let shortPrompt = effectiveGoal;
+      if (conversationHistory.trim()) {
+        shortPrompt += `\n\n## Previous conversation:\n\n${conversationHistory}\n\nContinue from where you left off.`;
+      }
+      shortPrompt += `\n\nIMPORTANT: Read the file ${instructionsFile} in the project root FIRST. It contains your full instructions, process steps, and the @@YOLIUM: protocol you MUST use to communicate progress.\nStart by reading that file, then follow the process described in it step by step.`;
+      agentPrompt = shortPrompt;
+      logger.info('Wrote agent instructions file for non-Claude provider', { instructionsFile, provider });
+    } catch {
+      logger.warn('Failed to write agent instructions file, using inline prompt', { instructionsFile });
+    }
+  }
+
   logger.info('Starting agent container', { agentName, projectPath, itemId, model, branchName });
 
   // Write a session header to the persistent log
@@ -270,8 +292,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
         webContentsId,
         projectPath,
         agentName,
-        prompt,
-        goal: effectiveGoal,
+        prompt: agentPrompt,
         model,
         tools: agent.tools,
         itemId,

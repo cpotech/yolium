@@ -46,3 +46,6 @@ src/tests/e2e-results/
 
 # Dev/test artifacts
 dev-test-electron/
+
+# Agent instructions (written to worktrees for non-Claude agents)
+.yolium-*-instructions.md
