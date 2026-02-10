@@ -67,7 +67,7 @@ export function FolderCreationInput({
   }, [handleConfirm, handleCancel])
 
   return (
-    <div className="mt-2 border border-gray-700 rounded-md bg-gray-900 p-2">
+    <div className="mt-2 border border-[var(--color-border-primary)] rounded-md bg-[var(--color-bg-primary)] p-2">
       <div className="flex items-center gap-2">
         <svg
           className="w-4 h-4 text-green-500"
@@ -92,11 +92,11 @@ export function FolderCreationInput({
           }}
           onKeyDown={handleKeyDown}
           placeholder="New folder name"
-          className="flex-1 px-2 py-1 bg-gray-800 border border-gray-600 rounded text-white font-mono text-sm focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
+          className="flex-1 px-2 py-1 bg-[var(--color-bg-secondary)] border border-[var(--color-border-secondary)] rounded text-[var(--color-text-primary)] font-mono text-sm focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
         />
         <button
           onClick={handleConfirm}
-          className="p-1 text-green-500 hover:bg-gray-700 rounded"
+          className="p-1 text-green-500 hover:bg-[var(--color-bg-tertiary)] rounded"
           title="Create folder (Enter)"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,7 +105,7 @@ export function FolderCreationInput({
         </button>
         <button
           onClick={handleCancel}
-          className="p-1 text-gray-400 hover:bg-gray-700 rounded"
+          className="p-1 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] rounded"
           title="Cancel (Escape)"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,7 +116,7 @@ export function FolderCreationInput({
       {error && (
         <div className="mt-1 text-sm text-red-400">{error}</div>
       )}
-      <div className="mt-1 text-xs text-gray-500">
+      <div className="mt-1 text-xs text-[var(--color-text-muted)]">
         Creating in: {parentDirectory}
       </div>
     </div>

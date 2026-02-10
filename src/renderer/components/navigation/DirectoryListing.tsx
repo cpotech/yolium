@@ -34,7 +34,7 @@ export function DirectoryListing({
   return (
     <ul
       ref={listRef}
-      className="mt-2 max-h-48 overflow-y-auto border border-gray-700 rounded-md bg-gray-900"
+      className="mt-2 max-h-48 overflow-y-auto border border-[var(--color-border-primary)] rounded-md bg-[var(--color-bg-primary)]"
     >
       {entries.map((entry, index) => (
         <li
@@ -44,11 +44,11 @@ export function DirectoryListing({
           className={`px-3 py-1.5 cursor-pointer flex items-center gap-2 group ${
             index === selectedIndex
               ? 'bg-blue-600 text-white'
-              : 'text-gray-300 hover:bg-gray-700'
+              : 'text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'
           }`}
         >
           <svg
-            className={`w-4 h-4 ${index === selectedIndex ? 'text-white' : 'text-gray-500'}`}
+            className={`w-4 h-4 ${index === selectedIndex ? 'text-white' : 'text-[var(--color-text-muted)]'}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -60,7 +60,7 @@ export function DirectoryListing({
               d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
             />
           </svg>
-          <span className={`font-mono text-sm flex-1 ${entry.isHidden ? 'text-gray-500' : ''}`}>
+          <span className={`font-mono text-sm flex-1 ${entry.isHidden ? 'text-[var(--color-text-muted)]' : ''}`}>
             {entry.name}
           </span>
           <button
@@ -68,7 +68,7 @@ export function DirectoryListing({
             className={`p-0.5 rounded transition-opacity ${
               isFavorite(entry.path)
                 ? 'opacity-100'
-                : 'opacity-0 group-hover:opacity-100 hover:bg-gray-600'
+                : 'opacity-0 group-hover:opacity-100 hover:bg-[var(--color-bg-hover)]'
             } ${index === selectedIndex ? 'hover:bg-blue-500' : ''}`}
             title={isFavorite(entry.path) ? 'Remove from favorites' : 'Add to favorites'}
           >
@@ -78,7 +78,7 @@ export function DirectoryListing({
                   ? 'text-yellow-500'
                   : index === selectedIndex
                     ? 'text-white/60'
-                    : 'text-gray-500'
+                    : 'text-[var(--color-text-muted)]'
               }`}
               fill={isFavorite(entry.path) ? 'currentColor' : 'none'}
               stroke="currentColor"

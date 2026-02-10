@@ -455,7 +455,7 @@ function App(): React.ReactElement {
               ) : (
                 <Loader2 className="w-6 h-6 text-[var(--color-accent-primary)] animate-spin" />
               )}
-              <h2 className="text-lg font-semibold text-white">
+              <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
                 {docker.buildError ? 'Docker Image Build Failed' : docker.isRebuilding ? 'Deleting Docker Image' : 'Building Docker Image'}
               </h2>
             </div>
@@ -479,7 +479,7 @@ function App(): React.ReactElement {
             {docker.buildError ? (
               <button
                 onClick={() => { docker.setBuildError(null); docker.setBuildProgress(null); }}
-                className="mt-4 px-4 py-2 bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-border-primary)] text-white rounded transition-colors"
+                className="mt-4 px-4 py-2 bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-border-primary)] text-[var(--color-text-primary)] rounded transition-colors"
               >
                 Close
               </button>
@@ -491,7 +491,7 @@ function App(): React.ReactElement {
                 <button
                   data-testid="build-cancel-button"
                   onClick={() => { docker.buildCancelledRef.current = true; docker.setBuildProgress(null); }}
-                  className="ml-4 px-3 py-1.5 text-sm text-[var(--color-text-secondary)] hover:text-white rounded transition-colors border border-[var(--color-border-primary)] hover:bg-[var(--color-bg-tertiary)]"
+                  className="ml-4 px-3 py-1.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] rounded transition-colors border border-[var(--color-border-primary)] hover:bg-[var(--color-bg-tertiary)]"
                 >
                   Cancel
                 </button>

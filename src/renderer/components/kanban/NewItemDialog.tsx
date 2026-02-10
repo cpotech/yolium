@@ -128,11 +128,11 @@ export function NewItemDialog({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
-          <h2 className="text-base font-semibold text-white">New Item</h2>
+          <h2 className="text-base font-semibold text-[var(--color-text-primary)]">New Item</h2>
           <button
             data-testid="close-button"
             onClick={onClose}
-            className="p-1.5 text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-primary)] rounded transition-colors flex-shrink-0"
+            className="p-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded transition-colors flex-shrink-0"
             title="Esc to close"
           >
             <X size={18} />
@@ -145,7 +145,7 @@ export function NewItemDialog({
             <span>{errorMessage}</span>
             <button
               onClick={() => setErrorMessage(null)}
-              className="p-1 hover:text-white transition-colors"
+              className="p-1 hover:text-[var(--color-text-primary)] transition-colors"
             >
               <X size={14} />
             </button>
@@ -173,7 +173,7 @@ export function NewItemDialog({
                   onChange={e => setTitle(e.target.value)}
                   placeholder="Enter task title"
                   autoFocus
-                  className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+                  className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
                 />
               </div>
 
@@ -192,7 +192,7 @@ export function NewItemDialog({
                   onChange={e => setDescription(e.target.value)}
                   placeholder="Describe what needs to be done"
                   rows={10}
-                  className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
+                  className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
                 />
               </div>
             </div>
@@ -217,7 +217,7 @@ export function NewItemDialog({
                   value={branch}
                   onChange={e => setBranch(e.target.value)}
                   placeholder="e.g., feature/my-feature"
-                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
                 />
               </div>
 
@@ -234,7 +234,7 @@ export function NewItemDialog({
                   data-testid="agent-provider-select"
                   value={agentProvider}
                   onChange={e => setAgentProvider(e.target.value as KanbanAgentProvider)}
-                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
                 >
                   {agentProviderOptions.map(option => (
                     <option key={option.value} value={option.value}>
@@ -258,7 +258,7 @@ export function NewItemDialog({
                     data-testid="agent-type-select"
                     value={agentType}
                     onChange={e => setAgentType(e.target.value)}
-                    className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+                    className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
                   >
                     <option value="">Not set</option>
                     {agentDefinitions.map(agent => (
@@ -283,7 +283,7 @@ export function NewItemDialog({
                   data-testid="model-select"
                   value={model}
                   onChange={e => setModel(e.target.value)}
-                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-white text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
                 >
                   {modelOptions.map(option => (
                     <option key={option.value} value={option.value}>
@@ -311,7 +311,7 @@ export function NewItemDialog({
                 <button
                   data-testid="cancel-button"
                   onClick={onClose}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-[var(--color-text-secondary)] rounded-md hover:text-white hover:bg-[var(--color-bg-primary)] transition-colors"
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-[var(--color-text-secondary)] rounded-md hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] transition-colors"
                 >
                   Cancel
                 </button>
