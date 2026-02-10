@@ -133,9 +133,8 @@ test.describe('Dialog Shortcuts', () => {
       });
       await expect(window.locator(selectors.gitConfigDialog)).toBeVisible();
 
-      // Fill in valid values
-      await window.fill(selectors.gitNameInput, 'Test User');
-      await window.fill(selectors.gitEmailInput, 'test@example.com');
+      // Fill in valid GitHub PAT (all fields are optional, but PAT is the primary field)
+      await window.fill(selectors.gitPatInput, 'github_pat_test123456789');
 
       // Press Enter to submit
       await window.keyboard.press('Enter');
@@ -168,13 +167,12 @@ test.describe('Dialog Shortcuts', () => {
       });
       await expect(window.locator(selectors.gitConfigDialog)).toBeVisible();
 
-      // Fill in required fields and OpenAI key
-      await window.fill(selectors.gitNameInput, 'Test User');
-      await window.fill(selectors.gitEmailInput, 'test@example.com');
+      // Fill in API keys (form requires either OAuth or keys for Claude and Codex)
+      await window.fill(selectors.anthropicKeyInput, 'sk-ant-test-key-12345');
       await window.fill(selectors.openaiKeyInput, 'sk-test-key-12345');
 
-      // Save
-      await window.click(selectors.gitConfigSaveButton);
+      // Save using Enter key (save button may be outside viewport)
+      await window.keyboard.press('Enter');
 
       // Dialog should close
       await expect(window.locator(selectors.gitConfigDialog)).not.toBeVisible();
