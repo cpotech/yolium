@@ -62,6 +62,14 @@ function generateCSSVariables(tokens: ThemeTokens): Record<string, string> {
     '--color-status-stopped': colors.status.stopped,
     '--color-special-worktree': colors.special.worktree,
     '--color-special-branch': colors.special.branch,
+    '--color-agent-primary-bg': colors.agent.primary.bg,
+    '--color-agent-primary-hover': colors.agent.primary.hover,
+    '--color-agent-danger-bg': colors.agent.danger.bg,
+    '--color-agent-danger-hover': colors.agent.danger.hover,
+    '--color-agent-success-bg': colors.agent.success.bg,
+    '--color-agent-success-hover': colors.agent.success.hover,
+    '--color-agent-warning-bg': colors.agent.warning.bg,
+    '--color-agent-warning-hover': colors.agent.warning.hover,
   };
 }
 

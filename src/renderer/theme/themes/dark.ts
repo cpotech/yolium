@@ -35,6 +35,12 @@ export const darkTheme: ThemeTokens = {
       worktree: '#A485DD',    // tokyodark purple - Worktree indicator
       branch: '#7199EE',      // tokyodark blue - Git branch
     },
+    agent: {
+      primary: { bg: '#7199EE', hover: '#9FBBF3' },   // accent blue
+      danger: { bg: '#EE6D85', hover: '#FE6D85' },    // red - semantic meaning
+      success: { bg: '#5A7FD4', hover: '#7199EE' },   // deeper blue
+      warning: { bg: '#4A6FC7', hover: '#5A7FD4' },   // muted blue
+    },
   },
   terminal: {
     background: '#06080A',    // tokyodark black
