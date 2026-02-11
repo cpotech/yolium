@@ -409,6 +409,36 @@ describe('agent-runner', () => {
       expect(result.agentStatus).toBe('failed');
     });
 
+    it('should mark item as interrupted when agent exits with protocol messages but no complete signal', () => {
+      // Simulates the onExit handler when code === 0, protocolCount > 0,
+      // but agentStatus is still 'running' (no complete protocol message received).
+      // This happens when a model hits its output token limit mid-workflow.
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test work item',
+        description: 'Implement feature',
+        agentProvider: 'opencode',
+        order: 0,
+      });
+
+      // Simulate agent start: move to in-progress with running status
+      updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
+
+      // At exit time, agentStatus is still 'running' (no 'complete' protocol was received)
+      // and protocolCount > 0 (progress/comment messages were sent)
+      const exitItem = board.items.find(i => i.id === item.id);
+      expect(exitItem).toBeDefined();
+      expect(exitItem!.agentStatus).toBe('running');
+
+      // Simulate what the new code does: mark as interrupted (not completed)
+      updateItem(board, item.id, { agentStatus: 'interrupted', activeAgentName: undefined });
+      addComment(board, item.id, 'system', 'Agent stopped without completing (no completion signal received). You can resume to continue.');
+
+      const result = board.items.find(i => i.id === item.id)!;
+      expect(result.column).toBe('in-progress'); // Should NOT move to verify
+      expect(result.agentStatus).toBe('interrupted'); // Should be interrupted, not completed
+    });
+
     it('should not move item to done column on error protocol message', () => {
       // Simulates the handleAgentOutput 'error' case (agent-runner.ts:466)
       const board = createBoard('/path/to/project');
