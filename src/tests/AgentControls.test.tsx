@@ -87,7 +87,7 @@ describe('AgentControls', () => {
       expect(onStartAgent).toHaveBeenCalledWith('plan-agent')
     })
 
-    it('should give first agent primary button style', async () => {
+    it('should render agent buttons with uniform secondary styling', async () => {
       const item = createMockItem({ agentStatus: 'idle' })
       render(<AgentControls item={item} {...defaultProps} />)
 
@@ -95,8 +95,25 @@ describe('AgentControls', () => {
         expect(screen.getByTestId('run-code-agent-button')).toBeInTheDocument()
       })
 
+      // All buttons should have uniform secondary background styling
       const firstButton = screen.getByTestId('run-code-agent-button')
-      expect(firstButton.className).toContain('bg-[var(--color-agent-primary-bg)]')
+      expect(firstButton.className).toContain('bg-[var(--color-bg-secondary)]')
+    })
+
+    it('should render distinct icons for each agent type', async () => {
+      const item = createMockItem({ agentStatus: 'idle' })
+      render(<AgentControls item={item} {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('run-code-agent-button')).toBeInTheDocument()
+      })
+
+      // Each button should have an icon (SVG element)
+      const codeButton = screen.getByTestId('run-code-agent-button')
+      const planButton = screen.getByTestId('run-plan-agent-button')
+      
+      expect(codeButton.querySelector('svg')).toBeInTheDocument()
+      expect(planButton.querySelector('svg')).toBeInTheDocument()
     })
   })
 
@@ -243,28 +260,28 @@ describe('AgentControls', () => {
   describe('agentType sorting', () => {
     it('should put pre-assigned agentType first in button list', async () => {
       const item = createMockItem({ agentStatus: 'idle', agentType: 'plan-agent' })
-      render(<AgentControls item={item} {...defaultProps} />)
+      const { container } = render(<AgentControls item={item} {...defaultProps} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('run-plan-agent-button')).toBeInTheDocument()
       })
 
-      // plan-agent should be first (primary style)
-      const planButton = screen.getByTestId('run-plan-agent-button')
-      expect(planButton.className).toContain('bg-[var(--color-agent-primary-bg)]')
+      // plan-agent should be first in the DOM order
+      const buttons = container.querySelectorAll('[data-testid^="run-"]')
+      expect(buttons[0]).toHaveAttribute('data-testid', 'run-plan-agent-button')
     })
 
     it('should keep default order when no agentType is set', async () => {
       const item = createMockItem({ agentStatus: 'idle', agentType: undefined })
-      render(<AgentControls item={item} {...defaultProps} />)
+      const { container } = render(<AgentControls item={item} {...defaultProps} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('run-code-agent-button')).toBeInTheDocument()
       })
 
-      // code-agent should be first (default order from listDefinitions)
-      const codeButton = screen.getByTestId('run-code-agent-button')
-      expect(codeButton.className).toContain('bg-[var(--color-agent-primary-bg)]')
+      // code-agent should be first in the DOM order (default order from listDefinitions)
+      const buttons = container.querySelectorAll('[data-testid^="run-"]')
+      expect(buttons[0]).toHaveAttribute('data-testid', 'run-code-agent-button')
     })
 
     it('should use agentType as resume fallback when activeAgentName is not set', () => {
