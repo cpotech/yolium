@@ -395,11 +395,11 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   registerGitChannel(ipcMain, GIT_CHANNELS.worktreeChangedFiles, (_event, projectPath: string, branchName: string) => {
     logger.info('IPC: git:worktree-changed-files', { projectPath, branchName });
     try {
-      return getWorktreeChangedFiles(projectPath, branchName);
+      return { files: getWorktreeChangedFiles(projectPath, branchName) };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       logger.error('Failed to get changed files', { projectPath, branchName, error: message });
-      return [];
+      return { files: [], error: message };
     }
   });
 
@@ -407,11 +407,11 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   registerGitChannel(ipcMain, GIT_CHANNELS.worktreeFileDiff, (_event, projectPath: string, branchName: string, filePath: string) => {
     logger.info('IPC: git:worktree-file-diff', { projectPath, branchName, filePath });
     try {
-      return getWorktreeFileDiff(projectPath, branchName, filePath);
+      return { diff: getWorktreeFileDiff(projectPath, branchName, filePath) };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       logger.error('Failed to get file diff', { projectPath, branchName, filePath, error: message });
-      return '';
+      return { diff: '', error: message };
     }
   });
 
