@@ -10,7 +10,7 @@ import { spawn } from 'node:child_process';
 import { PassThrough } from 'node:stream';
 import { BrowserWindow } from 'electron';
 import { createLogger } from '@main/lib/logger';
-import { loadGitConfig, generateGitCredentials, hasHostClaudeOAuth, hasHostCodexOAuth } from '@main/git/git-config';
+import { loadGitConfig, generateGitCredentials, hasHostClaudeOAuth, hasHostCodexOAuth, refreshCodexOAuthTokenSerialized } from '@main/git/git-config';
 import { docker, sessions, DEFAULT_IMAGE } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
 import { getGitCredentialsBind, getClaudeOAuthBind, getCodexOAuthBind } from './project-registry';
@@ -164,6 +164,11 @@ export async function createCodeReviewContainer(
   const oauthBind = getClaudeOAuthBind();
   if (oauthBind) {
     binds.push(oauthBind);
+  }
+
+  // Refresh Codex OAuth token before mounting (single-use refresh tokens go stale)
+  if (agent === 'codex') {
+    await refreshCodexOAuthTokenSerialized();
   }
 
   // Add Codex OAuth credentials if enabled
