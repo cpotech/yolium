@@ -123,6 +123,20 @@ describe('KanbanCard', () => {
     expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('No agent')
   })
 
+  it('should show last-run agent metadata when lastAgentName exists', () => {
+    const item = createMockItem({ lastAgentName: 'plan-agent' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.getByTestId('last-run-agent')).toHaveTextContent('Last run: Plan')
+  })
+
+  it('should hide last-run agent metadata when lastAgentName is undefined', () => {
+    const item = createMockItem({ lastAgentName: undefined })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.queryByTestId('last-run-agent')).not.toBeInTheDocument()
+  })
+
   it('should show branch when set', () => {
     const item = createMockItem({ branch: 'feature/my-branch' })
     render(<KanbanCard item={item} onClick={vi.fn()} />)

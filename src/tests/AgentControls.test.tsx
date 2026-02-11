@@ -230,6 +230,21 @@ describe('AgentControls', () => {
       fireEvent.click(screen.getByTestId('resume-agent-button'))
       expect(onResumeAgent).toHaveBeenCalledWith('plan-agent')
     })
+
+    it('should use lastAgentName for resume when activeAgentName is missing', () => {
+      const onResumeAgent = vi.fn()
+      const item = createMockItem({
+        agentStatus: 'waiting',
+        agentQuestion: 'Proceed?',
+        activeAgentName: undefined,
+        lastAgentName: 'verify-agent',
+        agentType: 'plan-agent',
+      })
+      render(<AgentControls item={item} {...defaultProps} onResumeAgent={onResumeAgent} />)
+
+      fireEvent.click(screen.getByTestId('resume-agent-button'))
+      expect(onResumeAgent).toHaveBeenCalledWith('verify-agent')
+    })
   })
 
   describe('interrupted state', () => {
@@ -243,6 +258,20 @@ describe('AgentControls', () => {
 
       fireEvent.click(screen.getByTestId('resume-interrupted-button'))
       expect(onResumeAgent).toHaveBeenCalledWith('code-agent')
+    })
+
+    it('should use lastAgentName over agentType for resume fallback', () => {
+      const onResumeAgent = vi.fn()
+      const item = createMockItem({
+        agentStatus: 'interrupted',
+        activeAgentName: undefined,
+        lastAgentName: 'plan-agent',
+        agentType: 'code-agent',
+      })
+      render(<AgentControls item={item} {...defaultProps} onResumeAgent={onResumeAgent} />)
+
+      fireEvent.click(screen.getByTestId('resume-interrupted-button'))
+      expect(onResumeAgent).toHaveBeenCalledWith('plan-agent')
     })
   })
 
@@ -292,12 +321,27 @@ describe('AgentControls', () => {
       const item = createMockItem({
         agentStatus: 'interrupted',
         activeAgentName: undefined,
+        lastAgentName: undefined,
         agentType: 'plan-agent',
       })
       render(<AgentControls item={item} {...defaultProps} onResumeAgent={onResumeAgent} />)
 
       fireEvent.click(screen.getByTestId('resume-interrupted-button'))
       expect(onResumeAgent).toHaveBeenCalledWith('plan-agent')
+    })
+
+    it('should fall back to code-agent when no resume metadata exists', () => {
+      const onResumeAgent = vi.fn()
+      const item = createMockItem({
+        agentStatus: 'interrupted',
+        activeAgentName: undefined,
+        lastAgentName: undefined,
+        agentType: undefined,
+      })
+      render(<AgentControls item={item} {...defaultProps} onResumeAgent={onResumeAgent} />)
+
+      fireEvent.click(screen.getByTestId('resume-interrupted-button'))
+      expect(onResumeAgent).toHaveBeenCalledWith('code-agent')
     })
   })
 

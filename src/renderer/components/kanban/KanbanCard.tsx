@@ -236,6 +236,15 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
         {item.description}
       </p>
 
+      {item.lastAgentName && (
+        <p
+          data-testid="last-run-agent"
+          className="text-[11px] text-[var(--color-text-tertiary)] mb-2"
+        >
+          Last run: {formatAgentRoleLabel(item.lastAgentName)}
+        </p>
+      )}
+
       {/* Footer: Status indicator, action button, merge status, and comment count */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
