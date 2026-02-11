@@ -1,5 +1,5 @@
 import React from 'react';
-import { Square, Loader2, Keyboard, GitBranch, TreeDeciduous, Sun, Moon, GitPullRequest, Settings } from 'lucide-react';
+import { Square, Loader2, Keyboard, GitBranch, TreeDeciduous, Sun, Moon, Settings } from 'lucide-react';
 import type { ContainerState } from '@shared/types/tabs';
 import type { AgentTokenUsage } from '@shared/types/agent';
 import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper';
@@ -13,7 +13,6 @@ interface StatusBarProps {
   onStop?: () => void;
   onShowShortcuts: () => void;
   onOpenSettings: () => void;
-  onOpenCodeReview: () => void;
   gitBranch?: string;
   worktreeName?: string;
   // Speech-to-text props
@@ -30,7 +29,6 @@ export function StatusBar({
   onStop,
   onShowShortcuts,
   onOpenSettings,
-  onOpenCodeReview,
   gitBranch,
   worktreeName,
   whisperRecordingState = 'idle',
@@ -136,16 +134,6 @@ export function StatusBar({
             <span className="text-[var(--color-text-disabled)]">|</span>
           </>
         )}
-
-        {/* PR Review button */}
-        <button
-          data-testid="code-review-button"
-          onClick={onOpenCodeReview}
-          className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-        >
-          <GitPullRequest size={12} />
-          <span className="hidden sm:inline">PR Review</span>
-        </button>
 
         {/* Settings button */}
         <button

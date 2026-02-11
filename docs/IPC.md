@@ -522,33 +522,3 @@ onDownloadProgress(callback: (progress: {
   percent: number;
 }) => void): CleanupFn
 ```
-
----
-
-## codeReview
-
-Autonomous PR code review sessions.
-
-| Method | Channel | Direction | Description |
-|--------|---------|-----------|-------------|
-| `listBranches(repoUrl)` | `code-review:list-branches` | invoke | List remote branches for a repo |
-| `checkAuth(agent)` | `code-review:check-agent-auth` | invoke | Check if agent is authenticated (API key or OAuth) |
-| `start(repoUrl, branch, agent, gitConfig?)` | `code-review:start` | invoke | Start a code review session |
-| `onOutput(cb)` | `code-review:output` | event | Review session stdout |
-| `onComplete(cb)` | `code-review:complete` | event | Review session finished |
-
-### Types
-
-```typescript
-listBranches(repoUrl: string): Promise<{ branches: string[]; error?: string }>
-checkAuth(agent: string): Promise<{ authenticated: boolean }>
-start(
-  repoUrl: string,
-  branch: string,
-  agent: string,
-  gitConfig?: { name: string; email: string }
-): Promise<string>  // returns sessionId
-
-onOutput(callback: (sessionId: string, data: string) => void): CleanupFn
-onComplete(callback: (sessionId: string, exitCode: number, authError?: boolean) => void): CleanupFn
-```

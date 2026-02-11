@@ -63,7 +63,6 @@ Full API reference with types: [docs/IPC.md](docs/IPC.md).
 | `agent-handlers.ts` | `agent:*` | Headless agent start/stop/resume |
 | `cache-handlers.ts` | `cache:*` | Project cache management |
 | `whisper-handlers.ts` | `whisper:*` | Speech-to-text model management |
-| `code-review-handlers.ts` | `code-review:*` | PR review sessions |
 
 #### Services (`src/main/services/`)
 - `agent-runner.ts` — Agent orchestration: start, stop, resume, protocol message routing
@@ -79,7 +78,7 @@ Full API reference with types: [docs/IPC.md](docs/IPC.md).
 - `image-builder.ts` — Build `yolium:latest` Docker image
 - `project-registry.ts` — Track project cache directories (`~/.yolium/project-registry.json`)
 - `cache-manager.ts` — Cache cleanup (orphaned, stale)
-- `code-review.ts` — PR review container creation
+- `agent-auth.ts` — Shared agent authentication checks (Claude/OpenCode/Codex)
 - `path-utils.ts` — Docker-specific path normalization
 - `shared.ts` — Shared Docker client instance (dockerode)
 
@@ -108,7 +107,6 @@ Full API reference with types: [docs/IPC.md](docs/IPC.md).
 - **`tabs/`**: `TabBar.tsx`, `Tab.tsx`
 - **`settings/`**: `GitConfigDialog.tsx`, `KeyboardShortcutsDialog.tsx`, `WhisperModelDialog.tsx`
 - **`docker/`**: `DockerSetupDialog.tsx`
-- **`code-review/`**: `CodeReviewDialog.tsx`
 - **Shared**: `StatusBar.tsx`, `EmptyState.tsx`, `SpeechToTextButton.tsx`
 
 #### Hooks (`src/renderer/hooks/`)
@@ -121,7 +119,6 @@ Full API reference with types: [docs/IPC.md](docs/IPC.md).
 - `useFavoriteFolders.ts` — Favorite folders persistence
 - `useGitBranchPolling.ts` — Poll git branch for active tabs
 - `useKeyboardShortcuts.ts` — Global keyboard shortcut registration
-- `useCodeReview.ts` — Code review session management
 - `useWhisper.ts` — Speech-to-text recording and transcription
 - `useTerminalCwd.ts` — Track terminal working directory
 

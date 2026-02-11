@@ -345,28 +345,6 @@ const whisper = {
   },
 };
 
-// Code Review namespace
-const codeReview = {
-  listBranches: (repoUrl: string) =>
-    ipcRenderer.invoke('code-review:list-branches', repoUrl),
-  checkAuth: (agent: string) =>
-    ipcRenderer.invoke('code-review:check-agent-auth', agent),
-  start: (repoUrl: string, branch: string, agent: string, gitConfig?: { name: string; email: string }) =>
-    ipcRenderer.invoke('code-review:start', repoUrl, branch, agent, gitConfig),
-  onOutput: (callback: (sessionId: string, data: string) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, data: string) =>
-      callback(sessionId, data);
-    ipcRenderer.on('code-review:output', handler);
-    return () => ipcRenderer.removeListener('code-review:output', handler);
-  },
-  onComplete: (callback: (sessionId: string, exitCode: number, authError?: boolean) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, exitCode: number, authError?: boolean) =>
-      callback(sessionId, exitCode, authError);
-    ipcRenderer.on('code-review:complete', handler);
-    return () => ipcRenderer.removeListener('code-review:complete', handler);
-  },
-};
-
 // Expose all namespaces to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   app,
@@ -382,7 +360,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   agent,
   cache,
   whisper,
-  codeReview,
 });
 
 // Type declarations for TypeScript
@@ -610,13 +587,6 @@ declare global {
         getSelectedModel: () => Promise<string>;
         saveSelectedModel: (modelSize: string) => Promise<void>;
         onDownloadProgress: (callback: (progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) => void) => CleanupFunction;
-      };
-      codeReview: {
-        listBranches: (repoUrl: string) => Promise<{ branches: string[]; error?: string }>;
-        checkAuth: (agent: string) => Promise<{ authenticated: boolean }>;
-        start: (repoUrl: string, branch: string, agent: string, gitConfig?: { name: string; email: string }) => Promise<string>;
-        onOutput: (callback: (sessionId: string, data: string) => void) => CleanupFunction;
-        onComplete: (callback: (sessionId: string, exitCode: number, authError?: boolean) => void) => CleanupFunction;
       };
     };
   }
