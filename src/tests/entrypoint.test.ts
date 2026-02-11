@@ -62,6 +62,30 @@ describe('entrypoint.sh', () => {
       expect(entrypointContent).toContain('gh auth status');
     });
 
+    it('should install Node.js dependencies based on lock files and package manager metadata', () => {
+      expect(entrypointContent).toContain('NODE_PACKAGE_MANAGER');
+      expect(entrypointContent).toContain('npm ci');
+      expect(entrypointContent).toContain('yarn install --frozen-lockfile');
+      expect(entrypointContent).toContain('pnpm install --frozen-lockfile');
+    });
+
+    it('should install Go and Rust dependencies when project files are present', () => {
+      expect(entrypointContent).toContain('go mod download');
+      expect(entrypointContent).toContain('cargo fetch');
+    });
+
+    it('should install Python dependencies after creating venv', () => {
+      expect(entrypointContent).toContain('uv venv .venv');
+      expect(entrypointContent).toContain('uv pip install --python .venv/bin/python -r requirements.txt');
+    });
+
+    it('should append project context files into generated CLAUDE.md', () => {
+      expect(entrypointContent).toContain('append_context_file');
+      expect(entrypointContent).toContain('$PROJECT_DIR/README.md');
+      expect(entrypointContent).toContain('$PROJECT_DIR/CLAUDE.md');
+      expect(entrypointContent).toContain('$PROJECT_DIR/AGENTS.md');
+    });
+
     it('should unset the token variable after use for security', () => {
       // Token should be unset after authentication to avoid leaking
       expect(entrypointContent).toContain('unset');

@@ -14,7 +14,7 @@ import {
   isGitRepo,
   hasCommits,
   getWorktreeBranch,
-  initGitRepo,
+  initGitRepoWithDefaults,
   validateBranchNameForUi,
   mergeWorktreeBranch,
   getWorktreeDiffStats,
@@ -25,6 +25,7 @@ import {
   checkMergeConflicts,
 } from '@main/git/git-worktree';
 import type { GitConfig } from '@shared/types/git';
+import type { ProjectType } from '@shared/types/onboarding';
 
 const logger = createLogger('git-handlers');
 const GIT_CLONE_TIMEOUT_MS = 5 * 60 * 1000;
@@ -314,11 +315,11 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   });
 
   // Initialize git repo
-  registerGitChannel(ipcMain, GIT_CHANNELS.init, (_event, folderPath: string) => {
-    logger.info('IPC: git:init', { folderPath });
+  registerGitChannel(ipcMain, GIT_CHANNELS.init, (_event, folderPath: string, projectTypes?: ProjectType[]) => {
+    logger.info('IPC: git:init', { folderPath, projectTypes });
     try {
-      const initialized = initGitRepo(folderPath);
-      return { success: true, initialized };
+      const result = initGitRepoWithDefaults(folderPath, projectTypes || []);
+      return { success: true, initialized: result.initialized, hasCommits: result.hasCommits };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       logger.error('Failed to init git repo:', { error: message });

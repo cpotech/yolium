@@ -89,6 +89,19 @@ export function useAgentCreation({
   ) => {
     buildCancelledRef.current = false
 
+    // Validate project path before spending time on image setup and container creation.
+    try {
+      const preFlightResult = await window.electronAPI.onboarding.validate(folderPath)
+      if (!preFlightResult.success) {
+        alert(`Pre-flight validation failed:\n${preFlightResult.errors.join('\n')}`)
+        return
+      }
+    } catch (err) {
+      console.error('Pre-flight validation failed:', err)
+      alert('Unable to validate project path before container startup.')
+      return
+    }
+
     // Set up progress listener before starting
     const cleanupProgress = window.electronAPI.docker.onBuildProgress((message) => {
       setBuildProgress(prev => {
