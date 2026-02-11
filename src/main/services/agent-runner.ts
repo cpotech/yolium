@@ -32,6 +32,7 @@ import {
   createAgentContainer,
   stopAgentContainer,
   checkAgentAuth,
+  getAgentSession,
 } from '@main/docker';
 import type { KanbanBoard, KanbanItem } from '@shared/types/kanban';
 import type {
@@ -351,11 +352,32 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
           const exitItem = exitBoard.items.find(i => i.id === itemId);
 
           if (code === 0) {
-            // Success - check if already marked as completed
+            // Exit code 0 - but need to check for detected errors and protocol activity
+            const agentSession = getAgentSession(sessionId);
+            const detectedError = agentSession?.detectedError;
+            const protocolCount = agentSession?.protocolMessageCount ?? 0;
+            const isNonClaude = provider !== 'claude';
+
             if (exitItem && exitItem.agentStatus === 'running') {
-              updateItem(exitBoard, itemId, { agentStatus: 'completed', activeAgentName: undefined, column: 'verify' });
-              addComment(exitBoard, itemId, 'system', 'Agent finished successfully');
-              events.emit('complete', 'Agent finished successfully');
+              if (detectedError) {
+                // Exit code 0 but error was detected in output - mark as failed
+                updateItem(exitBoard, itemId, { agentStatus: 'failed', activeAgentName: undefined });
+                addComment(exitBoard, itemId, 'system', `Agent failed: ${detectedError}`);
+                events.emit('error', detectedError);
+                onError?.(detectedError);
+              } else if (isNonClaude && protocolCount === 0) {
+                // Non-Claude provider exited with no protocol messages - suspicious
+                const warningMsg = 'Agent exited without reporting progress. Check the agent log for details.';
+                updateItem(exitBoard, itemId, { agentStatus: 'failed', activeAgentName: undefined });
+                addComment(exitBoard, itemId, 'system', warningMsg);
+                events.emit('error', warningMsg);
+                onError?.(warningMsg);
+              } else {
+                // Success - mark as completed and move to verify column
+                updateItem(exitBoard, itemId, { agentStatus: 'completed', activeAgentName: undefined, column: 'verify' });
+                addComment(exitBoard, itemId, 'system', 'Agent finished successfully');
+                events.emit('complete', 'Agent finished successfully');
+              }
             }
           } else if (code === 124) {
             // Timeout
@@ -365,12 +387,18 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
             events.emit('error', 'Agent timed out');
             onError?.('Agent timed out');
           } else {
-            // Non-zero exit that wasn't handled by protocol
+            // Non-zero exit that wasn't handled by protocol - include any detected error
+            const agentSession = getAgentSession(sessionId);
+            const detectedError = agentSession?.detectedError;
+            const errorMessage = detectedError
+              ? `Agent exited with code ${code}: ${detectedError}`
+              : `Agent exited with code ${code}`;
+
             if (exitItem && exitItem.agentStatus === 'running') {
               updateItem(exitBoard, itemId, { agentStatus: 'failed', activeAgentName: undefined });
-              addComment(exitBoard, itemId, 'system', `Agent exited with code ${code}`);
-              events.emit('error', `Agent exited with code ${code}`);
-              onError?.(`Agent exited with code ${code}`);
+              addComment(exitBoard, itemId, 'system', errorMessage);
+              events.emit('error', errorMessage);
+              onError?.(errorMessage);
             }
           }
 

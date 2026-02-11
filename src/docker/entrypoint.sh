@@ -556,7 +556,11 @@ CODEXCFG
         # Use danger-full-access sandbox — Codex's Landlock sandbox panics on
         # kernels where Landlock is compiled but not functional.
         # Docker already provides container-level isolation.
-        codex exec -c 'model_reasoning_effort="high"' --sandbox danger-full-access "$PROMPT"
+        codex exec -c 'model_reasoning_effort="high"' --sandbox danger-full-access "$PROMPT" 2>&1 || {
+            EXIT_CODE=$?
+            echo "YOLIUM_AGENT_ERROR: Codex exited with error (exit code $EXIT_CODE)"
+            exit $EXIT_CODE
+        }
         exit $?
     else
         log "Starting Claude Code agent"

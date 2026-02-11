@@ -24,6 +24,46 @@ const logger = createLogger('agent-container');
 const DEFAULT_AGENT_TIMEOUT_MS = 30 * 60 * 1000;
 
 /**
+ * Error patterns to detect in agent output (for non-Claude providers).
+ * These patterns indicate API errors, auth failures, rate limits, etc.
+ */
+const ERROR_PATTERNS = [
+  // Auth errors
+  { pattern: /401 Unauthorized|Missing bearer.*authentication/i, message: 'Authentication failed (401 Unauthorized)' },
+  // Rate limit errors
+  { pattern: /429 Too Many Requests|rate limit/i, message: 'Rate limit exceeded (429 Too Many Requests)' },
+  // Overload errors
+  { pattern: /overloaded|503 Service/i, message: 'API overloaded (503 Service Unavailable)' },
+  // Network errors
+  { pattern: /ECONNREFUSED|ENOTFOUND|network error|connection refused/i, message: 'Network error (connection failed)' },
+  // Codex CLI errors
+  { pattern: /Error:\s*(.+)/i, message: (match: RegExpMatchArray) => `Codex error: ${match[1]}` },
+];
+
+/**
+ * Detect errors in raw output text for non-Claude providers.
+ * Returns the first detected error message, or undefined if no error found.
+ */
+export function detectErrorInOutput(text: string, provider?: string): string | undefined {
+  // Only apply pattern detection for non-Claude providers
+  // Claude uses stream-json which handles errors structurally
+  if (provider === 'claude' || !provider) {
+    return undefined;
+  }
+
+  for (const { pattern, message } of ERROR_PATTERNS) {
+    const match = text.match(pattern);
+    if (match) {
+      if (typeof message === 'function') {
+        return message(match);
+      }
+      return message;
+    }
+  }
+  return undefined;
+}
+
+/**
  * Format a tool_use event into a readable one-line summary.
  */
 function formatToolUse(name: string, input: Record<string, unknown> | undefined): string {
@@ -326,6 +366,8 @@ export async function createAgentContainer(
     agentName,
     state: 'running',
     timeoutId,
+    protocolMessageCount: 0,
+    agentProvider,
     ...(worktreePath && { worktreePath, originalPath, branchName }),
   });
 
@@ -343,6 +385,13 @@ export async function createAgentContainer(
     const session = agentSessions.get(sessionId);
     if (session) {
       session.timeoutId = timeoutId;
+    }
+
+    // Check for error patterns in raw output (for non-Claude providers)
+    const detectedError = detectErrorInOutput(dataStr, agentProvider);
+    if (detectedError && session && !session.detectedError) {
+      session.detectedError = detectedError;
+      logger.warn('Detected error in agent output', { sessionId, error: detectedError, provider: agentProvider });
     }
 
     // Buffer and split on newlines for stream-json parsing
@@ -422,6 +471,11 @@ export async function createAgentContainer(
     if (textContent) {
       const messages = extractProtocolMessages(textContent);
       if (messages.length > 0) {
+        // Increment protocol message count
+        if (session) {
+          session.protocolMessageCount += messages.length;
+        }
+
         for (const message of messages) {
           onProtocolMessage?.(message);
 
@@ -449,6 +503,12 @@ export async function createAgentContainer(
         if (parsed.text) {
           onOutput?.(parsed.text + '\n');
           const protocolMsgs = extractProtocolMessages(parsed.text);
+          if (protocolMsgs.length > 0) {
+            const session = agentSessions.get(sessionId);
+            if (session) {
+              session.protocolMessageCount += protocolMsgs.length;
+            }
+          }
           for (const msg of protocolMsgs) {
             onProtocolMessage?.(msg);
           }
@@ -456,6 +516,12 @@ export async function createAgentContainer(
       } catch {
         onOutput?.(trimmed + '\n');
         const protocolMsgs = extractProtocolMessages(trimmed);
+        if (protocolMsgs.length > 0) {
+          const session = agentSessions.get(sessionId);
+          if (session) {
+            session.protocolMessageCount += protocolMsgs.length;
+          }
+        }
         for (const msg of protocolMsgs) {
           onProtocolMessage?.(msg);
         }
