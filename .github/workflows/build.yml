@@ -54,6 +54,11 @@ jobs:
       - name: Build Arch Linux package
         if: runner.os == 'Linux'
         run: |
+          if [ ! -f build/PKGBUILD ] || [ ! -f build/yolium-desktop.desktop ]; then
+            echo "Skipping Arch Linux package: build/PKGBUILD or build/yolium-desktop.desktop not found"
+            exit 0
+          fi
+
           VERSION=$(node -p "require('./package.json').version")
 
           mkdir -p arch-pkg
