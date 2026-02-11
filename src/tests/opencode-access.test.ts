@@ -49,6 +49,9 @@ vi.mock('node:path', async () => {
   const actual = await vi.importActual<typeof import('node:path')>('node:path');
   return {
     ...actual,
+    // Use posix join so tests produce forward-slash paths on all platforms
+    // (Docker bind mounts always need forward slashes)
+    join: actual.posix.join,
     resolve: vi.fn((...args: string[]) => args[args.length - 1]),
   };
 });
