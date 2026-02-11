@@ -140,23 +140,6 @@ export const selectors = {
   detailCommentsSection: '[data-testid="item-detail-dialog"] [data-testid="comments-section"]',
   detailNoComments: '[data-testid="item-detail-dialog"] [data-testid="no-comments"]',
 
-  // Code review dialog
-  codeReviewButton: '[data-testid="code-review-button"]',
-  codeReviewDialog: '[data-testid="code-review-dialog"]',
-  reviewRepoInput: '[data-testid="review-repo-input"]',
-  reviewFetchButton: '[data-testid="review-fetch-button"]',
-  reviewBranchSelect: '[data-testid="review-branch-select"]',
-  reviewBranchInput: '[data-testid="review-branch-input"]',
-  reviewAgentClaude: '[data-testid="review-agent-claude"]',
-  reviewAgentOpencode: '[data-testid="review-agent-opencode"]',
-  reviewAgentCodex: '[data-testid="review-agent-codex"]',
-  reviewCancelButton: '[data-testid="review-cancel-button"]',
-  reviewStartButton: '[data-testid="start-review-button"]',
-  reviewCredentialsWarning: '[data-testid="review-credentials-warning"]',
-  reviewAgentWarning: '[data-testid="review-agent-warning"]',
-  reviewStatus: '[data-testid="review-status"]',
-  reviewBranchError: '[data-testid="review-branch-error"]',
-
   // Confirmation dialogs (native, use Electron dialog API in tests)
   // These are handled via electronAPI mocking
 } as const;

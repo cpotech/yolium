@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock execFileSync to avoid actual git commands
+// Mock child_process to avoid actual git commands
 vi.mock('node:child_process', () => ({
   execFileSync: vi.fn(),
+  execFile: vi.fn(),
 }))
 
 vi.mock('node:fs', () => ({

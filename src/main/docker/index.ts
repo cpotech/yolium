@@ -5,7 +5,6 @@
 
 // Re-export types
 export type { ContainerSession, ProjectCacheInfo, CacheStats, CleanupResult } from '@shared/types/docker';
-export type { ReviewAgentProvider } from '@shared/types/agent';
 export type { AgentContainerSession } from './shared';
 export type { AgentContainerParams, AgentContainerCallbacks } from './agent-container';
 
@@ -59,12 +58,10 @@ export {
   getAllAgentSessions,
 } from './agent-container';
 
-// Code review
+// Agent auth checks
 export {
-  listRemoteBranches,
   checkAgentAuth,
-  createCodeReviewContainer,
-} from './code-review';
+} from './agent-auth';
 
 // Cache management
 export {
