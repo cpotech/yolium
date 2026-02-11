@@ -10,9 +10,13 @@ import type { KanbanBoard, KanbanItem } from '@shared/types/kanban'
 const mockKanbanGetBoard = vi.fn()
 const mockOnKanbanBoardUpdated = vi.fn()
 const mockDetectNestedRepos = vi.fn()
+const mockAgentStart = vi.fn()
+const mockAgentResume = vi.fn()
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockAgentStart.mockResolvedValue({ sessionId: 'session-1' })
+  mockAgentResume.mockResolvedValue({ sessionId: 'session-1' })
   // Default: project is a git repo (no warning)
   mockDetectNestedRepos.mockResolvedValue({ isRepo: true, nestedRepos: [] })
   // Setup the mock on window.electronAPI
@@ -31,6 +35,8 @@ beforeEach(() => {
         init: vi.fn().mockResolvedValue({ success: true }),
       },
       agent: {
+        start: mockAgentStart,
+        resume: mockAgentResume,
         listDefinitions: vi.fn().mockResolvedValue([]),
       },
     },
@@ -364,6 +370,122 @@ describe('KanbanView', () => {
     fireEvent.click(screen.getByTestId('dismiss-error'))
 
     expect(screen.queryByTestId('kanban-error')).not.toBeInTheDocument()
+  })
+
+  it('should prefer activeAgentName over lastAgentName for retry', async () => {
+    const board = createMockBoard([
+      createMockItem({
+        id: 'retry-1',
+        column: 'backlog',
+        agentStatus: 'failed',
+        activeAgentName: 'verify-agent',
+        lastAgentName: 'plan-agent',
+        agentType: 'code-agent',
+      }),
+    ])
+    mockKanbanGetBoard.mockResolvedValue(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('retry-agent-card-btn'))
+
+    await waitFor(() => {
+      expect(mockAgentStart).toHaveBeenCalledWith(expect.objectContaining({
+        agentName: 'verify-agent',
+        itemId: 'retry-1',
+      }))
+    })
+  })
+
+  it('should use lastAgentName for resume fallback when activeAgentName is missing', async () => {
+    const board = createMockBoard([
+      createMockItem({
+        id: 'resume-1',
+        column: 'backlog',
+        agentStatus: 'interrupted',
+        activeAgentName: undefined,
+        lastAgentName: 'plan-agent',
+        agentType: 'code-agent',
+      }),
+    ])
+    mockKanbanGetBoard.mockResolvedValue(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('resume-agent-card-btn'))
+
+    await waitFor(() => {
+      expect(mockAgentResume).toHaveBeenCalledWith(expect.objectContaining({
+        agentName: 'plan-agent',
+        itemId: 'resume-1',
+      }))
+    })
+  })
+
+  it('should use agentType for run-again fallback when active and last-run are missing', async () => {
+    const board = createMockBoard([
+      createMockItem({
+        id: 'run-again-1',
+        column: 'backlog',
+        agentStatus: 'completed',
+        activeAgentName: undefined,
+        lastAgentName: undefined,
+        agentType: 'verify-agent',
+      }),
+    ])
+    mockKanbanGetBoard.mockResolvedValue(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('run-again-card-btn'))
+
+    await waitFor(() => {
+      expect(mockAgentStart).toHaveBeenCalledWith(expect.objectContaining({
+        agentName: 'verify-agent',
+        itemId: 'run-again-1',
+      }))
+    })
+  })
+
+  it('should fall back to code-agent when no agent metadata is available', async () => {
+    const board = createMockBoard([
+      createMockItem({
+        id: 'retry-default-1',
+        column: 'backlog',
+        agentStatus: 'failed',
+        activeAgentName: undefined,
+        lastAgentName: undefined,
+        agentType: undefined,
+      }),
+    ])
+    mockKanbanGetBoard.mockResolvedValue(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('retry-agent-card-btn'))
+
+    await waitFor(() => {
+      expect(mockAgentStart).toHaveBeenCalledWith(expect.objectContaining({
+        agentName: 'code-agent',
+        itemId: 'retry-default-1',
+      }))
+    })
   })
 
   it('should show total item count in toolbar', async () => {

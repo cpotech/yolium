@@ -19,6 +19,10 @@ const columns: { id: ColumnId; title: string }[] = [
   { id: 'done', title: 'Done' },
 ]
 
+function resolveAgentName(item: KanbanItem): string {
+  return item.activeAgentName || item.lastAgentName || item.agentType || 'code-agent'
+}
+
 export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: KanbanViewProps): React.ReactElement {
   const [board, setBoard] = useState<KanbanBoard | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -345,9 +349,9 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     const item = board.items.find(i => i.id === itemId)
     if (!item) return
 
-    // Start agent with same goal (use last agent name if available, fall back to code-agent)
+    // Start agent with best available agent preference from previous runs.
     await window.electronAPI.agent.start({
-      agentName: item.activeAgentName || 'code-agent',
+      agentName: resolveAgentName(item),
       projectPath,
       itemId: item.id,
       goal: item.description,
@@ -362,9 +366,9 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     const item = board.items.find(i => i.id === itemId)
     if (!item) return
 
-    // Resume agent (use last agent name if available, fall back to code-agent)
+    // Resume agent with best available agent preference from previous runs.
     await window.electronAPI.agent.resume({
-      agentName: item.activeAgentName || 'code-agent',
+      agentName: resolveAgentName(item),
       projectPath,
       itemId: item.id,
       goal: item.description,
@@ -379,9 +383,9 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     const item = board.items.find(i => i.id === itemId)
     if (!item) return
 
-    // Start agent again with same goal (use last agent name if available, fall back to code-agent)
+    // Start agent again with best available agent preference from previous runs.
     await window.electronAPI.agent.start({
-      agentName: item.activeAgentName || 'code-agent',
+      agentName: resolveAgentName(item),
       projectPath,
       itemId: item.id,
       goal: item.description,

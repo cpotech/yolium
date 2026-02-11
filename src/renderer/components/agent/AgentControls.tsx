@@ -126,6 +126,7 @@ export function AgentControls({
   onSetAnswerText,
 }: AgentControlsProps): React.ReactElement {
   const [agents, setAgents] = useState<AgentDefinition[]>([])
+  const resumeAgentName = item.activeAgentName || item.lastAgentName || item.agentType || 'code-agent'
 
   useEffect(() => {
     window.electronAPI.agent.listDefinitions().then(setAgents).catch(() => {})
@@ -256,7 +257,7 @@ export function AgentControls({
               </button>
               <button
                 data-testid="resume-agent-button"
-                onClick={() => onResumeAgent(item.activeAgentName || item.agentType || 'code-agent')}
+                onClick={() => onResumeAgent(resumeAgentName)}
                 disabled={isStartingAgent}
                 className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs bg-[var(--color-agent-warning-bg)] text-white rounded hover:bg-[var(--color-agent-warning-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
@@ -271,7 +272,7 @@ export function AgentControls({
         {item.agentStatus === 'interrupted' && (
           <button
             data-testid="resume-interrupted-button"
-            onClick={() => onResumeAgent(item.activeAgentName || item.agentType || 'code-agent')}
+            onClick={() => onResumeAgent(resumeAgentName)}
             disabled={isStartingAgent}
             className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-[var(--color-agent-warning-bg)] text-white rounded-md hover:bg-[var(--color-agent-warning-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
