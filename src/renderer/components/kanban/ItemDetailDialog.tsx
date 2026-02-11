@@ -409,16 +409,9 @@ export function ItemDetailDialog({
     }
   }, [item, isMerging, projectPath, onUpdated])
 
-  const handleClose = useCallback(async () => {
-    if (hasUnsavedChanges) {
-      const confirmed = await window.electronAPI.dialog.confirmOkCancel(
-        'Unsaved Changes',
-        'You have unsaved changes. Discard them?'
-      )
-      if (!confirmed) return
-    }
+  const handleClose = useCallback(() => {
     onClose()
-  }, [hasUnsavedChanges, onClose])
+  }, [onClose])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
