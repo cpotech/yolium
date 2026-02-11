@@ -319,6 +319,20 @@ describe('kanban-store', () => {
       expect(result!.column).toBe('ready');
     });
 
+    it('should accept verify as a valid column value', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      const result = updateItem(board, item.id, { column: 'verify' });
+      expect(result).not.toBeNull();
+      expect(result!.column).toBe('verify');
+    });
+
     it('should accept valid agentStatus values', () => {
       const board = createBoard('/path/to/project');
       const item = addItem(board, {

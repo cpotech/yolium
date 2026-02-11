@@ -154,6 +154,19 @@ describe('KanbanColumn', () => {
     expect(screen.getByTestId('kanban-column-in-progress')).toHaveClass('border-t-yellow-500')
   })
 
+  it('should have purple top border for verify column', () => {
+    render(
+      <KanbanColumn
+        columnId="verify"
+        title="Verify"
+        items={[]}
+        onCardClick={vi.fn()}
+      />
+    )
+
+    expect(screen.getByTestId('kanban-column-verify')).toHaveClass('border-t-purple-500')
+  })
+
   it('should have green top border for done column', () => {
     render(
       <KanbanColumn

@@ -135,6 +135,23 @@ describe('ItemDetailDialog', () => {
     expect(columnSelect).toHaveValue('in-progress')
   })
 
+  it('should render column selector with verify column selected', () => {
+    const item = createMockItem({ column: 'verify' })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    const columnSelect = screen.getByTestId('column-select')
+    expect(columnSelect).toHaveValue('verify')
+  })
+
   it('should show comments list', () => {
     const item = createMockItem({
       comments: [

@@ -9,7 +9,7 @@ export type AgentStatus =
   | 'completed'
   | 'failed';
 
-export type KanbanColumn = 'backlog' | 'ready' | 'in-progress' | 'done';
+export type KanbanColumn = 'backlog' | 'ready' | 'in-progress' | 'verify' | 'done';
 
 export type CommentSource = 'user' | 'agent' | 'system';
 

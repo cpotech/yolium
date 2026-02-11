@@ -24,6 +24,7 @@ const columnOptions: { id: KanbanColumn; label: string }[] = [
   { id: 'backlog', label: 'Backlog' },
   { id: 'ready', label: 'Ready' },
   { id: 'in-progress', label: 'In Progress' },
+  { id: 'verify', label: 'Verify' },
   { id: 'done', label: 'Done' },
 ]
 
@@ -652,6 +653,9 @@ export function ItemDetailDialog({
                       if (option.id === 'in-progress') {
                         return column === 'in-progress'
                       }
+                      if (option.id === 'verify') {
+                        return column === 'verify'
+                      }
                       return true
                     })
                     .map(option => (
@@ -660,9 +664,9 @@ export function ItemDetailDialog({
                       </option>
                     ))}
                 </select>
-                {column === 'in-progress' && (
+                {(column === 'in-progress' || column === 'verify') && (
                   <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
-                    Items are moved to In Progress by agents
+                    Items are moved to {column === 'in-progress' ? 'In Progress' : 'Verify'} by agents
                   </p>
                 )}
               </div>
@@ -779,13 +783,13 @@ export function ItemDetailDialog({
                       <button
                         data-testid="merge-button"
                         onClick={handleMerge}
-                        disabled={isMerging || (item.agentStatus !== 'completed' && item.column !== 'done')}
+                        disabled={isMerging || (item.agentStatus !== 'completed' && item.column !== 'done' && item.column !== 'verify')}
                         className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         <GitMerge size={12} />
                         {isMerging ? 'Squashing & Merging...' : 'Squash, Merge & Push PR'}
                       </button>
-                      {item.agentStatus !== 'completed' && item.column !== 'done' && (
+                      {item.agentStatus !== 'completed' && item.column !== 'done' && item.column !== 'verify' && (
                         <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
                           Available when agent completes or item is in Done
                         </p>

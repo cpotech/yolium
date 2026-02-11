@@ -441,7 +441,7 @@ test.describe('Kanban Board', () => {
     const { window } = ctx;
 
     // All columns should show empty state
-    for (const col of ['backlog', 'ready', 'in-progress', 'done']) {
+    for (const col of ['backlog', 'ready', 'in-progress', 'verify', 'done']) {
       await expect(
         window.locator(selectors.kanbanColumn(col)).locator('[data-testid="column-empty-state"]')
       ).toBeVisible();

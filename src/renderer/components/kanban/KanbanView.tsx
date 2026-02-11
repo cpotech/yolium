@@ -15,6 +15,7 @@ const columns: { id: ColumnId; title: string }[] = [
   { id: 'backlog', title: 'Backlog' },
   { id: 'ready', title: 'Ready' },
   { id: 'in-progress', title: 'In Progress' },
+  { id: 'verify', title: 'Verify' },
   { id: 'done', title: 'Done' },
 ]
 
