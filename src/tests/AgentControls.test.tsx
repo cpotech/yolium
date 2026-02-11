@@ -9,6 +9,7 @@ import type { KanbanItem } from '@shared/types/kanban'
 const mockDefinitions = [
   { name: 'code-agent', description: 'Code execution agent', model: 'sonnet' as const, tools: ['Read', 'Write'] },
   { name: 'plan-agent', description: 'Planning agent', model: 'sonnet' as const, tools: ['Read'] },
+  { name: 'verify-agent', description: 'Verification agent', model: 'sonnet' as const, tools: ['Read', 'Bash'] },
 ]
 
 beforeEach(() => {
@@ -257,31 +258,33 @@ describe('AgentControls', () => {
     })
   })
 
-  describe('agentType sorting', () => {
-    it('should put pre-assigned agentType first in button list', async () => {
-      const item = createMockItem({ agentStatus: 'idle', agentType: 'plan-agent' })
+  describe('canonical button ordering', () => {
+    it('should display buttons in Plan, Code, Verify order', async () => {
+      const item = createMockItem({ agentStatus: 'idle' })
       const { container } = render(<AgentControls item={item} {...defaultProps} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('run-plan-agent-button')).toBeInTheDocument()
       })
 
-      // plan-agent should be first in the DOM order
       const buttons = container.querySelectorAll('[data-testid^="run-"]')
       expect(buttons[0]).toHaveAttribute('data-testid', 'run-plan-agent-button')
+      expect(buttons[1]).toHaveAttribute('data-testid', 'run-code-agent-button')
+      expect(buttons[2]).toHaveAttribute('data-testid', 'run-verify-agent-button')
     })
 
-    it('should keep default order when no agentType is set', async () => {
-      const item = createMockItem({ agentStatus: 'idle', agentType: undefined })
+    it('should maintain Plan, Code, Verify order regardless of agentType', async () => {
+      const item = createMockItem({ agentStatus: 'idle', agentType: 'code-agent' })
       const { container } = render(<AgentControls item={item} {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('run-code-agent-button')).toBeInTheDocument()
+        expect(screen.getByTestId('run-plan-agent-button')).toBeInTheDocument()
       })
 
-      // code-agent should be first in the DOM order (default order from listDefinitions)
       const buttons = container.querySelectorAll('[data-testid^="run-"]')
-      expect(buttons[0]).toHaveAttribute('data-testid', 'run-code-agent-button')
+      expect(buttons[0]).toHaveAttribute('data-testid', 'run-plan-agent-button')
+      expect(buttons[1]).toHaveAttribute('data-testid', 'run-code-agent-button')
+      expect(buttons[2]).toHaveAttribute('data-testid', 'run-verify-agent-button')
     })
 
     it('should use agentType as resume fallback when activeAgentName is not set', () => {
@@ -295,6 +298,46 @@ describe('AgentControls', () => {
 
       fireEvent.click(screen.getByTestId('resume-interrupted-button'))
       expect(onResumeAgent).toHaveBeenCalledWith('plan-agent')
+    })
+  })
+
+  describe('agent accent colors', () => {
+    it('should apply purple accent color to verify-agent button', async () => {
+      const item = createMockItem({ agentStatus: 'idle' })
+      render(<AgentControls item={item} {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('run-verify-agent-button')).toBeInTheDocument()
+      })
+
+      const verifyButton = screen.getByTestId('run-verify-agent-button')
+      expect(verifyButton.className).toContain('border-l-purple-500')
+    })
+
+    it('should apply yellow accent to plan and blue accent to code', async () => {
+      const item = createMockItem({ agentStatus: 'idle' })
+      render(<AgentControls item={item} {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('run-plan-agent-button')).toBeInTheDocument()
+      })
+
+      expect(screen.getByTestId('run-plan-agent-button').className).toContain('border-l-yellow-500')
+      expect(screen.getByTestId('run-code-agent-button').className).toContain('border-l-blue-500')
+    })
+  })
+
+  describe('agent button tooltips', () => {
+    it('should not show agent descriptions on hover', async () => {
+      const item = createMockItem({ agentStatus: 'idle' })
+      render(<AgentControls item={item} {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('run-plan-agent-button')).toBeInTheDocument()
+      })
+
+      fireEvent.mouseEnter(screen.getByTestId('run-plan-agent-button'))
+      expect(screen.queryByText('Planning agent')).not.toBeInTheDocument()
     })
   })
 })
