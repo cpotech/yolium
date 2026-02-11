@@ -96,7 +96,7 @@ describe('AgentControls', () => {
       })
 
       const firstButton = screen.getByTestId('run-code-agent-button')
-      expect(firstButton.className).toContain('bg-blue-600')
+      expect(firstButton.className).toContain('bg-[var(--color-agent-primary-bg)]')
     })
   })
 
@@ -251,7 +251,7 @@ describe('AgentControls', () => {
 
       // plan-agent should be first (primary style)
       const planButton = screen.getByTestId('run-plan-agent-button')
-      expect(planButton.className).toContain('bg-blue-600')
+      expect(planButton.className).toContain('bg-[var(--color-agent-primary-bg)]')
     })
 
     it('should keep default order when no agentType is set', async () => {
@@ -264,7 +264,7 @@ describe('AgentControls', () => {
 
       // code-agent should be first (default order from listDefinitions)
       const codeButton = screen.getByTestId('run-code-agent-button')
-      expect(codeButton.className).toContain('bg-blue-600')
+      expect(codeButton.className).toContain('bg-[var(--color-agent-primary-bg)]')
     })
 
     it('should use agentType as resume fallback when activeAgentName is not set', () => {

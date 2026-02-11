@@ -69,7 +69,7 @@ function AgentButtonList({
           disabled={isStartingAgent}
           className={`w-full flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
             index === 0
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              ? 'bg-[var(--color-agent-primary-bg)] text-white hover:bg-[var(--color-agent-primary-hover)]'
               : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border-primary)] hover:border-[var(--color-accent-primary)]'
           }`}
         >
@@ -174,7 +174,7 @@ export function AgentControls({
               <button
                 data-testid="stop-agent-button"
                 onClick={onStopAgent}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-[var(--color-agent-danger-bg)] text-white rounded-md hover:bg-[var(--color-agent-danger-hover)] transition-colors"
               >
                 <XCircle size={14} />
                 Stop Agent
@@ -217,7 +217,7 @@ export function AgentControls({
                 data-testid="submit-answer-button"
                 onClick={onAnswerQuestion}
                 disabled={isAnswering || !answerText.trim()}
-                className="flex-1 px-2 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 px-2 py-1.5 text-xs bg-[var(--color-agent-success-bg)] text-white rounded hover:bg-[var(--color-agent-success-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {isAnswering ? 'Sending...' : 'Submit Answer'}
               </button>
@@ -225,7 +225,7 @@ export function AgentControls({
                 data-testid="resume-agent-button"
                 onClick={() => onResumeAgent(item.activeAgentName || item.agentType || 'code-agent')}
                 disabled={isStartingAgent}
-                className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs bg-[var(--color-agent-warning-bg)] text-white rounded hover:bg-[var(--color-agent-warning-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <RotateCcw size={12} />
                 {isStartingAgent ? 'Resuming...' : 'Resume'}
@@ -240,7 +240,7 @@ export function AgentControls({
             data-testid="resume-interrupted-button"
             onClick={() => onResumeAgent(item.activeAgentName || item.agentType || 'code-agent')}
             disabled={isStartingAgent}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-[var(--color-agent-warning-bg)] text-white rounded-md hover:bg-[var(--color-agent-warning-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <RotateCcw size={14} />
             {isStartingAgent ? 'Resuming...' : 'Resume Agent'}
