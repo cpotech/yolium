@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { X, FileText, FilePlus, FileMinus, FileEdit, Loader2 } from 'lucide-react'
+import { X, FileText, FilePlus, FileMinus, FileEdit, Loader2, AlertTriangle } from 'lucide-react'
 
 interface GitDiffDialogProps {
   isOpen: boolean
@@ -131,6 +131,8 @@ export function GitDiffDialog({
   const [diffLines, setDiffLines] = useState<SideBySideLine[]>([])
   const [isLoadingFiles, setIsLoadingFiles] = useState(false)
   const [isLoadingDiff, setIsLoadingDiff] = useState(false)
+  const [filesError, setFilesError] = useState<string | null>(null)
+  const [diffError, setDiffError] = useState<string | null>(null)
 
   const leftScrollRef = useRef<HTMLDivElement>(null)
   const rightScrollRef = useRef<HTMLDivElement>(null)
@@ -144,13 +146,21 @@ export function GitDiffDialog({
     setFiles([])
     setSelectedFile(null)
     setDiffLines([])
+    setFilesError(null)
+    setDiffError(null)
 
     window.electronAPI.git.worktreeChangedFiles(projectPath, branchName)
       .then((result) => {
-        setFiles(result)
-        if (result.length > 0) {
-          setSelectedFile(result[0].path)
+        setFiles(result.files)
+        setFilesError(result.error ?? null)
+        if (!result.error && result.files.length > 0) {
+          setSelectedFile(result.files[0].path)
         }
+      })
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : 'Failed to load changed files'
+        setFiles([])
+        setFilesError(message)
       })
       .finally(() => setIsLoadingFiles(false))
   }, [isOpen, projectPath, branchName])
@@ -161,11 +171,18 @@ export function GitDiffDialog({
 
     setIsLoadingDiff(true)
     setDiffLines([])
+    setDiffError(null)
 
     window.electronAPI.git.worktreeFileDiff(projectPath, branchName, selectedFile)
-      .then((rawDiff) => {
-        const parsed = parseUnifiedDiff(rawDiff)
+      .then((result) => {
+        setDiffError(result.error ?? null)
+        const parsed = parseUnifiedDiff(result.diff)
         setDiffLines(parsed)
+      })
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : 'Failed to load file diff'
+        setDiffLines([])
+        setDiffError(message)
       })
       .finally(() => setIsLoadingDiff(false))
   }, [selectedFile, isOpen, projectPath, branchName])
@@ -237,6 +254,13 @@ export function GitDiffDialog({
             <div className="flex items-center justify-center py-8">
               <Loader2 size={20} className="animate-spin text-[var(--color-text-tertiary)]" />
             </div>
+          ) : filesError ? (
+            <div className="p-3 text-xs text-red-400">
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
+                <p className="break-words">{filesError}</p>
+              </div>
+            </div>
           ) : files.length === 0 ? (
             <div className="p-4 text-xs text-[var(--color-text-tertiary)] text-center">
               No files changed
@@ -274,6 +298,13 @@ export function GitDiffDialog({
           {isLoadingDiff ? (
             <div className="flex-1 flex items-center justify-center">
               <Loader2 size={24} className="animate-spin text-[var(--color-text-tertiary)]" />
+            </div>
+          ) : diffError ? (
+            <div className="flex-1 flex items-center justify-center text-sm text-red-400 px-8">
+              <div className="text-center max-w-2xl">
+                <AlertTriangle size={32} className="mx-auto mb-2" />
+                <p className="break-words">{diffError}</p>
+              </div>
             </div>
           ) : !selectedFile ? (
             <div className="flex-1 flex items-center justify-center text-sm text-[var(--color-text-tertiary)]">

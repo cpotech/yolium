@@ -619,24 +619,20 @@ export function getWorktreeChangedFiles(
 
   const defaultBranch = getDefaultBranch(projectPath);
 
-  try {
-    const output = execFileSync('git', ['diff', `${defaultBranch}...${branchName}`, '--name-status'], {
-      cwd: projectPath,
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'ignore'],
-    });
+  const output = execFileSync('git', ['diff', `${defaultBranch}...${branchName}`, '--name-status'], {
+    cwd: projectPath,
+    encoding: 'utf-8',
+    stdio: ['pipe', 'pipe', 'ignore'],
+  });
 
-    const lines = output.trim().split('\n').filter((line) => line.trim().length > 0);
-    return lines.map((line) => {
-      const parts = line.split('\t');
-      const statusChar = parts[0].charAt(0) as 'M' | 'A' | 'D' | 'R';
-      // For renames, the new path is in parts[2], original in parts[1]
-      const filePath = statusChar === 'R' ? parts[2] : parts[1];
-      return { path: filePath, status: statusChar };
-    });
-  } catch {
-    return [];
-  }
+  const lines = output.trim().split('\n').filter((line) => line.trim().length > 0);
+  return lines.map((line) => {
+    const parts = line.split('\t');
+    const statusChar = parts[0].charAt(0) as 'M' | 'A' | 'D' | 'R';
+    // For renames, the new path is in parts[2], original in parts[1]
+    const filePath = statusChar === 'R' ? parts[2] : parts[1];
+    return { path: filePath, status: statusChar };
+  });
 }
 
 /**
@@ -656,15 +652,11 @@ export function getWorktreeFileDiff(
 
   const defaultBranch = getDefaultBranch(projectPath);
 
-  try {
-    return execFileSync('git', ['diff', `${defaultBranch}...${branchName}`, '--', filePath], {
-      cwd: projectPath,
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'ignore'],
-    });
-  } catch {
-    return '';
-  }
+  return execFileSync('git', ['diff', `${defaultBranch}...${branchName}`, '--', filePath], {
+    cwd: projectPath,
+    encoding: 'utf-8',
+    stdio: ['pipe', 'pipe', 'ignore'],
+  });
 }
 
 /**

@@ -443,8 +443,14 @@ declare global {
         cleanupWorktree: (projectPath: string, worktreePath: string, branchName: string) => Promise<void>;
         checkMergeConflicts: (projectPath: string, branchName: string) => Promise<{ clean: boolean; conflictingFiles: string[] }>;
         mergeAndPushPR: (projectPath: string, branchName: string, worktreePath: string, itemTitle: string, itemDescription: string) => Promise<{ success: boolean; prUrl?: string; prBranch?: string; error?: string; conflict?: boolean; conflictingFiles?: string[] }>;
-        worktreeChangedFiles: (projectPath: string, branchName: string) => Promise<Array<{ path: string; status: 'M' | 'A' | 'D' | 'R' }>>;
-        worktreeFileDiff: (projectPath: string, branchName: string, filePath: string) => Promise<string>;
+        worktreeChangedFiles: (projectPath: string, branchName: string) => Promise<{
+          files: Array<{ path: string; status: 'M' | 'A' | 'D' | 'R' }>;
+          error?: string;
+        }>;
+        worktreeFileDiff: (projectPath: string, branchName: string, filePath: string) => Promise<{
+          diff: string;
+          error?: string;
+        }>;
         detectNestedRepos: (folderPath: string) => Promise<{
           isRepo: boolean;
           nestedRepos: Array<{ name: string; path: string }>;

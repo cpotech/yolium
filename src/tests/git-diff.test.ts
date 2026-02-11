@@ -100,7 +100,7 @@ describe('getWorktreeChangedFiles', () => {
     expect(result).toEqual([])
   })
 
-  it('returns empty array on error', () => {
+  it('throws on error', () => {
     vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[], options?: any) => {
       const argList = args as string[] | undefined
       if (argList && argList[0] === 'check-ref-format') {
@@ -115,8 +115,7 @@ describe('getWorktreeChangedFiles', () => {
       return Buffer.from('')
     })
 
-    const result = getWorktreeChangedFiles('/project', 'feature-branch')
-    expect(result).toEqual([])
+    expect(() => getWorktreeChangedFiles('/project', 'feature-branch')).toThrow('git error')
   })
 })
 
@@ -154,7 +153,7 @@ index abc1234..def5678 100644
     expect(result).toBe(expectedDiff)
   })
 
-  it('returns empty string on error', () => {
+  it('throws on error', () => {
     vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
       const argList = args as string[] | undefined
       if (argList && argList[0] === 'check-ref-format') {
@@ -169,8 +168,7 @@ index abc1234..def5678 100644
       return Buffer.from('')
     })
 
-    const result = getWorktreeFileDiff('/project', 'feature-branch', 'src/app.ts')
-    expect(result).toBe('')
+    expect(() => getWorktreeFileDiff('/project', 'feature-branch', 'src/app.ts')).toThrow('git error')
   })
 
   it('calls git diff with correct arguments', () => {
