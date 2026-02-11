@@ -6,21 +6,6 @@ export type AgentProvider = 'claude' | 'opencode' | 'codex' | 'shell';
 // Agent providers valid for Kanban work items (no shell - shell is for interactive containers only)
 export type KanbanAgentProvider = Exclude<AgentProvider, 'shell'>;
 
-// Agents that support code review (have review capabilities)
-export type ReviewAgentProvider = 'claude' | 'opencode' | 'codex';
-
-// Code review job status
-export type CodeReviewStatus = 'starting' | 'running' | 'completed' | 'failed';
-
-export interface CodeReviewJob {
-  id: string;
-  repoUrl: string;
-  branch: string;
-  agent: ReviewAgentProvider;
-  status: CodeReviewStatus;
-  error?: string;
-}
-
 export interface AgentTokenUsage {
   inputTokens: number;
   outputTokens: number;

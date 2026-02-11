@@ -1,11 +1,10 @@
 import React, { useEffect, useCallback, useState, useMemo } from 'react';
-import { Loader2, GitPullRequest, Settings } from 'lucide-react';
+import { Loader2, Settings } from 'lucide-react';
 import { useTabState } from '@renderer/hooks/useTabState';
 import { useWhisper } from '@renderer/hooks/useWhisper';
 import { useDockerState } from '@renderer/hooks/useDockerState';
 import { useDialogState } from '@renderer/hooks/useDialogState';
 import { useAgentCreation } from '@renderer/hooks/useAgentCreation';
-import { useCodeReview } from '@renderer/hooks/useCodeReview';
 import { useAgentCostTracker } from '@renderer/hooks/useAgentCostTracker';
 import { useKeyboardShortcuts } from '@renderer/hooks/useKeyboardShortcuts';
 import { useGitBranchPolling } from '@renderer/hooks/useGitBranchPolling';
@@ -18,7 +17,6 @@ import { PathInputDialog } from '@renderer/components/navigation/PathInputDialog
 import { KeyboardShortcutsDialog } from '@renderer/components/settings/KeyboardShortcutsDialog';
 import { DockerSetupDialog } from '@renderer/components/docker/DockerSetupDialog';
 import { GitConfigDialog } from '@renderer/components/settings/GitConfigDialog';
-import { CodeReviewDialog } from '@renderer/components/code-review/CodeReviewDialog';
 import { WhisperModelDialog } from '@renderer/components/settings/WhisperModelDialog';
 import { SpeechToTextButton } from '@renderer/components/SpeechToTextButton';
 import type { WhisperModelSize } from '@shared/types/whisper';
@@ -90,9 +88,6 @@ function App(): React.ReactElement {
     closePathDialog: dialogs.closePathDialog,
     setLastUsedPath: dialogs.setLastUsedPath,
   });
-
-  // Code review functionality
-  const codeReview = useCodeReview({ gitConfig: dialogs.gitConfig });
 
   // Handle Back button in agent dialog (returns to path dialog)
   const handleAgentDialogBack = useCallback(() => {
@@ -449,17 +444,6 @@ function App(): React.ReactElement {
         onClose={whisper.closeModelDialog}
       />
 
-      {/* Code review dialog */}
-      <CodeReviewDialog
-        isOpen={codeReview.dialogOpen}
-        onClose={codeReview.closeDialog}
-        onStartReview={codeReview.startReview}
-        hasGitCredentials={!!dialogs.gitConfig?.hasPat}
-        reviewStatus={codeReview.reviewStatus}
-        reviewError={codeReview.reviewError}
-        reviewLog={codeReview.reviewLog}
-      />
-
       {/* Docker image build progress overlay */}
       {(docker.buildProgress || docker.buildError) && (
         <div data-testid="build-progress-overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
@@ -562,16 +546,6 @@ function App(): React.ReactElement {
                 />
                 <span className="text-[var(--color-text-disabled)]">|</span>
 
-                {/* PR Review button */}
-                <button
-                  data-testid="code-review-button"
-                  onClick={codeReview.openDialog}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                >
-                  <GitPullRequest size={12} />
-                  <span>PR Review</span>
-                </button>
-
                 {/* Settings button */}
                 <button
                   onClick={dialogs.openGitConfigDialog}
@@ -625,7 +599,6 @@ function App(): React.ReactElement {
                         tokenUsage={tokenUsageByProject[tab.cwd]}
                         onShowShortcuts={dialogs.openShortcutsDialog}
                         onOpenSettings={dialogs.openGitConfigDialog}
-                        onOpenCodeReview={codeReview.openDialog}
                         whisperRecordingState={whisper.state.recordingState}
                         whisperSelectedModel={whisper.state.selectedModel}
                         onToggleRecording={whisper.toggleRecording}
@@ -660,7 +633,6 @@ function App(): React.ReactElement {
                       onStop={() => handleStopYolium(tab.id)}
                       onShowShortcuts={dialogs.openShortcutsDialog}
                       onOpenSettings={dialogs.openGitConfigDialog}
-                      onOpenCodeReview={codeReview.openDialog}
                       gitBranch={tab.gitBranch}
                       worktreeName={tab.worktreeName}
                       whisperRecordingState={whisper.state.recordingState}

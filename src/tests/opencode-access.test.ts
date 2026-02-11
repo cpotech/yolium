@@ -348,12 +348,6 @@ describe('opencode-access', () => {
       expect(validKanbanProviders).toContain('opencode');
     });
 
-    it('should have opencode as valid ReviewAgentProvider type', () => {
-      // ReviewAgentProvider = 'claude' | 'opencode' | 'codex'
-      const validReviewProviders = ['claude', 'opencode', 'codex'] as const;
-      expect(validReviewProviders).toContain('opencode');
-    });
-
     it('should support all three agent types in kanban items', () => {
       const board = createBoard('/path/to/project');
       

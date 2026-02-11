@@ -17,7 +17,6 @@ import { registerKanbanHandlers } from './kanban-handlers';
 import { registerAgentHandlers } from './agent-handlers';
 import { registerCacheHandlers } from './cache-handlers';
 import { registerWhisperHandlers } from './whisper-handlers';
-import { registerCodeReviewHandlers } from './code-review-handlers';
 
 const logger = createLogger('ipc');
 let handlersRegistered = false;
@@ -62,7 +61,6 @@ export function registerAllHandlers(): boolean {
     { name: 'agent', register: () => registerAgentHandlers(ipcMain) },
     { name: 'cache', register: () => registerCacheHandlers(ipcMain) },
     { name: 'whisper', register: () => registerWhisperHandlers(ipcMain) },
-    { name: 'code-review', register: () => registerCodeReviewHandlers(ipcMain) },
   ] as const;
 
   for (const handler of handlers) {
