@@ -375,10 +375,10 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   });
 
   // Get diff stats between default branch and a feature branch
-  registerGitChannel(ipcMain, GIT_CHANNELS.worktreeDiffStats, (_event, projectPath: string, branchName: string) => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.worktreeDiffStats, async (_event, projectPath: string, branchName: string) => {
     logger.info('IPC: git:worktree-diff-stats', { projectPath, branchName });
     try {
-      return getWorktreeDiffStats(projectPath, branchName);
+      return await getWorktreeDiffStats(projectPath, branchName);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       logger.error('Failed to get diff stats', { projectPath, branchName, error: message });
@@ -399,10 +399,10 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   });
 
   // Clean up a worktree and its branch
-  registerGitChannel(ipcMain, GIT_CHANNELS.cleanupWorktree, (_event, projectPath: string, worktreePath: string, branchName: string) => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.cleanupWorktree, async (_event, projectPath: string, worktreePath: string, branchName: string) => {
     logger.info('IPC: git:cleanup-worktree', { projectPath, worktreePath, branchName });
     try {
-      cleanupWorktreeAndBranch(projectPath, worktreePath, branchName);
+      await cleanupWorktreeAndBranch(projectPath, worktreePath, branchName);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       logger.error('Failed to cleanup worktree', { projectPath, worktreePath, branchName, error: message });

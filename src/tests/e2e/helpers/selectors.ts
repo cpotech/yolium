@@ -65,6 +65,9 @@ export const selectors = {
   gitPatInput: '[data-testid="git-pat-input"]',
   openaiKeyInput: '[data-testid="openai-key-input"]',
   anthropicKeyInput: '[data-testid="anthropic-key-input"]',
+  gitConfigHeader: '[data-testid="git-config-header"]',
+  gitConfigBody: '[data-testid="git-config-body"]',
+  gitConfigFooter: '[data-testid="git-config-footer"]',
   gitConfigSaveButton: '[data-testid="git-config-save"]',
   gitConfigCancelButton: '[data-testid="git-config-cancel"]',
 

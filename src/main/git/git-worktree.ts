@@ -1,8 +1,11 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import * as crypto from 'node:crypto';
+
+const execFileAsync = promisify(execFile);
 
 /**
  * Validate that a branch name is safe for use in shell commands and file paths.
@@ -327,6 +330,29 @@ export function deleteWorktree(projectPath: string, worktreePath: string): void 
 }
 
 /**
+ * Async version of deleteWorktree — does not block the event loop.
+ */
+async function deleteWorktreeAsync(projectPath: string, worktreePath: string): Promise<void> {
+  try {
+    await execFileAsync('git', ['worktree', 'remove', worktreePath, '--force'], {
+      cwd: projectPath,
+    });
+  } catch {
+    try {
+      await execFileAsync('git', ['worktree', 'prune'], {
+        cwd: projectPath,
+      });
+    } catch {
+      // Ignore prune errors
+    }
+
+    if (fs.existsSync(worktreePath)) {
+      fs.rmSync(worktreePath, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+    }
+  }
+}
+
+/**
  * Check if a worktree has uncommitted changes.
  *
  * @param worktreePath - The path to the worktree
@@ -472,24 +498,23 @@ export function mergeWorktreeBranch(projectPath: string, branchName: string): vo
  * @param branchName - The feature branch to compare
  * @returns Diff statistics
  */
-export function getWorktreeDiffStats(projectPath: string, branchName: string): {
+export async function getWorktreeDiffStats(projectPath: string, branchName: string): Promise<{
   filesChanged: number;
   insertions: number;
   deletions: number;
-} {
+}> {
   validateBranchName(branchName);
 
   const defaultBranch = getDefaultBranch(projectPath);
 
   try {
-    const output = execFileSync('git', ['diff', `${defaultBranch}...${branchName}`, '--stat', '--stat-width=999'], {
+    const { stdout } = await execFileAsync('git', ['diff', `${defaultBranch}...${branchName}`, '--stat', '--stat-width=999'], {
       cwd: projectPath,
       encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'ignore'],
     });
 
     // Parse the last line: " N files changed, M insertions(+), D deletions(-)"
-    const lines = output.trim().split('\n');
+    const lines = stdout.trim().split('\n');
     const summaryLine = lines[lines.length - 1] || '';
 
     const filesMatch = summaryLine.match(/(\d+) files? changed/);
@@ -513,25 +538,23 @@ export function getWorktreeDiffStats(projectPath: string, branchName: string): {
  * @param worktreePath - The path to the worktree to remove
  * @param branchName - The branch to delete after worktree removal
  */
-export function cleanupWorktreeAndBranch(projectPath: string, worktreePath: string, branchName: string): void {
+export async function cleanupWorktreeAndBranch(projectPath: string, worktreePath: string, branchName: string): Promise<void> {
   validateBranchName(branchName);
 
   // Delete the worktree
-  deleteWorktree(projectPath, worktreePath);
+  await deleteWorktreeAsync(projectPath, worktreePath);
 
   // Delete the branch (use -d for safe delete — only deletes if fully merged)
   try {
-    execFileSync('git', ['branch', '-d', branchName], {
+    await execFileAsync('git', ['branch', '-d', branchName], {
       cwd: projectPath,
-      stdio: 'pipe',
     });
   } catch {
     // Branch may already be deleted or not fully merged — that's OK
     // Force delete if needed (branch was merged via --no-ff so -d should work)
     try {
-      execFileSync('git', ['branch', '-D', branchName], {
+      await execFileAsync('git', ['branch', '-D', branchName], {
         cwd: projectPath,
-        stdio: 'pipe',
       });
     } catch {
       // Ignore — branch cleanup is best-effort
@@ -775,13 +798,13 @@ export function generatePrBranchName(worktreeBranch: string, itemTitle: string):
  * @param itemTitle - The kanban item title (used for PR title and branch name)
  * @param itemDescription - The kanban item description (used for PR body)
  */
-export function mergeBranchAndPushPR(
+export async function mergeBranchAndPushPR(
   projectPath: string,
   worktreeBranch: string,
   worktreePath: string,
   itemTitle: string,
   itemDescription: string,
-): MergeAndPushResult {
+): Promise<MergeAndPushResult> {
   validateBranchName(worktreeBranch);
 
   const defaultBranch = getDefaultBranch(projectPath);
@@ -789,9 +812,8 @@ export function mergeBranchAndPushPR(
 
   // Step 1: Fetch latest from remote
   try {
-    execFileSync('git', ['fetch', 'origin'], {
+    await execFileAsync('git', ['fetch', 'origin'], {
       cwd: projectPath,
-      stdio: 'pipe',
     });
   } catch {
     // Fetch may fail if no remote configured — continue anyway
@@ -799,20 +821,18 @@ export function mergeBranchAndPushPR(
 
   // Step 2: Checkout default branch and pull latest
   try {
-    execFileSync('git', ['checkout', defaultBranch], {
+    await execFileAsync('git', ['checkout', defaultBranch], {
       cwd: projectPath,
-      stdio: 'pipe',
     });
   } catch (err) {
-    const error = err as { stderr?: Buffer; message?: string };
-    const stderr = error.stderr?.toString() || error.message || 'Unknown error';
+    const error = err as { stderr?: string; message?: string };
+    const stderr = error.stderr || error.message || 'Unknown error';
     return { success: false, error: `Failed to checkout ${defaultBranch}: ${stderr}` };
   }
 
   try {
-    execFileSync('git', ['pull', '--ff-only', 'origin', defaultBranch], {
+    await execFileAsync('git', ['pull', '--ff-only', 'origin', defaultBranch], {
       cwd: projectPath,
-      stdio: 'pipe',
     });
   } catch {
     // Pull may fail if no remote or if diverged — continue with local state
@@ -820,41 +840,38 @@ export function mergeBranchAndPushPR(
 
   // Step 3: Create the PR branch from default branch
   try {
-    execFileSync('git', ['checkout', '-B', prBranch], {
+    await execFileAsync('git', ['checkout', '-B', prBranch], {
       cwd: projectPath,
-      stdio: 'pipe',
     });
   } catch (err) {
-    const error = err as { stderr?: Buffer; message?: string };
-    const stderr = error.stderr?.toString() || error.message || 'Unknown error';
+    const error = err as { stderr?: string; message?: string };
+    const stderr = error.stderr || error.message || 'Unknown error';
     return { success: false, error: `Failed to create PR branch: ${stderr}` };
   }
 
   // Step 4: Squash merge the worktree branch into the PR branch
   try {
-    execFileSync('git', ['merge', '--squash', worktreeBranch], {
+    await execFileAsync('git', ['merge', '--squash', worktreeBranch], {
       cwd: projectPath,
-      stdio: 'pipe',
     });
-    execFileSync('git', ['commit', '-m', `Squash merge branch '${worktreeBranch}' for: ${itemTitle}`], {
+    await execFileAsync('git', ['commit', '-m', `Squash merge branch '${worktreeBranch}' for: ${itemTitle}`], {
       cwd: projectPath,
-      stdio: 'pipe',
     });
   } catch (err) {
-    const error = err as { stderr?: Buffer; stdout?: Buffer; message?: string };
-    const stderr = error.stderr?.toString() || '';
-    const stdout = error.stdout?.toString() || '';
+    const error = err as { stderr?: string; stdout?: string; message?: string };
+    const stderr = error.stderr || '';
+    const stdout = error.stdout || '';
     const output = stderr + stdout;
 
     if (output.includes('CONFLICT') || output.includes('Automatic merge failed')) {
       try {
-        execFileSync('git', ['merge', '--abort'], { cwd: projectPath, stdio: 'ignore' });
+        await execFileAsync('git', ['merge', '--abort'], { cwd: projectPath });
       } catch {
         // Ignore
       }
       try {
-        execFileSync('git', ['checkout', defaultBranch], { cwd: projectPath, stdio: 'pipe' });
-        execFileSync('git', ['branch', '-D', prBranch], { cwd: projectPath, stdio: 'pipe' });
+        await execFileAsync('git', ['checkout', defaultBranch], { cwd: projectPath });
+        await execFileAsync('git', ['branch', '-D', prBranch], { cwd: projectPath });
       } catch {
         // Best effort
       }
@@ -862,8 +879,8 @@ export function mergeBranchAndPushPR(
     }
 
     try {
-      execFileSync('git', ['checkout', defaultBranch], { cwd: projectPath, stdio: 'pipe' });
-      execFileSync('git', ['branch', '-D', prBranch], { cwd: projectPath, stdio: 'pipe' });
+      await execFileAsync('git', ['checkout', defaultBranch], { cwd: projectPath });
+      await execFileAsync('git', ['branch', '-D', prBranch], { cwd: projectPath });
     } catch {
       // Best effort
     }
@@ -872,22 +889,19 @@ export function mergeBranchAndPushPR(
 
   // Step 5: Push the PR branch to remote
   try {
-    execFileSync('git', ['push', '-u', 'origin', prBranch], {
+    await execFileAsync('git', ['push', '-u', 'origin', prBranch], {
       cwd: projectPath,
-      stdio: 'pipe',
     });
   } catch (err) {
-    const error = err as { stderr?: Buffer; message?: string };
-    const stderr = error.stderr?.toString() || error.message || 'Unknown error';
+    const error = err as { stderr?: string; message?: string };
+    const stderr = error.stderr || error.message || 'Unknown error';
     // Clean up: go back to default branch
     try {
-      execFileSync('git', ['checkout', defaultBranch], {
+      await execFileAsync('git', ['checkout', defaultBranch], {
         cwd: projectPath,
-        stdio: 'pipe',
       });
-      execFileSync('git', ['branch', '-D', prBranch], {
+      await execFileAsync('git', ['branch', '-D', prBranch], {
         cwd: projectPath,
-        stdio: 'pipe',
       });
     } catch {
       // Best effort
@@ -899,16 +913,15 @@ export function mergeBranchAndPushPR(
   let prUrl: string | undefined;
   try {
     const prBody = itemDescription || itemTitle;
-    const output = execFileSync('gh', ['pr', 'create', '--title', itemTitle, '--body', prBody, '--base', defaultBranch, '--head', prBranch], {
+    const { stdout } = await execFileAsync('gh', ['pr', 'create', '--title', itemTitle, '--body', prBody, '--base', defaultBranch, '--head', prBranch], {
       cwd: projectPath,
       encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
     });
     // gh pr create outputs the PR URL
-    prUrl = output.trim();
+    prUrl = stdout.trim();
   } catch (err) {
-    const error = err as { stderr?: Buffer; message?: string };
-    const stderr = error.stderr?.toString() || error.message || 'Unknown error';
+    const error = err as { stderr?: string; message?: string };
+    const stderr = error.stderr || error.message || 'Unknown error';
     // Branch was pushed successfully — PR creation failed but that's not fatal
     // User can create PR manually
     return {
@@ -920,15 +933,14 @@ export function mergeBranchAndPushPR(
 
   // Step 7: Clean up worktree and old branch, return to default branch
   try {
-    execFileSync('git', ['checkout', defaultBranch], {
+    await execFileAsync('git', ['checkout', defaultBranch], {
       cwd: projectPath,
-      stdio: 'pipe',
     });
   } catch {
     // Best effort
   }
 
-  cleanupWorktreeAndBranch(projectPath, worktreePath, worktreeBranch);
+  await cleanupWorktreeAndBranch(projectPath, worktreePath, worktreeBranch);
 
   return { success: true, prUrl, prBranch };
 }
