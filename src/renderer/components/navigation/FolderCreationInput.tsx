@@ -97,7 +97,6 @@ export function FolderCreationInput({
         <button
           onClick={handleConfirm}
           className="p-1 text-green-500 hover:bg-[var(--color-bg-tertiary)] rounded"
-          title="Create folder (Enter)"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -106,7 +105,6 @@ export function FolderCreationInput({
         <button
           onClick={handleCancel}
           className="p-1 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] rounded"
-          title="Cancel (Escape)"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

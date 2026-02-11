@@ -225,13 +225,6 @@ export function AgentSelectDialog({
           <div className="text-xs text-[var(--color-text-muted)] mb-2">Options</div>
           {(() => {
             const isDisabled = gitStatus === null || !gitStatus.isRepo || !gitStatus.hasCommits;
-            const tooltipText = gitStatus === null
-              ? undefined
-              : !gitStatus.isRepo
-              ? 'Folder is not a git repository'
-              : !gitStatus.hasCommits
-              ? 'Repository has no commits yet'
-              : undefined;
 
             return (
               <label
@@ -239,7 +232,6 @@ export function AgentSelectDialog({
                 className={`flex items-center gap-2 text-sm cursor-pointer ${
                   isDisabled ? 'text-[var(--color-text-disabled)] cursor-not-allowed' : 'text-[var(--color-text-secondary)]'
                 }`}
-                title={tooltipText}
               >
                 <input
                   type="checkbox"

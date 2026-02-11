@@ -308,7 +308,6 @@ export function GitConfigDialog({
                   type="button"
                   onClick={() => setShowPat(!showPat)}
                   className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-                  title={showPat ? 'Hide token' : 'Show token'}
                 >
                   {showPat ? (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -326,7 +325,6 @@ export function GitConfigDialog({
                     type="button"
                     onClick={handleClearPat}
                     className="p-1 text-[var(--color-text-secondary)] hover:text-red-400 transition-colors"
-                    title="Clear token"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -446,7 +444,6 @@ export function GitConfigDialog({
                     type="button"
                     onClick={() => setShowAnthropicKey(!showAnthropicKey)}
                     className="p-1 text-[var(--color-text-secondary)] hover:text-white transition-colors"
-                    title={showAnthropicKey ? 'Hide key' : 'Show key'}
                   >
                     {showAnthropicKey ? (
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -465,7 +462,6 @@ export function GitConfigDialog({
                     type="button"
                     onClick={handleClearAnthropicKey}
                     className="p-1 text-[var(--color-text-secondary)] hover:text-red-400 transition-colors"
-                    title="Clear key"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -564,7 +560,6 @@ export function GitConfigDialog({
                     type="button"
                     onClick={() => setShowOpenaiKey(!showOpenaiKey)}
                     className="p-1 text-[var(--color-text-secondary)] hover:text-white transition-colors"
-                    title={showOpenaiKey ? 'Hide key' : 'Show key'}
                   >
                     {showOpenaiKey ? (
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -583,7 +578,6 @@ export function GitConfigDialog({
                     type="button"
                     onClick={handleClearOpenaiKey}
                     className="p-1 text-[var(--color-text-secondary)] hover:text-red-400 transition-colors"
-                    title="Clear key"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

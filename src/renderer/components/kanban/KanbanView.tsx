@@ -443,7 +443,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
         <div className="flex items-center gap-3 text-sm text-[var(--color-text-secondary)]">
           <div className="flex items-center gap-2">
             <FolderOpen size={16} />
-            <span data-testid="project-path-display" title={projectPath} className="font-medium">
+            <span data-testid="project-path-display" className="font-medium">
               {projectPath.split(/[/\\]/).filter(Boolean).pop() || projectPath}
             </span>
           </div>
@@ -488,7 +488,6 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
               data-testid="delete-project-button"
               onClick={handleDeleteProject}
               disabled={isDeleting}
-              title="Delete project"
               className="flex items-center gap-1.5 px-2 py-1.5 text-sm text-[var(--color-text-secondary)] hover:text-red-400 hover:bg-[var(--color-bg-tertiary)] rounded-md transition-colors disabled:opacity-50"
             >
               <Trash2 size={14} />
@@ -497,7 +496,6 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
           <button
             data-testid="refresh-button"
             onClick={handleRefresh}
-            title="Refresh (R)"
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] rounded-md transition-colors"
           >
             <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
@@ -506,7 +504,6 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
           <button
             data-testid="new-item-button"
             onClick={handleNewItemClick}
-            title="New Item (N)"
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[var(--color-accent-primary)] text-white hover:bg-[var(--color-accent-hover)] rounded-md transition-colors"
           >
             <Plus size={14} />

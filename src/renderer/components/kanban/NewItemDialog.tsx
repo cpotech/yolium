@@ -133,7 +133,6 @@ export function NewItemDialog({
             data-testid="close-button"
             onClick={onClose}
             className="p-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded transition-colors flex-shrink-0"
-            title="Esc to close"
           >
             <X size={18} />
           </button>
@@ -301,7 +300,6 @@ export function NewItemDialog({
                   data-testid="create-button"
                   onClick={handleSubmit}
                   disabled={!canSubmit || isSubmitting}
-                  title="Ctrl+Enter"
                   className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-[var(--color-accent-primary)] text-white rounded-md hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <Plus size={14} />

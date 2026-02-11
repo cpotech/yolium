@@ -109,7 +109,6 @@ describe('KanbanView', () => {
 
     const pathDisplay = screen.getByTestId('project-path-display')
     expect(pathDisplay).toHaveTextContent('project')
-    expect(pathDisplay).toHaveAttribute('title', '/test/project')
   })
 
   it('should show items in correct columns', async () => {
@@ -294,7 +293,6 @@ describe('KanbanView', () => {
 
     const pathDisplay = screen.getByTestId('project-path-display')
     expect(pathDisplay).toHaveTextContent('my-app')
-    expect(pathDisplay).toHaveAttribute('title', '/home/user/projects/my-app')
   })
 
   it('should show error banner when board fails to load', async () => {

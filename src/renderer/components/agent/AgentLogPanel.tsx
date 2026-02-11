@@ -56,7 +56,6 @@ export function AgentLogPanel({
             data-testid="clear-log-button"
             onClick={onClear}
             className="p-1 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
-            title="Clear log"
           >
             <Trash2 size={12} />
           </button>

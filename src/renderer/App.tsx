@@ -567,7 +567,6 @@ function App(): React.ReactElement {
                   data-testid="code-review-button"
                   onClick={codeReview.openDialog}
                   className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                  title="PR Code Review"
                 >
                   <GitPullRequest size={12} />
                   <span>PR Review</span>
@@ -577,7 +576,6 @@ function App(): React.ReactElement {
                 <button
                   onClick={dialogs.openGitConfigDialog}
                   className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                  title="Settings"
                 >
                   <Settings size={12} />
                 </button>
@@ -586,7 +584,6 @@ function App(): React.ReactElement {
                   data-testid="shortcuts-button"
                   onClick={dialogs.openShortcutsDialog}
                   className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                  title="Keyboard shortcuts (Ctrl+?)"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="4" width="20" height="16" rx="2" />
