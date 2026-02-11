@@ -124,7 +124,19 @@ export function parseStreamEvent(event: Record<string, unknown>): ParsedStreamEv
           displayParts.push(item.text);
           text += item.text;
         } else if (item.type === 'tool_use' && typeof item.name === 'string') {
-          displayParts.push(formatToolUse(item.name as string, item.input as Record<string, unknown> | undefined));
+          const name = item.name as string;
+          const input = item.input as Record<string, unknown> | undefined;
+
+          displayParts.push(formatToolUse(name, input));
+
+          // Protocol messages may be emitted via Bash `echo '@@YOLIUM:...'`.
+          // Include command text so downstream protocol extraction can process it.
+          if (name === 'Bash') {
+            const command = input?.command;
+            if (typeof command === 'string' && command.includes('@@YOLIUM:')) {
+              text += `${command}\n`;
+            }
+          }
         }
       }
 
