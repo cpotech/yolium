@@ -29,6 +29,7 @@ System prompt content here...
 |-------|----------|---------|
 | plan-agent | Claude, Codex, OpenCode | Analyzes codebase and produces implementation plans |
 | code-agent | Claude, Codex, OpenCode | Implements code changes, writes tests, and commits locally |
+| verify-agent | Claude, Codex, OpenCode | Reviews changes for correctness, over-engineering, and guideline compliance |
 
 ## Adding New Agents
 
@@ -41,5 +42,6 @@ System prompt content here...
 
 - `plan-agent.md` - Plan Agent definition
 - `code-agent.md` - Code Agent definition
+- `verify-agent.md` - Verify Agent definition
 - `_protocol.md` - Protocol reference (not loaded as agent)
 - `README.md` - This file
