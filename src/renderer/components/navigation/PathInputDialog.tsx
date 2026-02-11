@@ -10,6 +10,7 @@ import { useDirectoryNavigation } from '@renderer/hooks/useDirectoryNavigation'
 import { DirectoryListing } from './DirectoryListing'
 import { FavoritesList } from './FavoritesList'
 import { FolderCreationInput } from './FolderCreationInput'
+import { GitCloneInput } from './GitCloneInput'
 
 interface PathInputDialogProps {
   isOpen: boolean
@@ -110,6 +111,19 @@ export function PathInputDialog({
           />
         )}
 
+        {/* Clone repository inline */}
+        {nav.isCloning && (
+          <GitCloneInput
+            parentDirectory={nav.getCurrentDirectory()}
+            onCloned={(clonedPath) => {
+              nav.setIsCloning(false)
+              nav.setInputValue(ensureTrailingSeparator(clonedPath))
+            }}
+            onCancel={() => nav.setIsCloning(false)}
+            inputRef={nav.inputRef}
+          />
+        )}
+
         {/* Suggestions list */}
         <DirectoryListing
           entries={nav.filteredSuggestions}
@@ -139,22 +153,40 @@ export function PathInputDialog({
             />
             Show hidden folders
           </label>
-          {!nav.isCreatingFolder && (
-            <button
-              onClick={nav.startFolderCreation}
-              className="flex items-center gap-1.5 px-2 py-1 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] rounded transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
-                />
-              </svg>
-              New Folder
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {!nav.isCreatingFolder && (
+              <button
+                onClick={nav.startFolderCreation}
+                className="flex items-center gap-1.5 px-2 py-1 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] rounded transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+                  />
+                </svg>
+                New Folder
+              </button>
+            )}
+            {!nav.isCloning && (
+              <button
+                onClick={nav.startClone}
+                className="flex items-center gap-1.5 px-2 py-1 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] rounded transition-colors"
+              >
+                <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 6a2 2 0 110 4 2 2 0 010-4zm8 8a2 2 0 110 4 2 2 0 010-4zM8 10v4a2 2 0 002 2h4"
+                  />
+                </svg>
+                Clone Repo
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Footer */}
@@ -163,6 +195,7 @@ export function PathInputDialog({
             <span><kbd className="px-1 py-0.5 bg-[var(--color-bg-tertiary)] rounded text-[var(--color-text-secondary)]">Tab</kbd> complete</span>
             <span><kbd className="px-1 py-0.5 bg-[var(--color-bg-tertiary)] rounded text-[var(--color-text-secondary)]">Esc</kbd> back</span>
             <span><kbd className="px-1 py-0.5 bg-[var(--color-bg-tertiary)] rounded text-[var(--color-text-secondary)]">^N</kbd> new folder</span>
+            <span><kbd className="px-1 py-0.5 bg-[var(--color-bg-tertiary)] rounded text-[var(--color-text-secondary)]">^G</kbd> clone</span>
             {favorites.length > 0 && (
               <span><kbd className="px-1 py-0.5 bg-[var(--color-bg-tertiary)] rounded text-[var(--color-text-secondary)]">^#</kbd> favorite</span>
             )}
