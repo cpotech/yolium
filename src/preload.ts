@@ -311,9 +311,9 @@ const agent = {
     ipcRenderer.on('agent:exit', handler);
     return () => ipcRenderer.removeListener('agent:exit', handler);
   },
-  onCostUpdate: (callback: (sessionId: string, projectPath: string, usage: { inputTokens: number; outputTokens: number; costUsd: number }) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, projectPath: string, usage: { inputTokens: number; outputTokens: number; costUsd: number }) =>
-      callback(sessionId, projectPath, usage);
+  onCostUpdate: (callback: (sessionId: string, projectPath: string, itemId: string, usage: { inputTokens: number; outputTokens: number; costUsd: number }) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, projectPath: string, itemId: string, usage: { inputTokens: number; outputTokens: number; costUsd: number }) =>
+      callback(sessionId, projectPath, itemId, usage);
     ipcRenderer.on('agent:cost-update', handler);
     return () => ipcRenderer.removeListener('agent:cost-update', handler);
   },
@@ -565,7 +565,7 @@ declare global {
         onError: (callback: (sessionId: string, message: string) => void) => CleanupFunction;
         onProgress: (callback: (sessionId: string, progress: { step: string; detail: string; attempt?: number; maxAttempts?: number }) => void) => CleanupFunction;
         onExit: (callback: (sessionId: string, exitCode: number) => void) => CleanupFunction;
-        onCostUpdate: (callback: (sessionId: string, projectPath: string, usage: { inputTokens: number; outputTokens: number; costUsd: number }) => void) => CleanupFunction;
+        onCostUpdate: (callback: (sessionId: string, projectPath: string, itemId: string, usage: { inputTokens: number; outputTokens: number; costUsd: number }) => void) => CleanupFunction;
       };
       cache: {
         list: () => Promise<Array<{

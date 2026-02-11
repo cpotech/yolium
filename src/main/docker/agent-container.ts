@@ -486,7 +486,7 @@ export async function createAgentContainer(
           }),
           { inputTokens: 0, outputTokens: 0, costUsd: 0 }
         );
-        webContents.send('agent:cost-update', sessionId, resolvedProjectPath, combined);
+        webContents.send('agent:cost-update', sessionId, resolvedProjectPath, itemId, combined);
       }
     }
 

@@ -5,7 +5,6 @@ import { useWhisper } from '@renderer/hooks/useWhisper';
 import { useDockerState } from '@renderer/hooks/useDockerState';
 import { useDialogState } from '@renderer/hooks/useDialogState';
 import { useAgentCreation } from '@renderer/hooks/useAgentCreation';
-import { useAgentCostTracker } from '@renderer/hooks/useAgentCostTracker';
 import { useKeyboardShortcuts } from '@renderer/hooks/useKeyboardShortcuts';
 import { useGitBranchPolling } from '@renderer/hooks/useGitBranchPolling';
 import { TabBar } from '@renderer/components/tabs/TabBar';
@@ -49,12 +48,6 @@ function App(): React.ReactElement {
     addKanbanTab,
     closeKanbanForProject,
   } = useTabState(savedKanbanPaths);
-
-  const kanbanProjectPaths = useMemo(
-    () => tabs.filter(t => t.type === 'kanban').map(t => t.cwd),
-    [tabs]
-  );
-  const { tokenUsageByProject } = useAgentCostTracker(kanbanProjectPaths);
 
   // Whisper speech-to-text
   const whisper = useWhisper();
@@ -596,7 +589,6 @@ function App(): React.ReactElement {
                       />
                       <StatusBar
                         folderPath={tab.cwd}
-                        tokenUsage={tokenUsageByProject[tab.cwd]}
                         onShowShortcuts={dialogs.openShortcutsDialog}
                         onOpenSettings={dialogs.openGitConfigDialog}
                         whisperRecordingState={whisper.state.recordingState}
