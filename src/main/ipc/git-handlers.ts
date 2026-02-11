@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { execFile } from 'node:child_process';
-import type { IpcMain } from 'electron';
+import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 import { createLogger } from '@main/lib/logger';
 import { loadGitConfig, loadDetectedGitConfig, saveGitConfig, fetchGitHubUser, hasHostClaudeOAuth, hasHostCodexOAuth, generateGitCredentials } from '@main/git/git-config';
 import {
@@ -26,6 +26,46 @@ import type { GitConfig } from '@shared/types/git';
 
 const logger = createLogger('git-handlers');
 const GIT_CLONE_TIMEOUT_MS = 5 * 60 * 1000;
+
+const GIT_CHANNELS = {
+  loadConfig: 'git-config:load',
+  saveConfig: 'git-config:save',
+  isRepo: 'git:is-repo',
+  getBranch: 'git:get-branch',
+  init: 'git:init',
+  clone: 'git:clone',
+  validateBranch: 'git:validate-branch',
+  mergeBranch: 'git:merge-branch',
+  worktreeDiffStats: 'git:worktree-diff-stats',
+  checkMergeConflicts: 'git:check-merge-conflicts',
+  cleanupWorktree: 'git:cleanup-worktree',
+  mergeAndPushPr: 'git:merge-and-push-pr',
+  detectNestedRepos: 'git:detect-nested-repos',
+} as const;
+
+export const GIT_IPC_CHANNELS = Object.values(GIT_CHANNELS);
+type GitIpcChannel = typeof GIT_IPC_CHANNELS[number];
+type GitIpcHandler = (event: IpcMainInvokeEvent, ...args: any[]) => unknown;
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
+function registerGitChannel(ipcMain: IpcMain, channel: GitIpcChannel, handler: GitIpcHandler): void {
+  try {
+    ipcMain.handle(channel, handler);
+    logger.debug('Registered git IPC handler', { channel });
+  } catch (error) {
+    logger.error('Failed to register git IPC handler', {
+      channel,
+      error: getErrorMessage(error),
+    });
+    throw error;
+  }
+}
 
 export interface GitCloneResult {
   success: boolean;
@@ -141,8 +181,10 @@ async function runGitClone(url: string, targetPath: string, env: NodeJS.ProcessE
  * @param ipcMain - Electron IPC main instance
  */
 export function registerGitHandlers(ipcMain: IpcMain): void {
+  logger.info('Registering git IPC handlers', { channels: GIT_IPC_CHANNELS });
+
   // Load git config (returns detected config with secrets redacted)
-  ipcMain.handle('git-config:load', () => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.loadConfig, () => {
     const detectedConfig = loadDetectedGitConfig();
     if (!detectedConfig) return null;
 
@@ -166,7 +208,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   });
 
   // Save git config (preserves existing secrets if not provided, auto-derives identity from PAT)
-  ipcMain.handle('git-config:save', async (_event, config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean }) => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.saveConfig, async (_event, config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean }) => {
     // Load existing config to preserve secrets if not provided in save
     const existing = loadGitConfig();
     const toSave: GitConfig = {
@@ -254,7 +296,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   });
 
   // Check if folder is a git repo (and if it has commits)
-  ipcMain.handle('git:is-repo', (_event, folderPath: string) => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.isRepo, (_event, folderPath: string) => {
     const isRepo = isGitRepo(folderPath);
     if (!isRepo) {
       return { isRepo: false, hasCommits: false };
@@ -263,12 +305,12 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   });
 
   // Get current branch name
-  ipcMain.handle('git:get-branch', (_event, folderPath: string) => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.getBranch, (_event, folderPath: string) => {
     return getWorktreeBranch(folderPath);
   });
 
   // Initialize git repo
-  ipcMain.handle('git:init', (_event, folderPath: string) => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.init, (_event, folderPath: string) => {
     logger.info('IPC: git:init', { folderPath });
     try {
       const initialized = initGitRepo(folderPath);
@@ -281,7 +323,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   });
 
   // Clone repository into target directory.
-  ipcMain.handle('git:clone', async (_event, url: string, targetDir: string): Promise<GitCloneResult> => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.clone, async (_event, url: string, targetDir: string): Promise<GitCloneResult> => {
     logger.info('IPC: git:clone', { url, targetDir });
 
     const repoName = extractRepoNameFromUrl(url);
@@ -312,12 +354,12 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   });
 
   // Validate branch name for UI
-  ipcMain.handle('git:validate-branch', (_event, branchName: string) => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.validateBranch, (_event, branchName: string) => {
     return validateBranchNameForUi(branchName);
   });
 
   // Merge a branch into the default branch
-  ipcMain.handle('git:merge-branch', async (_event, projectPath: string, branchName: string) => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.mergeBranch, async (_event, projectPath: string, branchName: string) => {
     logger.info('IPC: git:merge-branch', { projectPath, branchName });
     return withMergeLock(projectPath, async () => {
       try {
@@ -333,7 +375,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   });
 
   // Get diff stats between default branch and a feature branch
-  ipcMain.handle('git:worktree-diff-stats', (_event, projectPath: string, branchName: string) => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.worktreeDiffStats, (_event, projectPath: string, branchName: string) => {
     logger.info('IPC: git:worktree-diff-stats', { projectPath, branchName });
     try {
       return getWorktreeDiffStats(projectPath, branchName);
@@ -345,7 +387,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   });
 
   // Check if a branch can merge cleanly (conflict pre-check)
-  ipcMain.handle('git:check-merge-conflicts', (_event, projectPath: string, branchName: string) => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.checkMergeConflicts, (_event, projectPath: string, branchName: string) => {
     logger.info('IPC: git:check-merge-conflicts', { projectPath, branchName });
     try {
       return checkMergeConflicts(projectPath, branchName);
@@ -357,7 +399,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   });
 
   // Clean up a worktree and its branch
-  ipcMain.handle('git:cleanup-worktree', (_event, projectPath: string, worktreePath: string, branchName: string) => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.cleanupWorktree, (_event, projectPath: string, worktreePath: string, branchName: string) => {
     logger.info('IPC: git:cleanup-worktree', { projectPath, worktreePath, branchName });
     try {
       cleanupWorktreeAndBranch(projectPath, worktreePath, branchName);
@@ -368,7 +410,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   });
 
   // Merge a worktree branch, push to remote, and create a PR
-  ipcMain.handle('git:merge-and-push-pr', async (
+  registerGitChannel(ipcMain, GIT_CHANNELS.mergeAndPushPr, async (
     _event,
     projectPath: string,
     branchName: string,
@@ -383,7 +425,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   });
 
   // Detect if folder is a git repo, and scan one level deep for nested repos if not
-  ipcMain.handle('git:detect-nested-repos', (_event, folderPath: string) => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.detectNestedRepos, (_event, folderPath: string) => {
     if (isGitRepo(folderPath)) {
       return { isRepo: true, nestedRepos: [] };
     }
@@ -404,6 +446,11 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     }
 
     return { isRepo: false, nestedRepos };
+  });
+
+  logger.info('Git IPC handlers registered', {
+    count: GIT_IPC_CHANNELS.length,
+    includesClone: GIT_IPC_CHANNELS.includes('git:clone'),
   });
 }
 

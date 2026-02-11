@@ -6,6 +6,9 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { normalizePath } from '@shared/lib/path-utils'
 
+const MISSING_GIT_CLONE_HANDLER_MESSAGE = "No handler registered for 'git:clone'"
+const CLONE_HANDLER_UNAVAILABLE_MESSAGE = 'Git clone is temporarily unavailable. Please restart Yolium and try again.'
+
 interface GitCloneInputProps {
   parentDirectory: string
   onCloned: (clonedPath: string) => void
@@ -44,6 +47,19 @@ function joinPath(parentPath: string, folderName: string): string {
   return normalizedParent.endsWith('/')
     ? `${normalizedParent}${folderName}`
     : `${normalizedParent}/${folderName}`
+}
+
+function getCloneErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    const message = error.message || ''
+    if (message.includes(MISSING_GIT_CLONE_HANDLER_MESSAGE)) {
+      return CLONE_HANDLER_UNAVAILABLE_MESSAGE
+    }
+
+    return message || 'Failed to clone repository'
+  }
+
+  return 'Failed to clone repository'
 }
 
 /**
@@ -97,18 +113,22 @@ export function GitCloneInput({
     setIsCloning(true)
     setError(null)
 
-    const result = await window.electronAPI.git.clone(trimmedUrl, cloneTarget)
+    try {
+      const result = await window.electronAPI.git.clone(trimmedUrl, cloneTarget)
 
-    if (result.success && result.clonedPath) {
-      setRepoUrl('')
-      setError(null)
-      onCloned(result.clonedPath)
-      setTimeout(() => mainInputRef.current?.focus(), 50)
-    } else {
-      setError(result.error || 'Failed to clone repository')
+      if (result.success && result.clonedPath) {
+        setRepoUrl('')
+        setError(null)
+        onCloned(result.clonedPath)
+        setTimeout(() => mainInputRef.current?.focus(), 50)
+      } else {
+        setError(result.error || 'Failed to clone repository')
+      }
+    } catch (error) {
+      setError(getCloneErrorMessage(error))
+    } finally {
+      setIsCloning(false)
     }
-
-    setIsCloning(false)
   }, [isCloning, repoUrl, repoName, cloneTarget, onCloned, mainInputRef])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {

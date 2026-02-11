@@ -1,5 +1,4 @@
 <video src="https://github.com/user-attachments/assets/dcf55f73-33af-4c08-bb18-8c531fb96fc0" width="320" height="240" controls></video>
->Don't worry—the flickering is just the screen capture. Yolium runs smooth.
 
 ## Architecture
 
