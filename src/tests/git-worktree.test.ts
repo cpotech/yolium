@@ -3,9 +3,22 @@ import * as path from 'node:path'
 import * as os from 'node:os'
 import * as crypto from 'node:crypto'
 
-// Mock execFileSync to avoid actual git commands
+// Mock child_process to avoid actual git commands
+// The execFile mock needs the custom promisify symbol so that
+// util.promisify(execFile) returns { stdout, stderr } like the real one.
+import { promisify } from 'node:util'
+
+const { mockExecFile, mockExecFileCustom } = vi.hoisted(() => {
+  const mockExecFileCustom = vi.fn()
+  const mockExecFile: any = vi.fn()
+  // Symbol.for matches the symbol used by Node's util.promisify
+  mockExecFile[Symbol.for('nodejs.util.promisify.custom')] = mockExecFileCustom
+  return { mockExecFile, mockExecFileCustom }
+})
+
 vi.mock('node:child_process', () => ({
   execFileSync: vi.fn(),
+  execFile: mockExecFile,
 }))
 
 vi.mock('node:fs', () => ({
@@ -29,9 +42,30 @@ import {
   sanitizeBranchName,
   generatePrBranchName,
   mergeBranchAndPushPR,
+  getWorktreeDiffStats,
+  cleanupWorktreeAndBranch,
   checkMergeConflicts,
   rebaseBranchOntoDefault,
 } from '@main/git/git-worktree'
+
+/**
+ * Helper to configure the execFile mock for async (promisified) calls.
+ * Since execFile has a custom promisify symbol, util.promisify(execFile)
+ * uses that custom function directly. We mock it to return a Promise
+ * resolving to { stdout, stderr }.
+ */
+function setupExecFileAsyncMock(handler: (cmd: string, args: readonly string[]) => { stdout?: string; stderr?: string; error?: Error | null }) {
+  mockExecFileCustom.mockImplementation(
+    (cmd: string, cmdArgs?: readonly string[], _options?: any) => {
+      const args = cmdArgs || []
+      const result = handler(cmd, args)
+      if (result.error) {
+        return Promise.reject(result.error)
+      }
+      return Promise.resolve({ stdout: result.stdout || '', stderr: result.stderr || '' })
+    }
+  )
+}
 
 describe('git-worktree', () => {
   beforeEach(() => {
@@ -384,32 +418,42 @@ describe('git-worktree', () => {
   describe('mergeBranchAndPushPR', () => {
     beforeEach(() => {
       vi.clearAllMocks()
+      // execFileSync is used by sync helpers (validateBranchName, getDefaultBranch)
       vi.mocked(execFileSync).mockReturnValue(Buffer.from(''))
       vi.mocked(fs.existsSync).mockReturnValue(true)
     })
 
-    it('returns error when push fails', () => {
+    function setupSyncHelpers() {
+      // validateBranchName and getDefaultBranch still use execFileSync
       vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
         const command = `${cmd} ${(args || []).join(' ')}`
         if (command.startsWith('git check-ref-format')) return Buffer.from('')
         if (command.includes('symbolic-ref')) throw new Error('no remote')
         if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
-        if (command.includes('rev-parse --verify origin/main')) return Buffer.from('abc')
-        if (command.includes('fetch')) return Buffer.from('')
-        if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
-        if (command.includes('pull')) return Buffer.from('')
-        if (command.includes('checkout -B')) return Buffer.from('')
-        if (command.includes('merge') && command.includes('--squash')) return Buffer.from('')
-        if (command.includes('commit -m')) return Buffer.from('')
-        if (command.includes('push -u')) {
-          const err = new Error('push failed') as Error & { stderr: Buffer }
-          err.stderr = Buffer.from('remote: Permission denied')
-          throw err
-        }
         return Buffer.from('')
       })
+    }
 
-      const result = mergeBranchAndPushPR(
+    it('returns error when push fails', async () => {
+      setupSyncHelpers()
+      setupExecFileAsyncMock((cmd, args) => {
+        const command = `${cmd} ${args.join(' ')}`
+        if (command.includes('fetch')) return {}
+        if (command.includes('checkout main') && !command.includes('-B')) return {}
+        if (command.includes('pull')) return {}
+        if (command.includes('checkout -B')) return {}
+        if (command.includes('merge') && command.includes('--squash')) return {}
+        if (command.includes('commit -m')) return {}
+        if (command.includes('push -u')) {
+          const err = new Error('push failed') as any
+          err.stderr = 'remote: Permission denied'
+          return { error: err }
+        }
+        // cleanup commands after push failure
+        return {}
+      })
+
+      const result = await mergeBranchAndPushPR(
         '/home/user/project',
         'yolium-123-abc',
         '/home/user/.yolium/worktrees/proj/yolium-123-abc',
@@ -421,29 +465,26 @@ describe('git-worktree', () => {
       expect(result.error).toContain('Failed to push')
     })
 
-    it('returns success with prUrl on full success', () => {
-      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
-        const command = `${cmd} ${(args || []).join(' ')}`
-        if (command.startsWith('git check-ref-format')) return Buffer.from('')
-        if (command.includes('symbolic-ref')) throw new Error('no remote')
-        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
-        if (command.includes('rev-parse --verify origin/main')) return Buffer.from('abc')
-        if (command.includes('fetch')) return Buffer.from('')
-        if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
-        if (command.includes('pull')) return Buffer.from('')
-        if (command.includes('checkout -B')) return Buffer.from('')
-        if (command.includes('merge') && command.includes('--squash')) return Buffer.from('')
-        if (command.includes('commit -m')) return Buffer.from('')
-        if (command.includes('push -u')) return Buffer.from('')
-        // gh pr create
-        if (cmd === 'gh') return 'https://github.com/user/repo/pull/42\n'
-        // cleanup: worktree remove, branch delete, worktree prune
-        if (command.includes('worktree remove')) return Buffer.from('')
-        if (command.includes('branch -d')) return Buffer.from('')
-        return Buffer.from('')
+    it('returns success with prUrl on full success', async () => {
+      setupSyncHelpers()
+      setupExecFileAsyncMock((cmd, args) => {
+        const command = `${cmd} ${args.join(' ')}`
+        if (command.includes('fetch')) return {}
+        if (command.includes('checkout main') && !command.includes('-B')) return {}
+        if (command.includes('pull')) return {}
+        if (command.includes('checkout -B')) return {}
+        if (command.includes('merge') && command.includes('--squash')) return {}
+        if (command.includes('commit -m')) return {}
+        if (command.includes('push -u')) return {}
+        if (cmd === 'gh') return { stdout: 'https://github.com/user/repo/pull/42\n' }
+        // cleanup: worktree remove, branch delete
+        if (command.includes('worktree remove')) return {}
+        if (command.includes('worktree prune')) return {}
+        if (command.includes('branch -d')) return {}
+        return {}
       })
 
-      const result = mergeBranchAndPushPR(
+      const result = await mergeBranchAndPushPR(
         '/home/user/project',
         'yolium-123-abc',
         '/home/user/.yolium/worktrees/proj/yolium-123-abc',
@@ -456,30 +497,26 @@ describe('git-worktree', () => {
       expect(result.prBranch).toBe('yolium/add-auth-feature')
     })
 
-    it('returns partial success when PR creation fails but push succeeds', () => {
-      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
-        const command = `${cmd} ${(args || []).join(' ')}`
-        if (command.startsWith('git check-ref-format')) return Buffer.from('')
-        if (command.includes('symbolic-ref')) throw new Error('no remote')
-        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
-        if (command.includes('rev-parse --verify origin/main')) return Buffer.from('abc')
-        if (command.includes('fetch')) return Buffer.from('')
-        if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
-        if (command.includes('pull')) return Buffer.from('')
-        if (command.includes('checkout -B')) return Buffer.from('')
-        if (command.includes('merge') && command.includes('--squash')) return Buffer.from('')
-        if (command.includes('commit -m')) return Buffer.from('')
-        if (command.includes('push -u')) return Buffer.from('')
-        // gh pr create fails
+    it('returns partial success when PR creation fails but push succeeds', async () => {
+      setupSyncHelpers()
+      setupExecFileAsyncMock((cmd, args) => {
+        const command = `${cmd} ${args.join(' ')}`
+        if (command.includes('fetch')) return {}
+        if (command.includes('checkout main') && !command.includes('-B')) return {}
+        if (command.includes('pull')) return {}
+        if (command.includes('checkout -B')) return {}
+        if (command.includes('merge') && command.includes('--squash')) return {}
+        if (command.includes('commit -m')) return {}
+        if (command.includes('push -u')) return {}
         if (cmd === 'gh') {
-          const err = new Error('gh failed') as Error & { stderr: Buffer }
-          err.stderr = Buffer.from('gh: not found')
-          throw err
+          const err = new Error('gh failed') as any
+          err.stderr = 'gh: not found'
+          return { error: err }
         }
-        return Buffer.from('')
+        return {}
       })
 
-      const result = mergeBranchAndPushPR(
+      const result = await mergeBranchAndPushPR(
         '/home/user/project',
         'yolium-123-abc',
         '/home/user/.yolium/worktrees/proj/yolium-123-abc',
@@ -493,29 +530,25 @@ describe('git-worktree', () => {
       expect(result.error).toContain('PR creation failed')
     })
 
-    it('succeeds when prBranch equals worktreeBranch (user-specified branch)', () => {
-      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
-        const command = `${cmd} ${(args || []).join(' ')}`
-        if (command.startsWith('git check-ref-format')) return Buffer.from('')
-        if (command.includes('symbolic-ref')) throw new Error('no remote')
-        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
-        if (command.includes('rev-parse --verify origin/main')) return Buffer.from('abc')
-        if (command.includes('fetch')) return Buffer.from('')
-        if (command.includes('checkout main') && !command.includes('-B')) return Buffer.from('')
-        if (command.includes('pull')) return Buffer.from('')
-        // checkout -B should handle existing branch without error
-        if (command.includes('checkout -B')) return Buffer.from('')
-        if (command.includes('merge') && command.includes('--squash')) return Buffer.from('')
-        if (command.includes('commit -m')) return Buffer.from('')
-        if (command.includes('push -u')) return Buffer.from('')
-        if (cmd === 'gh') return 'https://github.com/user/repo/pull/99\n'
-        if (command.includes('worktree remove')) return Buffer.from('')
-        if (command.includes('branch -d')) return Buffer.from('')
-        return Buffer.from('')
+    it('succeeds when prBranch equals worktreeBranch (user-specified branch)', async () => {
+      setupSyncHelpers()
+      setupExecFileAsyncMock((cmd, args) => {
+        const command = `${cmd} ${args.join(' ')}`
+        if (command.includes('fetch')) return {}
+        if (command.includes('checkout main') && !command.includes('-B')) return {}
+        if (command.includes('pull')) return {}
+        if (command.includes('checkout -B')) return {}
+        if (command.includes('merge') && command.includes('--squash')) return {}
+        if (command.includes('commit -m')) return {}
+        if (command.includes('push -u')) return {}
+        if (cmd === 'gh') return { stdout: 'https://github.com/user/repo/pull/99\n' }
+        if (command.includes('worktree remove')) return {}
+        if (command.includes('worktree prune')) return {}
+        if (command.includes('branch -d')) return {}
+        return {}
       })
 
-      // Use a non-yolium branch so prBranch === worktreeBranch
-      const result = mergeBranchAndPushPR(
+      const result = await mergeBranchAndPushPR(
         '/home/user/project',
         '(bug)-agent-type-wrong',
         '/home/user/.yolium/worktrees/proj/(bug)-agent-type-wrong',
@@ -527,23 +560,20 @@ describe('git-worktree', () => {
       expect(result.prBranch).toBe('(bug)-agent-type-wrong')
     })
 
-    it('returns error when checkout of default branch fails', () => {
-      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
-        const command = `${cmd} ${(args || []).join(' ')}`
-        if (command.startsWith('git check-ref-format')) return Buffer.from('')
-        if (command.includes('symbolic-ref')) throw new Error('no remote')
-        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
-        if (command.includes('rev-parse --verify origin/main')) return Buffer.from('abc')
-        if (command.includes('fetch')) return Buffer.from('')
+    it('returns error when checkout of default branch fails', async () => {
+      setupSyncHelpers()
+      setupExecFileAsyncMock((cmd, args) => {
+        const command = `${cmd} ${args.join(' ')}`
+        if (command.includes('fetch')) return {}
         if (command.includes('checkout main')) {
-          const err = new Error('checkout failed') as Error & { stderr: Buffer }
-          err.stderr = Buffer.from('error: uncommitted changes')
-          throw err
+          const err = new Error('checkout failed') as any
+          err.stderr = 'error: uncommitted changes'
+          return { error: err }
         }
-        return Buffer.from('')
+        return {}
       })
 
-      const result = mergeBranchAndPushPR(
+      const result = await mergeBranchAndPushPR(
         '/home/user/project',
         'yolium-123-abc',
         '/home/user/.yolium/worktrees/proj/yolium-123-abc',
@@ -555,6 +585,93 @@ describe('git-worktree', () => {
       expect(result.error).toContain('Failed to checkout main')
     })
 
+  })
+
+  describe('getWorktreeDiffStats', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      vi.mocked(execFileSync).mockReturnValue(Buffer.from(''))
+    })
+
+    it('returns diff stats from git diff output', async () => {
+      // validateBranchName and getDefaultBranch use execFileSync
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        if (command.includes('symbolic-ref')) throw new Error('no remote')
+        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        return Buffer.from('')
+      })
+      setupExecFileAsyncMock(() => ({
+        stdout: ' src/main.ts | 10 ++++------\n src/app.ts  |  5 ++---\n 2 files changed, 6 insertions(+), 9 deletions(-)\n',
+      }))
+
+      const result = await getWorktreeDiffStats('/home/user/project', 'feature-branch')
+      expect(result.filesChanged).toBe(2)
+      expect(result.insertions).toBe(6)
+      expect(result.deletions).toBe(9)
+    })
+
+    it('returns zeroes when git diff fails', async () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        if (command.includes('symbolic-ref')) throw new Error('no remote')
+        if (command.includes('rev-parse --verify main')) return Buffer.from('abc')
+        return Buffer.from('')
+      })
+      setupExecFileAsyncMock(() => ({ error: new Error('diff failed') }))
+
+      const result = await getWorktreeDiffStats('/home/user/project', 'feature-branch')
+      expect(result.filesChanged).toBe(0)
+      expect(result.insertions).toBe(0)
+      expect(result.deletions).toBe(0)
+    })
+  })
+
+  describe('cleanupWorktreeAndBranch', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      vi.mocked(execFileSync).mockReturnValue(Buffer.from(''))
+    })
+
+    it('removes worktree and deletes branch', async () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        return Buffer.from('')
+      })
+      const calls: string[] = []
+      setupExecFileAsyncMock((cmd, args) => {
+        const command = `${cmd} ${args.join(' ')}`
+        calls.push(command)
+        return {}
+      })
+
+      await cleanupWorktreeAndBranch('/home/user/project', '/tmp/worktree', 'feature-branch')
+
+      expect(calls.some(c => c.includes('worktree remove'))).toBe(true)
+      expect(calls.some(c => c.includes('branch -d feature-branch'))).toBe(true)
+    })
+
+    it('force-deletes branch if safe delete fails', async () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command.startsWith('git check-ref-format')) return Buffer.from('')
+        return Buffer.from('')
+      })
+      const calls: string[] = []
+      setupExecFileAsyncMock((cmd, args) => {
+        const command = `${cmd} ${args.join(' ')}`
+        calls.push(command)
+        if (command.includes('branch -d')) return { error: new Error('not fully merged') }
+        return {}
+      })
+
+      await cleanupWorktreeAndBranch('/home/user/project', '/tmp/worktree', 'feature-branch')
+
+      expect(calls.some(c => c.includes('branch -D feature-branch'))).toBe(true)
+    })
   })
 
   describe('checkMergeConflicts', () => {
