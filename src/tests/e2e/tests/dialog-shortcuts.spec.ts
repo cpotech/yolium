@@ -110,7 +110,7 @@ test.describe('Dialog Shortcuts', () => {
   });
 
   test.describe('Git Settings Dialog', () => {
-    test('Ctrl+Shift+S should open settings dialog', async () => {
+    test('Ctrl+Shift+S should open fullscreen settings dialog', async () => {
       ctx = await launchApp();
       const { window, app } = ctx;
 
@@ -119,8 +119,52 @@ test.describe('Dialog Shortcuts', () => {
         BrowserWindow.getAllWindows()[0].webContents.send('git-settings:show');
       });
 
-      // Git config dialog should open
+      const dialog = window.locator(selectors.gitConfigDialog);
+      await expect(dialog).toBeVisible();
+      await expect(dialog).toHaveAttribute('role', 'dialog');
+      await expect(dialog).toHaveAttribute('aria-modal', 'true');
+      await expect(window.locator(selectors.gitConfigHeader)).toBeVisible();
+      await expect(window.locator(selectors.gitConfigFooter)).toBeVisible();
+
+      const viewport = window.viewportSize();
+      expect(viewport).not.toBeNull();
+
+      const dialogBox = await dialog.boundingBox();
+      expect(dialogBox).not.toBeNull();
+      expect(Math.abs((dialogBox?.width ?? 0) - (viewport?.width ?? 0))).toBeLessThanOrEqual(2);
+      expect(Math.abs((dialogBox?.height ?? 0) - (viewport?.height ?? 0))).toBeLessThanOrEqual(2);
+    });
+
+    test('footer actions should remain visible while settings content area scrolls', async () => {
+      ctx = await launchApp();
+      const { window, app } = ctx;
+
+      await app.evaluate(({ BrowserWindow }) => {
+        BrowserWindow.getAllWindows()[0].webContents.send('git-settings:show');
+      });
+
       await expect(window.locator(selectors.gitConfigDialog)).toBeVisible();
+
+      const body = window.locator(selectors.gitConfigBody);
+      const footer = window.locator(selectors.gitConfigFooter);
+      await expect(body).toBeVisible();
+      await expect(footer).toBeVisible();
+      await expect(window.locator(selectors.gitConfigSaveButton)).toBeVisible();
+      await expect(window.locator(selectors.gitConfigCancelButton)).toBeVisible();
+
+      const footerBoxBefore = await footer.boundingBox();
+      expect(footerBoxBefore).not.toBeNull();
+
+      const overflowY = await body.evaluate((el) => window.getComputedStyle(el).overflowY);
+      expect(['auto', 'scroll']).toContain(overflowY);
+
+      await body.evaluate((el) => {
+        el.scrollTop = el.scrollHeight;
+      });
+
+      const footerBoxAfter = await footer.boundingBox();
+      expect(footerBoxAfter).not.toBeNull();
+      expect(Math.abs((footerBoxAfter?.y ?? 0) - (footerBoxBefore?.y ?? 0))).toBeLessThanOrEqual(1);
     });
 
     test('Enter should save valid git settings form', async () => {
