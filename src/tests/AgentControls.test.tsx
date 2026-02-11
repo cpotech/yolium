@@ -327,6 +327,42 @@ describe('AgentControls', () => {
     })
   })
 
+  describe('last agent label', () => {
+    it('should show last agent name when activeAgentName is not set', () => {
+      const item = createMockItem({
+        agentStatus: 'completed',
+        activeAgentName: undefined,
+        lastAgentName: 'code-agent',
+      })
+      render(<AgentControls item={item} {...defaultProps} />)
+
+      const lastAgent = screen.getByTestId('last-agent-name')
+      expect(lastAgent).toHaveTextContent('Last Agent: Code Agent')
+    })
+
+    it('should hide last agent name when activeAgentName is set', () => {
+      const item = createMockItem({
+        agentStatus: 'running',
+        activeAgentName: 'code-agent',
+        lastAgentName: 'code-agent',
+      })
+      render(<AgentControls item={item} {...defaultProps} />)
+
+      expect(screen.queryByTestId('last-agent-name')).not.toBeInTheDocument()
+    })
+
+    it('should not show last agent name when lastAgentName is not set', () => {
+      const item = createMockItem({
+        agentStatus: 'idle',
+        activeAgentName: undefined,
+        lastAgentName: undefined,
+      })
+      render(<AgentControls item={item} {...defaultProps} />)
+
+      expect(screen.queryByTestId('last-agent-name')).not.toBeInTheDocument()
+    })
+  })
+
   describe('agent button tooltips', () => {
     it('should not show agent descriptions on hover', async () => {
       const item = createMockItem({ agentStatus: 'idle' })
