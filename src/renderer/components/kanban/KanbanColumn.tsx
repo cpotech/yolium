@@ -18,6 +18,7 @@ const columnBorderColors: Record<ColumnId, string> = {
   backlog: 'border-t-gray-500',
   ready: 'border-t-blue-500',
   'in-progress': 'border-t-yellow-500',
+  verify: 'border-t-purple-500',
   done: 'border-t-green-500',
 }
 

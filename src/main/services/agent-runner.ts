@@ -353,7 +353,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
           if (code === 0) {
             // Success - check if already marked as completed
             if (exitItem && exitItem.agentStatus === 'running') {
-              updateItem(exitBoard, itemId, { agentStatus: 'completed', activeAgentName: undefined, column: 'done' });
+              updateItem(exitBoard, itemId, { agentStatus: 'completed', activeAgentName: undefined, column: 'verify' });
               addComment(exitBoard, itemId, 'system', 'Agent finished successfully');
               events.emit('complete', 'Agent finished successfully');
             }
@@ -501,8 +501,8 @@ export function handleAgentOutput(sessionId: string, data: string): void {
 
       case 'complete': {
         const comp = message as CompleteMessage;
-        // Move to done column when agent completes successfully
-        updateItem(board, session.itemId, { agentStatus: 'completed', activeAgentName: undefined, column: 'done' });
+        // Move to verify column when agent completes successfully
+        updateItem(board, session.itemId, { agentStatus: 'completed', activeAgentName: undefined, column: 'verify' });
         addComment(board, session.itemId, 'system', `Completed: ${comp.summary}`);
 
         session.events.emit('complete', comp.summary);

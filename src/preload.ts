@@ -488,7 +488,7 @@ declare global {
             id: string;
             title: string;
             description: string;
-            column: 'backlog' | 'ready' | 'in-progress' | 'done';
+            column: 'backlog' | 'ready' | 'in-progress' | 'verify' | 'done';
             branch?: string;
             agentProvider: 'claude' | 'codex' | 'opencode';
             order: number;
