@@ -719,8 +719,7 @@ describe('ItemDetailDialog', () => {
     expect(screen.getByText('Agent is running...')).toBeInTheDocument()
   })
 
-  it('should confirm before closing with unsaved changes (Escape)', async () => {
-    mockShowConfirmOkCancel.mockResolvedValueOnce(true) // User confirms discard
+  it('should close immediately with unsaved changes (Escape)', async () => {
     const onClose = vi.fn()
     const item = createMockItem({ title: 'Original Title' })
 
@@ -744,22 +743,14 @@ describe('ItemDetailDialog', () => {
       key: 'Escape',
     })
 
-    // Should show confirmation dialog
-    await waitFor(() => {
-      expect(mockShowConfirmOkCancel).toHaveBeenCalledWith(
-        'Unsaved Changes',
-        'You have unsaved changes. Discard them?'
-      )
-    })
-
-    // Should close after user confirms
+    // Should close immediately without confirmation dialog
     await waitFor(() => {
       expect(onClose).toHaveBeenCalled()
     })
+    expect(mockShowConfirmOkCancel).not.toHaveBeenCalled()
   })
 
-  it('should NOT close if user cancels unsaved changes confirmation', async () => {
-    mockShowConfirmOkCancel.mockResolvedValueOnce(false) // User cancels
+  it('should close immediately with unsaved changes from close button', async () => {
     const onClose = vi.fn()
     const item = createMockItem({ title: 'Original Title' })
 
@@ -781,13 +772,11 @@ describe('ItemDetailDialog', () => {
     // Click close button
     fireEvent.click(screen.getByTestId('close-button'))
 
-    // Should show confirmation
+    // Should close immediately without confirmation dialog
     await waitFor(() => {
-      expect(mockShowConfirmOkCancel).toHaveBeenCalled()
+      expect(onClose).toHaveBeenCalled()
     })
-
-    // Should NOT close (user cancelled)
-    expect(onClose).not.toHaveBeenCalled()
+    expect(mockShowConfirmOkCancel).not.toHaveBeenCalled()
   })
 
   it('should close immediately when no unsaved changes (no confirmation)', () => {
