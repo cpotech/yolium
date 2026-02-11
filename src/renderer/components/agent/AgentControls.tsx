@@ -32,30 +32,16 @@ const agentIcons: Record<string, React.ReactNode> = {
 const agentAccentColors: Record<string, string> = {
   'code-agent': 'border-l-blue-500',
   'plan-agent': 'border-l-yellow-500',
-  'verify-agent': 'border-l-green-500',
+  'verify-agent': 'border-l-purple-500',
 }
 
 /**
- * Tooltip component for agent descriptions
+ * Canonical display order for agent buttons: Plan → Code → Verify
  */
-function AgentTooltip({ description, children }: { description: string; children: React.ReactNode }) {
-  const [showTooltip, setShowTooltip] = useState(false)
-
-  return (
-    <div
-      className="relative"
-      onMouseEnter={() => setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
-    >
-      {children}
-      {showTooltip && (
-        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] text-xs rounded-md shadow-lg border border-[var(--color-border-primary)] whitespace-nowrap z-50 max-w-xs">
-          {description}
-          <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-[var(--color-bg-tertiary)]" />
-        </div>
-      )}
-    </div>
-  )
+const agentDisplayOrder: Record<string, number> = {
+  'plan-agent': 0,
+  'code-agent': 1,
+  'verify-agent': 2,
 }
 
 /**
@@ -103,22 +89,20 @@ function AgentButtonList({
   return (
     <div className="space-y-2">
       {agents.map((agent) => (
-        <AgentTooltip key={agent.name} description={agent.description}>
-          <button
-            key={agent.name}
-            data-testid={`run-${agent.name}-button`}
-            onClick={() => onClick(agent.name)}
-            disabled={isStartingAgent}
-            className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border-primary)] hover:border-[var(--color-accent-primary)] border-l-4 ${agentAccentColors[agent.name] || 'border-l-[var(--color-border-primary)]'}`}
-          >
-            <span className="flex-shrink-0 text-[var(--color-text-secondary)]">
-              {agentIcons[agent.name] || <Play size={16} />}
-            </span>
-            <span className="flex-1 text-center">
-              {isStartingAgent ? startingText : `${buttonTextPrefix} ${formatAgentLabel(agent.name)}`}
-            </span>
-          </button>
-        </AgentTooltip>
+        <button
+          key={agent.name}
+          data-testid={`run-${agent.name}-button`}
+          onClick={() => onClick(agent.name)}
+          disabled={isStartingAgent}
+          className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border-primary)] hover:border-[var(--color-accent-primary)] border-l-4 ${agentAccentColors[agent.name] || 'border-l-[var(--color-border-primary)]'}`}
+        >
+          <span className="flex-shrink-0 text-[var(--color-text-secondary)]">
+            {agentIcons[agent.name] || <Play size={16} />}
+          </span>
+          <span className="flex-1 text-center">
+            {isStartingAgent ? startingText : `${buttonTextPrefix} ${formatAgentLabel(agent.name)}`}
+          </span>
+        </button>
       ))}
     </div>
   )
@@ -147,14 +131,12 @@ export function AgentControls({
     window.electronAPI.agent.listDefinitions().then(setAgents).catch(() => {})
   }, [])
 
-  // Sort agents so the pre-assigned agentType comes first
-  const sortedAgents = item.agentType
-    ? [...agents].sort((a, b) => {
-        if (a.name === item.agentType) return -1
-        if (b.name === item.agentType) return 1
-        return 0
-      })
-    : agents
+  // Sort agents in canonical order: Plan → Code → Verify
+  const sortedAgents = [...agents].sort((a, b) => {
+    const orderA = agentDisplayOrder[a.name] ?? 99
+    const orderB = agentDisplayOrder[b.name] ?? 99
+    return orderA - orderB
+  })
 
   return (
     <>
