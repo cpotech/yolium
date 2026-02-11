@@ -35,6 +35,12 @@ export const lightTheme: ThemeTokens = {
       worktree: '#8B6BBE',    // Deeper purple for light bg
       branch: '#5A7FD4',      // Deeper blue for light bg
     },
+    agent: {
+      primary: { bg: '#5A7FD4', hover: '#7199EE' },   // deeper blue for contrast
+      danger: { bg: '#D05070', hover: '#EE6D85' },    // darker red for light bg
+      success: { bg: '#4A6FC7', hover: '#5A7FD4' },   // muted blue
+      warning: { bg: '#3D5EB8', hover: '#4A6FC7' },   // deeper muted blue
+    },
   },
   terminal: {
     background: '#11121D',    // tokyodark bg0 - Terminal stays dark

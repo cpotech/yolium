@@ -37,6 +37,12 @@ export type ThemeTokens = {
       worktree: string;
       branch: string;
     };
+    agent: {
+      primary: { bg: string; hover: string };
+      danger: { bg: string; hover: string };
+      success: { bg: string; hover: string };
+      warning: { bg: string; hover: string };
+    };
   };
   terminal: {
     background: string;
