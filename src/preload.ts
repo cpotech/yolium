@@ -137,6 +137,7 @@ const git = {
   isRepo: (folderPath: string) => ipcRenderer.invoke('git:is-repo', folderPath),
   getBranch: (folderPath: string) => ipcRenderer.invoke('git:get-branch', folderPath),
   init: (folderPath: string) => ipcRenderer.invoke('git:init', folderPath),
+  clone: (url: string, targetDir: string) => ipcRenderer.invoke('git:clone', url, targetDir),
   validateBranch: (branchName: string) => ipcRenderer.invoke('git:validate-branch', branchName),
   mergeBranch: (projectPath: string, branchName: string) =>
     ipcRenderer.invoke('git:merge-branch', projectPath, branchName),
@@ -444,6 +445,7 @@ declare global {
         isRepo: (folderPath: string) => Promise<{ isRepo: boolean; hasCommits: boolean }>;
         getBranch: (folderPath: string) => Promise<string | null>;
         init: (folderPath: string) => Promise<{ success: boolean; initialized?: boolean; error?: string }>;
+        clone: (url: string, targetDir: string) => Promise<{ success: boolean; clonedPath: string | null; error: string | null }>;
         validateBranch: (branchName: string) => Promise<{ valid: boolean; error: string | null }>;
         mergeBranch: (projectPath: string, branchName: string) => Promise<{ success: boolean; error?: string; conflict?: boolean }>;
         worktreeDiffStats: (projectPath: string, branchName: string) => Promise<{ filesChanged: number; insertions: number; deletions: number }>;

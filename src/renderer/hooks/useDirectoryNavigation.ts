@@ -44,8 +44,11 @@ export interface UseDirectoryNavigationReturn {
   handleSuggestionDoubleClick: (entry: DirectoryEntry) => void
   getCurrentDirectory: () => string
   startFolderCreation: () => void
+  startClone: () => void
   isCreatingFolder: boolean
   setIsCreatingFolder: React.Dispatch<React.SetStateAction<boolean>>
+  isCloning: boolean
+  setIsCloning: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 /**
@@ -66,6 +69,7 @@ export function useDirectoryNavigation({
   const [showHidden, setShowHidden] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
+  const [isCloning, setIsCloning] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
 
@@ -85,7 +89,14 @@ export function useDirectoryNavigation({
 
   // Start folder creation mode
   const startFolderCreation = useCallback(() => {
+    setIsCloning(false)
     setIsCreatingFolder(true)
+  }, [])
+
+  // Start clone mode
+  const startClone = useCallback(() => {
+    setIsCreatingFolder(false)
+    setIsCloning(true)
   }, [])
 
   // Fetch directory suggestions
@@ -120,6 +131,7 @@ export function useDirectoryNavigation({
       setShowHidden(false)
       setError(null)
       setIsCreatingFolder(false)
+      setIsCloning(false)
       fetchSuggestions(startPath)
       setTimeout(() => inputRef.current?.focus(), 50)
     }
@@ -148,6 +160,13 @@ export function useDirectoryNavigation({
       if (e.ctrlKey && e.key === 'n') {
         e.preventDefault()
         startFolderCreation()
+        return
+      }
+
+      // Ctrl+G to clone repository
+      if (e.ctrlKey && e.key === 'g') {
+        e.preventDefault()
+        startClone()
         return
       }
 
@@ -217,7 +236,7 @@ export function useDirectoryNavigation({
           break
       }
     },
-    [inputValue, filteredSuggestions, selectedIndex, favorites, onConfirm, onCancel, startFolderCreation]
+    [inputValue, filteredSuggestions, selectedIndex, favorites, onConfirm, onCancel, startFolderCreation, startClone]
   )
 
   // Handle input change
@@ -259,7 +278,10 @@ export function useDirectoryNavigation({
     handleSuggestionDoubleClick,
     getCurrentDirectory,
     startFolderCreation,
+    startClone,
     isCreatingFolder,
     setIsCreatingFolder,
+    isCloning,
+    setIsCloning,
   }
 }
