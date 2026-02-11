@@ -34,6 +34,8 @@ Format: `@@YOLIUM:` followed by a JSON object with a `type` field and the fields
 
 Syntax example: `@@YOLIUM:{"type":"progress","step":"inspect","detail":"Running git diff to identify changes"}`
 
+Protocol messages are accepted whether emitted directly as assistant text or via Bash commands (for example `echo '@@YOLIUM:{...}'`).
+
 Only ask questions when genuinely blocked. Prefer making reasonable judgments yourself.
 
 ## Your Process
