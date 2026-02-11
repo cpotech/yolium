@@ -8,7 +8,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { BrowserWindow } from 'electron';
 import { createLogger } from '@main/lib/logger';
-import { loadGitConfig } from '@main/git/git-config';
+import { loadGitConfig, refreshCodexOAuthTokenSerialized } from '@main/git/git-config';
 import { createWorktree, deleteWorktree, generateBranchName, hasUncommittedChanges, fixWorktreeGitFile } from '@main/git/git-worktree';
 import { docker, sessions, agentSessions, DEFAULT_IMAGE } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
@@ -93,6 +93,11 @@ export async function createYolium(
   const oauthBind = getClaudeOAuthBind();
   if (oauthBind) {
     binds.push(oauthBind);
+  }
+
+  // Refresh Codex OAuth token before mounting (single-use refresh tokens go stale)
+  if (agent === 'codex') {
+    await refreshCodexOAuthTokenSerialized();
   }
 
   // Add Codex OAuth credentials if enabled

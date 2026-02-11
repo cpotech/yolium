@@ -195,6 +195,92 @@ export function hasHostCodexOAuth(): boolean {
   }
 }
 
+/** Codex OAuth token endpoint (same as official Codex CLI). */
+const CODEX_TOKEN_ENDPOINT = 'https://auth.openai.com/oauth/token';
+/** Codex OAuth client ID (same as official Codex CLI). */
+const CODEX_CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann';
+
+/**
+ * Refresh the Codex OAuth token on the host.
+ * Reads ~/.codex/auth.json, exchanges the refresh_token for a new access_token,
+ * and writes the updated tokens back to the file.
+ *
+ * This must be called before mounting auth.json into containers because
+ * OpenAI enforces refresh token rotation (single-use). If the host or another
+ * container already used the refresh_token, the old one is invalid.
+ *
+ * @returns true if the token was successfully refreshed, false otherwise
+ */
+export async function refreshCodexOAuthToken(): Promise<boolean> {
+  try {
+    const authPath = path.join(os.homedir(), '.codex', 'auth.json');
+    if (!fs.existsSync(authPath)) return false;
+
+    const content = fs.readFileSync(authPath, 'utf-8');
+    const auth = JSON.parse(content);
+
+    // Only refresh for ChatGPT OAuth mode with a valid refresh token
+    if (auth?.auth_mode !== 'chatgpt' || !auth?.tokens?.refresh_token) {
+      return false;
+    }
+
+    const response = await fetch(CODEX_TOKEN_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: CODEX_CLIENT_ID,
+        grant_type: 'refresh_token',
+        refresh_token: auth.tokens.refresh_token,
+        scope: 'openid profile email',
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn(`[git-config] Codex OAuth refresh failed: ${response.status} ${response.statusText}`);
+      return false;
+    }
+
+    const data = await response.json();
+
+    // Update tokens in the auth object
+    auth.tokens.access_token = data.access_token;
+    auth.tokens.refresh_token = data.refresh_token;
+    if (data.id_token) {
+      auth.tokens.id_token = data.id_token;
+    }
+    auth.last_refresh = new Date().toISOString();
+
+    // Write back with restrictive permissions
+    fs.writeFileSync(authPath, JSON.stringify(auth, null, 2), { encoding: 'utf-8', mode: 0o600 });
+    return true;
+  } catch (err) {
+    console.warn('[git-config] Codex OAuth refresh error:', err instanceof Error ? err.message : String(err));
+    return false;
+  }
+}
+
+/**
+ * Module-level mutex for Codex token refresh.
+ * Ensures parallel container launches share a single refresh call
+ * rather than racing to refresh the same single-use token.
+ */
+let codexRefreshLock: Promise<boolean> | null = null;
+
+/**
+ * Refresh the Codex OAuth token with serialization.
+ * If a refresh is already in progress, returns the same promise
+ * so concurrent callers wait for one refresh instead of racing.
+ *
+ * @returns true if the token was successfully refreshed, false otherwise
+ */
+export async function refreshCodexOAuthTokenSerialized(): Promise<boolean> {
+  if (codexRefreshLock) return codexRefreshLock;
+  codexRefreshLock = refreshCodexOAuthToken().finally(() => {
+    codexRefreshLock = null;
+  });
+  return codexRefreshLock;
+}
+
 /**
  * Get the host ~/.codex/auth.json path if it exists.
  * Used for mounting Codex OAuth credentials into containers.
