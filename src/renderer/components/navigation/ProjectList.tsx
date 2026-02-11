@@ -49,14 +49,6 @@ export function ProjectList({
     }
   };
 
-  // Helper to format agent name for display
-  const formatAgentLabel = (name: string): string => {
-    return name
-      .split('-')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
-
   // Helper to get status indicator color and icon
   const getStatusIndicator = (status: AgentStatus) => {
     switch (status) {
@@ -214,11 +206,6 @@ export function ProjectList({
                       <div className="flex items-center gap-1.5">
                         <Icon size={11} className={`${colorClass} flex-shrink-0 ${iconClass}`} />
                         <span className={`text-[11px] font-medium ${colorClass} truncate`}>{item.itemTitle}</span>
-                      </div>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <span className="text-[10px] text-[var(--color-text-muted)]">
-                          {formatAgentLabel(item.agentName || item.agentType || 'Unknown Agent')}
-                        </span>
                       </div>
                     </div>
                   );

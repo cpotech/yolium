@@ -35,6 +35,7 @@ export interface KanbanItem {
   model?: string;
   agentStatus: AgentStatus;
   activeAgentName?: string;
+  lastAgentName?: string;
   agentQuestion?: string;
   agentQuestionOptions?: string[];
   worktreePath?: string;
