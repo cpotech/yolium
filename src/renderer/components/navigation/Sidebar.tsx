@@ -1,13 +1,13 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ProjectList } from './ProjectList';
-import type { WaitingItem } from './ProjectList';
+import type { SidebarWorkItem } from './ProjectList';
 import type { SidebarProject } from '@renderer/stores/sidebar-store';
 
 interface SidebarProps {
   projects: SidebarProject[];
   collapsed: boolean;
-  waitingItems: WaitingItem[];
+  sidebarItems: SidebarWorkItem[];
   onToggleCollapse: () => void;
   onProjectClick: (path: string) => void;
   onProjectRemove: (path: string) => void;
@@ -18,7 +18,7 @@ interface SidebarProps {
 export function Sidebar({
   projects,
   collapsed,
-  waitingItems,
+  sidebarItems,
   onToggleCollapse,
   onProjectClick,
   onProjectRemove,
@@ -37,7 +37,7 @@ export function Sidebar({
         <ProjectList
           projects={projects}
           collapsed={collapsed}
-          waitingItems={waitingItems}
+          sidebarItems={sidebarItems}
           onProjectClick={onProjectClick}
           onProjectRemove={onProjectRemove}
           onAddProject={onAddProject}

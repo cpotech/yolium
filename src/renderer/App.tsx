@@ -7,7 +7,6 @@ import { useDialogState } from '@renderer/hooks/useDialogState';
 import { useAgentCreation } from '@renderer/hooks/useAgentCreation';
 import { useCodeReview } from '@renderer/hooks/useCodeReview';
 import { useAgentCostTracker } from '@renderer/hooks/useAgentCostTracker';
-import { useLastAgentTracker } from '@renderer/hooks/useLastAgentTracker';
 import { useKeyboardShortcuts } from '@renderer/hooks/useKeyboardShortcuts';
 import { useGitBranchPolling } from '@renderer/hooks/useGitBranchPolling';
 import { TabBar } from '@renderer/components/tabs/TabBar';
@@ -24,7 +23,7 @@ import { WhisperModelDialog } from '@renderer/components/settings/WhisperModelDi
 import { SpeechToTextButton } from '@renderer/components/SpeechToTextButton';
 import type { WhisperModelSize } from '@shared/types/whisper';
 import { Sidebar } from '@renderer/components/navigation/Sidebar';
-import type { WaitingItem } from '@renderer/components/navigation/ProjectList';
+import type { SidebarWorkItem } from '@renderer/components/navigation/ProjectList';
 import {
   getSidebarProjects,
   removeSidebarProject,
@@ -57,12 +56,7 @@ function App(): React.ReactElement {
     () => tabs.filter(t => t.type === 'kanban').map(t => t.cwd),
     [tabs]
   );
-  const trackedProjectPaths = useMemo(
-    () => tabs.map(t => t.cwd).filter((path): path is string => !!path),
-    [tabs]
-  );
   const { tokenUsageByProject } = useAgentCostTracker(kanbanProjectPaths);
-  const { getLastAgentName } = useLastAgentTracker(trackedProjectPaths);
 
   // Whisper speech-to-text
   const whisper = useWhisper();
@@ -79,7 +73,7 @@ function App(): React.ReactElement {
   // State for sidebar (must be declared before useAgentCreation which uses setSidebarProjects)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [sidebarProjects, setSidebarProjects] = useState<SidebarProject[]>(() => getSidebarProjects());
-  const [waitingItems, setWaitingItems] = useState<WaitingItem[]>([]);
+  const [sidebarItems, setSidebarItems] = useState<SidebarWorkItem[]>([]);
 
   // Agent creation flow
   const agentCreation = useAgentCreation({
@@ -144,15 +138,25 @@ function App(): React.ReactElement {
     closeKanbanForProject(path);
   }, [closeKanbanForProject]);
 
-  // Load waiting items from all sidebar projects
-  const refreshWaitingItems = useCallback(async () => {
-    const items: WaitingItem[] = [];
+  // Load active work items from all sidebar projects (running, waiting, failed)
+  const refreshSidebarItems = useCallback(async () => {
+    const items: SidebarWorkItem[] = [];
     for (const project of getSidebarProjects()) {
       try {
         const board = await window.electronAPI.kanban.getBoard(project.path);
         if (board) {
           for (const item of board.items) {
-            if (item.agentStatus === 'waiting' && item.agentQuestion) {
+            // Include items with active agent status: running, waiting, or failed
+            if (item.agentStatus === 'running' || item.agentStatus === 'failed') {
+              items.push({
+                projectPath: project.path,
+                itemId: item.id,
+                itemTitle: item.title,
+                agentStatus: item.agentStatus,
+                agentName: item.activeAgentName,
+                agentType: item.agentType,
+              });
+            } else if (item.agentStatus === 'waiting' && item.agentQuestion) {
               items.push({
                 projectPath: project.path,
                 itemId: item.id,
@@ -160,6 +164,8 @@ function App(): React.ReactElement {
                 question: item.agentQuestion,
                 options: item.agentQuestionOptions,
                 agentName: item.activeAgentName,
+                agentStatus: item.agentStatus,
+                agentType: item.agentType,
               });
             }
           }
@@ -168,17 +174,17 @@ function App(): React.ReactElement {
         // skip projects that fail to load
       }
     }
-    setWaitingItems(items);
+    setSidebarItems(items);
   }, []);
 
-  // Refresh waiting items on mount and when board updates occur
+  // Refresh sidebar items on mount and when board updates occur
   useEffect(() => {
-    refreshWaitingItems();
+    refreshSidebarItems();
     const cleanup = window.electronAPI.kanban.onBoardUpdated(() => {
-      refreshWaitingItems();
+      refreshSidebarItems();
     });
     return cleanup;
-  }, [refreshWaitingItems]);
+  }, [refreshSidebarItems]);
 
   // Answer a question and resume the agent from sidebar
   const handleAnswerAndResume = useCallback(async (projectPath: string, itemId: string, answer: string, agentName: string) => {
@@ -530,7 +536,7 @@ function App(): React.ReactElement {
         <Sidebar
           projects={sidebarProjects}
           collapsed={sidebarCollapsed}
-          waitingItems={waitingItems}
+          sidebarItems={sidebarItems}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
           onProjectClick={handleProjectClick}
           onProjectRemove={handleProjectRemove}
@@ -619,7 +625,6 @@ function App(): React.ReactElement {
                       />
                       <StatusBar
                         folderPath={tab.cwd}
-                        lastAgentName={getLastAgentName(tab.cwd)}
                         tokenUsage={tokenUsageByProject[tab.cwd]}
                         onShowShortcuts={dialogs.openShortcutsDialog}
                         onOpenSettings={dialogs.openGitConfigDialog}
@@ -654,7 +659,6 @@ function App(): React.ReactElement {
                     </div>
                     <StatusBar
                       folderPath={tab.cwd}
-                      lastAgentName={getLastAgentName(tab.cwd)}
                       containerState={tab.containerState}
                       onStop={() => handleStopYolium(tab.id)}
                       onShowShortcuts={dialogs.openShortcutsDialog}
