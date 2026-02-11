@@ -532,6 +532,69 @@ export async function getWorktreeDiffStats(projectPath: string, branchName: stri
 }
 
 /**
+ * Get the list of changed files between the default branch and a feature branch.
+ *
+ * @param projectPath - The repository path
+ * @param branchName - The feature branch to compare
+ * @returns Array of changed files with their modification status
+ */
+export function getWorktreeChangedFiles(
+  projectPath: string,
+  branchName: string,
+): Array<{ path: string; status: 'M' | 'A' | 'D' | 'R' }> {
+  validateBranchName(branchName);
+
+  const defaultBranch = getDefaultBranch(projectPath);
+
+  try {
+    const output = execFileSync('git', ['diff', `${defaultBranch}...${branchName}`, '--name-status'], {
+      cwd: projectPath,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+
+    const lines = output.trim().split('\n').filter((line) => line.trim().length > 0);
+    return lines.map((line) => {
+      const parts = line.split('\t');
+      const statusChar = parts[0].charAt(0) as 'M' | 'A' | 'D' | 'R';
+      // For renames, the new path is in parts[2], original in parts[1]
+      const filePath = statusChar === 'R' ? parts[2] : parts[1];
+      return { path: filePath, status: statusChar };
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Get the unified diff for a specific file between the default branch and a feature branch.
+ *
+ * @param projectPath - The repository path
+ * @param branchName - The feature branch to compare
+ * @param filePath - The file to get the diff for
+ * @returns Raw unified diff string
+ */
+export function getWorktreeFileDiff(
+  projectPath: string,
+  branchName: string,
+  filePath: string,
+): string {
+  validateBranchName(branchName);
+
+  const defaultBranch = getDefaultBranch(projectPath);
+
+  try {
+    return execFileSync('git', ['diff', `${defaultBranch}...${branchName}`, '--', filePath], {
+      cwd: projectPath,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Clean up a worktree and optionally delete its branch.
  *
  * @param projectPath - The original project repository path

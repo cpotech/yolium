@@ -4,13 +4,14 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react'
-import { X, GitBranch, Clock, FolderOpen, GitMerge, GitPullRequest, Check, AlertTriangle, ExternalLink, Save, Trash2 } from 'lucide-react'
+import { X, GitBranch, Clock, FolderOpen, GitMerge, GitPullRequest, Check, AlertTriangle, ExternalLink, Save, Trash2, ArrowLeftRight } from 'lucide-react'
 import type { KanbanItem, KanbanColumn } from '@shared/types/kanban'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
 import { CommentsList } from './CommentsList'
 import { AgentLogPanel } from '../agent/AgentLogPanel'
 import { AgentControls } from '../agent/AgentControls'
+import { GitDiffDialog } from '../code-review/GitDiffDialog'
 
 interface ItemDetailDialogProps {
   isOpen: boolean
@@ -85,6 +86,7 @@ export function ItemDetailDialog({
   const [isCheckingConflicts, setIsCheckingConflicts] = useState(false)
   const [conflictCheck, setConflictCheck] = useState<{ clean: boolean; conflictingFiles: string[] } | null>(null)
   const [prUrl, setPrUrl] = useState<string | null>(null)
+  const [showDiffViewer, setShowDiffViewer] = useState(false)
 
   // Refs
   const answerInputRef = useRef<HTMLTextAreaElement>(null)
@@ -706,6 +708,16 @@ export function ItemDetailDialog({
                   <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
                     Merge Status
                   </label>
+                  {/* Compare Changes button — available in all merge states */}
+                  <button
+                    data-testid="compare-changes-button"
+                    onClick={() => setShowDiffViewer(true)}
+                    disabled={isMerging}
+                    className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 text-blue-400 rounded-md hover:bg-blue-600/10 border border-blue-600/30 transition-colors mb-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ArrowLeftRight size={12} />
+                    Compare Changes
+                  </button>
                   {item.mergeStatus === 'merged' && (
                     <div data-testid="merge-status-merged">
                       <div className="flex items-center gap-1 text-sm text-green-400">
@@ -865,6 +877,16 @@ export function ItemDetailDialog({
           </div>
         )}
       </div>
+
+      {/* Git Diff Viewer */}
+      {item.branch && (
+        <GitDiffDialog
+          isOpen={showDiffViewer}
+          onClose={() => setShowDiffViewer(false)}
+          projectPath={projectPath}
+          branchName={item.branch}
+        />
+      )}
     </div>
   )
 }
