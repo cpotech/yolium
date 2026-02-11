@@ -372,8 +372,16 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
                 addComment(exitBoard, itemId, 'system', warningMsg);
                 events.emit('error', warningMsg);
                 onError?.(warningMsg);
+              } else if (protocolCount > 0) {
+                // Agent sent protocol messages but never sent 'complete' — it stopped mid-workflow.
+                // Common cause: model hit its output token limit (e.g., free-tier models).
+                const incompleteMsg = 'Agent stopped without completing (no completion signal received). You can resume to continue.';
+                updateItem(exitBoard, itemId, { agentStatus: 'interrupted', activeAgentName: undefined });
+                addComment(exitBoard, itemId, 'system', incompleteMsg);
+                events.emit('error', incompleteMsg);
+                onError?.(incompleteMsg);
               } else {
-                // Success - mark as completed and move to verify column
+                // Exit code 0, no protocol messages, Claude provider — treat as success
                 updateItem(exitBoard, itemId, { agentStatus: 'completed', activeAgentName: undefined, column: 'verify' });
                 addComment(exitBoard, itemId, 'system', 'Agent finished successfully');
                 events.emit('complete', 'Agent finished successfully');
