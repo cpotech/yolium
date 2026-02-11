@@ -12,7 +12,7 @@ import { createLogger } from '@main/lib/logger';
 // deleteWorktree no longer called here — worktrees persist with kanban items
 import { extractProtocolMessages } from '@main/services/agent-protocol';
 import { formatLogTimestamp } from '@main/stores/workitem-log-store';
-import { loadGitConfig } from '@main/git/git-config';
+import { loadGitConfig, refreshCodexOAuthTokenSerialized } from '@main/git/git-config';
 import { fixWorktreeGitFile } from '@main/git/git-worktree';
 import { docker, agentSessions, DEFAULT_IMAGE, type AgentContainerSession } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
@@ -248,6 +248,11 @@ export async function createAgentContainer(
   const oauthBind = getClaudeOAuthBind();
   if (oauthBind) {
     binds.push(oauthBind);
+  }
+
+  // Refresh Codex OAuth token before mounting (single-use refresh tokens go stale)
+  if (agentProvider === 'codex') {
+    await refreshCodexOAuthTokenSerialized();
   }
 
   // Add Codex OAuth credentials if enabled
