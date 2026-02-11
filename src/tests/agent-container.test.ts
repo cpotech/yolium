@@ -16,8 +16,87 @@ vi.mock('@main/lib/logger', () => ({
 }));
 
 import { parseStreamEvent } from '@main/docker/agent-container';
+import { extractProtocolMessages } from '@main/services/agent-protocol';
 
 describe('parseStreamEvent', () => {
+  it('extracts @@YOLIUM messages from Bash tool_use commands', () => {
+    const parsed = parseStreamEvent({
+      type: 'assistant',
+      message: {
+        content: [
+          {
+            type: 'tool_use',
+            name: 'Bash',
+            input: {
+              command: "echo '@@YOLIUM:{\"type\":\"comment\",\"text\":\"Posted from bash\"}'",
+            },
+          },
+        ],
+      },
+    });
+
+    expect(parsed.text).toContain('@@YOLIUM:');
+    const messages = extractProtocolMessages(parsed.text || '');
+    expect(messages).toEqual([{ type: 'add_comment', text: 'Posted from bash' }]);
+  });
+
+  it('extracts multiple @@YOLIUM messages from one Bash command', () => {
+    const parsed = parseStreamEvent({
+      type: 'assistant',
+      message: {
+        content: [
+          {
+            type: 'tool_use',
+            name: 'Bash',
+            input: {
+              command: "echo '@@YOLIUM:{\"type\":\"progress\",\"step\":\"tests\",\"detail\":\"running\"}' && echo '@@YOLIUM:{\"type\":\"complete\",\"summary\":\"done\"}'",
+            },
+          },
+        ],
+      },
+    });
+
+    const messages = extractProtocolMessages(parsed.text || '');
+    expect(messages).toEqual([
+      { type: 'progress', step: 'tests', detail: 'running', attempt: undefined, maxAttempts: undefined },
+      { type: 'complete', summary: 'done' },
+    ]);
+  });
+
+  it('does not add non-protocol Bash commands to text output', () => {
+    const parsed = parseStreamEvent({
+      type: 'assistant',
+      message: {
+        content: [
+          {
+            type: 'tool_use',
+            name: 'Bash',
+            input: { command: 'echo hello world' },
+          },
+        ],
+      },
+    });
+
+    expect(parsed.text).toBeUndefined();
+  });
+
+  it('keeps existing text-based protocol extraction behavior', () => {
+    const parsed = parseStreamEvent({
+      type: 'assistant',
+      message: {
+        content: [
+          {
+            type: 'text',
+            text: '@@YOLIUM:{"type":"complete","summary":"done"}',
+          },
+        ],
+      },
+    });
+
+    const messages = extractProtocolMessages(parsed.text || '');
+    expect(messages).toEqual([{ type: 'complete', summary: 'done' }]);
+  });
+
   it('extracts usage and cost from result events', () => {
     const parsed = parseStreamEvent({
       type: 'result',

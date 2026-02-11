@@ -45,6 +45,8 @@ Format: `@@YOLIUM:` followed by a JSON object with a `type` field and the fields
 
 Syntax example: `@@YOLIUM:{"type":"add_comment","text":"<your_actual_analysis_here>"}`
 
+Protocol messages are accepted whether emitted directly as assistant text or via Bash commands (for example `echo '@@YOLIUM:{...}'`).
+
 Only ask ONE question at a time — after asking, STOP and wait for the user's answer.
 
 ## Planning Flow
