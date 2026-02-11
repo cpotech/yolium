@@ -48,6 +48,7 @@ vi.mock('@main/git/git-worktree', () => ({
 import {
   registerGitHandlers,
   extractRepoNameFromUrl,
+  GIT_IPC_CHANNELS,
   type GitCloneResult,
 } from '@main/ipc/git-handlers'
 import {
@@ -57,15 +58,24 @@ import {
 
 type CloneHandler = (_event: unknown, url: string, targetDir: string) => Promise<GitCloneResult>
 
-function registerAndGetCloneHandler(): CloneHandler {
+function registerGitHandlersForTest(): {
+  handlers: Map<string, unknown>
+  handleSpy: ReturnType<typeof vi.fn>
+} {
   const handlers = new Map<string, unknown>()
+  const handleSpy = vi.fn((channel: string, handler: unknown) => {
+    handlers.set(channel, handler)
+  })
   const ipcMain = {
-    handle: vi.fn((channel: string, handler: unknown) => {
-      handlers.set(channel, handler)
-    }),
+    handle: handleSpy,
   } as unknown as IpcMain
 
   registerGitHandlers(ipcMain)
+  return { handlers, handleSpy }
+}
+
+function registerAndGetCloneHandler(): CloneHandler {
+  const { handlers } = registerGitHandlersForTest()
   const cloneHandler = handlers.get('git:clone')
   if (typeof cloneHandler !== 'function') {
     throw new Error('git:clone handler was not registered')
@@ -96,6 +106,16 @@ describe('git:clone handler', () => {
     mockCloneSuccess()
     vi.mocked(loadGitConfig).mockReturnValue(null)
     vi.mocked(generateGitCredentials).mockReturnValue(null)
+  })
+
+  it('registers all declared git IPC channels and includes git:clone', () => {
+    const { handlers, handleSpy } = registerGitHandlersForTest()
+
+    expect(GIT_IPC_CHANNELS).toContain('git:clone')
+    expect(handleSpy).toHaveBeenCalledTimes(GIT_IPC_CHANNELS.length)
+    for (const channel of GIT_IPC_CHANNELS) {
+      expect(handlers.has(channel)).toBe(true)
+    }
   })
 
   describe('extractRepoNameFromUrl', () => {

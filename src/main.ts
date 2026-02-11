@@ -173,9 +173,6 @@ function createWindow(): void {
   createAppMenu(mainWindow);
 }
 
-// Register all IPC handlers
-registerAllHandlers();
-
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
@@ -185,6 +182,17 @@ app.on('ready', () => {
     isPackaged: app.isPackaged,
     logPath: getLogPath(),
   });
+
+  try {
+    const registeredNow = registerAllHandlers();
+    logger.info('IPC handler bootstrap completed', { registeredNow });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error('Failed to register IPC handlers', { error: message });
+    app.quit();
+    return;
+  }
+
   // Clear stale agent sessions from any previous crash
   clearSessions();
   createWindow();

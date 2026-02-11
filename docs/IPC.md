@@ -195,6 +195,7 @@ Git repository and config operations.
 | `isRepo(folderPath)` | `git:is-repo` | invoke | Check if path is a git repo with commits |
 | `getBranch(folderPath)` | `git:get-branch` | invoke | Get current branch name |
 | `init(folderPath)` | `git:init` | invoke | Initialize a new git repo |
+| `clone(url, targetDir)` | `git:clone` | invoke | Clone a repository into the requested path |
 | `validateBranch(branchName)` | `git:validate-branch` | invoke | Validate branch name for UI input |
 
 ### Types
@@ -225,6 +226,11 @@ saveConfig(config: {
 isRepo(folderPath: string): Promise<{ isRepo: boolean; hasCommits: boolean }>
 getBranch(folderPath: string): Promise<string | null>
 init(folderPath: string): Promise<{ success: boolean; initialized?: boolean; error?: string }>
+clone(url: string, targetDir: string): Promise<{
+  success: boolean;
+  clonedPath: string | null;
+  error: string | null;
+}>
 validateBranch(branchName: string): Promise<{ valid: boolean; error: string | null }>
 ```
 
