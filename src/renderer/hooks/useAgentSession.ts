@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import type { AgentTokenUsage } from '@shared/types/agent'
 
 export type LiveAgentStatus = 'starting' | 'running' | 'completed' | 'failed' | null
 
@@ -16,6 +17,7 @@ export interface AgentSessionState {
   currentDetail: string | null
   liveStatus: LiveAgentStatus
   liveStatusMessage: string | null
+  tokenUsage: AgentTokenUsage | null
 }
 
 export interface AgentSessionActions {
@@ -57,6 +59,7 @@ export function useAgentSession({
   const [currentDetail, setCurrentDetail] = useState<string | null>(null)
   const [liveStatus, setLiveStatus] = useState<LiveAgentStatus>(null)
   const [liveStatusMessage, setLiveStatusMessage] = useState<string | null>(null)
+  const [tokenUsage, setTokenUsage] = useState<AgentTokenUsage | null>(null)
   // Buffer output that arrives before the session ID is known (race between IPC send and invoke)
   const pendingOutputRef = useRef<{ sessionId: string; data: string }[]>([])
 
@@ -70,6 +73,7 @@ export function useAgentSession({
     setCurrentDetail(null)
     setLiveStatus(null)
     setLiveStatusMessage(null)
+    setTokenUsage(null)
 
     if (!itemId) {
       setAgentOutputLines([])
@@ -209,6 +213,23 @@ export function useAgentSession({
     return cleanup
   }, [itemId, onUpdated])
 
+  // Subscribe to agent token usage events
+  useEffect(() => {
+    if (!itemId) return
+
+    const cleanup = window.electronAPI.agent.onCostUpdate((sessionId, _projectPath, _eventItemId, usage) => {
+      if (sessionId === sessionIdRef.current) {
+        setTokenUsage(prev => ({
+          inputTokens: (prev?.inputTokens ?? 0) + usage.inputTokens,
+          outputTokens: (prev?.outputTokens ?? 0) + usage.outputTokens,
+          costUsd: (prev?.costUsd ?? 0) + usage.costUsd,
+        }))
+      }
+    })
+
+    return cleanup
+  }, [itemId])
+
   const clearAgentOutput = useCallback(() => {
     setAgentOutputLines([])
     if (itemId) {
@@ -225,6 +246,7 @@ export function useAgentSession({
     currentDetail,
     liveStatus,
     liveStatusMessage,
+    tokenUsage,
     setAgentOutputLines,
     setShowAgentLog,
     setCurrentSessionId,

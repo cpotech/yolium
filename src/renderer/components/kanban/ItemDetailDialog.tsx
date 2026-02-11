@@ -8,6 +8,7 @@ import { X, GitBranch, Clock, FolderOpen, GitMerge, GitPullRequest, Check, Alert
 import type { KanbanItem, KanbanColumn } from '@shared/types/kanban'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
+import { formatTokenCount, formatUsdCost } from '@renderer/utils/formatTokens'
 import { CommentsList } from './CommentsList'
 import { AgentLogPanel } from '../agent/AgentLogPanel'
 import { AgentControls } from '../agent/AgentControls'
@@ -579,6 +580,23 @@ export function ItemDetailDialog({
                 onUpdated={onUpdated}
               />
             </div>
+
+            {agentSession.tokenUsage && (
+              <div
+                data-testid="token-usage"
+                className="p-4 border-b border-[var(--color-border-primary)]"
+              >
+                <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
+                  Token Usage
+                </label>
+                <div className="text-sm text-[var(--color-text-primary)]">
+                  {formatTokenCount(agentSession.tokenUsage.inputTokens)} in / {formatTokenCount(agentSession.tokenUsage.outputTokens)} out
+                </div>
+                <div className="text-xs text-[var(--color-text-secondary)] mt-0.5">
+                  {formatUsdCost(agentSession.tokenUsage.costUsd)}
+                </div>
+              </div>
+            )}
 
             {/* Properties */}
             <div className="p-4 space-y-4">

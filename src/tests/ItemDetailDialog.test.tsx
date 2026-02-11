@@ -16,6 +16,7 @@ const mockOnAgentProgress = vi.fn().mockReturnValue(() => {}) // Returns cleanup
 const mockOnAgentComplete = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
 const mockOnAgentError = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
 const mockOnAgentExit = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
+const mockOnAgentCostUpdate = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -36,6 +37,7 @@ beforeEach(() => {
         onComplete: mockOnAgentComplete,
         onError: mockOnAgentError,
         onExit: mockOnAgentExit,
+        onCostUpdate: mockOnAgentCostUpdate,
         getActiveSession: vi.fn().mockResolvedValue(null),
         readLog: vi.fn().mockResolvedValue(''),
         clearLog: vi.fn().mockResolvedValue(false),
@@ -116,6 +118,44 @@ describe('ItemDetailDialog', () => {
     expect(screen.getByTestId('description-input')).toHaveValue('My task description text')
     expect(screen.getByTestId('branch-display')).toHaveTextContent('feature/my-feature')
     expect(screen.getByTestId('agent-provider-select')).toHaveValue('codex')
+  })
+
+  it('should show accumulated token usage for the active agent session', async () => {
+    const item = createMockItem({ agentStatus: 'running' })
+    const getActiveSession = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+    window.electronAPI.agent.getActiveSession = getActiveSession
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    await waitFor(() => {
+      expect(getActiveSession).toHaveBeenCalledWith('/test/project', 'item-1')
+    })
+    expect(mockOnAgentCostUpdate).toHaveBeenCalledTimes(1)
+
+    const onCostUpdate = mockOnAgentCostUpdate.mock.calls[0][0] as (
+      sessionId: string,
+      projectPath: string,
+      itemId: string,
+      usage: { inputTokens: number; outputTokens: number; costUsd: number }
+    ) => void
+
+    act(() => {
+      onCostUpdate('session-1', '/test/project', 'item-1', { inputTokens: 1_000, outputTokens: 500, costUsd: 0.01234 })
+      onCostUpdate('session-1', '/test/project', 'item-1', { inputTokens: 600, outputTokens: 900, costUsd: 0.00666 })
+      onCostUpdate('other-session', '/test/project', 'item-1', { inputTokens: 999, outputTokens: 999, costUsd: 0.9999 })
+    })
+
+    expect(screen.getByTestId('token-usage')).toBeInTheDocument()
+    expect(screen.getByText('1.6k in / 1.4k out')).toBeInTheDocument()
+    expect(screen.getByText('$0.0190')).toBeInTheDocument()
   })
 
   it('should render column selector with current column selected', () => {
