@@ -216,7 +216,12 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
   });
 
   // Update item status to running and move to in-progress column
-  updateItem(board, itemId, { agentStatus: 'running', activeAgentName: agentName, lastAgentName: agentName, column: 'in-progress' });
+  updateItem(board, itemId, {
+    agentStatus: 'running',
+    activeAgentName: agentName,
+    lastAgentName: agentName,
+    column: 'in-progress',
+  });
   updateBoard(board, { lastAgentName: agentName });
   const displayModel = getDisplayModel(provider, item.model, agent.model);
   addComment(board, itemId, 'system', `${agentName} started (${provider}/${displayModel})`);
@@ -605,7 +610,7 @@ export async function stopAgent(sessionId: string): Promise<void> {
   const board = getOrCreateBoard(session.projectPath);
   const item = board.items.find(i => i.id === session.itemId);
   if (item && item.agentStatus === 'running') {
-    updateItem(board, session.itemId, { agentStatus: 'interrupted' });
+    updateItem(board, session.itemId, { agentStatus: 'interrupted', activeAgentName: undefined });
     addComment(board, session.itemId, 'system', 'Agent was interrupted');
   }
 
@@ -716,7 +721,7 @@ export function recoverInterruptedAgents(projectPath: string): KanbanItem[] {
 
   for (const item of board.items) {
     if (item.agentStatus === 'running') {
-      updateItem(board, item.id, { agentStatus: 'interrupted' });
+      updateItem(board, item.id, { agentStatus: 'interrupted', activeAgentName: undefined });
       addComment(board, item.id, 'system', 'Agent was interrupted (app closed)');
       interrupted.push(item);
     }

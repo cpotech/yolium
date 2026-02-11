@@ -490,9 +490,12 @@ declare global {
             column: 'backlog' | 'ready' | 'in-progress' | 'verify' | 'done';
             branch?: string;
             agentProvider: 'claude' | 'codex' | 'opencode';
+            agentType?: string;
             order: number;
             model?: string;
             agentStatus: 'idle' | 'running' | 'waiting' | 'interrupted' | 'completed' | 'failed';
+            activeAgentName?: string;
+            lastAgentName?: string;
             agentQuestion?: string;
             agentQuestionOptions?: string[];
             worktreePath?: string;

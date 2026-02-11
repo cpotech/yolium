@@ -418,6 +418,35 @@ describe('kanban-store', () => {
       expect(result!.agentType).toBeUndefined();
     });
 
+    it('should accept updating lastAgentName', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      const result = updateItem(board, item.id, { lastAgentName: 'code-agent' });
+      expect(result).not.toBeNull();
+      expect(result!.lastAgentName).toBe('code-agent');
+    });
+
+    it('should accept clearing lastAgentName with undefined', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      updateItem(board, item.id, { lastAgentName: 'plan-agent' });
+      const result = updateItem(board, item.id, { lastAgentName: undefined });
+      expect(result).not.toBeNull();
+      expect(result!.lastAgentName).toBeUndefined();
+    });
+
     it('should reject empty title on update', () => {
       const board = createBoard('/path/to/project');
       const item = addItem(board, {
