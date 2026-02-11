@@ -22,6 +22,12 @@ export interface AgentContainerSession {
   worktreePath?: string;
   originalPath?: string;
   branchName?: string;
+  /** Provider used for this agent session (e.g., 'claude', 'codex', 'opencode') */
+  agentProvider?: string;
+  /** Error message detected in output (for non-Claude providers that don't use structured output) */
+  detectedError?: string;
+  /** Count of protocol messages received during this session */
+  protocolMessageCount: number;
 }
 
 /** Shared Docker client instance (auto-detects socket path). */
