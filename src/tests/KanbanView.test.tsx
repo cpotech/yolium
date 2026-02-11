@@ -73,7 +73,7 @@ describe('KanbanView', () => {
     expect(screen.getByTestId('kanban-loading')).toBeInTheDocument()
   })
 
-  it('should render all four columns after loading', async () => {
+  it('should render all five columns after loading', async () => {
     const board = createMockBoard([])
     mockKanbanGetBoard.mockResolvedValueOnce(board)
 
@@ -83,15 +83,17 @@ describe('KanbanView', () => {
       expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
     })
 
-    // Check all 4 columns are rendered
+    // Check all 5 columns are rendered
     expect(screen.getByTestId('kanban-column-backlog')).toBeInTheDocument()
     expect(screen.getByTestId('kanban-column-ready')).toBeInTheDocument()
     expect(screen.getByTestId('kanban-column-in-progress')).toBeInTheDocument()
+    expect(screen.getByTestId('kanban-column-verify')).toBeInTheDocument()
     expect(screen.getByTestId('kanban-column-done')).toBeInTheDocument()
 
     expect(screen.getByText('Backlog')).toBeInTheDocument()
     expect(screen.getByText('Ready')).toBeInTheDocument()
     expect(screen.getByText('In Progress')).toBeInTheDocument()
+    expect(screen.getByText('Verify')).toBeInTheDocument()
     expect(screen.getByText('Done')).toBeInTheDocument()
   })
 
@@ -115,7 +117,8 @@ describe('KanbanView', () => {
       createMockItem({ id: '1', title: 'Backlog Task', column: 'backlog' }),
       createMockItem({ id: '2', title: 'Ready Task', column: 'ready' }),
       createMockItem({ id: '3', title: 'In Progress Task', column: 'in-progress' }),
-      createMockItem({ id: '4', title: 'Done Task', column: 'done' }),
+      createMockItem({ id: '4', title: 'Verify Task', column: 'verify' }),
+      createMockItem({ id: '5', title: 'Done Task', column: 'done' }),
     ]
     const board = createMockBoard(items)
     mockKanbanGetBoard.mockResolvedValueOnce(board)
@@ -129,11 +132,12 @@ describe('KanbanView', () => {
     expect(screen.getByText('Backlog Task')).toBeInTheDocument()
     expect(screen.getByText('Ready Task')).toBeInTheDocument()
     expect(screen.getByText('In Progress Task')).toBeInTheDocument()
+    expect(screen.getByText('Verify Task')).toBeInTheDocument()
     expect(screen.getByText('Done Task')).toBeInTheDocument()
 
     // Verify each column has exactly one card
     const cards = screen.getAllByTestId('kanban-card')
-    expect(cards).toHaveLength(4)
+    expect(cards).toHaveLength(5)
   })
 
   it('should show empty state when projectPath is null', () => {

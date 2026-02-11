@@ -334,14 +334,15 @@ describe('agent-runner', () => {
     });
   });
 
-  describe('auto-move to done on completion', () => {
+  describe('auto-move to verify on completion', () => {
     /**
      * These tests verify the column movement behavior that happens when agents
      * complete. They exercise the same updateItem calls that agent-runner.ts
      * makes in the onExit and handleAgentOutput handlers.
+     * Items move to 'verify' (not 'done') so the verify agent can review them.
      */
 
-    it('should move item to done column on exit-code-0 fallback', () => {
+    it('should move item to verify column on exit-code-0 fallback', () => {
       // Simulates the onExit handler when code === 0 and item is still 'running'
       const board = createBoard('/path/to/project');
       const item = addItem(board, {
@@ -359,14 +360,14 @@ describe('agent-runner', () => {
       expect(exitItem).toBeDefined();
       expect(exitItem!.agentStatus).toBe('running');
 
-      updateItem(board, item.id, { agentStatus: 'completed', activeAgentName: undefined, column: 'done' });
+      updateItem(board, item.id, { agentStatus: 'completed', activeAgentName: undefined, column: 'verify' });
 
       const result = board.items.find(i => i.id === item.id)!;
-      expect(result.column).toBe('done');
+      expect(result.column).toBe('verify');
       expect(result.agentStatus).toBe('completed');
     });
 
-    it('should move item to done column on complete protocol message', () => {
+    it('should move item to verify column on complete protocol message', () => {
       // Simulates the handleAgentOutput 'complete' case (agent-runner.ts:457)
       const board = createBoard('/path/to/project');
       const item = addItem(board, {
@@ -380,10 +381,10 @@ describe('agent-runner', () => {
       updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
 
       // Simulate complete protocol message
-      updateItem(board, item.id, { agentStatus: 'completed', activeAgentName: undefined, column: 'done' });
+      updateItem(board, item.id, { agentStatus: 'completed', activeAgentName: undefined, column: 'verify' });
 
       const result = board.items.find(i => i.id === item.id)!;
-      expect(result.column).toBe('done');
+      expect(result.column).toBe('verify');
       expect(result.agentStatus).toBe('completed');
     });
 
