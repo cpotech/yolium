@@ -5,10 +5,10 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { Sidebar } from '@renderer/components/navigation/Sidebar'
 import type { SidebarProject } from '@renderer/stores/sidebar-store'
-import type { WaitingItem } from '@renderer/components/navigation/ProjectList'
+import type { SidebarWorkItem } from '@renderer/components/navigation/ProjectList'
 
 const defaultProps = {
-  waitingItems: [] as WaitingItem[],
+  sidebarItems: [] as SidebarWorkItem[],
   onToggleCollapse: vi.fn(),
   onProjectClick: vi.fn(),
   onProjectRemove: vi.fn(),
@@ -129,7 +129,7 @@ describe('Sidebar', () => {
   })
 
   describe('waiting items', () => {
-    const waitingItems: WaitingItem[] = [
+    const sidebarItems: SidebarWorkItem[] = [
       {
         projectPath: '/home/user/project1',
         itemId: 'item-1',
@@ -137,6 +137,7 @@ describe('Sidebar', () => {
         question: 'Should I use approach A or B?',
         options: ['Approach A', 'Approach B'],
         agentName: 'code-agent',
+        agentStatus: 'waiting',
       },
     ]
 
@@ -146,7 +147,7 @@ describe('Sidebar', () => {
           projects={mockProjects}
           collapsed={false}
           {...defaultProps}
-          waitingItems={waitingItems}
+          sidebarItems={sidebarItems}
         />
       )
 
@@ -159,7 +160,7 @@ describe('Sidebar', () => {
           projects={mockProjects}
           collapsed={false}
           {...defaultProps}
-          waitingItems={waitingItems}
+          sidebarItems={sidebarItems}
         />
       )
 
@@ -176,7 +177,7 @@ describe('Sidebar', () => {
           projects={mockProjects}
           collapsed={false}
           {...defaultProps}
-          waitingItems={waitingItems}
+          sidebarItems={sidebarItems}
           onAnswerAndResume={onAnswerAndResume}
         />
       )
@@ -196,7 +197,7 @@ describe('Sidebar', () => {
           projects={mockProjects}
           collapsed={true}
           {...defaultProps}
-          waitingItems={waitingItems}
+          sidebarItems={sidebarItems}
         />
       )
 

@@ -56,20 +56,20 @@ export function StatusBar({
     <div data-testid="status-bar" className="flex items-center justify-between h-7 px-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)] text-xs shrink-0">
       {/* Left: folder path + git branch + state */}
       <div className="flex items-center gap-2 text-[var(--color-text-secondary)] truncate overflow-hidden min-w-0">
-        <span data-testid="status-path" className="truncate max-w-[300px]" title={folderPath}>
+        <span data-testid="status-path" className="truncate max-w-[300px]">
           {folderPath}
         </span>
         {(worktreeName || gitBranch) && (
           <>
             <span className="text-[var(--color-text-muted)]">|</span>
             {worktreeName && (
-              <span className="flex items-center gap-1 text-[var(--color-special-worktree)]" title={`Worktree: ${worktreeName}`}>
+              <span className="flex items-center gap-1 text-[var(--color-special-worktree)]">
                 <TreeDeciduous size={12} />
                 <span className="truncate max-w-[150px]">{worktreeName}</span>
               </span>
             )}
             {gitBranch && gitBranch !== worktreeName && (
-              <span className="flex items-center gap-1 text-[var(--color-special-branch)]" title={`Branch: ${gitBranch}`}>
+              <span className="flex items-center gap-1 text-[var(--color-special-branch)]">
                 <GitBranch size={12} />
                 <span className="truncate max-w-[150px]">{gitBranch}</span>
               </span>
@@ -105,7 +105,6 @@ export function StatusBar({
             data-testid="stop-button"
             onClick={onStop}
             className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-            title="Stop yolium"
           >
             <Square size={10} className="fill-current" />
             <span className="hidden sm:inline">Stop</span>
@@ -117,7 +116,6 @@ export function StatusBar({
           <button
             onClick={onStop}
             className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-            title="Close and restart"
           >
             <span className="hidden sm:inline">Close</span>
           </button>
@@ -144,7 +142,6 @@ export function StatusBar({
           data-testid="code-review-button"
           onClick={onOpenCodeReview}
           className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-          title="PR Code Review"
         >
           <GitPullRequest size={12} />
           <span className="hidden sm:inline">PR Review</span>
@@ -155,7 +152,6 @@ export function StatusBar({
           data-testid="settings-button"
           onClick={onOpenSettings}
           className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-          title="Settings"
         >
           <Settings size={12} />
         </button>
@@ -165,7 +161,6 @@ export function StatusBar({
           data-testid="theme-toggle"
           onClick={toggleTheme}
           className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
         >
           {theme === 'dark' ? (
             <Sun size={12} className="lucide-sun" />
@@ -179,7 +174,6 @@ export function StatusBar({
           data-testid="shortcuts-button"
           onClick={onShowShortcuts}
           className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-          title="Keyboard shortcuts (Ctrl+?)"
         >
           <Keyboard size={12} />
           <span className="hidden sm:inline">Ctrl+?</span>

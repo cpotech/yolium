@@ -102,7 +102,6 @@ export function ProjectList({
           data-testid="add-project-button"
           onClick={onAddProject}
           className="p-1 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-          title="Add Project"
         >
           <Plus size={16} />
         </button>
@@ -132,7 +131,6 @@ export function ProjectList({
                   data-testid={`project-item-${project.path}`}
                   className="group flex items-center gap-2 px-3 py-1.5 cursor-pointer text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
                   onClick={() => onProjectClick(project.path)}
-                  title={project.path}
                 >
                   <Folder size={14} className="shrink-0 text-[var(--color-text-muted)]" />
                   {!collapsed && (
@@ -152,7 +150,6 @@ export function ProjectList({
                           onProjectRemove(project.path);
                         }}
                         className="p-0.5 rounded opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-all"
-                        title="Remove project"
                       >
                         <X size={12} />
                       </button>

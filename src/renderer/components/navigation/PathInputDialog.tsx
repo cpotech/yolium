@@ -143,7 +143,6 @@ export function PathInputDialog({
             <button
               onClick={nav.startFolderCreation}
               className="flex items-center gap-1.5 px-2 py-1 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] rounded transition-colors"
-              title="Create new folder (Ctrl+N)"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path

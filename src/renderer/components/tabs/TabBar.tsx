@@ -114,7 +114,6 @@ export function TabBar({
         onClick={onNewTab}
         className="px-3 h-full hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] border-l border-[var(--color-border-primary)]"
         aria-label="New Yolium"
-        title="New Yolium"
       >
         <Plus size={16} />
       </button>

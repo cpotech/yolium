@@ -147,7 +147,6 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
           <button
             data-testid="retry-agent-card-btn"
             onClick={handleRetryClick}
-            title="Retry agent"
             className="p-1 rounded hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors"
           >
             <RotateCcw size={14} />
@@ -158,7 +157,6 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
           <button
             data-testid="run-again-card-btn"
             onClick={handleRunAgainClick}
-            title="Run again"
             className="p-1 rounded hover:bg-green-500/20 text-green-400 hover:text-green-300 transition-colors"
           >
             <RotateCcw size={14} />
@@ -169,7 +167,6 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
           <button
             data-testid="resume-agent-card-btn"
             onClick={handleResumeClick}
-            title="Resume agent"
             className="p-1 rounded hover:bg-orange-500/20 text-orange-400 hover:text-orange-300 transition-colors"
           >
             <Play size={14} />
@@ -234,7 +231,6 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
 
       {/* Description */}
       <p
-        title={item.description}
         className="text-[12px] text-[var(--color-text-secondary)] line-clamp-2 mb-2"
       >
         {item.description}
@@ -264,7 +260,6 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
                 <button
                   data-testid="pr-link-btn"
                   onClick={handlePrLinkClick}
-                  title="Open pull request"
                   className="p-0.5 rounded hover:bg-green-500/20 hover:text-green-300 transition-colors"
                 >
                   <ExternalLink size={11} />
