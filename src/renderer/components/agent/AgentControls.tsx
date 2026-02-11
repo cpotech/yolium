@@ -161,6 +161,14 @@ export function AgentControls({
             </span>
           )}
         </div>
+        {!item.activeAgentName && item.lastAgentName && (
+          <div
+            data-testid="last-agent-name"
+            className="text-xs text-[var(--color-text-muted)] mt-1"
+          >
+            Last Agent: {formatAgentLabel(item.lastAgentName)}
+          </div>
+        )}
       </div>
 
       {/* Agent Controls */}
