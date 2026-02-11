@@ -70,7 +70,6 @@ export function DirectoryListing({
                 ? 'opacity-100'
                 : 'opacity-0 group-hover:opacity-100 hover:bg-[var(--color-bg-hover)]'
             } ${index === selectedIndex ? 'hover:bg-blue-500' : ''}`}
-            title={isFavorite(entry.path) ? 'Remove from favorites' : 'Add to favorites'}
           >
             <svg
               className={`w-4 h-4 ${

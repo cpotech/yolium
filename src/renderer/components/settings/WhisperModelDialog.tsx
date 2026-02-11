@@ -37,7 +37,6 @@ function CopyPathButton({ path }: { path: string }): React.ReactElement {
     <button
       onClick={handleCopy}
       className="flex-shrink-0 p-0.5 rounded text-[var(--color-text-disabled)] hover:text-[var(--color-text-secondary)] transition-colors"
-      title="Copy path to clipboard"
     >
       {copied ? <ClipboardCheck size={10} /> : <Copy size={10} />}
     </button>
@@ -264,7 +263,7 @@ export function WhisperModelDialog({
                     </div>
                     {model.downloaded && model.path && (
                       <div className="flex items-center gap-1 mt-0.5 max-w-xs">
-                        <span className="text-[var(--color-text-disabled)] text-[10px] font-mono truncate" title={model.path}>{model.path}</span>
+                        <span className="text-[var(--color-text-disabled)] text-[10px] font-mono truncate">{model.path}</span>
                         <CopyPathButton path={model.path} />
                       </div>
                     )}
@@ -278,7 +277,6 @@ export function WhisperModelDialog({
                         onClick={() => onDownloadModel(model.size)}
                         disabled={isDownloading}
                         className="flex items-center gap-1 px-2 py-1 rounded text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50"
-                        title={`Download ${model.name} model`}
                       >
                         {isThisModelDownloading ? (
                           <>
@@ -298,7 +296,6 @@ export function WhisperModelDialog({
                         data-testid={`whisper-delete-${model.size}`}
                         onClick={() => onDeleteModel(model.size)}
                         className="flex items-center gap-1 px-2 py-1 rounded text-xs text-[var(--color-text-muted)] hover:text-[var(--color-status-error)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                        title={`Delete ${model.name} model`}
                       >
                         <Trash2 size={12} />
                       </button>

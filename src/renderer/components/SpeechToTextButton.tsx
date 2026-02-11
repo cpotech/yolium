@@ -34,13 +34,6 @@ export function SpeechToTextButton({
             ? 'text-[var(--color-text-muted)] cursor-wait'
             : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]'
         } disabled:opacity-50`}
-        title={
-          isRecording
-            ? 'Stop recording (Ctrl+Shift+R)'
-            : isTranscribing
-            ? 'Transcribing...'
-            : 'Start speech-to-text (Ctrl+Shift+R)'
-        }
       >
         {isTranscribing ? (
           <Loader2 size={12} className="animate-spin" />
@@ -60,7 +53,6 @@ export function SpeechToTextButton({
           data-testid="speech-model-select"
           onClick={onOpenModelDialog}
           className="flex items-center gap-0.5 px-1 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-          title={`Model: ${WHISPER_MODELS[selectedModel].name} (click to change)`}
         >
           <span className="text-xs">{WHISPER_MODELS[selectedModel].name}</span>
           <ChevronDown size={10} />

@@ -14,7 +14,6 @@ function StatusDot({ state }: { state: ContainerState }): React.ReactElement {
   return (
     <span
       className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-[var(--color-bg-secondary)] ${colors[state]}`}
-      title={state.charAt(0).toUpperCase() + state.slice(1)}
     />
   );
 }

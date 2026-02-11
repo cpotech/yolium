@@ -457,7 +457,6 @@ export function ItemDetailDialog({
             data-testid="close-button"
             onClick={handleClose}
             className="p-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded transition-colors flex-shrink-0"
-            title="Esc to close"
           >
             <X size={18} />
           </button>
@@ -694,7 +693,6 @@ export function ItemDetailDialog({
                   <div
                     data-testid="worktree-path-display"
                     className="flex items-center gap-1 text-xs text-[var(--color-text-tertiary)]"
-                    title={item.worktreePath}
                   >
                     <FolderOpen size={12} className="flex-shrink-0" />
                     <span className="font-mono truncate">{item.worktreePath}</span>
@@ -771,7 +769,7 @@ export function ItemDetailDialog({
                               {conflictCheck.conflictingFiles.length > 0 && (
                                 <ul className="ml-4 space-y-0.5">
                                   {conflictCheck.conflictingFiles.map((file, i) => (
-                                    <li key={i} className="font-mono text-[10px] truncate" title={file}>{file}</li>
+                                    <li key={i} className="font-mono text-[10px] truncate">{file}</li>
                                   ))}
                                 </ul>
                               )}
@@ -815,7 +813,6 @@ export function ItemDetailDialog({
                   data-testid="save-button"
                   onClick={handleSave}
                   disabled={isSaving || !title.trim()}
-                  title="Ctrl+Enter"
                   className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
                     hasUnsavedChanges
                       ? 'bg-yellow-600 hover:bg-yellow-700'
@@ -830,7 +827,6 @@ export function ItemDetailDialog({
                   data-testid="delete-button"
                   onClick={handleDelete}
                   disabled={isDeleting}
-                  title="Ctrl+Delete"
                   className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-red-400 rounded-md hover:bg-red-600/10 border border-red-600/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <Trash2 size={14} />
@@ -843,11 +839,11 @@ export function ItemDetailDialog({
             {/* Timestamps - pinned to bottom of sidebar */}
             <div className="mt-auto p-4 border-t border-[var(--color-border-primary)]">
               <div className="flex items-center justify-between text-xs text-[var(--color-text-tertiary)]">
-                <div className="flex items-center gap-1" data-testid="created-at" title="Created">
+                <div className="flex items-center gap-1" data-testid="created-at">
                   <Clock size={11} />
                   <span>Created {formatTimestamp(item.createdAt)}</span>
                 </div>
-                <div className="flex items-center gap-1" data-testid="updated-at" title="Updated">
+                <div className="flex items-center gap-1" data-testid="updated-at">
                   <Clock size={11} />
                   <span>Updated {formatTimestamp(item.updatedAt)}</span>
                 </div>

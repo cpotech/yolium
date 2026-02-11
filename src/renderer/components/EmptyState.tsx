@@ -26,7 +26,6 @@ export function EmptyState({ onNewTab, onCreateProject, projects, onProjectClick
         data-testid="theme-toggle"
         onClick={toggleTheme}
         className="absolute top-4 right-4 p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-        title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
       >
         {theme === 'dark' ? (
           <Sun size={20} className="lucide-sun" />
