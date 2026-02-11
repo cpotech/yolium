@@ -10,6 +10,7 @@ import { BrowserWindow } from 'electron';
 import { createLogger } from '@main/lib/logger';
 import { loadGitConfig, refreshCodexOAuthTokenSerialized } from '@main/git/git-config';
 import { createWorktree, deleteWorktree, generateBranchName, hasUncommittedChanges, fixWorktreeGitFile } from '@main/git/git-worktree';
+import { detectPackageManager, detectProjectTypes } from '@main/services/project-onboarding';
 import { docker, sessions, agentSessions, DEFAULT_IMAGE } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
 import { buildPersistentBindMounts, getGitCredentialsBind, getClaudeOAuthBind, getCodexOAuthBind } from './project-registry';
@@ -68,6 +69,9 @@ export async function createYolium(
   // Create container with folder mounted (on Linux: same path, on Windows: /workspace)
   // Use mountPath (which may be a worktree) instead of original folderPath
   const containerProjectPath = getContainerProjectPath(mountPath);
+  const projectTypes = detectProjectTypes(mountPath);
+  const nodePackageManager = detectPackageManager(mountPath);
+  const projectTypesValue = projectTypes.join(',');
 
   // The entrypoint script handles command selection based on TOOL env var
   // This avoids issues with Cmd array being corrupted by bundling/serialization
@@ -77,6 +81,8 @@ export async function createYolium(
     containerProjectPath,
     mountPath,
     worktreePath,
+    projectTypes,
+    nodePackageManager,
   });
 
   // Build bind mounts (extract to log them for debugging)
@@ -127,6 +133,8 @@ export async function createYolium(
           `PROJECT_DIR=${containerProjectPath}`,
           `TOOL=${agent}`,
           `GSD_ENABLED=${gsdEnabled}`,
+          ...(projectTypesValue ? [`PROJECT_TYPES=${projectTypesValue}`] : []),
+          ...(nodePackageManager ? [`NODE_PACKAGE_MANAGER=${nodePackageManager}`] : []),
           `HOST_HOME=${toContainerHomePath(os.homedir())}`,
           'HISTFILE=/home/agent/.yolium_history/zsh_history',
           'OPENCODE_YOLO=true',  // Skip permission prompts — container is already isolated
