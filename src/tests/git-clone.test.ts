@@ -36,7 +36,7 @@ vi.mock('@main/git/git-worktree', () => ({
   isGitRepo: vi.fn(() => false),
   hasCommits: vi.fn(() => false),
   getWorktreeBranch: vi.fn(() => null),
-  initGitRepo: vi.fn(() => true),
+  initGitRepoWithDefaults: vi.fn(() => ({ initialized: true, hasCommits: true })),
   validateBranchNameForUi: vi.fn(() => ({ valid: true, error: null })),
   mergeWorktreeBranch: vi.fn(),
   getWorktreeDiffStats: vi.fn(() => ({ filesChanged: 0, insertions: 0, deletions: 0 })),
@@ -55,6 +55,7 @@ import {
   loadGitConfig,
   generateGitCredentials,
 } from '@main/git/git-config'
+import { initGitRepoWithDefaults } from '@main/git/git-worktree'
 
 type CloneHandler = (_event: unknown, url: string, targetDir: string) => Promise<GitCloneResult>
 
@@ -116,6 +117,17 @@ describe('git:clone handler', () => {
     for (const channel of GIT_IPC_CHANNELS) {
       expect(handlers.has(channel)).toBe(true)
     }
+  })
+
+  it('passes optional project types to git:init handler', async () => {
+    const { handlers } = registerGitHandlersForTest()
+    const initHandler = handlers.get('git:init') as ((event: unknown, folderPath: string, projectTypes?: string[]) => unknown) | undefined
+    expect(initHandler).toBeTypeOf('function')
+
+    const result = initHandler?.({}, '/tmp/project', ['nodejs', 'python']) as { success: boolean }
+
+    expect(result.success).toBe(true)
+    expect(initGitRepoWithDefaults).toHaveBeenCalledWith('/tmp/project', ['nodejs', 'python'])
   })
 
   describe('extractRepoNameFromUrl', () => {

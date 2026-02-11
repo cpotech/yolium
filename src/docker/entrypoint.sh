@@ -120,10 +120,67 @@ if [ -d "$HOME/.dotnet" ]; then
     log ".NET SDK configured"
 fi
 
-if [ -n "$PROJECT_DIR" ] && [ ! -d "$PROJECT_DIR/.venv" ] && [ -f "$PROJECT_DIR/requirements.txt" -o -f "$PROJECT_DIR/pyproject.toml" -o -f "$PROJECT_DIR/setup.py" ]; then
+# Install Node.js dependencies using explicit env metadata first, then lock-file detection.
+if [ -n "$PROJECT_DIR" ] && [ -f "$PROJECT_DIR/package.json" ]; then
     cd "$PROJECT_DIR"
-    uv venv .venv 2>/dev/null
-    add_status "✅ Virtual environment created at .venv/"
+    NODE_PM="${NODE_PACKAGE_MANAGER:-}"
+    if [ -z "$NODE_PM" ]; then
+        if [ -f "pnpm-lock.yaml" ]; then
+            NODE_PM="pnpm"
+        elif [ -f "yarn.lock" ]; then
+            NODE_PM="yarn"
+        elif [ -f "package-lock.json" ] || [ -f "npm-shrinkwrap.json" ]; then
+            NODE_PM="npm"
+        else
+            NODE_PM="npm"
+        fi
+    fi
+
+    if [ "$NODE_PM" = "pnpm" ]; then
+        if [ -f "pnpm-lock.yaml" ]; then
+            pnpm install --frozen-lockfile >/dev/null 2>&1 && add_status "✅ pnpm dependencies installed"
+        else
+            pnpm install >/dev/null 2>&1 && add_status "✅ pnpm dependencies installed"
+        fi
+    elif [ "$NODE_PM" = "yarn" ]; then
+        if [ -f "yarn.lock" ]; then
+            yarn install --frozen-lockfile >/dev/null 2>&1 && add_status "✅ yarn dependencies installed"
+        else
+            yarn install >/dev/null 2>&1 && add_status "✅ yarn dependencies installed"
+        fi
+    else
+        if [ -f "package-lock.json" ] || [ -f "npm-shrinkwrap.json" ]; then
+            npm ci >/dev/null 2>&1 && add_status "✅ npm dependencies installed"
+        else
+            npm install >/dev/null 2>&1 && add_status "✅ npm dependencies installed"
+        fi
+    fi
+fi
+
+# Python environment + dependency bootstrap.
+if [ -n "$PROJECT_DIR" ] && { [ -f "$PROJECT_DIR/requirements.txt" ] || [ -f "$PROJECT_DIR/pyproject.toml" ] || [ -f "$PROJECT_DIR/setup.py" ] || [ -f "$PROJECT_DIR/Pipfile" ]; }; then
+    cd "$PROJECT_DIR"
+    if [ ! -d ".venv" ]; then
+        uv venv .venv >/dev/null 2>&1 && add_status "✅ Virtual environment created at .venv/"
+    fi
+
+    if [ -f "requirements.txt" ]; then
+        uv pip install --python .venv/bin/python -r requirements.txt >/dev/null 2>&1 && add_status "✅ Python dependencies installed (requirements.txt)"
+    elif [ -f "pyproject.toml" ] || [ -f "setup.py" ] || [ -f "Pipfile" ]; then
+        uv pip install --python .venv/bin/python -e . >/dev/null 2>&1 && add_status "✅ Python project installed in editable mode"
+    fi
+fi
+
+# Go module prefetch.
+if [ -n "$PROJECT_DIR" ] && [ -f "$PROJECT_DIR/go.mod" ]; then
+    cd "$PROJECT_DIR"
+    go mod download >/dev/null 2>&1 && add_status "✅ Go modules downloaded"
+fi
+
+# Rust dependency prefetch.
+if [ -n "$PROJECT_DIR" ] && [ -f "$PROJECT_DIR/Cargo.toml" ]; then
+    cd "$PROJECT_DIR"
+    cargo fetch >/dev/null 2>&1 && add_status "✅ Rust dependencies fetched"
 fi
 
 # Auto-restore .NET packages if a .NET project is detected
@@ -231,7 +288,7 @@ if [ -f "/home/agent/.codex-auth.json" ] && [ "${CODEX_OAUTH_ENABLED:-}" = "true
     log "Codex OAuth credentials staged at /home/agent/.codex/auth.json"
 fi
 
-# Create CLAUDE.md with Yolium container environment info
+# Create CLAUDE.md with Yolium environment info and project-specific context.
 cat > /home/agent/CLAUDE.md << 'CLAUDEMD'
 # Yolium Container Environment
 
@@ -268,6 +325,8 @@ No other host config directories (e.g., `~/.codex`) are mounted into the contain
 ## Environment
 
 - **Project directory**: Mounted at the path shown in the Yolium banner
+- **Detected project types**: `$PROJECT_TYPES` (if provided by host)
+- **Node package manager**: `$NODE_PACKAGE_MANAGER` (if provided by host)
 - **Persistent caches**: npm, pip, maven, gradle, nuget caches persist across sessions
 - **Languages**: Python (uv), Node.js (nvm), Java (SDKMAN), .NET (dotnet)
 - **Network**: Restricted to HTTPS, DNS only (unless YOLIUM_NETWORK_FULL=true)
@@ -281,6 +340,35 @@ No other host config directories (e.g., `~/.codex`) are mounted into the contain
 
 **Do NOT run E2E tests inside this container.** E2E tests (`npm run test:e2e`) require Electron and a display server, which are not available in the container environment. Only run unit tests (`npm test`) here.
 CLAUDEMD
+
+{
+    echo ""
+    echo "## Yolium Runtime Metadata"
+    echo ""
+    echo "- PROJECT_TYPES: ${PROJECT_TYPES:-not provided}"
+    echo "- NODE_PACKAGE_MANAGER: ${NODE_PACKAGE_MANAGER:-auto-detect}"
+} >> /home/agent/CLAUDE.md
+
+append_context_file() {
+    local source_path="$1"
+    local heading="$2"
+    local max_lines="${3:-120}"
+
+    if [ -f "$source_path" ]; then
+        {
+            echo ""
+            echo "## ${heading}"
+            echo ""
+            sed -n "1,${max_lines}p" "$source_path"
+        } >> /home/agent/CLAUDE.md
+    fi
+}
+
+if [ -n "$PROJECT_DIR" ]; then
+    append_context_file "$PROJECT_DIR/README.md" "Project README (source: $PROJECT_DIR/README.md)" 120
+    append_context_file "$PROJECT_DIR/CLAUDE.md" "Project CLAUDE.md (source: $PROJECT_DIR/CLAUDE.md)" 120
+    append_context_file "$PROJECT_DIR/AGENTS.md" "Project AGENTS.md (source: $PROJECT_DIR/AGENTS.md)" 160
+fi
 
 if [ -n "$PROJECT_DIR" ] && { [ -f "$PROJECT_DIR/.mcp.json" ] || [ -f "$PROJECT_DIR/mcp.json" ]; }; then
     add_status "🔌 MCP configuration detected. To enable MCP servers, see Yolium documentation."

@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
 import type { AgentProvider } from '@shared/types/agent';
+import type { ProjectType } from '@shared/types/onboarding';
 
 export type { AgentProvider } from '@shared/types/agent';
 
@@ -37,7 +38,14 @@ export function AgentSelectDialog({
     setIsInitializing(true);
     setInitError(null);
     try {
-      const result = await window.electronAPI.git.initRepo(folderPath);
+      let projectTypes: ProjectType[] = [];
+      try {
+        projectTypes = await window.electronAPI.onboarding.detectProject(folderPath);
+      } catch {
+        // Best effort: git init still works without detected project metadata.
+      }
+
+      const result = await window.electronAPI.git.init(folderPath, projectTypes);
       if (result.success) {
         onGitInit?.();
       } else {
@@ -85,7 +93,7 @@ export function AgentSelectDialog({
       setBranchError(error);
       if (error) return;
       if (branchName.trim()) {
-        const result = await window.electronAPI.git.validateBranchName(branchName);
+        const result = await window.electronAPI.git.validateBranch(branchName);
         if (!result.valid) {
           setBranchError(result.error || 'Invalid branch name');
           return;

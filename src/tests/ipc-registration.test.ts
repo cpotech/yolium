@@ -12,6 +12,7 @@ const registerKanbanHandlers = vi.fn()
 const registerAgentHandlers = vi.fn()
 const registerCacheHandlers = vi.fn()
 const registerWhisperHandlers = vi.fn()
+const registerOnboardingHandlers = vi.fn()
 const performCleanup = vi.fn()
 const isCleanupDone = vi.fn(() => true)
 
@@ -56,6 +57,7 @@ vi.mock('@main/ipc/kanban-handlers', () => ({ registerKanbanHandlers }))
 vi.mock('@main/ipc/agent-handlers', () => ({ registerAgentHandlers }))
 vi.mock('@main/ipc/cache-handlers', () => ({ registerCacheHandlers }))
 vi.mock('@main/ipc/whisper-handlers', () => ({ registerWhisperHandlers }))
+vi.mock('@main/ipc/onboarding-handlers', () => ({ registerOnboardingHandlers }))
 
 async function loadIpcModule() {
   vi.resetModules()
@@ -75,6 +77,7 @@ const registrars = [
   registerAgentHandlers,
   registerCacheHandlers,
   registerWhisperHandlers,
+  registerOnboardingHandlers,
 ]
 
 describe('registerAllHandlers', () => {

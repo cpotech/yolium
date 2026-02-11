@@ -4,6 +4,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
+import type { PreFlightResult, ProjectType } from '@shared/types/onboarding';
 
 type CleanupFn = () => void;
 
@@ -136,7 +137,7 @@ const git = {
     ipcRenderer.invoke('git-config:save', config),
   isRepo: (folderPath: string) => ipcRenderer.invoke('git:is-repo', folderPath),
   getBranch: (folderPath: string) => ipcRenderer.invoke('git:get-branch', folderPath),
-  init: (folderPath: string) => ipcRenderer.invoke('git:init', folderPath),
+  init: (folderPath: string, projectTypes?: ProjectType[]) => ipcRenderer.invoke('git:init', folderPath, projectTypes),
   clone: (url: string, targetDir: string) => ipcRenderer.invoke('git:clone', url, targetDir),
   validateBranch: (branchName: string) => ipcRenderer.invoke('git:validate-branch', branchName),
   mergeBranch: (projectPath: string, branchName: string) =>
@@ -155,6 +156,14 @@ const git = {
     ipcRenderer.invoke('git:worktree-file-diff', projectPath, branchName, filePath),
   detectNestedRepos: (folderPath: string) =>
     ipcRenderer.invoke('git:detect-nested-repos', folderPath),
+};
+
+// Onboarding namespace
+const onboarding = {
+  validate: (folderPath: string): Promise<PreFlightResult> =>
+    ipcRenderer.invoke('onboarding:validate', folderPath),
+  detectProject: (folderPath: string): Promise<ProjectType[]> =>
+    ipcRenderer.invoke('onboarding:detect-project', folderPath),
 };
 
 // Docker namespace
@@ -354,6 +363,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   dialog,
   fs,
   git,
+  onboarding,
   docker,
   container,
   kanban,
@@ -425,7 +435,7 @@ declare global {
         saveConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean }) => Promise<void>;
         isRepo: (folderPath: string) => Promise<{ isRepo: boolean; hasCommits: boolean }>;
         getBranch: (folderPath: string) => Promise<string | null>;
-        init: (folderPath: string) => Promise<{ success: boolean; initialized?: boolean; error?: string }>;
+        init: (folderPath: string, projectTypes?: ProjectType[]) => Promise<{ success: boolean; initialized?: boolean; hasCommits?: boolean; error?: string }>;
         clone: (url: string, targetDir: string) => Promise<{ success: boolean; clonedPath: string | null; error: string | null }>;
         validateBranch: (branchName: string) => Promise<{ valid: boolean; error: string | null }>;
         mergeBranch: (projectPath: string, branchName: string) => Promise<{ success: boolean; error?: string; conflict?: boolean }>;
@@ -439,6 +449,10 @@ declare global {
           isRepo: boolean;
           nestedRepos: Array<{ name: string; path: string }>;
         }>;
+      };
+      onboarding: {
+        validate: (folderPath: string) => Promise<PreFlightResult>;
+        detectProject: (folderPath: string) => Promise<ProjectType[]>;
       };
       docker: {
         isAvailable: () => Promise<boolean>;

@@ -4,6 +4,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import * as crypto from 'node:crypto';
+import { generateGitignore } from '@main/services/project-onboarding';
+import type { ProjectType } from '@shared/types/onboarding';
 
 const execFileAsync = promisify(execFile);
 
@@ -136,6 +138,77 @@ export function initGitRepo(folderPath: string): boolean {
     const stderr = error.stderr?.toString() || error.message || 'Unknown error';
     throw new Error(`Failed to initialize git repository: ${stderr}`);
   }
+}
+
+export interface InitGitRepoWithDefaultsResult {
+  initialized: boolean;
+  hasCommits: boolean;
+}
+
+function ensureGitIdentity(folderPath: string): void {
+  try {
+    execFileSync('git', ['config', 'user.name'], {
+      cwd: folderPath,
+      stdio: 'ignore',
+    });
+  } catch {
+    execFileSync('git', ['config', 'user.name', 'AI Agent (Yolium)'], {
+      cwd: folderPath,
+      stdio: 'ignore',
+    });
+  }
+
+  try {
+    execFileSync('git', ['config', 'user.email'], {
+      cwd: folderPath,
+      stdio: 'ignore',
+    });
+  } catch {
+    execFileSync('git', ['config', 'user.email', 'agent@yolium'], {
+      cwd: folderPath,
+      stdio: 'ignore',
+    });
+  }
+}
+
+/**
+ * Initialize a git repository and create a first commit with a generated .gitignore.
+ */
+export function initGitRepoWithDefaults(folderPath: string, projectTypes: ProjectType[] = []): InitGitRepoWithDefaultsResult {
+  const initialized = initGitRepo(folderPath);
+
+  if (!initialized) {
+    return {
+      initialized: false,
+      hasCommits: hasCommits(folderPath),
+    };
+  }
+
+  const gitignorePath = path.join(folderPath, '.gitignore');
+  if (!fs.existsSync(gitignorePath)) {
+    fs.writeFileSync(gitignorePath, generateGitignore(projectTypes), 'utf-8');
+  }
+
+  try {
+    execFileSync('git', ['add', '.gitignore'], {
+      cwd: folderPath,
+      stdio: 'ignore',
+    });
+  } catch {
+    // Best effort: continue even if .gitignore could not be staged.
+  }
+
+  ensureGitIdentity(folderPath);
+
+  execFileSync('git', ['commit', '--allow-empty', '-m', 'chore: initial commit'], {
+    cwd: folderPath,
+    stdio: 'ignore',
+  });
+
+  return {
+    initialized: true,
+    hasCommits: true,
+  };
 }
 
 /**

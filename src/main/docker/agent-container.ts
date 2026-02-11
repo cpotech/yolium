@@ -11,6 +11,7 @@ import { BrowserWindow } from 'electron';
 import { createLogger } from '@main/lib/logger';
 // deleteWorktree no longer called here — worktrees persist with kanban items
 import { extractProtocolMessages } from '@main/services/agent-protocol';
+import { detectPackageManager, detectProjectTypes } from '@main/services/project-onboarding';
 import { formatLogTimestamp } from '@main/stores/workitem-log-store';
 import { loadGitConfig, refreshCodexOAuthTokenSerialized } from '@main/git/git-config';
 import { fixWorktreeGitFile } from '@main/git/git-worktree';
@@ -234,6 +235,9 @@ export async function createAgentContainer(
   });
 
   const containerProjectPath = getContainerProjectPath(mountPath);
+  const projectTypes = detectProjectTypes(mountPath);
+  const nodePackageManager = detectPackageManager(mountPath);
+  const projectTypesValue = projectTypes.join(',');
 
   // Build bind mounts for the project (minimal set for headless agent)
   const binds = [
@@ -296,6 +300,8 @@ export async function createAgentContainer(
     Env: [
       `PROJECT_DIR=${containerProjectPath}`,
       'TOOL=agent',
+      ...(projectTypesValue ? [`PROJECT_TYPES=${projectTypesValue}`] : []),
+      ...(nodePackageManager ? [`NODE_PACKAGE_MANAGER=${nodePackageManager}`] : []),
       `AGENT_PROMPT=${promptBase64}`,
       `AGENT_MODEL=${model}`,
       `AGENT_TOOLS=${tools.join(',')}`,

@@ -38,6 +38,7 @@ import {
   generateBranchName,
   getWorktreePath,
   initGitRepo,
+  initGitRepoWithDefaults,
   createWorktree,
   sanitizeBranchName,
   generatePrBranchName,
@@ -225,6 +226,50 @@ describe('git-worktree', () => {
       })
 
       expect(() => initGitRepo('/some/folder')).toThrow('Failed to initialize git repository')
+    })
+  })
+
+  describe('initGitRepoWithDefaults', () => {
+    it('initializes git, writes .gitignore, and creates an initial commit', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(false)
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command === 'git rev-parse --is-inside-work-tree') throw new Error('not a repo')
+        if (command === 'git init') return Buffer.from('initialized')
+        if (command === 'git add .gitignore') return Buffer.from('')
+        if (command === 'git config user.name') return Buffer.from('Yolium User')
+        if (command === 'git config user.email') return Buffer.from('agent@yolium')
+        if (command === 'git commit --allow-empty -m chore: initial commit') return Buffer.from('')
+        throw new Error(`Unexpected command: ${command}`)
+      })
+
+      const result = initGitRepoWithDefaults('/project', ['nodejs'])
+
+      expect(result).toEqual({ initialized: true, hasCommits: true })
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        path.join('/project', '.gitignore'),
+        expect.stringContaining('node_modules/'),
+        'utf-8'
+      )
+      expect(execFileSync).toHaveBeenCalledWith(
+        'git',
+        ['commit', '--allow-empty', '-m', 'chore: initial commit'],
+        expect.objectContaining({ cwd: '/project', stdio: 'ignore' })
+      )
+    })
+
+    it('returns existing commit state when repository already exists', () => {
+      vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+        const command = `${cmd} ${(args || []).join(' ')}`
+        if (command === 'git rev-parse --is-inside-work-tree') return Buffer.from('true')
+        if (command === 'git rev-parse HEAD') return Buffer.from('abc123')
+        throw new Error(`Unexpected command: ${command}`)
+      })
+
+      const result = initGitRepoWithDefaults('/existing', ['python'])
+
+      expect(result).toEqual({ initialized: false, hasCommits: true })
+      expect(fs.writeFileSync).not.toHaveBeenCalled()
     })
   })
 
