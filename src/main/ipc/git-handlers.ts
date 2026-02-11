@@ -18,6 +18,8 @@ import {
   validateBranchNameForUi,
   mergeWorktreeBranch,
   getWorktreeDiffStats,
+  getWorktreeChangedFiles,
+  getWorktreeFileDiff,
   cleanupWorktreeAndBranch,
   mergeBranchAndPushPR,
   checkMergeConflicts,
@@ -40,6 +42,8 @@ const GIT_CHANNELS = {
   checkMergeConflicts: 'git:check-merge-conflicts',
   cleanupWorktree: 'git:cleanup-worktree',
   mergeAndPushPr: 'git:merge-and-push-pr',
+  worktreeChangedFiles: 'git:worktree-changed-files',
+  worktreeFileDiff: 'git:worktree-file-diff',
   detectNestedRepos: 'git:detect-nested-repos',
 } as const;
 
@@ -383,6 +387,30 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
       const message = err instanceof Error ? err.message : 'Unknown error';
       logger.error('Failed to get diff stats', { projectPath, branchName, error: message });
       return { filesChanged: 0, insertions: 0, deletions: 0 };
+    }
+  });
+
+  // Get list of changed files between default branch and feature branch
+  registerGitChannel(ipcMain, GIT_CHANNELS.worktreeChangedFiles, (_event, projectPath: string, branchName: string) => {
+    logger.info('IPC: git:worktree-changed-files', { projectPath, branchName });
+    try {
+      return getWorktreeChangedFiles(projectPath, branchName);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      logger.error('Failed to get changed files', { projectPath, branchName, error: message });
+      return [];
+    }
+  });
+
+  // Get unified diff for a specific file between default branch and feature branch
+  registerGitChannel(ipcMain, GIT_CHANNELS.worktreeFileDiff, (_event, projectPath: string, branchName: string, filePath: string) => {
+    logger.info('IPC: git:worktree-file-diff', { projectPath, branchName, filePath });
+    try {
+      return getWorktreeFileDiff(projectPath, branchName, filePath);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      logger.error('Failed to get file diff', { projectPath, branchName, filePath, error: message });
+      return '';
     }
   });
 
