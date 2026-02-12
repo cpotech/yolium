@@ -305,6 +305,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
         shortPrompt += `\n\n## Previous conversation:\n\n${conversationHistory}\n\nContinue from where you left off.`;
       }
       shortPrompt += `\n\nIMPORTANT: Read the file ${instructionsFile} in the project root FIRST. It contains your full instructions, process steps, and the @@YOLIUM: protocol you MUST use to communicate progress.\nStart by reading that file, then follow the process described in it step by step.`;
+      shortPrompt += `\n\nCRITICAL — @@YOLIUM: PROTOCOL MESSAGES ARE MANDATORY. Your work will be marked as FAILED if you do not output these messages. Output them as plain text lines throughout your work:\n- Start with: @@YOLIUM:{"type":"progress","step":"analyze","detail":"Starting analysis"}\n- At each step: @@YOLIUM:{"type":"progress","step":"<step>","detail":"<what you did>"}\n- Post findings: @@YOLIUM:{"type":"comment","text":"<your findings>"}\n- When done: @@YOLIUM:{"type":"complete","summary":"<what you accomplished>"}\nSee ${instructionsFile} for the full protocol reference with examples at each step.`;
       agentPrompt = shortPrompt;
       logger.info('Wrote agent instructions file for non-Claude provider', { instructionsFile, provider });
     } catch {

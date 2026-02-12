@@ -199,9 +199,11 @@ EOF
 # Switch back to root for entrypoint setup
 USER root
 
-# Copy entrypoint script and fix Windows CRLF line endings if present
+# Copy entrypoint scripts and fix Windows CRLF line endings if present
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh && \
+COPY entrypoint.d/ /usr/local/bin/entrypoint.d/
+RUN find /usr/local/bin/entrypoint.d -name '*.sh' -exec sed -i 's/\r$//' {} + && \
+    sed -i 's/\r$//' /usr/local/bin/entrypoint.sh && \
     chmod +x /usr/local/bin/entrypoint.sh
 
 # Copy marketing skills into container for the marketing agent
