@@ -121,6 +121,13 @@ export function useAgentSession({
         const result = await window.electronAPI.agent.getActiveSession(projectPath, itemId)
         if (result?.sessionId) {
           associateSession(result.sessionId)
+          if (
+            result.cumulativeUsage.inputTokens > 0 ||
+            result.cumulativeUsage.outputTokens > 0 ||
+            result.cumulativeUsage.costUsd > 0
+          ) {
+            setTokenUsage(result.cumulativeUsage)
+          }
           setLiveStatus('running')
           setShowAgentLog(true)
           return

@@ -547,7 +547,10 @@ declare global {
         }) => Promise<{ sessionId: string; error?: string }>;
         answer: (projectPath: string, itemId: string, answer: string) => Promise<void>;
         stop: (sessionId: string) => Promise<void>;
-        getActiveSession: (projectPath: string, itemId: string) => Promise<{ sessionId: string } | null>;
+        getActiveSession: (projectPath: string, itemId: string) => Promise<{
+          sessionId: string;
+          cumulativeUsage: { inputTokens: number; outputTokens: number; costUsd: number };
+        } | null>;
         recover: (projectPath: string) => Promise<Array<object>>;
         listDefinitions: () => Promise<Array<{
           name: string;

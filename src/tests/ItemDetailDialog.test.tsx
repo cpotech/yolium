@@ -131,9 +131,12 @@ describe('ItemDetailDialog', () => {
     expect(screen.getByTestId('agent-provider-select')).toHaveValue('codex')
   })
 
-  it('should show accumulated token usage for the active agent session', async () => {
+  it('should restore cumulative token usage on reconnect and continue accumulating', async () => {
     const item = createMockItem({ agentStatus: 'running' })
-    const getActiveSession = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+    const getActiveSession = vi.fn().mockResolvedValue({
+      sessionId: 'session-1',
+      cumulativeUsage: { inputTokens: 500, outputTokens: 250, costUsd: 0.005 },
+    })
     window.electronAPI.agent.getActiveSession = getActiveSession
 
     render(
@@ -150,6 +153,9 @@ describe('ItemDetailDialog', () => {
       expect(getActiveSession).toHaveBeenCalledWith('/test/project', 'item-1')
     })
     expect(mockOnAgentCostUpdate).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('token-usage')).toBeInTheDocument()
+    expect(screen.getByText('500 in / 250 out')).toBeInTheDocument()
+    expect(screen.getByText('$0.0050')).toBeInTheDocument()
 
     const onCostUpdate = mockOnAgentCostUpdate.mock.calls[0][0] as (
       sessionId: string,
@@ -164,9 +170,8 @@ describe('ItemDetailDialog', () => {
       onCostUpdate('other-session', '/test/project', 'item-1', { inputTokens: 999, outputTokens: 999, costUsd: 0.9999 })
     })
 
-    expect(screen.getByTestId('token-usage')).toBeInTheDocument()
-    expect(screen.getByText('1.6k in / 1.4k out')).toBeInTheDocument()
-    expect(screen.getByText('$0.0190')).toBeInTheDocument()
+    expect(screen.getByText('2.1k in / 1.6k out')).toBeInTheDocument()
+    expect(screen.getByText('$0.0240')).toBeInTheDocument()
   })
 
   it('should recover stale running items when no active session exists and refresh item state', async () => {
