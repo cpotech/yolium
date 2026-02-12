@@ -70,4 +70,15 @@ describe('verify-agent', () => {
     expect(agent.systemPrompt).toContain('## Verdict Criteria');
     expect(agent.systemPrompt).toContain('## Rules');
   });
+
+  it('should require explicit simplification/dead-code evidence in review output', () => {
+    const agent = parseAgentDefinition(agentMarkdown);
+    expect(agent.systemPrompt).toContain('Explicitly validate whether changed files were reasonably simplified');
+    expect(agent.systemPrompt).toContain('Cleanup execution quality');
+    expect(agent.systemPrompt).toContain('In-scope simplification/dead-code expectations verified');
+    expect(agent.systemPrompt).toContain('Dead code status');
+    expect(agent.systemPrompt).toContain('Simplification evidence');
+    expect(agent.systemPrompt).toContain('no avoidable in-scope dead code/complexity remains');
+    expect(agent.systemPrompt).toContain('Show cleanup evidence');
+  });
 });
