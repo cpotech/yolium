@@ -510,6 +510,34 @@ export function getDefaultBranch(projectPath: string): string {
   return 'main';
 }
 
+function gitRefExists(projectPath: string, refName: string): boolean {
+  try {
+    execFileSync('git', ['rev-parse', '--verify', refName], {
+      cwd: projectPath,
+      stdio: 'ignore',
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function resolveDiffBranchRef(projectPath: string, branchName: string): string {
+  if (gitRefExists(projectPath, branchName)) {
+    return branchName;
+  }
+
+  const remoteRef = `origin/${branchName}`;
+  if (gitRefExists(projectPath, remoteRef)) {
+    return remoteRef;
+  }
+
+  throw new Error(
+    `Branch reference not found for "${branchName}". Tried "${branchName}" and "${remoteRef}". ` +
+    'Fetch latest refs or restore the branch before comparing changes.',
+  );
+}
+
 /**
  * Merge a branch into the default branch using --no-ff.
  *
@@ -579,9 +607,10 @@ export async function getWorktreeDiffStats(projectPath: string, branchName: stri
   validateBranchName(branchName);
 
   const defaultBranch = getDefaultBranch(projectPath);
+  const branchRef = resolveDiffBranchRef(projectPath, branchName);
 
   try {
-    const { stdout } = await execFileAsync('git', ['diff', `${defaultBranch}...${branchName}`, '--stat', '--stat-width=999'], {
+    const { stdout } = await execFileAsync('git', ['diff', `${defaultBranch}...${branchRef}`, '--stat', '--stat-width=999'], {
       cwd: projectPath,
       encoding: 'utf-8',
     });
@@ -618,25 +647,22 @@ export function getWorktreeChangedFiles(
   validateBranchName(branchName);
 
   const defaultBranch = getDefaultBranch(projectPath);
+  const branchRef = resolveDiffBranchRef(projectPath, branchName);
 
-  try {
-    const output = execFileSync('git', ['diff', `${defaultBranch}...${branchName}`, '--name-status'], {
-      cwd: projectPath,
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'ignore'],
-    });
+  const output = execFileSync('git', ['diff', `${defaultBranch}...${branchRef}`, '--name-status'], {
+    cwd: projectPath,
+    encoding: 'utf-8',
+    stdio: ['pipe', 'pipe', 'ignore'],
+  });
 
-    const lines = output.trim().split('\n').filter((line) => line.trim().length > 0);
-    return lines.map((line) => {
-      const parts = line.split('\t');
-      const statusChar = parts[0].charAt(0) as 'M' | 'A' | 'D' | 'R';
-      // For renames, the new path is in parts[2], original in parts[1]
-      const filePath = statusChar === 'R' ? parts[2] : parts[1];
-      return { path: filePath, status: statusChar };
-    });
-  } catch {
-    return [];
-  }
+  const lines = output.trim().split('\n').filter((line) => line.trim().length > 0);
+  return lines.map((line) => {
+    const parts = line.split('\t');
+    const statusChar = parts[0].charAt(0) as 'M' | 'A' | 'D' | 'R';
+    // For renames, the new path is in parts[2], original in parts[1]
+    const filePath = statusChar === 'R' ? parts[2] : parts[1];
+    return { path: filePath, status: statusChar };
+  });
 }
 
 /**
@@ -655,16 +681,13 @@ export function getWorktreeFileDiff(
   validateBranchName(branchName);
 
   const defaultBranch = getDefaultBranch(projectPath);
+  const branchRef = resolveDiffBranchRef(projectPath, branchName);
 
-  try {
-    return execFileSync('git', ['diff', `${defaultBranch}...${branchName}`, '--', filePath], {
-      cwd: projectPath,
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'ignore'],
-    });
-  } catch {
-    return '';
-  }
+  return execFileSync('git', ['diff', `${defaultBranch}...${branchRef}`, '--', filePath], {
+    cwd: projectPath,
+    encoding: 'utf-8',
+    stdio: ['pipe', 'pipe', 'ignore'],
+  });
 }
 
 /**

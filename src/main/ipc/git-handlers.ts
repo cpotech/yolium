@@ -209,11 +209,12 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
       hasCodexOAuth: hasHostCodexOAuth(),
       useCodexOAuth: storedConfig?.useCodexOAuth ?? false,
       githubLogin: storedConfig?.githubLogin,
+      agentModelDefaults: storedConfig?.agentModelDefaults,
     };
   });
 
   // Save git config (preserves existing secrets if not provided, auto-derives identity from PAT)
-  registerGitChannel(ipcMain, GIT_CHANNELS.saveConfig, async (_event, config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean }) => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.saveConfig, async (_event, config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; agentModelDefaults?: Record<string, string> }) => {
     // Load existing config to preserve secrets if not provided in save
     const existing = loadGitConfig();
     const toSave: GitConfig = {
@@ -295,6 +296,13 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     } else {
       // PAT was cleared — clear derived identity too
       toSave.githubLogin = undefined;
+    }
+
+    // Handle agent model defaults
+    if (config.agentModelDefaults !== undefined) {
+      toSave.agentModelDefaults = config.agentModelDefaults;
+    } else if (existing?.agentModelDefaults) {
+      toSave.agentModelDefaults = existing.agentModelDefaults;
     }
 
     saveGitConfig(toSave);
@@ -395,11 +403,11 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   registerGitChannel(ipcMain, GIT_CHANNELS.worktreeChangedFiles, (_event, projectPath: string, branchName: string) => {
     logger.info('IPC: git:worktree-changed-files', { projectPath, branchName });
     try {
-      return getWorktreeChangedFiles(projectPath, branchName);
+      return { files: getWorktreeChangedFiles(projectPath, branchName) };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       logger.error('Failed to get changed files', { projectPath, branchName, error: message });
-      return [];
+      return { files: [], error: message };
     }
   });
 
@@ -407,11 +415,11 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   registerGitChannel(ipcMain, GIT_CHANNELS.worktreeFileDiff, (_event, projectPath: string, branchName: string, filePath: string) => {
     logger.info('IPC: git:worktree-file-diff', { projectPath, branchName, filePath });
     try {
-      return getWorktreeFileDiff(projectPath, branchName, filePath);
+      return { diff: getWorktreeFileDiff(projectPath, branchName, filePath) };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       logger.error('Failed to get file diff', { projectPath, branchName, filePath, error: message });
-      return '';
+      return { diff: '', error: message };
     }
   });
 

@@ -100,7 +100,7 @@ describe('getWorktreeChangedFiles', () => {
     expect(result).toEqual([])
   })
 
-  it('returns empty array on error', () => {
+  it('throws on error', () => {
     vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[], options?: any) => {
       const argList = args as string[] | undefined
       if (argList && argList[0] === 'check-ref-format') {
@@ -115,8 +115,41 @@ describe('getWorktreeChangedFiles', () => {
       return Buffer.from('')
     })
 
+    expect(() => getWorktreeChangedFiles('/project', 'feature-branch')).toThrow('git error')
+  })
+
+  it('falls back to origin/<branch> when local branch ref is missing', () => {
+    vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+      const argList = args as string[] | undefined
+      if (argList && argList[0] === 'check-ref-format') {
+        return Buffer.from('')
+      }
+      if (argList && argList[0] === 'symbolic-ref') {
+        return Buffer.from('refs/remotes/origin/main')
+      }
+      if (argList && argList[0] === 'rev-parse' && argList[1] === '--verify') {
+        const ref = argList[2]
+        if (ref === 'feature-branch') {
+          throw new Error('unknown revision')
+        }
+        if (ref === 'origin/feature-branch') {
+          return Buffer.from('abc123')
+        }
+      }
+      if (argList && argList[0] === 'diff') {
+        return 'M\tsrc/app.ts\n'
+      }
+      return Buffer.from('')
+    })
+
     const result = getWorktreeChangedFiles('/project', 'feature-branch')
-    expect(result).toEqual([])
+
+    expect(result).toEqual([{ path: 'src/app.ts', status: 'M' }])
+    expect(vi.mocked(execFileSync)).toHaveBeenCalledWith(
+      'git',
+      ['diff', 'main...origin/feature-branch', '--name-status'],
+      expect.objectContaining({ cwd: '/project', encoding: 'utf-8' }),
+    )
   })
 })
 
@@ -154,7 +187,7 @@ index abc1234..def5678 100644
     expect(result).toBe(expectedDiff)
   })
 
-  it('returns empty string on error', () => {
+  it('throws on error', () => {
     vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
       const argList = args as string[] | undefined
       if (argList && argList[0] === 'check-ref-format') {
@@ -169,8 +202,7 @@ index abc1234..def5678 100644
       return Buffer.from('')
     })
 
-    const result = getWorktreeFileDiff('/project', 'feature-branch', 'src/app.ts')
-    expect(result).toBe('')
+    expect(() => getWorktreeFileDiff('/project', 'feature-branch', 'src/app.ts')).toThrow('git error')
   })
 
   it('calls git diff with correct arguments', () => {
@@ -197,5 +229,25 @@ index abc1234..def5678 100644
     expect(diffCall).toBeDefined()
     expect(diffCall![1]).toEqual(['diff', 'main...my-branch', '--', 'src/index.ts'])
     expect(diffCall![2]).toMatchObject({ cwd: '/project', encoding: 'utf-8' })
+  })
+
+  it('throws explicit error when branch ref is missing locally and on origin', () => {
+    vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[]) => {
+      const argList = args as string[] | undefined
+      if (argList && argList[0] === 'check-ref-format') {
+        return Buffer.from('')
+      }
+      if (argList && argList[0] === 'symbolic-ref') {
+        return Buffer.from('refs/remotes/origin/main')
+      }
+      if (argList && argList[0] === 'rev-parse' && argList[1] === '--verify') {
+        throw new Error('unknown revision')
+      }
+      return Buffer.from('')
+    })
+
+    expect(() => getWorktreeFileDiff('/project', 'feature-branch', 'src/app.ts')).toThrow(
+      'Branch reference not found for "feature-branch". Tried "feature-branch" and "origin/feature-branch". Fetch latest refs or restore the branch before comparing changes.',
+    )
   })
 })

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as fs from 'node:fs'
 import { execFile } from 'node:child_process'
+import * as path from 'node:path'
 import type { IpcMain } from 'electron'
 
 vi.mock('node:fs', () => ({
@@ -58,6 +59,14 @@ import {
 import { initGitRepoWithDefaults } from '@main/git/git-worktree'
 
 type CloneHandler = (_event: unknown, url: string, targetDir: string) => Promise<GitCloneResult>
+
+const TMP_PROJECTS = path.join('/tmp', 'projects')
+const TMP_PROJECTS_REPO = path.join('/tmp', 'projects', 'repo')
+const TMP_PROJECT = path.join('/tmp', 'project')
+
+function normalizePath(p: string): string {
+  return p.replace(/[\\/]+/g, '/')
+}
 
 function registerGitHandlersForTest(): {
   handlers: Map<string, unknown>
@@ -124,10 +133,10 @@ describe('git:clone handler', () => {
     const initHandler = handlers.get('git:init') as ((event: unknown, folderPath: string, projectTypes?: string[]) => unknown) | undefined
     expect(initHandler).toBeTypeOf('function')
 
-    const result = initHandler?.({}, '/tmp/project', ['nodejs', 'python']) as { success: boolean }
+    const result = initHandler?.({}, TMP_PROJECT, ['nodejs', 'python']) as { success: boolean }
 
     expect(result.success).toBe(true)
-    expect(initGitRepoWithDefaults).toHaveBeenCalledWith('/tmp/project', ['nodejs', 'python'])
+    expect(initGitRepoWithDefaults).toHaveBeenCalledWith(TMP_PROJECT, ['nodejs', 'python'])
   })
 
   describe('extractRepoNameFromUrl', () => {
@@ -161,9 +170,9 @@ describe('git:clone handler', () => {
     vi.mocked(generateGitCredentials).mockReturnValue('/home/test/.yolium/git-credentials')
 
     vi.mocked(fs.existsSync).mockImplementation((value: fs.PathLike) => {
-      const p = String(value)
-      if (p === '/tmp/projects/repo') return false
-      if (p === '/tmp/projects') return true
+      const p = normalizePath(String(value))
+      if (p === normalizePath(TMP_PROJECTS_REPO)) return false
+      if (p === normalizePath(TMP_PROJECTS)) return true
       return false
     })
 
@@ -171,14 +180,14 @@ describe('git:clone handler', () => {
 
     expect(result).toEqual({
       success: true,
-      clonedPath: '/tmp/projects/repo',
+      clonedPath: TMP_PROJECTS_REPO,
       error: null,
     })
 
     expect(execFile).toHaveBeenCalledOnce()
     expect(execFile).toHaveBeenCalledWith(
       'git',
-      ['clone', 'https://github.com/user/repo.git', '/tmp/projects/repo'],
+      ['clone', 'https://github.com/user/repo.git', TMP_PROJECTS_REPO],
       expect.objectContaining({
         env: expect.objectContaining({
           GIT_TERMINAL_PROMPT: '0',
@@ -194,9 +203,9 @@ describe('git:clone handler', () => {
   it('clones without credential helper env when PAT is not configured', async () => {
     const cloneHandler = registerAndGetCloneHandler()
     vi.mocked(fs.existsSync).mockImplementation((value: fs.PathLike) => {
-      const p = String(value)
-      if (p === '/tmp/projects/repo') return false
-      if (p === '/tmp/projects') return true
+      const p = normalizePath(String(value))
+      if (p === normalizePath(TMP_PROJECTS_REPO)) return false
+      if (p === normalizePath(TMP_PROJECTS)) return true
       return false
     })
 
@@ -225,8 +234,8 @@ describe('git:clone handler', () => {
   it('returns a clear error when target directory already exists', async () => {
     const cloneHandler = registerAndGetCloneHandler()
     vi.mocked(fs.existsSync).mockImplementation((value: fs.PathLike) => {
-      const p = String(value)
-      if (p === '/tmp/projects/repo') return true
+      const p = normalizePath(String(value))
+      if (p === normalizePath(TMP_PROJECTS_REPO)) return true
       return false
     })
 
@@ -242,9 +251,9 @@ describe('git:clone handler', () => {
     mockCloneFailure('fatal: repository not found')
 
     vi.mocked(fs.existsSync).mockImplementation((value: fs.PathLike) => {
-      const p = String(value)
-      if (p === '/tmp/projects/repo') return false
-      if (p === '/tmp/projects') return true
+      const p = normalizePath(String(value))
+      if (p === normalizePath(TMP_PROJECTS_REPO)) return false
+      if (p === normalizePath(TMP_PROJECTS)) return true
       return false
     })
 

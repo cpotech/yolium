@@ -133,7 +133,7 @@ const fs = {
 // Git namespace
 const git = {
   loadConfig: () => ipcRenderer.invoke('git-config:load'),
-  saveConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean }) =>
+  saveConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; agentModelDefaults?: Record<string, string> }) =>
     ipcRenderer.invoke('git-config:save', config),
   isRepo: (folderPath: string) => ipcRenderer.invoke('git:is-repo', folderPath),
   getBranch: (folderPath: string) => ipcRenderer.invoke('git:get-branch', folderPath),
@@ -311,9 +311,9 @@ const agent = {
     ipcRenderer.on('agent:exit', handler);
     return () => ipcRenderer.removeListener('agent:exit', handler);
   },
-  onCostUpdate: (callback: (sessionId: string, projectPath: string, usage: { inputTokens: number; outputTokens: number; costUsd: number }) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, projectPath: string, usage: { inputTokens: number; outputTokens: number; costUsd: number }) =>
-      callback(sessionId, projectPath, usage);
+  onCostUpdate: (callback: (sessionId: string, projectPath: string, itemId: string, usage: { inputTokens: number; outputTokens: number; costUsd: number }) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, projectPath: string, itemId: string, usage: { inputTokens: number; outputTokens: number; costUsd: number }) =>
+      callback(sessionId, projectPath, itemId, usage);
     ipcRenderer.on('agent:cost-update', handler);
     return () => ipcRenderer.removeListener('agent:cost-update', handler);
   },
@@ -431,8 +431,8 @@ declare global {
         }>;
       };
       git: {
-        loadConfig: () => Promise<{ name: string; email: string; hasPat?: boolean; hasOpenaiKey?: boolean; hasAnthropicKey?: boolean; hasClaudeOAuth?: boolean; useClaudeOAuth?: boolean; hasCodexOAuth?: boolean; useCodexOAuth?: boolean; githubLogin?: string } | null>;
-        saveConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean }) => Promise<void>;
+        loadConfig: () => Promise<{ name: string; email: string; hasPat?: boolean; hasOpenaiKey?: boolean; hasAnthropicKey?: boolean; hasClaudeOAuth?: boolean; useClaudeOAuth?: boolean; hasCodexOAuth?: boolean; useCodexOAuth?: boolean; githubLogin?: string; agentModelDefaults?: Record<string, string> } | null>;
+        saveConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; agentModelDefaults?: Record<string, string> }) => Promise<void>;
         isRepo: (folderPath: string) => Promise<{ isRepo: boolean; hasCommits: boolean }>;
         getBranch: (folderPath: string) => Promise<string | null>;
         init: (folderPath: string, projectTypes?: ProjectType[]) => Promise<{ success: boolean; initialized?: boolean; hasCommits?: boolean; error?: string }>;
@@ -443,8 +443,14 @@ declare global {
         cleanupWorktree: (projectPath: string, worktreePath: string, branchName: string) => Promise<void>;
         checkMergeConflicts: (projectPath: string, branchName: string) => Promise<{ clean: boolean; conflictingFiles: string[] }>;
         mergeAndPushPR: (projectPath: string, branchName: string, worktreePath: string, itemTitle: string, itemDescription: string) => Promise<{ success: boolean; prUrl?: string; prBranch?: string; error?: string; conflict?: boolean; conflictingFiles?: string[] }>;
-        worktreeChangedFiles: (projectPath: string, branchName: string) => Promise<Array<{ path: string; status: 'M' | 'A' | 'D' | 'R' }>>;
-        worktreeFileDiff: (projectPath: string, branchName: string, filePath: string) => Promise<string>;
+        worktreeChangedFiles: (projectPath: string, branchName: string) => Promise<{
+          files: Array<{ path: string; status: 'M' | 'A' | 'D' | 'R' }>;
+          error?: string;
+        }>;
+        worktreeFileDiff: (projectPath: string, branchName: string, filePath: string) => Promise<{
+          diff: string;
+          error?: string;
+        }>;
         detectNestedRepos: (folderPath: string) => Promise<{
           isRepo: boolean;
           nestedRepos: Array<{ name: string; path: string }>;
@@ -559,7 +565,7 @@ declare global {
         onError: (callback: (sessionId: string, message: string) => void) => CleanupFunction;
         onProgress: (callback: (sessionId: string, progress: { step: string; detail: string; attempt?: number; maxAttempts?: number }) => void) => CleanupFunction;
         onExit: (callback: (sessionId: string, exitCode: number) => void) => CleanupFunction;
-        onCostUpdate: (callback: (sessionId: string, projectPath: string, usage: { inputTokens: number; outputTokens: number; costUsd: number }) => void) => CleanupFunction;
+        onCostUpdate: (callback: (sessionId: string, projectPath: string, itemId: string, usage: { inputTokens: number; outputTokens: number; costUsd: number }) => void) => CleanupFunction;
       };
       cache: {
         list: () => Promise<Array<{
