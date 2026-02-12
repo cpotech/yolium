@@ -1,9 +1,12 @@
 /**
  * Tests for Docker entrypoint.sh behavior
  *
- * These tests verify that the entrypoint.sh script correctly:
- * 1. Authenticates gh CLI when git-credentials are available
- * 2. Creates CLAUDE.md with environment information
+ * These tests verify that the entrypoint scripts correctly:
+ * 1. Authenticate gh CLI when git-credentials are available
+ * 2. Create CLAUDE.md with environment information
+ *
+ * The entrypoint is split into modular scripts under entrypoint.d/.
+ * Tests read all scripts to validate content across modules.
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
@@ -12,8 +15,28 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
+const dockerDir = path.join(__dirname, '../docker');
+
+/** Read all entrypoint scripts (orchestrator + modules + tools) as combined content */
+function readAllEntrypointScripts(): string {
+  const entrypoint = fs.readFileSync(path.join(dockerDir, 'entrypoint.sh'), 'utf-8');
+  const entrypointD = path.join(dockerDir, 'entrypoint.d');
+
+  const scripts = fs.readdirSync(entrypointD, { recursive: true })
+    .map(f => f.toString())
+    .filter(f => f.endsWith('.sh'))
+    .sort()
+    .map(f => fs.readFileSync(path.join(entrypointD, f), 'utf-8'));
+
+  return [entrypoint, ...scripts].join('\n');
+}
+
+/** Read a specific tool script from entrypoint.d/80-tools/ */
+function readToolScript(tool: string): string {
+  return fs.readFileSync(path.join(dockerDir, 'entrypoint.d', '80-tools', `${tool}.sh`), 'utf-8');
+}
+
 describe('entrypoint.sh', () => {
-  const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
   let tempDir: string;
 
   beforeAll(() => {
@@ -30,7 +53,7 @@ describe('entrypoint.sh', () => {
     let entrypointContent: string;
 
     beforeEach(() => {
-      entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+      entrypointContent = readAllEntrypointScripts();
     });
 
     it('should contain gh CLI authentication logic when git-credentials exists', () => {
@@ -112,9 +135,9 @@ describe('entrypoint.sh', () => {
     });
 
     it('should handle codex tool selection', () => {
-      // The entrypoint should have a branch for TOOL=codex
-      expect(entrypointContent).toContain('"codex"');
-      expect(entrypointContent).toContain('codex');
+      // The entrypoint should have a codex tool script
+      const codexScript = readToolScript('codex');
+      expect(codexScript).toContain('codex');
     });
 
     it('should display codex version in banner when TOOL=codex', () => {
@@ -133,7 +156,7 @@ describe('entrypoint.sh', () => {
     let entrypointContent: string;
 
     beforeEach(() => {
-      entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+      entrypointContent = readAllEntrypointScripts();
     });
 
     it('should launch codex with --full-auto flag', () => {
@@ -144,9 +167,11 @@ describe('entrypoint.sh', () => {
       expect(entrypointContent).toMatch(/exec\s+"\$CODEX_BIN"\s+--full-auto\s+--sandbox\s+danger-full-access/);
     });
 
-    it('should have a dedicated codex branch in tool selection', () => {
-      // The entrypoint should have elif [ "$TOOL" = "codex" ]
-      expect(entrypointContent).toContain('TOOL" = "codex"');
+    it('should have a dedicated codex tool script', () => {
+      // The entrypoint should have a codex tool script in 80-tools/
+      const codexScript = readToolScript('codex');
+      expect(codexScript).toContain('Codex');
+      expect(codexScript).toContain('CODEX_BIN');
     });
 
     it('should look up codex binary path', () => {
@@ -206,116 +231,88 @@ Output: @@YOLIUM:{"type":"complete","summary":"done"}`;
       expect(decoded).toBe(complexPrompt);
     });
 
-    it('should have agent mode in entrypoint script', () => {
-      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
-      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
-
-      // The entrypoint should have a branch for TOOL=agent
-      expect(entrypointContent).toContain('TOOL" = "agent"');
+    it('should have agent mode tool script', () => {
+      // The entrypoint should have an agent tool script in 80-tools/
+      const agentScript = readToolScript('agent');
+      expect(agentScript).toContain('AGENT_PROMPT');
+      expect(agentScript).toContain('AGENT_MODEL');
     });
 
     it('should require AGENT_PROMPT environment variable', () => {
-      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
-      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+      const agentScript = readToolScript('agent');
 
-      expect(entrypointContent).toContain('AGENT_PROMPT');
-      expect(entrypointContent).toContain('AGENT_PROMPT environment variable is required');
+      expect(agentScript).toContain('AGENT_PROMPT');
+      expect(agentScript).toContain('AGENT_PROMPT environment variable is required');
     });
 
     it('should require AGENT_MODEL environment variable', () => {
-      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
-      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+      const agentScript = readToolScript('agent');
 
-      expect(entrypointContent).toContain('AGENT_MODEL');
-      expect(entrypointContent).toContain('AGENT_MODEL environment variable is required');
+      expect(agentScript).toContain('AGENT_MODEL');
+      expect(agentScript).toContain('AGENT_MODEL environment variable is required');
     });
 
     it('should decode base64 prompt in agent mode', () => {
-      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
-      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+      const agentScript = readToolScript('agent');
 
-      expect(entrypointContent).toContain('base64 -d');
+      expect(agentScript).toContain('base64 -d');
     });
 
     it('should map model short names to full model IDs', () => {
-      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
-      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+      const agentScript = readToolScript('agent');
 
-      expect(entrypointContent).toContain('opus)');
-      expect(entrypointContent).toContain('sonnet)');
-      expect(entrypointContent).toContain('haiku)');
-      expect(entrypointContent).toContain('claude-opus-4-6');
-      expect(entrypointContent).toContain('claude-sonnet-4-5-20250929');
-      expect(entrypointContent).toContain('claude-haiku-4-5-20251001');
+      expect(agentScript).toContain('opus)');
+      expect(agentScript).toContain('sonnet)');
+      expect(agentScript).toContain('haiku)');
+      expect(agentScript).toContain('claude-opus-4-6');
+      expect(agentScript).toContain('claude-sonnet-4-5-20250929');
+      expect(agentScript).toContain('claude-haiku-4-5-20251001');
     });
 
     it('should support optional AGENT_TOOLS for allowed tools', () => {
-      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
-      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+      const agentScript = readToolScript('agent');
 
-      expect(entrypointContent).toContain('AGENT_TOOLS');
-      expect(entrypointContent).toContain('--allowedTools');
+      expect(agentScript).toContain('AGENT_TOOLS');
+      expect(agentScript).toContain('--allowedTools');
     });
 
     it('should run claude with --dangerously-skip-permissions', () => {
-      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
-      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
-
-      // Find the agent section specifically
-      const agentStart = entrypointContent.indexOf('TOOL" = "agent"');
-      // Find the next elif after the TOOL=opencode section (which comes after agent)
-      const agentEnd = entrypointContent.indexOf('elif [ "$TOOL" = "opencode" ]', agentStart + 1);
-      const agentBlock = entrypointContent.slice(agentStart, agentEnd > -1 ? agentEnd : undefined);
+      const agentScript = readToolScript('agent');
 
       // Claude is in the default else branch when AGENT_PROVIDER is not opencode or codex
-      expect(agentBlock).toContain('--dangerously-skip-permissions');
+      expect(agentScript).toContain('--dangerously-skip-permissions');
     });
 
     it('should support AGENT_PROVIDER environment variable', () => {
-      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
-      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+      const agentScript = readToolScript('agent');
 
-      expect(entrypointContent).toContain('AGENT_PROVIDER');
+      expect(agentScript).toContain('AGENT_PROVIDER');
     });
 
     it('should default to claude when AGENT_PROVIDER is not set', () => {
-      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
-      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+      const agentScript = readToolScript('agent');
 
-      expect(entrypointContent).toContain('AGENT_PROVIDER:-claude');
+      expect(agentScript).toContain('AGENT_PROVIDER:-claude');
     });
 
     it('should run opencode when AGENT_PROVIDER=opencode', () => {
-      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
-      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+      const agentScript = readToolScript('agent');
 
-      const agentStart = entrypointContent.indexOf('TOOL" = "agent"');
-      // Find the next elif after the TOOL=opencode section (which comes after agent)
-      const agentEnd = entrypointContent.indexOf('elif [ "$TOOL" = "opencode" ]', agentStart + 1);
-      const agentBlock = entrypointContent.slice(agentStart, agentEnd > -1 ? agentEnd : undefined);
-
-      expect(agentBlock).toContain('if [ "$AGENT_PROV" = "opencode" ]');
-      expect(agentBlock).toContain('opencode run');
+      expect(agentScript).toContain('if [ "$AGENT_PROV" = "opencode" ]');
+      expect(agentScript).toContain('opencode run');
     });
 
     it('should run codex when AGENT_PROVIDER=codex', () => {
-      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
-      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+      const agentScript = readToolScript('agent');
 
-      const agentStart = entrypointContent.indexOf('TOOL" = "agent"');
-      // Find the next elif after the TOOL=opencode section (which comes after agent)
-      const agentEnd = entrypointContent.indexOf('elif [ "$TOOL" = "opencode" ]', agentStart + 1);
-      const agentBlock = entrypointContent.slice(agentStart, agentEnd > -1 ? agentEnd : undefined);
-
-      expect(agentBlock).toContain('elif [ "$AGENT_PROV" = "codex" ]');
-      expect(agentBlock).toContain('codex exec');
+      expect(agentScript).toContain('elif [ "$AGENT_PROV" = "codex" ]');
+      expect(agentScript).toContain('codex exec');
     });
 
     it('should configure reasoning effort for Codex agent mode', () => {
-      const entrypointPath = path.join(__dirname, '../docker/entrypoint.sh');
-      const entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+      const agentScript = readToolScript('agent');
 
-      const agentBlock = entrypointContent.split('AGENT_PROV" = "codex"')[1]?.split('exit $?')[0];
+      const agentBlock = agentScript.split('AGENT_PROV" = "codex"')[1]?.split('exit $?')[0];
       expect(agentBlock).toContain('model_reasoning_effort');
       expect(agentBlock).toContain('high');
     });
@@ -325,7 +322,7 @@ Output: @@YOLIUM:{"type":"complete","summary":"done"}`;
     let entrypointContent: string;
 
     beforeEach(() => {
-      entrypointContent = fs.readFileSync(entrypointPath, 'utf-8');
+      entrypointContent = readAllEntrypointScripts();
     });
 
     it('should check for .claude-credentials.json file when CLAUDE_OAUTH_ENABLED is true', () => {
@@ -370,14 +367,10 @@ Output: @@YOLIUM:{"type":"complete","summary":"done"}`;
     });
 
     it('should still require ANTHROPIC_API_KEY for OpenCode (no OAuth fallback)', () => {
-      // OpenCode interactive sections should still check only ANTHROPIC_API_KEY
-      // Use the elif pattern to find the tool selection section (not the banner)
-      const opencodeInteractiveStart = entrypointContent.indexOf('elif [ "$TOOL" = "opencode" ]');
-      expect(opencodeInteractiveStart).toBeGreaterThan(-1);
-      const opencodeEnd = entrypointContent.indexOf('elif', opencodeInteractiveStart + 1);
-      const opencodeBlock = entrypointContent.slice(opencodeInteractiveStart, opencodeEnd > -1 ? opencodeEnd : undefined);
-      expect(opencodeBlock).toContain('ANTHROPIC_API_KEY');
-      expect(opencodeBlock).not.toContain('.credentials.json');
+      // OpenCode interactive tool script should check only ANTHROPIC_API_KEY
+      const opencodeScript = readToolScript('opencode');
+      expect(opencodeScript).toContain('ANTHROPIC_API_KEY');
+      expect(opencodeScript).not.toContain('.credentials.json');
     });
 
     it('should mention OAuth in CLAUDE.md content', () => {
@@ -411,6 +404,41 @@ Output: @@YOLIUM:{"type":"complete","summary":"done"}`;
       const gitCredentials = 'https://git:token@gitlab.com\n';
       const result = extractGitHubToken(gitCredentials);
       expect(result).toBe('');
+    });
+  });
+
+  describe('modular structure', () => {
+    it('should have all required setup modules', () => {
+      const entrypointD = path.join(dockerDir, 'entrypoint.d');
+      const expectedModules = [
+        '00-utils.sh',
+        '10-network.sh',
+        '20-paths.sh',
+        '30-languages.sh',
+        '40-git.sh',
+        '50-credentials.sh',
+        '60-claudemd.sh',
+        '70-banner.sh',
+      ];
+      for (const mod of expectedModules) {
+        expect(fs.existsSync(path.join(entrypointD, mod))).toBe(true);
+      }
+    });
+
+    it('should have all required tool scripts', () => {
+      const toolsDir = path.join(dockerDir, 'entrypoint.d', '80-tools');
+      const expectedTools = ['shell.sh', 'agent.sh', 'claude.sh', 'opencode.sh', 'codex.sh'];
+      for (const tool of expectedTools) {
+        expect(fs.existsSync(path.join(toolsDir, tool))).toBe(true);
+      }
+    });
+
+    it('should have orchestrator that sources modules and dispatches tools', () => {
+      const orchestrator = fs.readFileSync(path.join(dockerDir, 'entrypoint.sh'), 'utf-8');
+      expect(orchestrator).toContain('entrypoint.d');
+      expect(orchestrator).toContain('80-tools');
+      expect(orchestrator).toContain('source "$script"');
+      expect(orchestrator).toContain('source "$TOOL_SCRIPT"');
     });
   });
 });
