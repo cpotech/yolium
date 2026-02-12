@@ -15,7 +15,19 @@ vi.mock('@main/lib/logger', () => ({
   })),
 }));
 
-import { parseStreamEvent, combineUsageParts, accumulateSessionUsage } from '@main/docker/agent-container';
+vi.mock('node:fs', () => ({
+  existsSync: vi.fn(() => false),
+  statSync: vi.fn(() => ({ isDirectory: () => false })),
+}));
+
+vi.mock('@main/docker/path-utils', () => ({
+  toDockerPath: vi.fn((p: string) => p),
+  getContainerProjectPath: vi.fn((p: string) => p),
+  toContainerHomePath: vi.fn((p: string) => p),
+}));
+
+import * as fs from 'node:fs';
+import { parseStreamEvent, combineUsageParts, accumulateSessionUsage, buildBindMounts, buildAgentEnv, processStreamChunk, flushLineBuffer } from '@main/docker/agent-container';
 import { extractProtocolMessages } from '@main/services/agent-protocol';
 import type { AgentContainerSession } from '@main/docker';
 
@@ -129,6 +141,382 @@ describe('parseStreamEvent', () => {
   it('omits usage when result event has no usage or cost', () => {
     const parsed = parseStreamEvent({ type: 'result' });
     expect(parsed.usage).toBeUndefined();
+  });
+});
+
+describe('buildBindMounts', () => {
+  it('creates project-only binds when no optional params are provided', () => {
+    const binds = buildBindMounts({
+      mountPath: '/home/user/project',
+      containerProjectPath: '/home/user/project',
+      gitCredentialsBind: null,
+      claudeOAuthBind: null,
+      codexOAuthBind: null,
+    });
+
+    expect(binds).toEqual([
+      '/home/user/project:/home/user/project:rw',
+    ]);
+  });
+
+  it('adds git credentials bind when provided', () => {
+    const binds = buildBindMounts({
+      mountPath: '/home/user/project',
+      containerProjectPath: '/home/user/project',
+      gitCredentialsBind: '/home/user/.git-credentials:/home/agent/.git-credentials-mounted:ro',
+      claudeOAuthBind: null,
+      codexOAuthBind: null,
+    });
+
+    expect(binds).toHaveLength(2);
+    expect(binds[1]).toBe('/home/user/.git-credentials:/home/agent/.git-credentials-mounted:ro');
+  });
+
+  it('adds Claude OAuth bind when provided', () => {
+    const binds = buildBindMounts({
+      mountPath: '/home/user/project',
+      containerProjectPath: '/home/user/project',
+      gitCredentialsBind: null,
+      claudeOAuthBind: '/home/user/.claude/.credentials.json:/home/agent/.claude-credentials.json:ro',
+      codexOAuthBind: null,
+    });
+
+    expect(binds).toHaveLength(2);
+    expect(binds[1]).toContain('.claude-credentials.json');
+  });
+
+  it('adds Codex OAuth bind when provided', () => {
+    const binds = buildBindMounts({
+      mountPath: '/home/user/project',
+      containerProjectPath: '/home/user/project',
+      gitCredentialsBind: null,
+      claudeOAuthBind: null,
+      codexOAuthBind: '/home/user/.codex/auth.json:/home/agent/.codex-auth.json:ro',
+    });
+
+    expect(binds).toHaveLength(2);
+    expect(binds[1]).toContain('.codex-auth.json');
+  });
+
+  it('adds all credential binds when all are provided', () => {
+    const binds = buildBindMounts({
+      mountPath: '/home/user/project',
+      containerProjectPath: '/home/user/project',
+      gitCredentialsBind: '/creds:/home/agent/.git-credentials-mounted:ro',
+      claudeOAuthBind: '/claude:/home/agent/.claude-credentials.json:ro',
+      codexOAuthBind: '/codex:/home/agent/.codex-auth.json:ro',
+    });
+
+    expect(binds).toHaveLength(4);
+  });
+
+  it('adds worktree .git mount when worktree and original path exist with .git dir', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => true } as fs.Stats);
+
+    const binds = buildBindMounts({
+      mountPath: '/home/user/worktrees/feat-branch',
+      containerProjectPath: '/home/user/worktrees/feat-branch',
+      worktreePath: '/home/user/worktrees/feat-branch',
+      originalPath: '/home/user/project',
+      gitCredentialsBind: null,
+      claudeOAuthBind: null,
+      codexOAuthBind: null,
+    });
+
+    expect(binds).toHaveLength(2);
+    expect(binds[1]).toContain('.git');
+
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+    vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false } as fs.Stats);
+  });
+
+  it('does not add worktree .git mount when .git dir does not exist', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+
+    const binds = buildBindMounts({
+      mountPath: '/home/user/worktrees/feat-branch',
+      containerProjectPath: '/home/user/worktrees/feat-branch',
+      worktreePath: '/home/user/worktrees/feat-branch',
+      originalPath: '/home/user/project',
+      gitCredentialsBind: null,
+      claudeOAuthBind: null,
+      codexOAuthBind: null,
+    });
+
+    expect(binds).toHaveLength(1);
+  });
+
+  it('does not add worktree .git mount when only worktreePath is set (no originalPath)', () => {
+    const binds = buildBindMounts({
+      mountPath: '/home/user/worktrees/feat-branch',
+      containerProjectPath: '/home/user/worktrees/feat-branch',
+      worktreePath: '/home/user/worktrees/feat-branch',
+      gitCredentialsBind: null,
+      claudeOAuthBind: null,
+      codexOAuthBind: null,
+    });
+
+    expect(binds).toHaveLength(1);
+  });
+});
+
+describe('buildAgentEnv', () => {
+  const baseParams = {
+    containerProjectPath: '/workspace',
+    projectTypesValue: 'node,typescript',
+    nodePackageManager: 'npm' as string | null,
+    promptBase64: 'dGVzdCBwcm9tcHQ=',
+    model: 'sonnet',
+    tools: ['Read', 'Write', 'Bash'],
+    itemId: 'item-123',
+    agentProvider: 'claude',
+    gitConfig: null,
+    useOAuth: false,
+    useCodexOAuth: false,
+  };
+
+  it('includes all required env vars', () => {
+    const env = buildAgentEnv(baseParams);
+
+    expect(env).toContain('PROJECT_DIR=/workspace');
+    expect(env).toContain('TOOL=agent');
+    expect(env).toContain('PROJECT_TYPES=node,typescript');
+    expect(env).toContain('NODE_PACKAGE_MANAGER=npm');
+    expect(env).toContain('AGENT_PROMPT=dGVzdCBwcm9tcHQ=');
+    expect(env).toContain('AGENT_MODEL=sonnet');
+    expect(env).toContain('AGENT_TOOLS=Read,Write,Bash');
+    expect(env).toContain('AGENT_ITEM_ID=item-123');
+    expect(env).toContain('AGENT_PROVIDER=claude');
+    expect(env).toContain('OPENCODE_YOLO=true');
+  });
+
+  it('omits PROJECT_TYPES when empty', () => {
+    const env = buildAgentEnv({ ...baseParams, projectTypesValue: '' });
+
+    expect(env.find(e => e.startsWith('PROJECT_TYPES='))).toBeUndefined();
+  });
+
+  it('omits NODE_PACKAGE_MANAGER when null', () => {
+    const env = buildAgentEnv({ ...baseParams, nodePackageManager: null });
+
+    expect(env.find(e => e.startsWith('NODE_PACKAGE_MANAGER='))).toBeUndefined();
+  });
+
+  it('includes AGENT_GOAL when goalBase64 is provided', () => {
+    const env = buildAgentEnv({ ...baseParams, goalBase64: 'Z29hbA==' });
+
+    expect(env).toContain('AGENT_GOAL=Z29hbA==');
+  });
+
+  it('omits AGENT_GOAL when goalBase64 is not provided', () => {
+    const env = buildAgentEnv(baseParams);
+
+    expect(env.find(e => e.startsWith('AGENT_GOAL='))).toBeUndefined();
+  });
+
+  it('includes WORKTREE_REPO_PATH when worktree and original path are set', () => {
+    const env = buildAgentEnv({
+      ...baseParams,
+      worktreePath: '/home/user/worktrees/feat',
+      originalPath: '/home/user/project',
+    });
+
+    expect(env).toContain('WORKTREE_REPO_PATH=/home/user/project');
+  });
+
+  it('omits WORKTREE_REPO_PATH when only worktreePath is set', () => {
+    const env = buildAgentEnv({ ...baseParams, worktreePath: '/home/user/worktrees/feat' });
+
+    expect(env.find(e => e.startsWith('WORKTREE_REPO_PATH='))).toBeUndefined();
+  });
+
+  it('includes git user name and email when gitConfig has them', () => {
+    const env = buildAgentEnv({
+      ...baseParams,
+      gitConfig: { name: 'Test User', email: 'test@example.com' },
+    });
+
+    expect(env).toContain('GIT_USER_NAME=Test User');
+    expect(env).toContain('GIT_USER_EMAIL=test@example.com');
+  });
+
+  it('omits git user name/email when gitConfig is null', () => {
+    const env = buildAgentEnv(baseParams);
+
+    expect(env.find(e => e.startsWith('GIT_USER_NAME='))).toBeUndefined();
+    expect(env.find(e => e.startsWith('GIT_USER_EMAIL='))).toBeUndefined();
+  });
+
+  it('sets CLAUDE_OAUTH_ENABLED when useOAuth is true', () => {
+    const env = buildAgentEnv({ ...baseParams, useOAuth: true });
+
+    expect(env).toContain('CLAUDE_OAUTH_ENABLED=true');
+    expect(env.find(e => e.startsWith('ANTHROPIC_API_KEY='))).toBeUndefined();
+  });
+
+  it('sets ANTHROPIC_API_KEY from gitConfig when useOAuth is false', () => {
+    const env = buildAgentEnv({
+      ...baseParams,
+      gitConfig: { name: 'User', email: 'u@e.com', anthropicApiKey: 'sk-ant-test' },
+    });
+
+    expect(env).toContain('ANTHROPIC_API_KEY=sk-ant-test');
+    expect(env.find(e => e.startsWith('CLAUDE_OAUTH_ENABLED='))).toBeUndefined();
+  });
+
+  it('sets CODEX_OAUTH_ENABLED when useCodexOAuth is true', () => {
+    const env = buildAgentEnv({ ...baseParams, useCodexOAuth: true });
+
+    expect(env).toContain('CODEX_OAUTH_ENABLED=true');
+    expect(env.find(e => e.startsWith('OPENAI_API_KEY='))).toBeUndefined();
+  });
+
+  it('sets OPENAI_API_KEY from gitConfig when useCodexOAuth is false', () => {
+    const env = buildAgentEnv({
+      ...baseParams,
+      gitConfig: { name: 'User', email: 'u@e.com', openaiApiKey: 'sk-openai-test' },
+    });
+
+    expect(env).toContain('OPENAI_API_KEY=sk-openai-test');
+    expect(env.find(e => e.startsWith('CODEX_OAUTH_ENABLED='))).toBeUndefined();
+  });
+});
+
+describe('processStreamChunk', () => {
+  it('parses complete JSON lines', () => {
+    const data = '{"type":"system"}\n{"type":"assistant","message":{"content":[{"type":"text","text":"hello"}]}}\n';
+    const result = processStreamChunk(data, '');
+
+    expect(result.lineBuffer).toBe('');
+    expect(result.displayParts).toContain('[Agent] Session started');
+    expect(result.displayParts).toContain('hello');
+    expect(result.textContent).toContain('hello');
+  });
+
+  it('buffers incomplete last line', () => {
+    const data = '{"type":"system"}\n{"type":"ass';
+    const result = processStreamChunk(data, '');
+
+    expect(result.lineBuffer).toBe('{"type":"ass');
+    expect(result.displayParts).toEqual(['[Agent] Session started']);
+  });
+
+  it('completes buffered line across chunks', () => {
+    // First chunk — partial JSON
+    const result1 = processStreamChunk('{"type":"ass', '');
+    expect(result1.lineBuffer).toBe('{"type":"ass');
+    expect(result1.displayParts).toEqual([]);
+
+    // Second chunk — completes the line
+    const result2 = processStreamChunk('istant","message":{"content":[{"type":"text","text":"hello"}]}}\n', result1.lineBuffer);
+    expect(result2.lineBuffer).toBe('');
+    expect(result2.displayParts).toContain('hello');
+    expect(result2.textContent).toContain('hello');
+  });
+
+  it('handles non-JSON lines as raw text', () => {
+    const data = 'Starting agent...\n';
+    const result = processStreamChunk(data, '');
+
+    expect(result.displayParts).toEqual(['Starting agent...']);
+    expect(result.textContent).toBe('Starting agent...\n');
+  });
+
+  it('handles mixed JSON and non-JSON content', () => {
+    const data = 'echo from entrypoint\n{"type":"system"}\n';
+    const result = processStreamChunk(data, '');
+
+    expect(result.displayParts).toEqual(['echo from entrypoint', '[Agent] Session started']);
+    expect(result.textContent).toContain('echo from entrypoint');
+  });
+
+  it('skips empty lines', () => {
+    const data = '\n\n{"type":"system"}\n\n';
+    const result = processStreamChunk(data, '');
+
+    expect(result.displayParts).toEqual(['[Agent] Session started']);
+  });
+
+  it('collects usage parts from result events', () => {
+    const data = '{"type":"result","cost_usd":0.05,"usage":{"input_tokens":100,"output_tokens":50}}\n';
+    const result = processStreamChunk(data, '');
+
+    expect(result.usageParts).toEqual([{ inputTokens: 100, outputTokens: 50, costUsd: 0.05 }]);
+  });
+
+  it('returns empty results for empty chunk', () => {
+    const result = processStreamChunk('', '');
+
+    expect(result.lineBuffer).toBe('');
+    expect(result.displayParts).toEqual([]);
+    expect(result.textContent).toBe('');
+    expect(result.usageParts).toEqual([]);
+  });
+
+  it('handles multiple lines in one chunk', () => {
+    const data = '{"type":"system"}\n{"type":"assistant","message":{"content":[{"type":"text","text":"line1"}]}}\n{"type":"assistant","message":{"content":[{"type":"text","text":"line2"}]}}\n';
+    const result = processStreamChunk(data, '');
+
+    expect(result.displayParts).toHaveLength(3);
+    expect(result.textContent).toContain('line1');
+    expect(result.textContent).toContain('line2');
+  });
+});
+
+describe('flushLineBuffer', () => {
+  it('returns empty results for empty buffer', () => {
+    const result = flushLineBuffer('');
+
+    expect(result.textContent).toBe('');
+    expect(result.protocolMessages).toEqual([]);
+  });
+
+  it('returns empty results for whitespace-only buffer', () => {
+    const result = flushLineBuffer('   \n  ');
+
+    expect(result.textContent).toBe('');
+    expect(result.protocolMessages).toEqual([]);
+  });
+
+  it('parses JSON buffer as stream event', () => {
+    const result = flushLineBuffer('{"type":"assistant","message":{"content":[{"type":"text","text":"final text"}]}}');
+
+    expect(result.textContent).toContain('final text');
+  });
+
+  it('handles non-JSON buffer as raw text', () => {
+    const result = flushLineBuffer('some raw output');
+
+    expect(result.textContent).toBe('some raw output\n');
+  });
+
+  it('extracts protocol messages from JSON buffer', () => {
+    const result = flushLineBuffer('{"type":"assistant","message":{"content":[{"type":"text","text":"@@YOLIUM:{\\"type\\":\\"complete\\",\\"summary\\":\\"done\\"}"}]}}');
+
+    expect(result.protocolMessages).toEqual([{ type: 'complete', summary: 'done' }]);
+  });
+
+  it('extracts protocol messages from raw text buffer', () => {
+    const result = flushLineBuffer('@@YOLIUM:{"type":"complete","summary":"all done"}');
+
+    expect(result.textContent).toContain('@@YOLIUM:');
+    expect(result.protocolMessages).toEqual([{ type: 'complete', summary: 'all done' }]);
+  });
+
+  it('returns empty protocol messages when no protocol text', () => {
+    const result = flushLineBuffer('just some regular text');
+
+    expect(result.textContent).toBe('just some regular text\n');
+    expect(result.protocolMessages).toEqual([]);
+  });
+
+  it('handles JSON result event (no text content)', () => {
+    const result = flushLineBuffer('{"type":"result","result":"Done","cost_usd":0.05}');
+
+    // Result events don't return text (by design — avoids duplicate protocol extraction)
+    expect(result.textContent).toBe('');
+    expect(result.protocolMessages).toEqual([]);
   });
 });
 
