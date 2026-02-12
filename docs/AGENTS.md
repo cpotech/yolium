@@ -17,9 +17,9 @@ The Plan Agent analyzes the codebase and produces a structured implementation pl
 
 **Process:**
 
-1. **Analyze** — Uses Glob, Grep, and Read to explore the project structure, tech stack, and relevant files. Posts an analysis summary as a comment.
+1. **Analyze** — Uses Glob, Grep, and Read to explore the project structure, tech stack, and relevant files, including in-scope simplification/dead-code opportunities. Posts an analysis summary as a comment.
 2. **Clarify** — If the goal is ambiguous or there are meaningful design choices, asks the user one question at a time. Skips this step if requirements are clear.
-3. **Write Plan** — Produces a structured plan: context, approach, ordered steps with file references, files-to-modify table, and acceptance criteria with checkboxes.
+3. **Write Plan** — Produces a structured plan: context, approach, ordered steps with file references (including cleanup/simplification and dead-code removal when applicable), files-to-modify table, and acceptance criteria with checkboxes.
 4. **Deliver** — Posts the plan as a comment, writes it to the work item description (so Code Agent can read it), and signals completion.
 
 **Tools:** Read, Glob, Grep, Bash, Write, Edit, WebSearch, WebFetch
@@ -34,7 +34,7 @@ The Code Agent implements changes autonomously: writes code and tests, runs test
 
 1. **Analyze** — Reads the work item description and explores relevant files to understand requirements and existing patterns.
 2. **Verify Branch** — Confirms it's on the correct isolated worktree branch (never creates or switches branches).
-3. **Implement** — Writes clean, minimal code following existing conventions. Makes atomic, focused changes.
+3. **Implement** — Writes clean, minimal code following existing conventions. Makes atomic, focused, behavior-preserving changes and removes in-scope dead code/unnecessary complexity when relevant.
 4. **Write Tests** — Adds unit tests covering the happy path and key edge cases. Does not write E2E tests (those run in CI).
 5. **Run Tests** — Runs `npm test` and fixes any failures until all tests pass.
 6. **Commit** — Stages and commits with conventional commit messages (`feat:`, `fix:`, `test:`, etc.). Does not push to remote.
@@ -53,12 +53,12 @@ The Verify Agent is a read-only reviewer. It inspects changes made by a Code Age
 1. **Analyze Context** — Reads the work item and conversation history to understand what was attempted.
 2. **Inspect Changes** — Runs `git diff main...HEAD` and `git log main..HEAD` to see all changes and commits.
 3. **Read Guidelines** — Finds and reads `CLAUDE.md` files to understand project rules and conventions.
-4. **Validate Completeness** — Checks each acceptance criterion against actual code (not just agent claims). Runs `npm test`.
-5. **Review Quality** — Assesses for over-engineering, unnecessary complexity, dead code, and scope creep.
+4. **Validate Completeness** — Checks each acceptance criterion against actual code (not just agent claims), explicitly verifies simplification/dead-code expectations for changed files, and runs `npm test`.
+5. **Review Quality** — Assesses for over-engineering, unnecessary complexity, dead code, scope creep, and quality of in-scope cleanup execution.
 6. **Check Compliance** — Verifies code style, testing requirements, git rules, and architecture patterns from guidelines.
 7. **Deliver Verdict** — Posts a structured verification report with one of three verdicts:
-   - **APPROVED** — All criteria met, no critical issues, tests pass
-   - **NEEDS REVISION** — Most criteria met but has issues that should be fixed
+   - **APPROVED** — All criteria met, no critical issues, tests pass, no avoidable in-scope dead code/complexity remains
+   - **NEEDS REVISION** — Most criteria met but has issues that should be fixed (including avoidable in-scope dead code/complexity)
    - **REJECTED** — Criteria not met, critical issues, or tests fail
 
 **Tools:** Read, Glob, Grep, Bash
@@ -176,6 +176,6 @@ Use `@@YOLIUM:{"type":"complete","summary":"..."}` when done.
 
 | Agent | File | Purpose |
 |-------|------|---------|
-| Plan Agent | `plan-agent.md` | Analyzes codebase and produces implementation plans |
-| Code Agent | `code-agent.md` | Implements code changes, writes tests, commits locally |
-| Verify Agent | `verify-agent.md` | Reviews changes for correctness and guideline compliance |
+| Plan Agent | `plan-agent.md` | Analyzes codebase and produces implementation plans with in-scope simplification/dead-code guidance |
+| Code Agent | `code-agent.md` | Implements code changes, simplifies touched scope, writes tests, commits locally |
+| Verify Agent | `verify-agent.md` | Reviews changes for correctness, guideline compliance, and cleanup quality evidence |

@@ -70,6 +70,7 @@ For each acceptance criterion in the work item:
 - Check whether the actual code satisfies it (not just whether the agent claimed it does)
 - Look for signs of incomplete work: stub implementations, TODO comments, empty catch blocks, hardcoded values, mock-only tests that don't test real behavior
 - Verify that tests exist and actually test the claimed functionality
+- Explicitly validate whether changed files were reasonably simplified and whether in-scope dead code was removed (or intentionally retained with a defensible reason)
 - Run `npm test` to confirm tests pass
 - Send a progress message for the "validate" step
 
@@ -80,6 +81,7 @@ Assess the code changes for:
 - **Unnecessary complexity**: Deep nesting, overly clever solutions, excessive indirection
 - **Dead code**: Unused imports, unreachable branches, commented-out code
 - **Scope creep**: Changes beyond what the work item requested
+- **Cleanup execution quality**: Whether in-scope simplification/dead-code cleanup was done, intentionally deferred, or missed (with evidence)
 - Send a progress message for the "quality" step
 
 ### Step 6: Check Guideline Compliance
@@ -107,6 +109,7 @@ Your final comment MUST use this structure:
 ### Task Completion
 - [x] Criterion 1 - verified working (file:line evidence)
 - [ ] Criterion 2 - not implemented (explanation)
+- [x] In-scope simplification/dead-code expectations verified (or clearly marked not applicable with evidence)
 
 ### Issues Found
 1. [Critical] Description with file:line reference
@@ -117,6 +120,8 @@ Your final comment MUST use this structure:
 ### Code Quality
 - **Complexity**: Low | Medium | High (relative to problem)
 - **Over-engineering concerns**: Specific examples or "None"
+- **Dead code status**: Removed | Remaining (with file:line evidence and rationale)
+- **Simplification evidence**: What was simplified in changed files, what remains, and why
 - **Simplification opportunities**: Specific suggestions or "None"
 
 ### Guideline Compliance
@@ -129,13 +134,13 @@ Your final comment MUST use this structure:
 
 ### Recommendation
 Specific, actionable next steps. If APPROVED, state what was done well.
-If REJECTED or NEEDS REVISION, list exactly what must change.
+If REJECTED or NEEDS REVISION, list exactly what must change, including required dead-code/simplification follow-ups in scope.
 ```
 
 ## Verdict Criteria
 
-- **APPROVED**: All acceptance criteria met, no critical/high issues, tests pass, guidelines followed
-- **NEEDS REVISION**: Most criteria met but has high-severity issues, over-engineering, or guideline violations that should be fixed
+- **APPROVED**: All acceptance criteria met, no critical/high issues, tests pass, guidelines followed, and no avoidable in-scope dead code/complexity remains
+- **NEEDS REVISION**: Most criteria met but has high-severity issues, avoidable in-scope complexity/dead code, weak simplification evidence, or guideline violations that should be fixed
 - **REJECTED**: Acceptance criteria not met, critical issues found, or tests fail
 
 ## Rules
@@ -148,3 +153,4 @@ If REJECTED or NEEDS REVISION, list exactly what must change.
 6. **Check the diff** - Always run `git diff main...HEAD` to see what actually changed. Do not trust commit messages alone.
 7. **Report everything** - Even minor issues should be noted. Use severity levels to prioritize.
 8. **One report** - Deliver a single comprehensive report at the end, not incremental feedback.
+9. **Show cleanup evidence** - Always document dead-code/simplification status for changed files, even when the result is "None"

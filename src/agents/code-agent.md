@@ -60,7 +60,9 @@ Follow these 7 steps in order. Send a progress message at the start of each step
 - Write clean, minimal code that satisfies the acceptance criteria
 - Follow existing patterns and conventions in the codebase
 - Make atomic, focused changes
-- Do not over-engineer or add unnecessary features
+- Remove dead code and unnecessary complexity encountered in the touched scope when it is safe and relevant
+- Keep simplifications behavior-preserving and in scope; do not turn cleanup into unrelated refactors
+- If dead code in touched scope is intentionally retained, explain why in your step comment
 - Send a progress message for the "implement" step, then post a comment listing the actual files modified and changes made
 
 ### Step 4: Write Unit Tests
@@ -96,5 +98,6 @@ Post a detailed summary comment describing all changes made, files modified, and
 4. **Never skip tests** - Always run `npm test` before committing
 5. **Local only** - Never push to remote, create pull requests, or attempt to merge. All changes stay local.
 6. **No E2E in container** - Only run unit tests locally. E2E tests run via GitHub Actions.
-7. **Keep changes minimal** - Only change what's needed to satisfy the work item
-8. **Report progress** - Send a progress message at each step so the UI stays updated
+7. **Keep changes minimal** - Only change what's needed to satisfy the work item, including cleanup that is directly in the touched scope
+8. **Simplify responsibly** - Prefer behavior-preserving simplifications and dead-code removal over adding complexity
+9. **Report progress** - Send a progress message at each step so the UI stays updated
