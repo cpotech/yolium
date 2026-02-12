@@ -9,11 +9,11 @@ import * as os from 'node:os';
 import { PassThrough } from 'node:stream';
 import { BrowserWindow } from 'electron';
 import { createLogger } from '@main/lib/logger';
-// deleteWorktree no longer called here — worktrees persist with kanban items
 import { extractProtocolMessages } from '@main/services/agent-protocol';
 import { detectPackageManager, detectProjectTypes } from '@main/services/project-onboarding';
 import { formatLogTimestamp } from '@main/stores/workitem-log-store';
 import { loadGitConfig, refreshCodexOAuthTokenSerialized } from '@main/git/git-config';
+import type { GitConfig } from '@main/git/git-config';
 import { fixWorktreeGitFile } from '@main/git/git-worktree';
 import { docker, agentSessions, DEFAULT_IMAGE, type AgentContainerSession } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
@@ -193,6 +193,284 @@ export function parseStreamEvent(event: Record<string, unknown>): ParsedStreamEv
   }
 }
 
+// ─── Extracted helper functions ─────────────────────────────────────────────
+
+/**
+ * Build bind mount array for headless agent containers.
+ * Pure function: takes config, returns mount strings.
+ */
+export function buildBindMounts(params: {
+  mountPath: string;
+  containerProjectPath: string;
+  worktreePath?: string;
+  originalPath?: string;
+  gitCredentialsBind: string | null;
+  claudeOAuthBind: string | null;
+  codexOAuthBind: string | null;
+}): string[] {
+  const { mountPath, containerProjectPath, worktreePath, originalPath, gitCredentialsBind, claudeOAuthBind, codexOAuthBind } = params;
+
+  const binds = [
+    `${toDockerPath(mountPath)}:${containerProjectPath}:rw`,
+  ];
+
+  // For worktrees, mount the original repo's .git directory so git commands work
+  if (worktreePath && originalPath) {
+    const mainGitDir = path.join(originalPath, '.git');
+    if (fs.existsSync(mainGitDir) && fs.statSync(mainGitDir).isDirectory()) {
+      const dockerGitDir = toDockerPath(mainGitDir);
+      const containerGitDir = toContainerHomePath(mainGitDir);
+      binds.push(`${dockerGitDir}:${containerGitDir}:rw`);
+    }
+  }
+
+  if (gitCredentialsBind) {
+    binds.push(gitCredentialsBind);
+  }
+
+  if (claudeOAuthBind) {
+    binds.push(claudeOAuthBind);
+  }
+
+  if (codexOAuthBind) {
+    binds.push(codexOAuthBind);
+  }
+
+  return binds;
+}
+
+/**
+ * Build the environment variable array for agent containers.
+ * Pure function: takes config, returns env var strings.
+ */
+export function buildAgentEnv(params: {
+  containerProjectPath: string;
+  projectTypesValue: string;
+  nodePackageManager: string | null;
+  promptBase64: string;
+  goalBase64?: string;
+  model: string;
+  tools: string[];
+  itemId: string;
+  agentProvider: string;
+  worktreePath?: string;
+  originalPath?: string;
+  gitConfig: GitConfig | null;
+  useOAuth: boolean;
+  useCodexOAuth: boolean;
+}): string[] {
+  const {
+    containerProjectPath, projectTypesValue, nodePackageManager,
+    promptBase64, goalBase64, model, tools, itemId, agentProvider,
+    worktreePath, originalPath, gitConfig, useOAuth, useCodexOAuth,
+  } = params;
+
+  return [
+    `PROJECT_DIR=${containerProjectPath}`,
+    'TOOL=agent',
+    ...(projectTypesValue ? [`PROJECT_TYPES=${projectTypesValue}`] : []),
+    ...(nodePackageManager ? [`NODE_PACKAGE_MANAGER=${nodePackageManager}`] : []),
+    `AGENT_PROMPT=${promptBase64}`,
+    `AGENT_MODEL=${model}`,
+    `AGENT_TOOLS=${tools.join(',')}`,
+    `AGENT_ITEM_ID=${itemId}`,
+    `AGENT_PROVIDER=${agentProvider}`,
+    ...(goalBase64 ? [`AGENT_GOAL=${goalBase64}`] : []),
+    `HOST_HOME=${toContainerHomePath(os.homedir())}`,
+    'OPENCODE_YOLO=true',  // Skip permission prompts — container is already isolated
+    ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
+    ...(worktreePath && originalPath ? [`WORKTREE_REPO_PATH=${toDockerPath(originalPath)}`] : []),
+    ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
+    ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
+    // Pass API keys as env vars (skip Anthropic key when OAuth is enabled)
+    ...(() => {
+      if (useOAuth) return ['CLAUDE_OAUTH_ENABLED=true'];
+      const key = gitConfig?.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
+      return key ? [`ANTHROPIC_API_KEY=${key}`] : [];
+    })(),
+    ...(() => {
+      if (useCodexOAuth) return ['CODEX_OAUTH_ENABLED=true'];
+      const key = gitConfig?.openaiApiKey || process.env.OPENAI_API_KEY;
+      return key ? [`OPENAI_API_KEY=${key}`] : [];
+    })(),
+  ];
+}
+
+/**
+ * Find BrowserWindow webContents by ID.
+ * Internal helper to avoid duplicating BrowserWindow.getAllWindows().find(...).
+ */
+function getWebContents(webContentsId: number): Electron.WebContents | undefined {
+  return BrowserWindow.getAllWindows().find(
+    (w) => w.webContents.id === webContentsId
+  )?.webContents;
+}
+
+/**
+ * Dispatch parsed stream output to callbacks, renderer IPC, and protocol message handlers.
+ * Internal helper that consolidates the output→display→IPC→protocol pipeline.
+ */
+function dispatchOutput(
+  result: ReturnType<typeof processStreamChunk>,
+  ctx: {
+    sessionId: string;
+    webContentsId: number;
+    resolvedProjectPath: string;
+    itemId: string;
+    onOutput?: (data: string) => void;
+    onDisplayOutput?: (data: string) => void;
+    onProtocolMessage?: (message: unknown) => void;
+  }
+): void {
+  if (result.displayParts.length === 0 && result.usageParts.length === 0) return;
+
+  // Format display output with timestamps
+  let displayStr = '';
+  if (result.displayParts.length > 0) {
+    const ts = formatLogTimestamp();
+    displayStr = result.displayParts.map(line => `${ts} ${line}`).join('\n');
+    logger.info('Agent output', { sessionId: ctx.sessionId, displayLines: result.displayParts.length, display: displayStr.slice(0, 500) });
+  }
+
+  if (result.textContent) ctx.onOutput?.(result.textContent);
+  if (displayStr) ctx.onDisplayOutput?.(displayStr);
+
+  // Send to renderer
+  const webContents = getWebContents(ctx.webContentsId);
+  if (webContents && !webContents.isDestroyed()) {
+    if (displayStr) webContents.send('agent:output', ctx.sessionId, displayStr);
+
+    if (result.usageParts.length > 0) {
+      const combined = combineUsageParts(result.usageParts);
+      const session = agentSessions.get(ctx.sessionId);
+      if (session) accumulateSessionUsage(session, combined);
+      webContents.send('agent:cost-update', ctx.sessionId, ctx.resolvedProjectPath, ctx.itemId, combined);
+    }
+  }
+
+  // Extract and forward protocol messages
+  if (result.textContent) {
+    const messages = extractProtocolMessages(result.textContent);
+    if (messages.length > 0) {
+      const session = agentSessions.get(ctx.sessionId);
+      if (session) session.protocolMessageCount += messages.length;
+      for (const message of messages) {
+        ctx.onProtocolMessage?.(message);
+        if (webContents && !webContents.isDestroyed()) {
+          webContents.send('agent:protocol-message', ctx.sessionId, message);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Process a chunk of stream data into parsed display parts, text content, and usage info.
+ * Pure function: takes data string + current buffer, returns parsed results + remaining buffer.
+ */
+export function processStreamChunk(
+  dataStr: string,
+  lineBuffer: string
+): { lineBuffer: string; displayParts: string[]; textContent: string; usageParts: NonNullable<ParsedStreamEvent['usage']>[] } {
+  lineBuffer += dataStr;
+  const lines = lineBuffer.split('\n');
+  lineBuffer = lines.pop() || ''; // Keep incomplete last line in buffer
+
+  const displayParts: string[] = [];
+  const usageParts: Array<NonNullable<ParsedStreamEvent['usage']>> = [];
+  let textContent = '';
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    try {
+      const event = JSON.parse(trimmed);
+      const parsed = parseStreamEvent(event);
+      if (parsed.display) displayParts.push(parsed.display);
+      if (parsed.text) textContent += parsed.text + '\n';
+      if (parsed.usage) usageParts.push(parsed.usage);
+    } catch {
+      // Not JSON — forward as raw text (e.g., entrypoint echo messages, stderr)
+      displayParts.push(trimmed);
+      textContent += trimmed + '\n';
+    }
+  }
+
+  return { lineBuffer, displayParts, textContent, usageParts };
+}
+
+/**
+ * Flush any remaining data in the line buffer at stream end.
+ * Pure function: takes buffer contents, returns parsed text and protocol messages.
+ */
+export function flushLineBuffer(
+  lineBuffer: string
+): { textContent: string; protocolMessages: unknown[] } {
+  const trimmed = lineBuffer.trim();
+  if (!trimmed) {
+    return { textContent: '', protocolMessages: [] };
+  }
+
+  let textContent: string;
+  try {
+    const event = JSON.parse(trimmed);
+    const parsed = parseStreamEvent(event);
+    textContent = parsed.text ? parsed.text + '\n' : '';
+  } catch {
+    textContent = trimmed + '\n';
+  }
+
+  // Extract protocol messages from text content (or raw text if not JSON)
+  const protocolMessages = textContent
+    ? extractProtocolMessages(textContent.endsWith('\n') ? textContent.slice(0, -1) : textContent)
+    : [];
+
+  return { textContent, protocolMessages };
+}
+
+/**
+ * Clean up a session: clear timeout, update state, fix worktree paths.
+ * Internal helper consolidating the repeated cleanup pattern.
+ */
+function cleanupSession(
+  sessionId: string,
+  state: 'stopped' | 'crashed'
+): void {
+  const session = agentSessions.get(sessionId);
+  if (!session) return;
+
+  if (session.timeoutId) {
+    clearTimeout(session.timeoutId);
+  }
+
+  session.state = state;
+
+  // Re-fix worktree .git paths — the Linux container rewrites them to /c/ style
+  if (process.platform === 'win32' && session.worktreePath) {
+    fixWorktreeGitFile(session.worktreePath);
+  }
+}
+
+/**
+ * Notify renderer and callbacks that the agent has exited.
+ * Internal helper for stream end/error handlers.
+ */
+function notifyExit(
+  webContentsId: number,
+  sessionId: string,
+  exitCode: number,
+  onExit?: (code: number) => void,
+): void {
+  onExit?.(exitCode);
+  const webContents = getWebContents(webContentsId);
+  if (webContents && !webContents.isDestroyed()) {
+    webContents.send('agent:exit', sessionId, exitCode);
+  }
+}
+
+// ─── Public API ─────────────────────────────────────────────────────────────
+
 /**
  * Parameters for creating an agent container.
  */
@@ -239,407 +517,146 @@ export async function createAgentContainer(
   const { onOutput, onDisplayOutput, onProtocolMessage, onExit } = callbacks;
 
   const sessionId = `agent-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-
-  // Resolve to absolute path
   const resolvedProjectPath = path.resolve(projectPath);
-
-  // Use worktree as mount path if available, otherwise use project path directly
   const mountPath = worktreePath || resolvedProjectPath;
 
   logger.info('Creating agent container', {
-    sessionId,
-    projectPath: resolvedProjectPath,
-    agentName,
-    model,
-    tools,
-    itemId,
+    sessionId, projectPath: resolvedProjectPath, agentName, model, tools, itemId,
     ...(worktreePath && { worktreePath, branchName }),
   });
 
+  // Resolve paths and detect project config
   const containerProjectPath = getContainerProjectPath(mountPath);
-  const projectTypes = detectProjectTypes(mountPath);
+  const projectTypesValue = detectProjectTypes(mountPath).join(',');
   const nodePackageManager = detectPackageManager(mountPath);
-  const projectTypesValue = projectTypes.join(',');
 
-  // Build bind mounts for the project (minimal set for headless agent)
-  const binds = [
-    `${toDockerPath(mountPath)}:${containerProjectPath}:rw`,
-  ];
-
-  // For worktrees, mount the original repo's .git directory so git commands work
-  if (worktreePath && originalPath) {
-    const mainGitDir = path.join(originalPath, '.git');
-    if (fs.existsSync(mainGitDir) && fs.statSync(mainGitDir).isDirectory()) {
-      const dockerGitDir = toDockerPath(mainGitDir);
-      const containerGitDir = toContainerHomePath(mainGitDir);
-      binds.push(`${dockerGitDir}:${containerGitDir}:rw`);
-    }
-  }
-
-  // Add git credentials
-  const gitCredBind = getGitCredentialsBind();
-  if (gitCredBind) {
-    binds.push(gitCredBind);
-  }
-
-  // Add Claude OAuth credentials if enabled
-  const oauthBind = getClaudeOAuthBind();
-  if (oauthBind) {
-    binds.push(oauthBind);
-  }
-
-  // Refresh Codex OAuth token before mounting (single-use refresh tokens go stale)
+  // Build bind mounts
+  const gitCredentialsBind = getGitCredentialsBind();
+  const claudeOAuthBind = getClaudeOAuthBind();
   if (agentProvider === 'codex') {
     await refreshCodexOAuthTokenSerialized();
   }
-
-  // Add Codex OAuth credentials if enabled
   const codexOAuthBind = getCodexOAuthBind();
-  if (codexOAuthBind) {
-    binds.push(codexOAuthBind);
-  }
 
+  const binds = buildBindMounts({
+    mountPath, containerProjectPath, worktreePath, originalPath,
+    gitCredentialsBind, claudeOAuthBind, codexOAuthBind,
+  });
   logger.debug('Agent container bind mounts', { sessionId, binds });
 
-  // Encode prompt as base64 to avoid shell escaping issues
+  // Encode prompt as base64
   const promptBase64 = Buffer.from(prompt).toString('base64');
   const goalBase64 = goal ? Buffer.from(goal).toString('base64') : undefined;
   logger.info('Agent prompt encoded', { sessionId, promptLength: prompt.length, base64Length: promptBase64.length });
 
-  // Load git config for identity env vars (name, email)
+  // Build env vars
   const gitConfig = loadGitConfig();
-  const useOAuth = gitConfig?.useClaudeOAuth && oauthBind;
-  const useCodexOAuth = gitConfig?.useCodexOAuth && codexOAuthBind;
+  const useOAuth = !!(gitConfig?.useClaudeOAuth && claudeOAuthBind);
+  const useCodexOAuth = !!(gitConfig?.useCodexOAuth && codexOAuthBind);
 
+  const env = buildAgentEnv({
+    containerProjectPath, projectTypesValue, nodePackageManager,
+    promptBase64, goalBase64, model, tools, itemId,
+    agentProvider: agentProvider || 'claude',
+    worktreePath, originalPath, gitConfig, useOAuth, useCodexOAuth,
+  });
+
+  // Create container, attach, start
   const container = await docker.createContainer({
-    Image: DEFAULT_IMAGE,
-    Tty: false,  // Headless - no TTY
-    OpenStdin: false,
-    AttachStdin: false,
-    AttachStdout: true,
-    AttachStderr: true,
-    WorkingDir: containerProjectPath,
-    Env: [
-      `PROJECT_DIR=${containerProjectPath}`,
-      'TOOL=agent',
-      ...(projectTypesValue ? [`PROJECT_TYPES=${projectTypesValue}`] : []),
-      ...(nodePackageManager ? [`NODE_PACKAGE_MANAGER=${nodePackageManager}`] : []),
-      `AGENT_PROMPT=${promptBase64}`,
-      `AGENT_MODEL=${model}`,
-      `AGENT_TOOLS=${tools.join(',')}`,
-      `AGENT_ITEM_ID=${itemId}`,
-      `AGENT_PROVIDER=${agentProvider || 'claude'}`,
-      ...(goalBase64 ? [`AGENT_GOAL=${goalBase64}`] : []),
-      `HOST_HOME=${toContainerHomePath(os.homedir())}`,
-      'OPENCODE_YOLO=true',  // Skip permission prompts — container is already isolated
-      ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
-      ...(worktreePath && originalPath ? [`WORKTREE_REPO_PATH=${toDockerPath(originalPath)}`] : []),
-      ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
-      ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
-      // Pass API keys as env vars (skip Anthropic key when OAuth is enabled)
-      ...(() => {
-        if (useOAuth) return ['CLAUDE_OAUTH_ENABLED=true'];
-        const key = gitConfig?.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
-        return key ? [`ANTHROPIC_API_KEY=${key}`] : [];
-      })(),
-      ...(() => {
-        if (useCodexOAuth) return ['CODEX_OAUTH_ENABLED=true'];
-        const key = gitConfig?.openaiApiKey || process.env.OPENAI_API_KEY;
-        return key ? [`OPENAI_API_KEY=${key}`] : [];
-      })(),
-    ],
-    HostConfig: {
-      CapAdd: ['NET_ADMIN'],
-      Binds: binds,
-    },
+    Image: DEFAULT_IMAGE, Tty: false, OpenStdin: false, AttachStdin: false,
+    AttachStdout: true, AttachStderr: true, WorkingDir: containerProjectPath,
+    Env: env, HostConfig: { CapAdd: ['NET_ADMIN'], Binds: binds },
   });
-
-  // Attach before start to avoid race condition
-  const stream = await container.attach({
-    stream: true,
-    stdout: true,
-    stderr: true,
-  });
-
-  // Demux the multiplexed stream (Tty: false uses 8-byte header framing)
+  const stream = await container.attach({ stream: true, stdout: true, stderr: true });
   const stdout = new PassThrough();
   const stderr = new PassThrough();
   docker.modem.demuxStream(stream, stdout, stderr);
-
   await container.start();
   logger.info('Agent container started', { sessionId, containerId: container.id });
 
-  // Set up timeout tracking
+  // Timeout tracking
   let timeoutId: NodeJS.Timeout | undefined;
-
   const effectiveTimeoutMs = timeoutMs ?? DEFAULT_AGENT_TIMEOUT_MS;
-
   const resetTimeout = () => {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
+    if (timeoutId) clearTimeout(timeoutId);
     timeoutId = setTimeout(async () => {
       logger.warn('Agent container timed out (no output)', { sessionId, timeoutMs: effectiveTimeoutMs });
       const session = agentSessions.get(sessionId);
       if (session && session.state === 'running') {
-        session.state = 'crashed';
-        try {
-          await container.stop({ t: 5 });
-          await container.remove({ force: true });
-        } catch {
-          // Container may already be stopped
-        }
-        // Re-fix worktree .git paths — the Linux container rewrites them to /c/ style
-        if (process.platform === 'win32' && session.worktreePath) {
-          fixWorktreeGitFile(session.worktreePath);
-        }
-        onExit?.(124); // Timeout exit code
+        cleanupSession(sessionId, 'crashed');
+        try { await container.stop({ t: 5 }); await container.remove({ force: true }); } catch { /* already stopped */ }
+        notifyExit(webContentsId, sessionId, 124, onExit);
       }
     }, effectiveTimeoutMs);
   };
-
-  // Start initial timeout
   resetTimeout();
 
-  // Store session (include worktree info if applicable)
+  // Register session
   agentSessions.set(sessionId, {
-    id: sessionId,
-    containerId: container.id,
-    webContentsId,
-    projectPath: resolvedProjectPath,
-    itemId,
-    agentName,
-    state: 'running',
-    timeoutId,
-    protocolMessageCount: 0,
+    id: sessionId, containerId: container.id, webContentsId,
+    projectPath: resolvedProjectPath, itemId, agentName,
+    state: 'running', timeoutId, protocolMessageCount: 0,
     cumulativeUsage: { inputTokens: 0, outputTokens: 0, costUsd: 0 },
     agentProvider,
     ...(worktreePath && { worktreePath, originalPath, branchName }),
   });
 
-  // Line buffer for stream-json parsing (Docker stream chunks may not align with line boundaries)
+  // Stream output handling
   let lineBuffer = '';
+  const dispatchCtx = {
+    sessionId, webContentsId, resolvedProjectPath, itemId,
+    onOutput, onDisplayOutput, onProtocolMessage,
+  };
 
-  // Handle output: parse stream-json events from Claude CLI into readable display text
   const handleOutput = (data: Buffer) => {
     const dataStr = data.toString();
-
-    // Reset timeout on any output
     resetTimeout();
 
-    // Update session timeout reference
     const session = agentSessions.get(sessionId);
-    if (session) {
-      session.timeoutId = timeoutId;
-    }
+    if (session) session.timeoutId = timeoutId;
 
-    // Check for error patterns in raw output (for non-Claude providers)
+    // Check for error patterns (non-Claude providers)
     const detectedError = detectErrorInOutput(dataStr, agentProvider);
     if (detectedError && session && !session.detectedError) {
       session.detectedError = detectedError;
       logger.warn('Detected error in agent output', { sessionId, error: detectedError, provider: agentProvider });
     }
 
-    // Buffer and split on newlines for stream-json parsing
-    lineBuffer += dataStr;
-    const lines = lineBuffer.split('\n');
-    lineBuffer = lines.pop() || ''; // Keep incomplete last line in buffer
-
-    const displayParts: string[] = [];
-    const usageParts: Array<NonNullable<ParsedStreamEvent['usage']>> = [];
-    let textContent = '';
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-
-      try {
-        const event = JSON.parse(trimmed);
-        const parsed = parseStreamEvent(event);
-        if (parsed.display) displayParts.push(parsed.display);
-        if (parsed.text) textContent += parsed.text + '\n';
-        if (parsed.usage) usageParts.push(parsed.usage);
-      } catch {
-        // Not JSON — forward as raw text (e.g., entrypoint echo messages, stderr)
-        displayParts.push(trimmed);
-        textContent += trimmed + '\n';
-      }
-    }
-
-    if (displayParts.length === 0 && usageParts.length === 0) return;
-
-    let displayStr = '';
-    if (displayParts.length > 0) {
-      // Prepend timestamp to each display line
-      const ts = formatLogTimestamp();
-      const timestampedParts = displayParts.map(line => `${ts} ${line}`);
-      displayStr = timestampedParts.join('\n');
-      logger.info('Agent output', { sessionId, displayLines: displayParts.length, display: displayStr.slice(0, 500) });
-    }
-
-    // Forward text content for protocol parsing via callback
-    // Only send raw text content, never display text — displayStr may contain
-    // duplicate text (e.g., from result events) that would cause protocol messages
-    // to be extracted and handled twice.
-    if (textContent) {
-      onOutput?.(textContent);
-    }
-
-    // Forward display text for persistent logging
-    if (displayStr) {
-      onDisplayOutput?.(displayStr);
-    }
-
-    // Send parsed display output to renderer
-    const webContents = BrowserWindow.getAllWindows().find(
-      (w) => w.webContents.id === webContentsId
-    )?.webContents;
-
-    const combinedUsage = usageParts.length > 0 ? combineUsageParts(usageParts) : null;
-
-    if (combinedUsage && session) {
-      accumulateSessionUsage(session, combinedUsage);
-    }
-
-    if (webContents && !webContents.isDestroyed()) {
-      if (displayStr) {
-        webContents.send('agent:output', sessionId, displayStr);
-      }
-
-      if (combinedUsage) {
-        webContents.send('agent:cost-update', sessionId, resolvedProjectPath, itemId, combinedUsage);
-      }
-    }
-
-    // Parse and forward protocol messages from text content
-    if (textContent) {
-      const messages = extractProtocolMessages(textContent);
-      if (messages.length > 0) {
-        // Increment protocol message count
-        if (session) {
-          session.protocolMessageCount += messages.length;
-        }
-
-        for (const message of messages) {
-          onProtocolMessage?.(message);
-
-          if (webContents && !webContents.isDestroyed()) {
-            webContents.send('agent:protocol-message', sessionId, message);
-          }
-        }
-      }
-    }
+    const result = processStreamChunk(dataStr, lineBuffer);
+    lineBuffer = result.lineBuffer;
+    dispatchOutput(result, dispatchCtx);
   };
 
   stdout.on('data', handleOutput);
   stderr.on('data', handleOutput);
 
-  // Handle completion
+  // Handle stream end
   stream.on('end', async () => {
-    // Flush any remaining data in the line buffer (e.g., last line without trailing newline)
-    if (lineBuffer.trim()) {
-      const trimmed = lineBuffer.trim();
-      lineBuffer = '';
-      // Process as raw text (non-JSON lines go through catch, same as handleOutput)
-      try {
-        const event = JSON.parse(trimmed);
-        const parsed = parseStreamEvent(event);
-        if (parsed.text) {
-          onOutput?.(parsed.text + '\n');
-          const protocolMsgs = extractProtocolMessages(parsed.text);
-          if (protocolMsgs.length > 0) {
-            const session = agentSessions.get(sessionId);
-            if (session) {
-              session.protocolMessageCount += protocolMsgs.length;
-            }
-          }
-          for (const msg of protocolMsgs) {
-            onProtocolMessage?.(msg);
-          }
-        }
-      } catch {
-        onOutput?.(trimmed + '\n');
-        const protocolMsgs = extractProtocolMessages(trimmed);
-        if (protocolMsgs.length > 0) {
-          const session = agentSessions.get(sessionId);
-          if (session) {
-            session.protocolMessageCount += protocolMsgs.length;
-          }
-        }
-        for (const msg of protocolMsgs) {
-          onProtocolMessage?.(msg);
-        }
-      }
+    const flushed = flushLineBuffer(lineBuffer);
+    lineBuffer = '';
+    if (flushed.textContent) onOutput?.(flushed.textContent);
+    if (flushed.protocolMessages.length > 0) {
+      const s = agentSessions.get(sessionId);
+      if (s) s.protocolMessageCount += flushed.protocolMessages.length;
+      for (const msg of flushed.protocolMessages) onProtocolMessage?.(msg);
     }
 
+    cleanupSession(sessionId, 'stopped');
     const session = agentSessions.get(sessionId);
     if (session) {
-      // Clear timeout
-      if (session.timeoutId) {
-        clearTimeout(session.timeoutId);
-      }
-
-      session.state = 'stopped';
-
-      // Re-fix worktree .git paths — the Linux container rewrites them to /c/ style
-      if (process.platform === 'win32' && session.worktreePath) {
-        fixWorktreeGitFile(session.worktreePath);
-      }
-
       let exitCode = 0;
-      try {
-        const info = await container.inspect();
-        exitCode = info.State.ExitCode;
-        logger.info('Agent container completed', { sessionId, exitCode });
-      } catch {
-        // Container may already be removed
-      }
-
-      onExit?.(exitCode);
-
-      const webContents = BrowserWindow.getAllWindows().find(
-        (w) => w.webContents.id === webContentsId
-      )?.webContents;
-
-      if (webContents && !webContents.isDestroyed()) {
-        webContents.send('agent:exit', sessionId, exitCode);
-      }
-
-      // Cleanup container
-      try {
-        await container.remove({ force: true });
-      } catch {
-        // Container may already be removed
-      }
-
-      // Worktree is NOT deleted here — it persists with the kanban item
-      // and gets cleaned up on merge or item deletion
-
+      try { const info = await container.inspect(); exitCode = info.State.ExitCode; logger.info('Agent container completed', { sessionId, exitCode }); } catch { /* may be removed */ }
+      notifyExit(webContentsId, sessionId, exitCode, onExit);
+      try { await container.remove({ force: true }); } catch { /* may be removed */ }
       agentSessions.delete(sessionId);
     }
   });
 
+  // Handle stream error
   stream.on('error', (err: Error) => {
     logger.error('Agent stream error', { sessionId, error: err.message });
-    const session = agentSessions.get(sessionId);
-    if (session) {
-      // Clear timeout
-      if (session.timeoutId) {
-        clearTimeout(session.timeoutId);
-      }
-
-      session.state = 'crashed';
-    }
-
-    onExit?.(1);
-
-    const webContents = BrowserWindow.getAllWindows().find(
-      (w) => w.webContents.id === webContentsId
-    )?.webContents;
-
-    if (webContents && !webContents.isDestroyed()) {
-      webContents.send('agent:exit', sessionId, 1);
-    }
+    cleanupSession(sessionId, 'crashed');
+    notifyExit(webContentsId, sessionId, 1, onExit);
   });
 
   return sessionId;
@@ -656,10 +673,8 @@ export async function stopAgentContainer(sessionId: string): Promise<void> {
 
   logger.info('Stopping agent container', { sessionId, containerId: session.containerId });
 
-  // Clear timeout
-  if (session.timeoutId) {
-    clearTimeout(session.timeoutId);
-  }
+  // Clear timeout and fix worktree paths
+  cleanupSession(sessionId, 'stopped');
 
   try {
     const container = docker.getContainer(session.containerId);
@@ -670,14 +685,6 @@ export async function stopAgentContainer(sessionId: string): Promise<void> {
       sessionId,
       error: err instanceof Error ? err.message : String(err),
     });
-  }
-
-  // Worktree is NOT deleted here — it persists with the kanban item
-  // and gets cleaned up on merge or item deletion
-
-  // Re-fix worktree .git paths — the Linux container rewrites them to /c/ style
-  if (process.platform === 'win32' && session.worktreePath) {
-    fixWorktreeGitFile(session.worktreePath);
   }
 
   agentSessions.delete(sessionId);
