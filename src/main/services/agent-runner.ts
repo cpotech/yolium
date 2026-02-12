@@ -76,6 +76,14 @@ export interface AgentSession {
 
 const sessions = new Map<string, AgentSession>();
 
+function normalizeProjectPath(projectPath: string): string {
+  let normalized = path.resolve(projectPath).replace(/\\/g, '/');
+  if (normalized.endsWith('/') && normalized.length > 1) {
+    normalized = normalized.slice(0, -1);
+  }
+  return normalized;
+}
+
 /**
  * Track processed protocol messages per session to prevent duplicates.
  * Some providers (e.g., Codex) repeat their full output as a result dump,
@@ -596,8 +604,9 @@ export function getSession(sessionId: string): AgentSession | undefined {
 }
 
 export function getSessionByItemId(projectPath: string, itemId: string): AgentSession | undefined {
+  const targetProjectPath = normalizeProjectPath(projectPath);
   for (const session of sessions.values()) {
-    if (session.projectPath === projectPath && session.itemId === itemId) {
+    if (normalizeProjectPath(session.projectPath) === targetProjectPath && session.itemId === itemId) {
       return session;
     }
   }
@@ -724,7 +733,7 @@ export function recoverInterruptedAgents(projectPath: string): KanbanItem[] {
   const interrupted: KanbanItem[] = [];
 
   for (const item of board.items) {
-    if (item.agentStatus === 'running') {
+    if (item.agentStatus === 'running' && !getSessionByItemId(projectPath, item.id)) {
       updateItem(board, item.id, { agentStatus: 'interrupted', activeAgentName: undefined });
       addComment(board, item.id, 'system', 'Agent was interrupted (app closed)');
       interrupted.push(item);

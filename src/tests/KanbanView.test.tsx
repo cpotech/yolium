@@ -12,11 +12,13 @@ const mockOnKanbanBoardUpdated = vi.fn()
 const mockDetectNestedRepos = vi.fn()
 const mockAgentStart = vi.fn()
 const mockAgentResume = vi.fn()
+const mockAgentRecover = vi.fn()
 
 beforeEach(() => {
   vi.clearAllMocks()
   mockAgentStart.mockResolvedValue({ sessionId: 'session-1' })
   mockAgentResume.mockResolvedValue({ sessionId: 'session-1' })
+  mockAgentRecover.mockResolvedValue([])
   // Default: project is a git repo (no warning)
   mockDetectNestedRepos.mockResolvedValue({ isRepo: true, nestedRepos: [] })
   // Setup the mock on window.electronAPI
@@ -37,6 +39,7 @@ beforeEach(() => {
       agent: {
         start: mockAgentStart,
         resume: mockAgentResume,
+        recover: mockAgentRecover,
         listDefinitions: vi.fn().mockResolvedValue([]),
       },
     },
@@ -70,13 +73,15 @@ const createMockBoard = (items: KanbanItem[] = []): KanbanBoard => ({
 })
 
 describe('KanbanView', () => {
-  it('should show loading state initially', () => {
+  it('should show loading state initially', async () => {
     // Never resolve to keep loading state
     mockKanbanGetBoard.mockReturnValue(new Promise(() => {}))
 
     render(<KanbanView projectPath="/test/project" />)
 
-    expect(screen.getByTestId('kanban-loading')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByTestId('kanban-loading')).toBeInTheDocument()
+    })
   })
 
   it('should render all five columns after loading', async () => {
@@ -186,6 +191,46 @@ describe('KanbanView', () => {
 
     await waitFor(() => {
       expect(mockKanbanGetBoard).toHaveBeenCalledWith('/test/project')
+    })
+  })
+
+  it('should recover stale running agents once when opening a project', async () => {
+    const board = createMockBoard([])
+    mockKanbanGetBoard.mockResolvedValue(board)
+
+    const { rerender } = render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(mockAgentRecover).toHaveBeenCalledWith('/test/project')
+    })
+
+    rerender(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(mockKanbanGetBoard).toHaveBeenCalled()
+    })
+    expect(mockAgentRecover).toHaveBeenCalledTimes(1)
+  })
+
+  it('should retry stale-agent recovery for the same project after a transient failure', async () => {
+    const board = createMockBoard([])
+    mockKanbanGetBoard.mockResolvedValue(board)
+    mockAgentRecover
+      .mockRejectedValueOnce(new Error('temporary ipc failure'))
+      .mockResolvedValueOnce([])
+
+    const { rerender } = render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(mockAgentRecover).toHaveBeenCalledWith('/test/project')
+    })
+    expect(mockAgentRecover.mock.calls.filter(call => call[0] === '/test/project')).toHaveLength(1)
+
+    rerender(<KanbanView projectPath={null} />)
+    rerender(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(mockAgentRecover.mock.calls.filter(call => call[0] === '/test/project')).toHaveLength(2)
     })
   })
 
