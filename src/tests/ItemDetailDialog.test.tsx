@@ -20,9 +20,11 @@ const mockOnAgentComplete = vi.fn().mockReturnValue(() => {}) // Returns cleanup
 const mockOnAgentError = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
 const mockOnAgentExit = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
 const mockOnAgentCostUpdate = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
+const mockAgentRecover = vi.fn()
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockAgentRecover.mockResolvedValue([])
   // Setup the mock on window.electronAPI
   Object.defineProperty(window, 'electronAPI', {
     value: {
@@ -47,6 +49,7 @@ beforeEach(() => {
         onExit: mockOnAgentExit,
         onCostUpdate: mockOnAgentCostUpdate,
         getActiveSession: vi.fn().mockResolvedValue(null),
+        recover: mockAgentRecover,
         readLog: vi.fn().mockResolvedValue(''),
         clearLog: vi.fn().mockResolvedValue(false),
         listDefinitions: vi.fn().mockResolvedValue([
@@ -164,6 +167,34 @@ describe('ItemDetailDialog', () => {
     expect(screen.getByTestId('token-usage')).toBeInTheDocument()
     expect(screen.getByText('1.6k in / 1.4k out')).toBeInTheDocument()
     expect(screen.getByText('$0.0190')).toBeInTheDocument()
+  })
+
+  it('should recover stale running items when no active session exists and refresh item state', async () => {
+    const item = createMockItem({ agentStatus: 'running' })
+    const onUpdated = vi.fn()
+    const getActiveSession = vi.fn().mockResolvedValue(null)
+    window.electronAPI.agent.getActiveSession = getActiveSession
+    mockAgentRecover.mockResolvedValueOnce([{ id: 'item-1' }])
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={onUpdated}
+      />
+    )
+
+    await waitFor(() => {
+      expect(getActiveSession).toHaveBeenCalledWith('/test/project', 'item-1')
+    })
+    await waitFor(() => {
+      expect(mockAgentRecover).toHaveBeenCalledWith('/test/project')
+    })
+    await waitFor(() => {
+      expect(onUpdated).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('should render column selector with current column selected', () => {
