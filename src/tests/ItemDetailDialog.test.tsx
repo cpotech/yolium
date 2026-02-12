@@ -11,6 +11,9 @@ const mockKanbanUpdateItem = vi.fn()
 const mockKanbanDeleteItem = vi.fn()
 const mockKanbanAddComment = vi.fn()
 const mockShowConfirmOkCancel = vi.fn()
+const mockWorktreeDiffStats = vi.fn()
+const mockMergeAndPushPR = vi.fn()
+const mockCheckMergeConflicts = vi.fn()
 const mockOnAgentOutput = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
 const mockOnAgentProgress = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
 const mockOnAgentComplete = vi.fn().mockReturnValue(() => {}) // Returns cleanup function
@@ -30,6 +33,11 @@ beforeEach(() => {
       },
       dialog: {
         confirmOkCancel: mockShowConfirmOkCancel,
+      },
+      git: {
+        worktreeDiffStats: mockWorktreeDiffStats,
+        mergeAndPushPR: mockMergeAndPushPR,
+        checkMergeConflicts: mockCheckMergeConflicts,
       },
       agent: {
         onOutput: mockOnAgentOutput,
@@ -411,6 +419,46 @@ describe('ItemDetailDialog', () => {
     await waitFor(() => {
       expect(onUpdated).toHaveBeenCalled()
     })
+  })
+
+  it('should persist prBranch to item branch after successful merge', async () => {
+    mockWorktreeDiffStats.mockResolvedValueOnce({ filesChanged: 1, insertions: 4, deletions: 2 })
+    mockShowConfirmOkCancel.mockResolvedValueOnce(true)
+    mockMergeAndPushPR.mockResolvedValueOnce({
+      success: true,
+      prBranch: 'feature/persisted-pr-branch',
+      prUrl: 'https://example.com/pr/123',
+    })
+
+    const onUpdated = vi.fn()
+    const item = createMockItem({
+      mergeStatus: 'unmerged',
+      worktreePath: '/tmp/worktrees/item-1',
+      agentStatus: 'completed',
+      branch: 'yolium-1770855764799-fb0b15',
+    })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={onUpdated}
+      />
+    )
+
+    fireEvent.click(screen.getByTestId('merge-button'))
+
+    await waitFor(() => {
+      expect(mockKanbanUpdateItem).toHaveBeenCalledWith('/test/project', 'item-1', {
+        mergeStatus: 'merged',
+        branch: 'feature/persisted-pr-branch',
+        worktreePath: undefined,
+        prUrl: 'https://example.com/pr/123',
+      })
+    })
+    expect(onUpdated).toHaveBeenCalled()
   })
 
   it('should delete item immediately without confirmation', async () => {
