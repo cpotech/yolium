@@ -42,6 +42,8 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
   const searchInputRef = useRef<HTMLInputElement>(null)
   // Ref to track dialog open state without stale closures
   const dialogOpenRef = useRef(false)
+  // Recover stale "running" items once per project path after restart/crash.
+  const recoveredProjectsRef = useRef<Set<string>>(new Set())
 
   const loadBoard = useCallback(async () => {
     if (!projectPath) return
@@ -67,10 +69,30 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     }
   }, [projectPath])
 
-  // Load board on mount and when projectPath changes
+  // Load board on mount and when projectPath changes.
+  // On first load for a project, recover stale running items from previous app sessions.
   useEffect(() => {
     if (projectPath) {
-      loadBoard()
+      let cancelled = false
+      const initializeBoard = async () => {
+        if (!recoveredProjectsRef.current.has(projectPath)) {
+          try {
+            await window.electronAPI.agent.recover(projectPath)
+            recoveredProjectsRef.current.add(projectPath)
+          } catch (error) {
+            console.error('Failed to recover stale agent state:', error)
+          }
+        }
+
+        if (!cancelled) {
+          loadBoard()
+        }
+      }
+
+      initializeBoard()
+      return () => {
+        cancelled = true
+      }
     } else {
       setBoard(null)
     }

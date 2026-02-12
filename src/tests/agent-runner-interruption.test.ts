@@ -224,4 +224,49 @@ describe('agent-runner interruption cleanup', () => {
     expect(updatedItem?.activeAgentName).toBeUndefined();
     expect(updatedItem?.lastAgentName).toBe('plan-agent');
   });
+
+  it('does not recover items that still have an active in-memory session', async () => {
+    const projectPath = '/tmp/project-recover-active';
+    const board = getOrCreateBoard(projectPath);
+
+    const activeItem = addItem(board, {
+      title: 'Active running item',
+      description: 'Has a real session',
+      agentProvider: 'claude',
+      order: 0,
+    });
+    const staleItem = addItem(board, {
+      title: 'Stale running item',
+      description: 'No session',
+      agentProvider: 'claude',
+      order: 1,
+    });
+
+    const startResult = await startAgent({
+      webContentsId: 1,
+      agentName: 'code-agent',
+      projectPath,
+      itemId: activeItem.id,
+      goal: 'Keep running',
+    });
+    expect(startResult.error).toBeUndefined();
+
+    updateItem(board, staleItem.id, {
+      agentStatus: 'running',
+      activeAgentName: 'plan-agent',
+      lastAgentName: 'plan-agent',
+    });
+
+    const recovered = recoverInterruptedAgents(projectPath);
+
+    expect(recovered).toHaveLength(1);
+    expect(recovered[0].id).toBe(staleItem.id);
+
+    const activeUpdated = board.items.find((i: any) => i.id === activeItem.id);
+    expect(activeUpdated?.agentStatus).toBe('running');
+
+    const staleUpdated = board.items.find((i: any) => i.id === staleItem.id);
+    expect(staleUpdated?.agentStatus).toBe('interrupted');
+    expect(staleUpdated?.activeAgentName).toBeUndefined();
+  });
 });

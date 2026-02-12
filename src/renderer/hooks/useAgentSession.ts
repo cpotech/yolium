@@ -117,15 +117,26 @@ export function useAgentSession({
     if (!itemId || itemAgentStatus !== 'running') return
 
     const reconnect = async () => {
-      const result = await window.electronAPI.agent.getActiveSession(projectPath, itemId)
-      if (result?.sessionId) {
-        associateSession(result.sessionId)
-        setLiveStatus('running')
-        setShowAgentLog(true)
+      try {
+        const result = await window.electronAPI.agent.getActiveSession(projectPath, itemId)
+        if (result?.sessionId) {
+          associateSession(result.sessionId)
+          setLiveStatus('running')
+          setShowAgentLog(true)
+          return
+        }
+
+        // Running with no active session usually means stale state after restart/crash.
+        const recovered = await window.electronAPI.agent.recover(projectPath)
+        if (Array.isArray(recovered) && recovered.some((item: { id?: string }) => item.id === itemId)) {
+          onUpdated()
+        }
+      } catch {
+        // Best-effort reconnect/recover only.
       }
     }
     reconnect()
-  }, [itemId, itemAgentStatus, projectPath, associateSession])
+  }, [itemId, itemAgentStatus, projectPath, associateSession, onUpdated])
 
   // Subscribe to agent output events
   useEffect(() => {
