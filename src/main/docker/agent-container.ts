@@ -107,6 +107,28 @@ export interface ParsedStreamEvent {
   };
 }
 
+export function combineUsageParts(
+  usageParts: Array<NonNullable<ParsedStreamEvent['usage']>>
+): NonNullable<ParsedStreamEvent['usage']> {
+  return usageParts.reduce(
+    (acc, usage) => ({
+      inputTokens: acc.inputTokens + usage.inputTokens,
+      outputTokens: acc.outputTokens + usage.outputTokens,
+      costUsd: acc.costUsd + usage.costUsd,
+    }),
+    { inputTokens: 0, outputTokens: 0, costUsd: 0 }
+  );
+}
+
+export function accumulateSessionUsage(
+  session: Pick<AgentContainerSession, 'cumulativeUsage'>,
+  usage: NonNullable<ParsedStreamEvent['usage']>
+): void {
+  session.cumulativeUsage.inputTokens += usage.inputTokens;
+  session.cumulativeUsage.outputTokens += usage.outputTokens;
+  session.cumulativeUsage.costUsd += usage.costUsd;
+}
+
 export function parseStreamEvent(event: Record<string, unknown>): ParsedStreamEvent {
   switch (event.type) {
     case 'system':
@@ -390,6 +412,7 @@ export async function createAgentContainer(
     state: 'running',
     timeoutId,
     protocolMessageCount: 0,
+    cumulativeUsage: { inputTokens: 0, outputTokens: 0, costUsd: 0 },
     agentProvider,
     ...(worktreePath && { worktreePath, originalPath, branchName }),
   });
@@ -472,21 +495,19 @@ export async function createAgentContainer(
       (w) => w.webContents.id === webContentsId
     )?.webContents;
 
+    const combinedUsage = usageParts.length > 0 ? combineUsageParts(usageParts) : null;
+
+    if (combinedUsage && session) {
+      accumulateSessionUsage(session, combinedUsage);
+    }
+
     if (webContents && !webContents.isDestroyed()) {
       if (displayStr) {
         webContents.send('agent:output', sessionId, displayStr);
       }
 
-      if (usageParts.length > 0) {
-        const combined = usageParts.reduce(
-          (acc, usage) => ({
-            inputTokens: acc.inputTokens + usage.inputTokens,
-            outputTokens: acc.outputTokens + usage.outputTokens,
-            costUsd: acc.costUsd + usage.costUsd,
-          }),
-          { inputTokens: 0, outputTokens: 0, costUsd: 0 }
-        );
-        webContents.send('agent:cost-update', sessionId, resolvedProjectPath, itemId, combined);
+      if (combinedUsage) {
+        webContents.send('agent:cost-update', sessionId, resolvedProjectPath, itemId, combinedUsage);
       }
     }
 

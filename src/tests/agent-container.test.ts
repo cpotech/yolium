@@ -15,8 +15,9 @@ vi.mock('@main/lib/logger', () => ({
   })),
 }));
 
-import { parseStreamEvent } from '@main/docker/agent-container';
+import { parseStreamEvent, combineUsageParts, accumulateSessionUsage } from '@main/docker/agent-container';
 import { extractProtocolMessages } from '@main/services/agent-protocol';
+import type { AgentContainerSession } from '@main/docker';
 
 describe('parseStreamEvent', () => {
   it('extracts @@YOLIUM messages from Bash tool_use commands', () => {
@@ -128,5 +129,32 @@ describe('parseStreamEvent', () => {
   it('omits usage when result event has no usage or cost', () => {
     const parsed = parseStreamEvent({ type: 'result' });
     expect(parsed.usage).toBeUndefined();
+  });
+});
+
+describe('cumulative usage helpers', () => {
+  it('combines usage parts and accumulates into session totals', () => {
+    const combined = combineUsageParts([
+      { inputTokens: 100, outputTokens: 50, costUsd: 0.001 },
+      { inputTokens: 40, outputTokens: 80, costUsd: 0.0025 },
+    ]);
+
+    expect(combined).toEqual({
+      inputTokens: 140,
+      outputTokens: 130,
+      costUsd: 0.0035,
+    });
+
+    const session = {
+      cumulativeUsage: { inputTokens: 10, outputTokens: 20, costUsd: 0.0009 },
+    } as AgentContainerSession;
+
+    accumulateSessionUsage(session, combined);
+
+    expect(session.cumulativeUsage).toEqual({
+      inputTokens: 150,
+      outputTokens: 150,
+      costUsd: 0.0044,
+    });
   });
 });
