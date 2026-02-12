@@ -6,6 +6,7 @@
 import Docker from 'dockerode';
 import * as os from 'node:os';
 import type { ContainerSession } from '@shared/types/docker';
+import type { AgentTokenUsage } from '@shared/types/agent';
 
 /**
  * Agent container session tracking (separate from interactive sessions).
@@ -28,6 +29,8 @@ export interface AgentContainerSession {
   detectedError?: string;
   /** Count of protocol messages received during this session */
   protocolMessageCount: number;
+  /** Cumulative token usage emitted by this session. */
+  cumulativeUsage: AgentTokenUsage;
 }
 
 /** Shared Docker client instance (auto-detects socket path). */

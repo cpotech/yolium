@@ -5,6 +5,7 @@
 
 import { BrowserWindow, type IpcMain } from 'electron';
 import { createLogger } from '@main/lib/logger';
+import { getAgentSession } from '@main/docker';
 import {
   startAgent,
   resumeAgent,
@@ -176,7 +177,13 @@ export function registerAgentHandlers(ipcMain: IpcMain): void {
   // Get active session for item
   ipcMain.handle('agent:get-active-session', (_event, projectPath: string, itemId: string) => {
     const session = getSessionByItemId(projectPath, itemId);
-    return session ? { sessionId: session.id } : null;
+    if (!session) return null;
+
+    const containerSession = getAgentSession(session.id);
+    return {
+      sessionId: session.id,
+      cumulativeUsage: containerSession?.cumulativeUsage ?? { inputTokens: 0, outputTokens: 0, costUsd: 0 },
+    };
   });
 
   // Recover interrupted agents
