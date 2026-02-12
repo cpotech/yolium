@@ -204,6 +204,9 @@ COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh && \
     chmod +x /usr/local/bin/entrypoint.sh
 
+# Copy marketing skills into container for the marketing agent
+COPY marketing-skills /opt/marketing-skills
+
 # Set the user for runtime
 USER ${USERNAME}
 
