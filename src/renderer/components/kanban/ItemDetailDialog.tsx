@@ -371,6 +371,7 @@ export function ItemDetailDialog({
         // Full success: merged, pushed, PR created, worktree cleaned up
         await window.electronAPI.kanban.updateItem(projectPath, item.id, {
           mergeStatus: 'merged',
+          branch: result.prBranch ?? item.branch,
           worktreePath: undefined,
           prUrl: result.prUrl,
         })
@@ -387,6 +388,7 @@ export function ItemDetailDialog({
         // Partial success: branch pushed but PR creation failed
         await window.electronAPI.kanban.updateItem(projectPath, item.id, {
           mergeStatus: 'merged',
+          branch: result.prBranch ?? item.branch,
           worktreePath: undefined,
         })
         setErrorMessage(result.error)
