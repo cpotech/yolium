@@ -5,7 +5,7 @@
  * across the Yolium Desktop codebase.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import * as path from 'node:path';
 import * as os from 'node:os';
 
@@ -229,40 +229,40 @@ describe('opencode-access', () => {
 
     it('should return kimi-k2.5-free for opencode without anthropic API key', () => {
       mockLoadGitConfig.mockReturnValue(null);
-      expect(getDisplayModel('opencode', undefined, 'opus')).toBe('kimi-k2.5-free');
+      expect(getDisplayModel('opencode', undefined, undefined, 'opus')).toBe('kimi-k2.5-free');
     });
 
     it('should return short model name for opencode with anthropic API key in config', () => {
       mockLoadGitConfig.mockReturnValue({ anthropicApiKey: 'sk-ant-test-key' });
-      expect(getDisplayModel('opencode', undefined, 'sonnet')).toBe('sonnet');
+      expect(getDisplayModel('opencode', undefined, undefined, 'sonnet')).toBe('sonnet');
     });
 
     it('should return short model name for opencode with anthropic API key in env', () => {
       mockLoadGitConfig.mockReturnValue(null);
       process.env.ANTHROPIC_API_KEY = 'sk-ant-env-key';
-      expect(getDisplayModel('opencode', undefined, 'opus')).toBe('opus');
+      expect(getDisplayModel('opencode', undefined, undefined, 'opus')).toBe('opus');
     });
 
     it('should return kimi-k2.5-free when config exists but has no anthropic key', () => {
       mockLoadGitConfig.mockReturnValue({ name: 'test', email: 'test@test.com' });
-      expect(getDisplayModel('opencode', undefined, 'haiku')).toBe('kimi-k2.5-free');
+      expect(getDisplayModel('opencode', undefined, undefined, 'haiku')).toBe('kimi-k2.5-free');
     });
 
     it('should prefer env variable over config when both are set', () => {
       mockLoadGitConfig.mockReturnValue({ anthropicApiKey: 'sk-ant-config-key' });
       process.env.ANTHROPIC_API_KEY = 'sk-ant-env-key';
-      expect(getDisplayModel('opencode', undefined, 'sonnet')).toBe('sonnet');
+      expect(getDisplayModel('opencode', undefined, undefined, 'sonnet')).toBe('sonnet');
     });
 
     it('should use item model override for opencode with auth', () => {
       mockLoadGitConfig.mockReturnValue({ anthropicApiKey: 'sk-ant-test-key' });
-      expect(getDisplayModel('opencode', 'haiku', 'opus')).toBe('haiku');
+      expect(getDisplayModel('opencode', 'haiku', undefined, 'opus')).toBe('haiku');
     });
 
     it('should return kimi-k2.5-free even with item model when no auth', () => {
       mockLoadGitConfig.mockReturnValue(null);
       // When no API key, OpenCode falls back to kimi-k2.5-free regardless of item model
-      expect(getDisplayModel('opencode', 'sonnet', 'opus')).toBe('kimi-k2.5-free');
+      expect(getDisplayModel('opencode', 'sonnet', undefined, 'opus')).toBe('kimi-k2.5-free');
     });
   });
 

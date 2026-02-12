@@ -209,11 +209,12 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
       hasCodexOAuth: hasHostCodexOAuth(),
       useCodexOAuth: storedConfig?.useCodexOAuth ?? false,
       githubLogin: storedConfig?.githubLogin,
+      agentModelDefaults: storedConfig?.agentModelDefaults,
     };
   });
 
   // Save git config (preserves existing secrets if not provided, auto-derives identity from PAT)
-  registerGitChannel(ipcMain, GIT_CHANNELS.saveConfig, async (_event, config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean }) => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.saveConfig, async (_event, config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; agentModelDefaults?: Record<string, string> }) => {
     // Load existing config to preserve secrets if not provided in save
     const existing = loadGitConfig();
     const toSave: GitConfig = {
@@ -295,6 +296,13 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     } else {
       // PAT was cleared — clear derived identity too
       toSave.githubLogin = undefined;
+    }
+
+    // Handle agent model defaults
+    if (config.agentModelDefaults !== undefined) {
+      toSave.agentModelDefaults = config.agentModelDefaults;
+    } else if (existing?.agentModelDefaults) {
+      toSave.agentModelDefaults = existing.agentModelDefaults;
     }
 
     saveGitConfig(toSave);

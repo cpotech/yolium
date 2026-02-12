@@ -107,10 +107,10 @@ const MODEL_MAP: Record<string, string> = {
 
 /**
  * Resolve the model to use for an agent run.
- * Item-level model takes priority over agent-level model.
+ * Priority: item-level model > settings default > agent frontmatter model.
  */
-export function resolveModel(itemModel: string | undefined, agentModel: string): string {
-  const shortName = itemModel || agentModel;
+export function resolveModel(itemModel: string | undefined, settingsModel: string | undefined, agentModel: string): string {
+  const shortName = itemModel || settingsModel || agentModel;
   return MODEL_MAP[shortName] || shortName;
 }
 
@@ -119,8 +119,8 @@ export function resolveModel(itemModel: string | undefined, agentModel: string):
  * For Claude, shows the short model name (opus, sonnet, haiku).
  * For non-Claude providers, shows the provider's actual model.
  */
-export function getDisplayModel(provider: string, itemModel: string | undefined, agentModel: string): string {
-  const shortName = itemModel || agentModel;
+export function getDisplayModel(provider: string, itemModel: string | undefined, settingsModel: string | undefined, agentModel: string): string {
+  const shortName = itemModel || settingsModel || agentModel;
   if (provider === 'claude') {
     return shortName;
   }
@@ -223,7 +223,11 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     column: 'in-progress',
   });
   updateBoard(board, { lastAgentName: agentName });
-  const displayModel = getDisplayModel(provider, item.model, agent.model);
+  // Load settings-level model default for this agent
+  const gitConfig = loadGitConfig();
+  const settingsModel = gitConfig?.agentModelDefaults?.[agentName];
+
+  const displayModel = getDisplayModel(provider, item.model, settingsModel, agent.model);
   addComment(board, itemId, 'system', `${agentName} started (${provider}/${displayModel})`);
 
   // Create or reuse worktree for branch isolation (best-effort, graceful fallback)
@@ -276,8 +280,8 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     branchName = undefined;
   }
 
-  // Resolve model: item-level model overrides agent-level model
-  const model = resolveModel(item.model, agent.model);
+  // Resolve model: item-level > settings default > agent frontmatter
+  const model = resolveModel(item.model, settingsModel, agent.model);
 
   // For non-Claude providers, write system prompt to an instructions file
   // and build a shorter goal-focused prompt. Non-Claude CLIs (Codex, OpenCode)
