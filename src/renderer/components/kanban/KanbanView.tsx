@@ -433,8 +433,9 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     )
   }
 
-  // Loading state
-  if (isLoading && !board) {
+  // Full-page loading state while board data has not been loaded yet.
+  // This covers both active fetches and pre-fetch recovery steps.
+  if (!board && !errorMessage) {
     return (
       <div
         data-testid="kanban-loading"
