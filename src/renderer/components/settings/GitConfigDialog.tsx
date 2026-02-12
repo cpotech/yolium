@@ -649,11 +649,12 @@ export function GitConfigDialog({
                     Default Claude model for each agent type. Per-item model overrides still take priority.
                   </p>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-4">
                   {[
                     { key: 'code-agent', label: 'Code Agent', defaultModel: 'opus' },
                     { key: 'plan-agent', label: 'Plan Agent', defaultModel: 'opus' },
                     { key: 'verify-agent', label: 'Verify Agent', defaultModel: 'opus' },
+                    { key: 'marketing-agent', label: 'Marketing Agent', defaultModel: 'opus' },
                   ].map(({ key, label, defaultModel }) => (
                     <div key={key}>
                       <label htmlFor={`model-${key}`} className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
