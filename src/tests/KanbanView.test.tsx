@@ -15,7 +15,7 @@ const mockAgentResume = vi.fn()
 const mockAgentRecover = vi.fn()
 
 beforeEach(() => {
-  vi.clearAllMocks()
+  vi.resetAllMocks()
   mockAgentStart.mockResolvedValue({ sessionId: 'session-1' })
   mockAgentResume.mockResolvedValue({ sessionId: 'session-1' })
   mockAgentRecover.mockResolvedValue([])
@@ -210,6 +210,31 @@ describe('KanbanView', () => {
       expect(mockKanbanGetBoard).toHaveBeenCalled()
     })
     expect(mockAgentRecover).toHaveBeenCalledTimes(1)
+  })
+
+  it('should show loading while stale-agent recovery is still in progress', async () => {
+    const board = createMockBoard([])
+    let resolveRecover: (() => void) | undefined
+    const recoverPromise = new Promise<void>(resolve => {
+      resolveRecover = resolve
+    })
+
+    mockAgentRecover.mockReturnValueOnce(recoverPromise)
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    expect(screen.getByTestId('kanban-loading')).toBeInTheDocument()
+    expect(mockKanbanGetBoard).not.toHaveBeenCalled()
+
+    resolveRecover?.()
+
+    await waitFor(() => {
+      expect(mockKanbanGetBoard).toHaveBeenCalledWith('/test/project')
+    })
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
   })
 
   it('should retry stale-agent recovery for the same project after a transient failure', async () => {
