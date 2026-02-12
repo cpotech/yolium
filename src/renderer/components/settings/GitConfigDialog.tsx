@@ -7,7 +7,7 @@ export type { GitConfigWithPat } from '@shared/types/git';
 interface GitConfigDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean }) => void;
+  onSave: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; agentModelDefaults?: Record<string, string> }) => void;
   initialConfig?: GitConfigWithPat | null;
   onDeleteImage?: () => void;
   onBuildImage?: () => void;
@@ -43,7 +43,7 @@ export function GitConfigDialog({
   imageRemoved = false,
   isRebuilding = false,
 }: GitConfigDialogProps): React.ReactElement | null {
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLFormElement>(null);
   const patInputRef = useRef<HTMLInputElement>(null);
 
   const [githubPat, setGithubPat] = useState('');
@@ -60,6 +60,7 @@ export function GitConfigDialog({
   const [openaiKeyCleared, setOpenaiKeyCleared] = useState(false);
   const [useClaudeOAuth, setUseClaudeOAuth] = useState(false);
   const [useCodexOAuth, setUseCodexOAuth] = useState(false);
+  const [agentModelDefaults, setAgentModelDefaults] = useState<Record<string, string>>({});
   const [dockerImageInfo, setDockerImageInfo] = useState<{ name: string; size: number; created: string; stale: boolean } | null>(null);
   const [dockerImageLoading, setDockerImageLoading] = useState(false);
   const [dockerImageError, setDockerImageError] = useState(false);
@@ -152,6 +153,7 @@ export function GitConfigDialog({
       setOpenaiKeyCleared(false);
       setUseClaudeOAuth(initialConfig?.useClaudeOAuth ?? false);
       setUseCodexOAuth(initialConfig?.useCodexOAuth ?? false);
+      setAgentModelDefaults(initialConfig?.agentModelDefaults ?? {});
       // Fetch Docker image info with retry
       setDockerImageLoading(true);
       setDockerImageError(false);
@@ -226,7 +228,7 @@ export function GitConfigDialog({
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      const config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean } = {};
+      const config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; agentModelDefaults?: Record<string, string> } = {};
       if (githubPat.trim()) {
         config.githubPat = githubPat.trim();
       } else if (patCleared) {
@@ -254,9 +256,10 @@ export function GitConfigDialog({
           config.openaiApiKey = '';  // Explicitly signal to clear the key
         }
       }
+      config.agentModelDefaults = agentModelDefaults;
       onSave(config);
     },
-    [githubPat, patCleared, useClaudeOAuth, anthropicApiKey, anthropicKeyCleared, useCodexOAuth, openaiApiKey, openaiKeyCleared, onSave]
+    [githubPat, patCleared, useClaudeOAuth, anthropicApiKey, anthropicKeyCleared, useCodexOAuth, openaiApiKey, openaiKeyCleared, agentModelDefaults, onSave]
   );
 
   if (!isOpen) return null;
@@ -636,6 +639,50 @@ export function GitConfigDialog({
                       ? 'Codex will use your ChatGPT OAuth session.'
                       : 'Required for the Codex agent. Passed only to Codex containers.'}
                   </p>
+                </div>
+              </section>
+
+              <section className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)]/50 p-4 sm:p-5 lg:col-span-2">
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Agent Model Defaults</h3>
+                  <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                    Default Claude model for each agent type. Per-item model overrides still take priority.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {[
+                    { key: 'code-agent', label: 'Code Agent', defaultModel: 'opus' },
+                    { key: 'plan-agent', label: 'Plan Agent', defaultModel: 'opus' },
+                    { key: 'verify-agent', label: 'Verify Agent', defaultModel: 'opus' },
+                  ].map(({ key, label, defaultModel }) => (
+                    <div key={key}>
+                      <label htmlFor={`model-${key}`} className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
+                        {label}
+                      </label>
+                      <select
+                        id={`model-${key}`}
+                        value={agentModelDefaults[key] || ''}
+                        onChange={(e) => {
+                          setAgentModelDefaults(prev => {
+                            const next = { ...prev };
+                            if (e.target.value) {
+                              next[key] = e.target.value;
+                            } else {
+                              delete next[key];
+                            }
+                            return next;
+                          });
+                        }}
+                        data-testid={`model-select-${key}`}
+                        className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border-secondary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="">Default ({defaultModel})</option>
+                        <option value="opus">Opus</option>
+                        <option value="sonnet">Sonnet</option>
+                        <option value="haiku">Haiku</option>
+                      </select>
+                    </div>
+                  ))}
                 </div>
               </section>
 

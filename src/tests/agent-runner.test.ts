@@ -1,5 +1,5 @@
 // src/tests/agent-runner.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 
 // Mock electron-dependent logger before importing agent-runner
 vi.mock('@main/lib/logger', () => ({
@@ -71,25 +71,40 @@ describe('agent-runner', () => {
   });
 
   describe('resolveModel', () => {
-    it('should use item model when provided', () => {
-      const result = resolveModel('opus', 'sonnet');
+    it('should use item model when provided (highest priority)', () => {
+      const result = resolveModel('opus', 'haiku', 'sonnet');
       expect(result).toBe('claude-opus-4-6');
     });
 
-    it('should fall back to agent model when item model is undefined', () => {
-      const result = resolveModel(undefined, 'sonnet');
+    it('should use settings model when item model is undefined', () => {
+      const result = resolveModel(undefined, 'haiku', 'sonnet');
+      expect(result).toBe('claude-haiku-4-5-20251001');
+    });
+
+    it('should fall back to agent model when both item and settings are undefined', () => {
+      const result = resolveModel(undefined, undefined, 'sonnet');
       expect(result).toBe('claude-sonnet-4-5-20250929');
     });
 
     it('should map short names to full model IDs', () => {
-      expect(resolveModel(undefined, 'opus')).toBe('claude-opus-4-6');
-      expect(resolveModel(undefined, 'sonnet')).toBe('claude-sonnet-4-5-20250929');
-      expect(resolveModel(undefined, 'haiku')).toBe('claude-haiku-4-5-20251001');
+      expect(resolveModel(undefined, undefined, 'opus')).toBe('claude-opus-4-6');
+      expect(resolveModel(undefined, undefined, 'sonnet')).toBe('claude-sonnet-4-5-20250929');
+      expect(resolveModel(undefined, undefined, 'haiku')).toBe('claude-haiku-4-5-20251001');
     });
 
     it('should pass through unknown model names as-is', () => {
-      const result = resolveModel(undefined, 'some-custom-model');
+      const result = resolveModel(undefined, undefined, 'some-custom-model');
       expect(result).toBe('some-custom-model');
+    });
+
+    it('should prefer item model over settings model', () => {
+      const result = resolveModel('sonnet', 'opus', 'haiku');
+      expect(result).toBe('claude-sonnet-4-5-20250929');
+    });
+
+    it('should prefer settings model over agent model', () => {
+      const result = resolveModel(undefined, 'sonnet', 'opus');
+      expect(result).toBe('claude-sonnet-4-5-20250929');
     });
   });
 
@@ -107,44 +122,52 @@ describe('agent-runner', () => {
     });
 
     it('should return short model name for claude provider', () => {
-      expect(getDisplayModel('claude', undefined, 'opus')).toBe('opus');
+      expect(getDisplayModel('claude', undefined, undefined, 'opus')).toBe('opus');
     });
 
     it('should use item model override for claude provider', () => {
-      expect(getDisplayModel('claude', 'sonnet', 'opus')).toBe('sonnet');
+      expect(getDisplayModel('claude', 'sonnet', undefined, 'opus')).toBe('sonnet');
+    });
+
+    it('should use settings model for claude provider when no item model', () => {
+      expect(getDisplayModel('claude', undefined, 'haiku', 'opus')).toBe('haiku');
+    });
+
+    it('should prefer item model over settings model for claude provider', () => {
+      expect(getDisplayModel('claude', 'sonnet', 'haiku', 'opus')).toBe('sonnet');
     });
 
     it('should return codex-default for codex provider', () => {
-      expect(getDisplayModel('codex', undefined, 'opus')).toBe('codex-default');
+      expect(getDisplayModel('codex', undefined, undefined, 'opus')).toBe('codex-default');
     });
 
     it('should return codex-default for codex provider even with item model', () => {
-      expect(getDisplayModel('codex', 'sonnet', 'opus')).toBe('codex-default');
+      expect(getDisplayModel('codex', 'sonnet', undefined, 'opus')).toBe('codex-default');
     });
 
     it('should return short model name for opencode with anthropic API key in config', () => {
       mockLoadGitConfig.mockReturnValue({ anthropicApiKey: 'sk-ant-test-key' });
-      expect(getDisplayModel('opencode', undefined, 'opus')).toBe('opus');
+      expect(getDisplayModel('opencode', undefined, undefined, 'opus')).toBe('opus');
     });
 
     it('should return short model name for opencode with anthropic API key in env', () => {
       mockLoadGitConfig.mockReturnValue(null);
       process.env.ANTHROPIC_API_KEY = 'sk-ant-env-key';
-      expect(getDisplayModel('opencode', undefined, 'sonnet')).toBe('sonnet');
+      expect(getDisplayModel('opencode', undefined, undefined, 'sonnet')).toBe('sonnet');
     });
 
     it('should return kimi-k2.5-free for opencode without any anthropic API key', () => {
       mockLoadGitConfig.mockReturnValue(null);
-      expect(getDisplayModel('opencode', undefined, 'opus')).toBe('kimi-k2.5-free');
+      expect(getDisplayModel('opencode', undefined, undefined, 'opus')).toBe('kimi-k2.5-free');
     });
 
     it('should return kimi-k2.5-free for opencode with config but no anthropic key', () => {
       mockLoadGitConfig.mockReturnValue({ name: 'test', email: 'test@test.com' });
-      expect(getDisplayModel('opencode', undefined, 'opus')).toBe('kimi-k2.5-free');
+      expect(getDisplayModel('opencode', undefined, undefined, 'opus')).toBe('kimi-k2.5-free');
     });
 
     it('should return short model name for unknown provider', () => {
-      expect(getDisplayModel('unknown-provider', undefined, 'opus')).toBe('opus');
+      expect(getDisplayModel('unknown-provider', undefined, undefined, 'opus')).toBe('opus');
     });
   });
 
