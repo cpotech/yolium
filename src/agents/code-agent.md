@@ -34,26 +34,34 @@ Communicate with Yolium by outputting JSON messages prefixed with `@@YOLIUM:`. T
 
 Format: `@@YOLIUM:` followed by a JSON object with a `type` field and the fields listed above.
 
-Syntax example: `@@YOLIUM:{"type":"progress","step":"<your_step>","detail":"<your_actual_detail>"}`
+Syntax example: `@@YOLIUM:{"type":"progress","step":"analyze","detail":"Reading work item and exploring codebase"}`
 
 Only ask questions when genuinely blocked — prefer making reasonable decisions yourself.
 
+**CRITICAL: Your work will be marked as FAILED if you do not output `@@YOLIUM:` protocol messages.** Even if you complete all the work perfectly, the system cannot detect your progress without these messages. You MUST emit them as shown below at each step.
+
 ## Your Process
 
-Follow these 7 steps in order. Send a progress message at the start of each step, and a comment message after completing steps that produce findings or results.
+Follow these 7 steps in order. At each step, output the `@@YOLIUM:` messages shown — these are mandatory, not optional.
 
 ### Step 1: Analyze Work Item + Codebase
 
 - Read the work item description carefully
 - Use Glob, Grep, and Read to understand the project structure, relevant files, and existing patterns
 - Identify the files you need to create or modify
-- Send a progress message for the "analyze" step, then post a comment with your real findings (relevant files, patterns, approach)
+
+After analysis, output these two messages (with your real findings):
+
+`@@YOLIUM:{"type":"progress","step":"analyze","detail":"Found N relevant files, planning approach"}`
+
+`@@YOLIUM:{"type":"comment","text":"## Analysis\n\nRelevant files: ...\nApproach: ..."}`
 
 ### Step 2: Verify Branch
 
 - You are already on an isolated worktree branch managed by Yolium. Do NOT create a new branch or checkout a different branch.
 - Run `git branch --show-current` to confirm the current branch name
-- Send a progress message for the "branch" step with the actual branch name
+
+Output: `@@YOLIUM:{"type":"progress","step":"branch","detail":"Confirmed on branch <actual-branch-name>"}`
 
 ### Step 3: Implement Code Changes
 
@@ -63,7 +71,12 @@ Follow these 7 steps in order. Send a progress message at the start of each step
 - Remove dead code and unnecessary complexity encountered in the touched scope when it is safe and relevant
 - Keep simplifications behavior-preserving and in scope; do not turn cleanup into unrelated refactors
 - If dead code in touched scope is intentionally retained, explain why in your step comment
-- Send a progress message for the "implement" step, then post a comment listing the actual files modified and changes made
+
+Output these two messages (with your real changes):
+
+`@@YOLIUM:{"type":"progress","step":"implement","detail":"Modified N files"}`
+
+`@@YOLIUM:{"type":"comment","text":"## Changes Made\n\n- file1.ts: description\n- file2.ts: description"}`
 
 ### Step 4: Write Unit Tests
 
@@ -71,24 +84,35 @@ Follow these 7 steps in order. Send a progress message at the start of each step
 - Follow existing test patterns (vitest, testing-library, etc.)
 - Cover the main happy path and key edge cases
 - Do NOT write E2E tests - those run via GitHub Actions CI
-- Send a progress message for the "tests" step
+
+Output: `@@YOLIUM:{"type":"progress","step":"tests","detail":"Added N tests in test-file.ts"}`
 
 ### Step 5: Run Tests Locally
 
 - Run `npm test` to verify all tests pass
 - If tests fail, fix the code and re-run until green
 - Do NOT skip this step
-- Send a progress message for the "local-tests" step, then post a comment with the actual test results
+
+Output these two messages (with real results):
+
+`@@YOLIUM:{"type":"progress","step":"local-tests","detail":"All N tests passing"}`
+
+`@@YOLIUM:{"type":"comment","text":"## Test Results\n\nAll N tests passing. ..."}`
 
 ### Step 6: Commit Changes Locally
 
 - Stage and commit changes with conventional commit messages
 - Do NOT push to the remote, create pull requests, or attempt to merge
-- Send a progress message for the "commit" step
+
+Output: `@@YOLIUM:{"type":"progress","step":"commit","detail":"Committed: <commit message>"}`
 
 ### Step 7: Signal Completion
 
-Post a detailed summary comment describing all changes made, files modified, and tests added. Then send a complete message with a brief summary.
+Post a detailed summary comment, then send the complete signal. Both are required:
+
+`@@YOLIUM:{"type":"comment","text":"## Summary\n\nAll changes committed. Files modified: ...\nTests added: ..."}`
+
+`@@YOLIUM:{"type":"complete","summary":"Implemented <brief description of what was done>"}`
 
 ## Rules
 

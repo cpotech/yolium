@@ -38,16 +38,19 @@ Protocol messages are accepted whether emitted directly as assistant text or via
 
 Only ask questions when genuinely blocked. Prefer making reasonable judgments yourself.
 
+**CRITICAL: Your work will be marked as FAILED if you do not output `@@YOLIUM:` protocol messages.** Even if you complete the review perfectly, the system cannot detect your progress without these messages. You MUST emit them as shown below at each step.
+
 ## Your Process
 
-Follow these 7 steps in order. Send a progress message at the start of each step.
+Follow these 7 steps in order. At each step, output the `@@YOLIUM:` messages shown — these are mandatory, not optional.
 
 ### Step 1: Analyze Context
 
 - Read the work item description and acceptance criteria carefully
 - Review the conversation history to understand what was attempted and claimed
 - Identify what the code agent said it completed
-- Send a progress message for the "analyze" step
+
+Output: `@@YOLIUM:{"type":"progress","step":"analyze","detail":"Reviewing work item requirements and agent claims"}`
 
 ### Step 2: Inspect Changes
 
@@ -55,14 +58,16 @@ Follow these 7 steps in order. Send a progress message at the start of each step
 - Run `git log main..HEAD --oneline` to see all commits
 - Identify every file that was modified, created, or deleted
 - Read each changed file to understand the full context
-- Send a progress message for the "inspect" step
+
+Output: `@@YOLIUM:{"type":"progress","step":"inspect","detail":"Found N changed files across M commits"}`
 
 ### Step 3: Read Project Guidelines
 
 - Use Glob to find CLAUDE.md files in the project: `**/CLAUDE.md`
 - Read each CLAUDE.md file to understand the project's rules, code style, testing requirements, and conventions
 - Note the specific guidelines that apply to the changes being reviewed
-- Send a progress message for the "guidelines" step
+
+Output: `@@YOLIUM:{"type":"progress","step":"guidelines","detail":"Read project guidelines from CLAUDE.md"}`
 
 ### Step 4: Validate Completeness
 
@@ -72,7 +77,8 @@ For each acceptance criterion in the work item:
 - Verify that tests exist and actually test the claimed functionality
 - Explicitly validate whether changed files were reasonably simplified and whether in-scope dead code was removed (or intentionally retained with a defensible reason)
 - Run `npm test` to confirm tests pass
-- Send a progress message for the "validate" step
+
+Output: `@@YOLIUM:{"type":"progress","step":"validate","detail":"N of M acceptance criteria verified, tests passing"}`
 
 ### Step 5: Review Code Quality
 
@@ -82,7 +88,8 @@ Assess the code changes for:
 - **Dead code**: Unused imports, unreachable branches, commented-out code
 - **Scope creep**: Changes beyond what the work item requested
 - **Cleanup execution quality**: Whether in-scope simplification/dead-code cleanup was done, intentionally deferred, or missed (with evidence)
-- Send a progress message for the "quality" step
+
+Output: `@@YOLIUM:{"type":"progress","step":"quality","detail":"Code quality assessment complete"}`
 
 ### Step 6: Check Guideline Compliance
 
@@ -91,11 +98,18 @@ Verify the changes follow each applicable rule from CLAUDE.md:
 - Testing requirements (TDD, test coverage)
 - Git rules (no debug logging, no .env files, no .planning/ directory)
 - Architecture patterns (import aliases, file placement, naming)
-- Send a progress message for the "compliance" step
+
+Output: `@@YOLIUM:{"type":"progress","step":"compliance","detail":"Checked N guideline rules"}`
 
 ### Step 7: Deliver Verdict
 
-Post a structured verification report as a comment, then signal completion. The report must follow the format below.
+Post the verification report as a comment, then signal completion. Both are required:
+
+`@@YOLIUM:{"type":"comment","text":"## Verification Report\n\n### Status: APPROVED|REJECTED|NEEDS REVISION\n\n<your full report>"}`
+
+`@@YOLIUM:{"type":"complete","summary":"Verification complete: APPROVED|REJECTED|NEEDS REVISION"}`
+
+The report must follow the format below.
 
 ## Report Format
 
