@@ -123,18 +123,59 @@ describe('KanbanCard', () => {
     expect(screen.getByTestId('agent-type-badge')).toHaveTextContent('No agent')
   })
 
-  it('should show last-run agent metadata when lastAgentName exists', () => {
-    const item = createMockItem({ lastAgentName: 'plan-agent' })
+  it('should show last-run agent metadata with provider when lastAgentName exists', () => {
+    const item = createMockItem({ lastAgentName: 'plan-agent', agentProvider: 'claude' })
     render(<KanbanCard item={item} onClick={vi.fn()} />)
 
-    expect(screen.getByTestId('last-run-agent')).toHaveTextContent('Last run: Plan')
+    expect(screen.getByTestId('last-run-agent')).toHaveTextContent('Last run: Claude / Plan')
   })
 
-  it('should hide last-run agent metadata when lastAgentName is undefined', () => {
-    const item = createMockItem({ lastAgentName: undefined })
+  it('should show provider-only info when lastAgentName is undefined', () => {
+    const item = createMockItem({ lastAgentName: undefined, agentProvider: 'claude' })
     render(<KanbanCard item={item} onClick={vi.fn()} />)
 
     expect(screen.queryByTestId('last-run-agent')).not.toBeInTheDocument()
+    expect(screen.getByTestId('agent-provider-info')).toHaveTextContent('Provider: Claude')
+  })
+
+  it('should show "Last run: Claude / Code" for claude provider with code-agent', () => {
+    const item = createMockItem({ lastAgentName: 'code-agent', agentProvider: 'claude' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.getByTestId('last-run-agent')).toHaveTextContent('Last run: Claude / Code')
+    expect(screen.getByTestId('agent-provider-info')).toHaveTextContent('Claude')
+  })
+
+  it('should show "Last run: OpenCode / Plan" for opencode provider with plan-agent', () => {
+    const item = createMockItem({ lastAgentName: 'plan-agent', agentProvider: 'opencode' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.getByTestId('last-run-agent')).toHaveTextContent('Last run: OpenCode / Plan')
+    expect(screen.getByTestId('agent-provider-info')).toHaveTextContent('OpenCode')
+  })
+
+  it('should show "Last run: Codex / Code" for codex provider with code-agent', () => {
+    const item = createMockItem({ lastAgentName: 'code-agent', agentProvider: 'codex' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.getByTestId('last-run-agent')).toHaveTextContent('Last run: Codex / Code')
+    expect(screen.getByTestId('agent-provider-info')).toHaveTextContent('Codex')
+  })
+
+  it('should show provider info even when no agent has run for opencode', () => {
+    const item = createMockItem({ lastAgentName: undefined, agentProvider: 'opencode' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.queryByTestId('last-run-agent')).not.toBeInTheDocument()
+    expect(screen.getByTestId('agent-provider-info')).toHaveTextContent('Provider: OpenCode')
+  })
+
+  it('should show provider info even when no agent has run for codex', () => {
+    const item = createMockItem({ lastAgentName: undefined, agentProvider: 'codex' })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.queryByTestId('last-run-agent')).not.toBeInTheDocument()
+    expect(screen.getByTestId('agent-provider-info')).toHaveTextContent('Provider: Codex')
   })
 
   it('should show branch when set', () => {
