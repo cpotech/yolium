@@ -515,9 +515,9 @@ describe('NewItemDialog', () => {
       />
     )
 
-    const modelSelect = screen.getByTestId('model-select')
-    expect(modelSelect).toBeInTheDocument()
-    expect(modelSelect).toHaveValue('') // Default is "Agent default"
+    const modelInput = screen.getByTestId('model-input')
+    expect(modelInput).toBeInTheDocument()
+    expect(modelInput).toHaveValue('') // Default is empty (uses agent default)
   })
 
   it('should include model in kanbanAddItem when selected', async () => {
@@ -539,7 +539,7 @@ describe('NewItemDialog', () => {
     fireEvent.change(screen.getByTestId('description-input'), {
       target: { value: 'Testing model selection' },
     })
-    fireEvent.change(screen.getByTestId('model-select'), {
+    fireEvent.change(screen.getByTestId('model-input'), {
       target: { value: 'opus' },
     })
 

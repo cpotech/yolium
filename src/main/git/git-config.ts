@@ -343,13 +343,13 @@ export function loadGitConfig(): GitConfig | null {
         ...(typeof config.githubLogin === 'string' && config.githubLogin ? { githubLogin: config.githubLogin } : {}),
         ...(config.useClaudeOAuth === true ? { useClaudeOAuth: true } : {}),
         ...(config.useCodexOAuth === true ? { useCodexOAuth: true } : {}),
-        ...(config.agentModelDefaults && typeof config.agentModelDefaults === 'object'
-          ? { agentModelDefaults: config.agentModelDefaults }
+        ...(config.providerModelDefaults && typeof config.providerModelDefaults === 'object'
+          ? { providerModelDefaults: config.providerModelDefaults }
           : {}),
       };
 
       // Return config if it has at least one meaningful value
-      const hasMeaningful = result.name || result.email || result.githubPat || result.openaiApiKey || result.anthropicApiKey || result.useClaudeOAuth || result.useCodexOAuth || result.agentModelDefaults;
+      const hasMeaningful = result.name || result.email || result.githubPat || result.openaiApiKey || result.anthropicApiKey || result.useClaudeOAuth || result.useCodexOAuth || result.providerModelDefaults;
       return hasMeaningful ? result : null;
     }
 

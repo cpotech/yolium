@@ -124,25 +124,31 @@ export function resolveModel(itemModel: string | undefined, settingsModel: strin
 
 /**
  * Get a human-readable model name for display in comments.
- * For Claude, shows the short model name (opus, sonnet, haiku).
- * For non-Claude providers, shows the provider's actual model.
+ * For Claude, shows the short model name (opus, sonnet, haiku) or the full model ID if overridden.
+ * For non-Claude providers, shows the provider's actual model or fallback defaults.
  */
 export function getDisplayModel(provider: string, itemModel: string | undefined, settingsModel: string | undefined, agentModel: string): string {
-  const shortName = itemModel || settingsModel || agentModel;
+  // If item or settings override is set, use it directly (users now type full model IDs)
+  const overrideModel = itemModel || settingsModel;
+  if (overrideModel) {
+    return overrideModel;
+  }
+
+  // No override - use agent frontmatter model with provider-specific fallbacks
   if (provider === 'claude') {
-    return shortName;
+    return agentModel;
   }
   if (provider === 'opencode') {
     const gitConfig = loadGitConfig();
     if (!gitConfig?.anthropicApiKey && !process.env.ANTHROPIC_API_KEY) {
       return 'kimi-k2.5-free';
     }
-    return shortName;
+    return agentModel;
   }
   if (provider === 'codex') {
     return 'codex-default';
   }
-  return shortName;
+  return agentModel;
 }
 
 export interface StartAgentParams {
@@ -231,9 +237,9 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     column: 'in-progress',
   });
   updateBoard(board, { lastAgentName: agentName });
-  // Load settings-level model default for this agent
+  // Load settings-level model default for this provider
   const gitConfig = loadGitConfig();
-  const settingsModel = gitConfig?.agentModelDefaults?.[agentName];
+  const settingsModel = gitConfig?.providerModelDefaults?.[provider];
 
   const displayModel = getDisplayModel(provider, item.model, settingsModel, agent.model);
   addComment(board, itemId, 'system', `${agentName} started (${provider}/${displayModel})`);

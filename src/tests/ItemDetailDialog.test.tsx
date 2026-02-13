@@ -957,9 +957,9 @@ describe('ItemDetailDialog', () => {
       />
     )
 
-    const modelSelect = screen.getByTestId('model-select')
-    expect(modelSelect).toBeInTheDocument()
-    expect(modelSelect).toHaveValue('opus')
+    const modelInput = screen.getByTestId('model-input')
+    expect(modelInput).toBeInTheDocument()
+    expect(modelInput).toHaveValue('opus')
   })
 
   it('should include model change in save', async () => {
@@ -977,7 +977,7 @@ describe('ItemDetailDialog', () => {
     )
 
     // Change model
-    fireEvent.change(screen.getByTestId('model-select'), {
+    fireEvent.change(screen.getByTestId('model-input'), {
       target: { value: 'haiku' },
     })
 
@@ -1013,7 +1013,7 @@ describe('ItemDetailDialog', () => {
     expect(screen.queryByTestId('unsaved-indicator')).not.toBeInTheDocument()
 
     // Change model
-    fireEvent.change(screen.getByTestId('model-select'), {
+    fireEvent.change(screen.getByTestId('model-input'), {
       target: { value: 'sonnet' },
     })
 

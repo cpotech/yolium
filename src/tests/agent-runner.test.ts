@@ -97,6 +97,23 @@ describe('agent-runner', () => {
       expect(result).toBe('some-custom-model');
     });
 
+    it('should pass through full model ID strings as-is', () => {
+      expect(resolveModel(undefined, undefined, 'claude-opus-4-6-20250212')).toBe('claude-opus-4-6-20250212');
+      expect(resolveModel(undefined, undefined, 'claude-sonnet-4-5-20250929')).toBe('claude-sonnet-4-5-20250929');
+      expect(resolveModel(undefined, undefined, 'o3-mini')).toBe('o3-mini');
+      expect(resolveModel(undefined, undefined, 'gpt-4o')).toBe('gpt-4o');
+    });
+
+    it('should resolve full model ID from item override', () => {
+      const result = resolveModel('claude-opus-4-6-20250212', undefined, 'sonnet');
+      expect(result).toBe('claude-opus-4-6-20250212');
+    });
+
+    it('should resolve full model ID from settings override', () => {
+      const result = resolveModel(undefined, 'o3-mini', 'opus');
+      expect(result).toBe('o3-mini');
+    });
+
     it('should prefer item model over settings model', () => {
       const result = resolveModel('sonnet', 'opus', 'haiku');
       expect(result).toBe('claude-sonnet-4-5-20250929');
@@ -121,15 +138,15 @@ describe('agent-runner', () => {
       process.env = originalEnv;
     });
 
-    it('should return short model name for claude provider', () => {
+    it('should return agent model for claude provider when no override', () => {
       expect(getDisplayModel('claude', undefined, undefined, 'opus')).toBe('opus');
     });
 
-    it('should use item model override for claude provider', () => {
+    it('should use item model override directly for claude provider', () => {
       expect(getDisplayModel('claude', 'sonnet', undefined, 'opus')).toBe('sonnet');
     });
 
-    it('should use settings model for claude provider when no item model', () => {
+    it('should use settings model directly for claude provider when no item model', () => {
       expect(getDisplayModel('claude', undefined, 'haiku', 'opus')).toBe('haiku');
     });
 
@@ -137,12 +154,20 @@ describe('agent-runner', () => {
       expect(getDisplayModel('claude', 'sonnet', 'haiku', 'opus')).toBe('sonnet');
     });
 
-    it('should return codex-default for codex provider', () => {
+    it('should return full model ID when provided as override', () => {
+      expect(getDisplayModel('claude', 'claude-opus-4-6-20250212', undefined, 'sonnet')).toBe('claude-opus-4-6-20250212');
+    });
+
+    it('should return codex-default for codex provider when no override', () => {
       expect(getDisplayModel('codex', undefined, undefined, 'opus')).toBe('codex-default');
     });
 
-    it('should return codex-default for codex provider even with item model', () => {
-      expect(getDisplayModel('codex', 'sonnet', undefined, 'opus')).toBe('codex-default');
+    it('should use override model for codex provider when provided', () => {
+      expect(getDisplayModel('codex', 'o3-mini', undefined, 'opus')).toBe('o3-mini');
+    });
+
+    it('should use settings override for codex provider when no item override', () => {
+      expect(getDisplayModel('codex', undefined, 'gpt-4o', 'opus')).toBe('gpt-4o');
     });
 
     it('should return short model name for opencode with anthropic API key in config', () => {
@@ -166,8 +191,17 @@ describe('agent-runner', () => {
       expect(getDisplayModel('opencode', undefined, undefined, 'opus')).toBe('kimi-k2.5-free');
     });
 
-    it('should return short model name for unknown provider', () => {
+    it('should use override model for opencode with anthropic key', () => {
+      mockLoadGitConfig.mockReturnValue({ anthropicApiKey: 'sk-ant-test-key' });
+      expect(getDisplayModel('opencode', 'claude-opus-4-6', undefined, 'sonnet')).toBe('claude-opus-4-6');
+    });
+
+    it('should return agent model for unknown provider', () => {
       expect(getDisplayModel('unknown-provider', undefined, undefined, 'opus')).toBe('opus');
+    });
+
+    it('should use override for unknown provider', () => {
+      expect(getDisplayModel('unknown-provider', 'custom-model', undefined, 'opus')).toBe('custom-model');
     });
   });
 
