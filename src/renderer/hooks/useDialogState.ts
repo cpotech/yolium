@@ -37,7 +37,7 @@ export interface UseDialogStateResult {
   /** Close git config dialog */
   closeGitConfigDialog: () => void
   /** Save git config */
-  saveGitConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; agentModelDefaults?: Record<string, string> }) => Promise<void>
+  saveGitConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]> }) => Promise<void>
 }
 
 /**
@@ -95,7 +95,7 @@ export function useDialogState(): UseDialogStateResult {
     setGitConfigDialogOpen(false)
   }, [])
 
-  const saveGitConfig = useCallback(async (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; agentModelDefaults?: Record<string, string> }) => {
+  const saveGitConfig = useCallback(async (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]> }) => {
     await window.electronAPI.git.saveConfig(config)
     // Reload from IPC to get sanitized form with hasPat/hasOpenaiKey flags
     const reloaded = await window.electronAPI.git.loadConfig()

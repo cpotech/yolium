@@ -33,11 +33,17 @@ export function NewItemDialog({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [agentDefinitions, setAgentDefinitions] = useState<AgentDefinition[]>([])
+  const [providerModels, setProviderModels] = useState<Record<string, string[]>>({})
   const dialogRef = useRef<HTMLDivElement>(null)
 
-  // Fetch agent definitions on mount
+  // Fetch agent definitions and provider models on mount
   useEffect(() => {
     window.electronAPI.agent.listDefinitions().then(setAgentDefinitions).catch(() => {})
+    window.electronAPI.git.loadConfig().then(config => {
+      if (config?.providerModels) {
+        setProviderModels(config.providerModels)
+      }
+    }).catch(() => {})
   }, [])
 
   // Reset form when dialog opens/closes
@@ -51,8 +57,25 @@ export function NewItemDialog({
       setModel('')
       setIsSubmitting(false)
       setErrorMessage(null)
+      // Refresh provider models when dialog opens
+      window.electronAPI.git.loadConfig().then(config => {
+        if (config?.providerModels) {
+          setProviderModels(config.providerModels)
+        }
+      }).catch(() => {})
     }
   }, [isOpen])
+
+  // Reset model when agent provider changes if current model isn't in new provider's list
+  // Only reset when providerModels is populated (skip before settings are loaded)
+  useEffect(() => {
+    if (model && Object.keys(providerModels).length > 0) {
+      const models = providerModels[agentProvider] || []
+      if (!models.includes(model)) {
+        setModel('')
+      }
+    }
+  }, [agentProvider, providerModels, model])
 
   const canSubmit = title.trim().length > 0
 
@@ -277,15 +300,18 @@ export function NewItemDialog({
                 >
                   Model <span className="normal-case tracking-normal">(optional)</span>
                 </label>
-                <input
+                <select
                   id="new-item-model"
-                  data-testid="model-input"
-                  type="text"
+                  data-testid="model-select"
                   value={model}
                   onChange={e => setModel(e.target.value)}
-                  placeholder="e.g., opus, sonnet, claude-opus-4-6"
                   className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
-                />
+                >
+                  <option value="">Provider default</option>
+                  {(providerModels[agentProvider] || []).map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
                 <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
                   Leave empty to use provider default
                 </p>

@@ -40,6 +40,7 @@ beforeEach(() => {
         worktreeDiffStats: mockWorktreeDiffStats,
         mergeAndPushPR: mockMergeAndPushPR,
         checkMergeConflicts: mockCheckMergeConflicts,
+        loadConfig: vi.fn().mockResolvedValue(null),
       },
       agent: {
         onOutput: mockOnAgentOutput,
@@ -946,7 +947,12 @@ describe('ItemDetailDialog', () => {
     expect(mockShowConfirmOkCancel).not.toHaveBeenCalled()
   })
 
-  it('should render model selector in right pane', () => {
+  it('should render model selector in right pane', async () => {
+    // Set up provider models so the dropdown has options
+    ;(window.electronAPI.git.loadConfig as ReturnType<typeof vi.fn>).mockResolvedValue({
+      providerModels: { claude: ['opus', 'sonnet', 'haiku'] },
+    })
+
     const item = createMockItem({ model: 'opus' })
 
     render(
@@ -959,12 +965,23 @@ describe('ItemDetailDialog', () => {
       />
     )
 
-    const modelInput = screen.getByTestId('model-input')
+    // Wait for provider models to load
+    await waitFor(() => {
+      const options = screen.getByTestId('model-select').querySelectorAll('option')
+      expect(options.length).toBeGreaterThan(1)
+    })
+
+    const modelInput = screen.getByTestId('model-select')
     expect(modelInput).toBeInTheDocument()
     expect(modelInput).toHaveValue('opus')
   })
 
   it('should include model change in save', async () => {
+    // Set up provider models so the dropdown has options
+    ;(window.electronAPI.git.loadConfig as ReturnType<typeof vi.fn>).mockResolvedValue({
+      providerModels: { claude: ['opus', 'sonnet', 'haiku'] },
+    })
+
     mockKanbanUpdateItem.mockResolvedValueOnce({ id: 'item-1' })
     const item = createMockItem()
 
@@ -978,8 +995,14 @@ describe('ItemDetailDialog', () => {
       />
     )
 
+    // Wait for provider models to load
+    await waitFor(() => {
+      const options = screen.getByTestId('model-select').querySelectorAll('option')
+      expect(options.length).toBeGreaterThan(1)
+    })
+
     // Change model
-    fireEvent.change(screen.getByTestId('model-input'), {
+    fireEvent.change(screen.getByTestId('model-select'), {
       target: { value: 'haiku' },
     })
 
@@ -999,7 +1022,12 @@ describe('ItemDetailDialog', () => {
     })
   })
 
-  it('should show unsaved indicator when model is changed', () => {
+  it('should show unsaved indicator when model is changed', async () => {
+    // Set up provider models so the dropdown has options
+    ;(window.electronAPI.git.loadConfig as ReturnType<typeof vi.fn>).mockResolvedValue({
+      providerModels: { claude: ['opus', 'sonnet', 'haiku'] },
+    })
+
     const item = createMockItem()
 
     render(
@@ -1012,11 +1040,17 @@ describe('ItemDetailDialog', () => {
       />
     )
 
+    // Wait for provider models to load
+    await waitFor(() => {
+      const options = screen.getByTestId('model-select').querySelectorAll('option')
+      expect(options.length).toBeGreaterThan(1)
+    })
+
     // No indicator initially
     expect(screen.queryByTestId('unsaved-indicator')).not.toBeInTheDocument()
 
     // Change model
-    fireEvent.change(screen.getByTestId('model-input'), {
+    fireEvent.change(screen.getByTestId('model-select'), {
       target: { value: 'sonnet' },
     })
 
