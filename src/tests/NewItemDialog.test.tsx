@@ -110,7 +110,7 @@ describe('NewItemDialog', () => {
   })
 
   it('should call kanbanAddItem on submit with correct params', async () => {
-    mockKanbanAddItem.mockResolvedValueOnce({ id: 'new-item-1' })
+    mockKanbanAddItem.mockResolvedValueOnce({ id: 'new-item-1', description: 'Task description here', agentProvider: 'codex' })
     const onCreated = vi.fn()
 
     render(
@@ -148,7 +148,70 @@ describe('NewItemDialog', () => {
     })
 
     await waitFor(() => {
-      expect(onCreated).toHaveBeenCalled()
+      expect(onCreated).toHaveBeenCalledWith({
+        id: 'new-item-1',
+        description: 'Task description here',
+        agentProvider: 'codex',
+        agentType: undefined,
+      })
+    })
+  })
+
+  it('should pass agentType in onCreated when agent type is selected', async () => {
+    // Mock agent definitions so the agent type dropdown appears
+    Object.defineProperty(window, 'electronAPI', {
+      value: {
+        ...window.electronAPI,
+        agent: {
+          listDefinitions: vi.fn().mockResolvedValue([
+            { name: 'code-agent', description: 'Code agent', model: 'sonnet', tools: [], timeout: 30 },
+          ]),
+        },
+      },
+      writable: true,
+    })
+
+    mockKanbanAddItem.mockResolvedValueOnce({
+      id: 'new-item-2',
+      description: 'Task with agent',
+      agentProvider: 'claude',
+      agentType: 'code-agent',
+    })
+    const onCreated = vi.fn()
+
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={onCreated}
+      />
+    )
+
+    // Wait for agent definitions to load
+    await waitFor(() => {
+      expect(screen.getByTestId('agent-type-select')).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByTestId('title-input'), {
+      target: { value: 'Task with agent' },
+    })
+    fireEvent.change(screen.getByTestId('description-input'), {
+      target: { value: 'Task with agent' },
+    })
+    fireEvent.change(screen.getByTestId('agent-type-select'), {
+      target: { value: 'code-agent' },
+    })
+
+    fireEvent.click(screen.getByTestId('create-button'))
+
+    await waitFor(() => {
+      expect(onCreated).toHaveBeenCalledWith({
+        id: 'new-item-2',
+        description: 'Task with agent',
+        agentProvider: 'claude',
+        agentType: 'code-agent',
+      })
     })
   })
 

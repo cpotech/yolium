@@ -859,4 +859,113 @@ describe('KanbanView', () => {
     expect(cards[0]).toHaveTextContent('New Task')
     expect(cards[1]).toHaveTextContent('Existing Task')
   })
+
+  it('should auto-start agent when item is created with agentType set', async () => {
+    const board = createMockBoard([])
+    mockKanbanGetBoard.mockResolvedValue(board)
+
+    const mockAddItem = vi.fn().mockResolvedValue({
+      id: 'auto-start-1',
+      description: 'Auto start task',
+      agentProvider: 'claude',
+      agentType: 'code-agent',
+    })
+
+    Object.defineProperty(window, 'electronAPI', {
+      value: {
+        ...window.electronAPI,
+        kanban: {
+          ...(window.electronAPI as any).kanban,
+          addItem: mockAddItem,
+        },
+        agent: {
+          ...(window.electronAPI as any).agent,
+          start: mockAgentStart,
+          listDefinitions: vi.fn().mockResolvedValue([
+            { name: 'code-agent', description: 'Code agent', model: 'sonnet', tools: [], timeout: 30 },
+          ]),
+        },
+      },
+      writable: true,
+    })
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
+
+    // Open new item dialog
+    fireEvent.click(screen.getByTestId('new-item-button'))
+    expect(screen.getByTestId('new-item-dialog')).toBeInTheDocument()
+
+    // Fill in the form
+    fireEvent.change(screen.getByTestId('title-input'), { target: { value: 'Auto start task' } })
+    fireEvent.change(screen.getByTestId('description-input'), { target: { value: 'Auto start task' } })
+
+    // Wait for agent type select to appear
+    await waitFor(() => {
+      expect(screen.getByTestId('agent-type-select')).toBeInTheDocument()
+    })
+    fireEvent.change(screen.getByTestId('agent-type-select'), { target: { value: 'code-agent' } })
+
+    // Submit
+    fireEvent.click(screen.getByTestId('create-button'))
+
+    // Agent should be auto-started
+    await waitFor(() => {
+      expect(mockAgentStart).toHaveBeenCalledWith({
+        agentName: 'code-agent',
+        projectPath: '/test/project',
+        itemId: 'auto-start-1',
+        goal: 'Auto start task',
+        agentProvider: 'claude',
+      })
+    })
+  })
+
+  it('should not auto-start agent when item is created without agentType', async () => {
+    const board = createMockBoard([])
+    mockKanbanGetBoard.mockResolvedValue(board)
+
+    const mockAddItem = vi.fn().mockResolvedValue({
+      id: 'no-agent-1',
+      description: 'Manual task',
+      agentProvider: 'claude',
+      agentType: undefined,
+    })
+
+    Object.defineProperty(window, 'electronAPI', {
+      value: {
+        ...window.electronAPI,
+        kanban: {
+          ...(window.electronAPI as any).kanban,
+          addItem: mockAddItem,
+        },
+      },
+      writable: true,
+    })
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
+
+    // Open new item dialog
+    fireEvent.click(screen.getByTestId('new-item-button'))
+
+    // Fill in form without selecting agent type
+    fireEvent.change(screen.getByTestId('title-input'), { target: { value: 'Manual task' } })
+
+    // Submit
+    fireEvent.click(screen.getByTestId('create-button'))
+
+    await waitFor(() => {
+      expect(mockAddItem).toHaveBeenCalled()
+    })
+
+    // Agent should NOT be started
+    expect(mockAgentStart).not.toHaveBeenCalled()
+  })
 })

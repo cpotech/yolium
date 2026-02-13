@@ -178,10 +178,20 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     loadBoard()
   }, [loadBoard])
 
-  const handleNewItemCreated = useCallback(() => {
+  const handleNewItemCreated = useCallback(async (item: { id: string; agentType?: string; agentProvider: string; description: string }) => {
     setNewItemDialogOpen(false)
     loadBoard()
-  }, [loadBoard])
+    if (item.agentType) {
+      await window.electronAPI.agent.start({
+        agentName: item.agentType,
+        projectPath,
+        itemId: item.id,
+        goal: item.description,
+        agentProvider: item.agentProvider,
+      })
+      loadBoard()
+    }
+  }, [loadBoard, projectPath])
 
   // Compute a flat ordered list of all visible items (used for shift-click range selection)
   const allVisibleItems = useMemo(() => {
