@@ -486,6 +486,35 @@ describe('kanban-store', () => {
       expect(result).not.toBeNull();
       expect(result!.title).toBe('New Title');
     });
+
+    it('should update verified flag to true', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      const result = updateItem(board, item.id, { verified: true });
+      expect(result).not.toBeNull();
+      expect(result!.verified).toBe(true);
+    });
+
+    it('should update verified flag to false', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      updateItem(board, item.id, { verified: true });
+      const result = updateItem(board, item.id, { verified: false });
+      expect(result).not.toBeNull();
+      expect(result!.verified).toBe(false);
+    });
   });
 
   describe('buildConversationHistory', () => {

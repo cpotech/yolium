@@ -506,6 +506,7 @@ declare global {
             agentQuestionOptions?: string[];
             worktreePath?: string;
             mergeStatus?: 'unmerged' | 'merged' | 'conflict';
+            verified?: boolean;
             comments: Array<{ id: string; source: 'user' | 'agent' | 'system'; text: string; timestamp: string; options?: string[] }>;
             createdAt: string;
             updatedAt: string;

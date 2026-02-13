@@ -566,4 +566,29 @@ describe('KanbanCard', () => {
 
     expect(screen.queryByTestId('pr-link-btn')).not.toBeInTheDocument()
   })
+
+  // Verified indicator tests
+  it('should show verified indicator when item.verified is true', () => {
+    const item = createMockItem({ verified: true })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    const indicator = screen.getByTestId('verified-indicator')
+    expect(indicator).toBeInTheDocument()
+    expect(indicator).toHaveTextContent('Verified')
+    expect(indicator).toHaveClass('text-green-400')
+  })
+
+  it('should not show verified indicator when item.verified is false', () => {
+    const item = createMockItem({ verified: false })
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.queryByTestId('verified-indicator')).not.toBeInTheDocument()
+  })
+
+  it('should not show verified indicator when item.verified is undefined', () => {
+    const item = createMockItem()
+    render(<KanbanCard item={item} onClick={vi.fn()} />)
+
+    expect(screen.queryByTestId('verified-indicator')).not.toBeInTheDocument()
+  })
 })

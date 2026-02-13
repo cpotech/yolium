@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { GitBranch, GitMerge, Loader2, AlertCircle, AlertTriangle, CheckCircle, XCircle, MessageSquare, RotateCcw, Play, ExternalLink } from 'lucide-react'
+import { GitBranch, GitMerge, Loader2, AlertCircle, AlertTriangle, CheckCircle, XCircle, MessageSquare, RotateCcw, Play, ExternalLink, ShieldCheck } from 'lucide-react'
 import type { KanbanItem, AgentStatus, MergeStatus } from '@shared/types/kanban'
 
 interface KanbanCardProps {
@@ -281,6 +281,15 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
                   <ExternalLink size={11} />
                 </button>
               )}
+            </div>
+          )}
+          {item.verified && (
+            <div
+              data-testid="verified-indicator"
+              className="flex items-center gap-1 text-[11px] text-green-400"
+            >
+              <ShieldCheck size={12} />
+              <span>Verified</span>
             </div>
           )}
         </div>
