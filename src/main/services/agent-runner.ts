@@ -139,10 +139,6 @@ export function getDisplayModel(provider: string, itemModel: string | undefined,
     return agentModel;
   }
   if (provider === 'opencode') {
-    const gitConfig = loadGitConfig();
-    if (!gitConfig?.anthropicApiKey && !process.env.ANTHROPIC_API_KEY) {
-      return 'kimi-k2.5-free';
-    }
     return agentModel;
   }
   if (provider === 'codex') {

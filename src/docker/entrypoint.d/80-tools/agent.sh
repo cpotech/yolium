@@ -70,11 +70,6 @@ IMPORTANT: Read the file .yolium-agent-instructions.md in the project root FIRST
 
 Start by reading that file, then follow the process described in it step by step."
 
-    # Select model
-    if [ -z "$ANTHROPIC_API_KEY" ]; then
-        log "No ANTHROPIC_API_KEY set, using free model opencode/kimi-k2.5-free"
-        exec opencode run -m opencode/kimi-k2.5-free "$RUN_PROMPT"
-    fi
     exec opencode run -m "$MODEL_ID" "$RUN_PROMPT"
 elif [ "$AGENT_PROV" = "codex" ]; then
     log "Starting Codex headless agent mode"
