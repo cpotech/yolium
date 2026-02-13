@@ -397,7 +397,11 @@ export function deleteWorktree(projectPath: string, worktreePath: string): void 
 
     // Remove the directory if it still exists
     if (fs.existsSync(worktreePath)) {
-      fs.rmSync(worktreePath, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+      try {
+        fs.rmSync(worktreePath, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+      } catch {
+        // On Windows, files may be locked by other processes — best effort
+      }
     }
   }
 }
@@ -420,7 +424,11 @@ async function deleteWorktreeAsync(projectPath: string, worktreePath: string): P
     }
 
     if (fs.existsSync(worktreePath)) {
-      fs.rmSync(worktreePath, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+      try {
+        fs.rmSync(worktreePath, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+      } catch {
+        // On Windows, files may be locked by other processes — best effort
+      }
     }
   }
 }
@@ -1099,7 +1107,11 @@ export async function mergeBranchAndPushPR(
     // Best effort
   }
 
-  await cleanupWorktreeAndBranch(projectPath, worktreePath, worktreeBranch);
+  try {
+    await cleanupWorktreeAndBranch(projectPath, worktreePath, worktreeBranch);
+  } catch {
+    // Cleanup is best-effort — PR was already created successfully
+  }
 
   return { success: true, prUrl, prBranch };
 }

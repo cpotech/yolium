@@ -409,7 +409,8 @@ export function ItemDetailDialog({
       }
     } catch (error) {
       console.error('Failed to merge and push PR:', error)
-      setErrorMessage('Failed to merge and push PR. Please try again.')
+      const msg = error instanceof Error ? error.message : 'Unknown error'
+      setErrorMessage(`Failed to merge and push PR: ${msg}`)
     } finally {
       setIsMerging(false)
     }
