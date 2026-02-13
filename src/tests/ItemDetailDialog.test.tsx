@@ -449,6 +449,7 @@ describe('ItemDetailDialog', () => {
         agentProvider: 'claude',
         agentType: undefined,
         model: undefined,
+        verified: false,
       })
     })
 
@@ -667,6 +668,7 @@ describe('ItemDetailDialog', () => {
         agentProvider: 'claude',
         agentType: undefined,
         model: undefined,
+        verified: false,
       })
     })
   })
@@ -992,6 +994,7 @@ describe('ItemDetailDialog', () => {
         model: 'haiku',
         agentProvider: 'claude',
         agentType: undefined,
+        verified: false,
       })
     })
   })
