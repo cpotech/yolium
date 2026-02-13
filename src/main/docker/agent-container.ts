@@ -361,7 +361,7 @@ export function buildAgentEnv(params: {
     `AGENT_PROVIDER=${agentProvider}`,
     ...(goalBase64 ? [`AGENT_GOAL=${goalBase64}`] : []),
     `HOST_HOME=${toContainerHomePath(os.homedir())}`,
-    'OPENCODE_YOLO=true',  // Skip permission prompts — container is already isolated
+    'OPENCODE_YOLO=true',  // Env var for potential future OpenCode YOLO mode (permissions handled via opencode.json in entrypoint)
     ...(process.env.YOLIUM_NETWORK_FULL === 'true' ? ['YOLIUM_NETWORK_FULL=true'] : []),
     ...(worktreePath && originalPath ? [`WORKTREE_REPO_PATH=${toDockerPath(originalPath)}`] : []),
     ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
