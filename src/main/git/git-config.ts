@@ -346,10 +346,27 @@ export function loadGitConfig(): GitConfig | null {
         ...(config.providerModelDefaults && typeof config.providerModelDefaults === 'object'
           ? { providerModelDefaults: config.providerModelDefaults }
           : {}),
+      ...(config.providerModels && typeof config.providerModels === 'object'
+          ? { providerModels: config.providerModels }
+          : {}),
       };
 
+      // Migrate: if providerModels is absent but providerModelDefaults exists,
+      // convert each single string value to a single-element array
+      if (!result.providerModels && result.providerModelDefaults) {
+        const migrated: Record<string, string[]> = {};
+        for (const [provider, model] of Object.entries(result.providerModelDefaults)) {
+          if (typeof model === 'string' && model) {
+            migrated[provider] = [model];
+          }
+        }
+        if (Object.keys(migrated).length > 0) {
+          result.providerModels = migrated;
+        }
+      }
+
       // Return config if it has at least one meaningful value
-      const hasMeaningful = result.name || result.email || result.githubPat || result.openaiApiKey || result.anthropicApiKey || result.useClaudeOAuth || result.useCodexOAuth || result.providerModelDefaults;
+      const hasMeaningful = result.name || result.email || result.githubPat || result.openaiApiKey || result.anthropicApiKey || result.useClaudeOAuth || result.useCodexOAuth || result.providerModelDefaults || result.providerModels;
       return hasMeaningful ? result : null;
     }
 

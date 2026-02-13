@@ -89,6 +89,7 @@ export function ItemDetailDialog({
   const [conflictCheck, setConflictCheck] = useState<{ clean: boolean; conflictingFiles: string[] } | null>(null)
   const [prUrl, setPrUrl] = useState<string | null>(null)
   const [showDiffViewer, setShowDiffViewer] = useState(false)
+  const [providerModels, setProviderModels] = useState<Record<string, string[]>>({})
 
   // Refs
   const answerInputRef = useRef<HTMLTextAreaElement>(null)
@@ -114,6 +115,28 @@ export function ItemDetailDialog({
   const [baseVerified, setBaseVerified] = useState(false)
 
   const hasUnsavedChanges = title !== baseTitle || description !== baseDescription || column !== baseColumn || agentType !== baseAgentType || agentProvider !== baseAgentProvider || model !== baseModel || verified !== baseVerified
+
+  // Fetch provider models on mount and when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      window.electronAPI.git.loadConfig().then(config => {
+        if (config?.providerModels) {
+          setProviderModels(config.providerModels)
+        }
+      }).catch(() => {})
+    }
+  }, [isOpen])
+
+  // Reset model when agent provider changes if current model isn't in new provider's list
+  // Only reset when providerModels is populated (skip before settings are loaded)
+  useEffect(() => {
+    if (model && Object.keys(providerModels).length > 0) {
+      const models = providerModels[agentProvider] || []
+      if (!models.includes(model)) {
+        setModel('')
+      }
+    }
+  }, [agentProvider, providerModels, model])
 
   // Sync editable fields when item data changes
   useEffect(() => {
@@ -647,15 +670,18 @@ export function ItemDetailDialog({
                 >
                   Model
                 </label>
-                <input
+                <select
                   id="detail-model"
-                  data-testid="model-input"
-                  type="text"
+                  data-testid="model-select"
                   value={model}
                   onChange={e => setModel(e.target.value)}
-                  placeholder="e.g., opus, sonnet, claude-opus-4-6"
                   className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
-                />
+                >
+                  <option value="">Provider default</option>
+                  {(providerModels[agentProvider] || []).map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
                 <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
                   Leave empty to use provider default
                 </p>

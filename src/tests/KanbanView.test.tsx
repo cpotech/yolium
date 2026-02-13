@@ -35,6 +35,7 @@ beforeEach(() => {
       git: {
         detectNestedRepos: mockDetectNestedRepos,
         init: vi.fn().mockResolvedValue({ success: true }),
+        loadConfig: vi.fn().mockResolvedValue(null),
       },
       agent: {
         start: mockAgentStart,
