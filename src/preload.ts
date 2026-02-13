@@ -133,7 +133,7 @@ const fs = {
 // Git namespace
 const git = {
   loadConfig: () => ipcRenderer.invoke('git-config:load'),
-  saveConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; agentModelDefaults?: Record<string, string> }) =>
+  saveConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]> }) =>
     ipcRenderer.invoke('git-config:save', config),
   isRepo: (folderPath: string) => ipcRenderer.invoke('git:is-repo', folderPath),
   getBranch: (folderPath: string) => ipcRenderer.invoke('git:get-branch', folderPath),
@@ -431,8 +431,8 @@ declare global {
         }>;
       };
       git: {
-        loadConfig: () => Promise<{ name: string; email: string; hasPat?: boolean; hasOpenaiKey?: boolean; hasAnthropicKey?: boolean; hasClaudeOAuth?: boolean; useClaudeOAuth?: boolean; hasCodexOAuth?: boolean; useCodexOAuth?: boolean; githubLogin?: string; agentModelDefaults?: Record<string, string> } | null>;
-        saveConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; agentModelDefaults?: Record<string, string> }) => Promise<void>;
+        loadConfig: () => Promise<{ name: string; email: string; hasPat?: boolean; hasOpenaiKey?: boolean; hasAnthropicKey?: boolean; hasClaudeOAuth?: boolean; useClaudeOAuth?: boolean; hasCodexOAuth?: boolean; useCodexOAuth?: boolean; githubLogin?: string; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]> } | null>;
+        saveConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]> }) => Promise<void>;
         isRepo: (folderPath: string) => Promise<{ isRepo: boolean; hasCommits: boolean }>;
         getBranch: (folderPath: string) => Promise<string | null>;
         init: (folderPath: string, projectTypes?: ProjectType[]) => Promise<{ success: boolean; initialized?: boolean; hasCommits?: boolean; error?: string }>;

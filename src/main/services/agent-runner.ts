@@ -238,8 +238,10 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
   });
   updateBoard(board, { lastAgentName: agentName });
   // Load settings-level model default for this provider
+  // Prefer providerModels (multi-model list, first is default), fall back to providerModelDefaults
   const gitConfig = loadGitConfig();
-  const settingsModel = gitConfig?.providerModelDefaults?.[provider];
+  const providerModelsList = gitConfig?.providerModels?.[provider];
+  const settingsModel = providerModelsList?.[0] ?? gitConfig?.providerModelDefaults?.[provider];
 
   const displayModel = getDisplayModel(provider, item.model, settingsModel, agent.model);
   addComment(board, itemId, 'system', `${agentName} started (${provider}/${displayModel})`);

@@ -19,6 +19,9 @@ beforeEach(() => {
       agent: {
         listDefinitions: vi.fn().mockResolvedValue([]),
       },
+      git: {
+        loadConfig: vi.fn().mockResolvedValue(null),
+      },
     },
     writable: true,
   })
@@ -166,6 +169,9 @@ describe('NewItemDialog', () => {
           listDefinitions: vi.fn().mockResolvedValue([
             { name: 'code-agent', description: 'Code agent', model: 'sonnet', tools: [], timeout: 30 },
           ]),
+        },
+        git: {
+          loadConfig: vi.fn().mockResolvedValue(null),
         },
       },
       writable: true,
@@ -515,12 +521,25 @@ describe('NewItemDialog', () => {
       />
     )
 
-    const modelInput = screen.getByTestId('model-input')
+    const modelInput = screen.getByTestId('model-select')
     expect(modelInput).toBeInTheDocument()
     expect(modelInput).toHaveValue('') // Default is empty (uses agent default)
   })
 
   it('should include model in kanbanAddItem when selected', async () => {
+    // Set up provider models so the dropdown has options
+    Object.defineProperty(window, 'electronAPI', {
+      value: {
+        ...window.electronAPI,
+        git: {
+          loadConfig: vi.fn().mockResolvedValue({
+            providerModels: { claude: ['opus', 'sonnet', 'haiku'] },
+          }),
+        },
+      },
+      writable: true,
+    })
+
     mockKanbanAddItem.mockResolvedValueOnce({ id: 'new-item-1' })
     const onCreated = vi.fn()
 
@@ -533,13 +552,19 @@ describe('NewItemDialog', () => {
       />
     )
 
+    // Wait for provider models to load
+    await waitFor(() => {
+      const options = screen.getByTestId('model-select').querySelectorAll('option')
+      expect(options.length).toBeGreaterThan(1) // "Provider default" + models
+    })
+
     fireEvent.change(screen.getByTestId('title-input'), {
       target: { value: 'Model Task' },
     })
     fireEvent.change(screen.getByTestId('description-input'), {
       target: { value: 'Testing model selection' },
     })
-    fireEvent.change(screen.getByTestId('model-input'), {
+    fireEvent.change(screen.getByTestId('model-select'), {
       target: { value: 'opus' },
     })
 
