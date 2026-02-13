@@ -39,7 +39,7 @@
     "@electron/fuses": "^1.8.0",
     "@electron/rebuild": "^4.0.2",
     "@playwright/test": "^1.50.0",
-    "@tailwindcss/postcss": "^4.1.18",
+    "@tailwindcss/vite": "^4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/dockerode": "^4.0.0",
