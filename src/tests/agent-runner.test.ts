@@ -133,6 +133,16 @@ describe('agent-runner', () => {
       const result = resolveModel('kimi-k2.5-free', 'sonnet', 'opus');
       expect(result).toBe('kimi-k2.5-free');
     });
+
+    it('should pass through OpenCode provider/model format from item override', () => {
+      expect(resolveModel('opencode/big-pickle', undefined, 'opus')).toBe('opencode/big-pickle');
+      expect(resolveModel('opencode/kimi-k2.5-free', undefined, 'opus')).toBe('opencode/kimi-k2.5-free');
+    });
+
+    it('should pass through OpenCode provider/model format from settings', () => {
+      expect(resolveModel(undefined, 'opencode/big-pickle', 'sonnet')).toBe('opencode/big-pickle');
+      expect(resolveModel(undefined, 'anthropic/claude-sonnet-4-20250514', 'opus')).toBe('anthropic/claude-sonnet-4-20250514');
+    });
   });
 
   describe('getDisplayModel', () => {

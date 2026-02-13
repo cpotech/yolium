@@ -669,14 +669,14 @@ export function GitConfigDialog({
                 <div className="mb-4">
                   <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Models per Provider</h3>
                   <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                    Add models for each provider. The first model is used as the default. Per-item model overrides still take priority.
+                    Add models for each provider. The first model is used as the default. Per-item model overrides still take priority. OpenCode models use provider/model format (e.g., opencode/big-pickle).
                   </p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-3">
                   {[
                     { key: 'claude', label: 'Claude', placeholder: 'e.g., claude-opus-4-6' },
                     { key: 'codex', label: 'Codex', placeholder: 'e.g., o3-mini, gpt-4o' },
-                    { key: 'opencode', label: 'OpenCode', placeholder: 'e.g., claude-sonnet-4-5-20250929' },
+                    { key: 'opencode', label: 'OpenCode', placeholder: 'e.g., opencode/big-pickle' },
                   ].map(({ key, label, placeholder }) => (
                     <div key={key}>
                       <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
