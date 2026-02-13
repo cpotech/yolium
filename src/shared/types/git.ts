@@ -9,7 +9,7 @@ export interface GitConfig {
   githubLogin?: string;  // GitHub username derived from PAT via API
   useClaudeOAuth?: boolean;  // Use Claude Max OAuth tokens instead of Anthropic API key
   useCodexOAuth?: boolean;  // Use Codex OAuth (ChatGPT) tokens instead of OpenAI API key
-  agentModelDefaults?: Record<string, string>;  // Default model per agent type (e.g., {"code-agent": "sonnet"})
+  providerModelDefaults?: Record<string, string>;  // Default model per provider (e.g., {"claude": "claude-opus-4-6", "codex": "o3-mini"})
 }
 
 export interface GitConfigWithPat extends GitConfig {
@@ -19,7 +19,7 @@ export interface GitConfigWithPat extends GitConfig {
   hasClaudeOAuth?: boolean;  // Whether ~/.claude/.credentials.json exists on host with valid tokens
   hasCodexOAuth?: boolean;  // Whether ~/.codex/auth.json exists on host with valid OAuth tokens
   githubLogin?: string;  // GitHub username derived from PAT
-  agentModelDefaults?: Record<string, string>;  // Default model per agent type
+  providerModelDefaults?: Record<string, string>;  // Default model per provider (e.g., {"claude": "claude-opus-4-6", "codex": "o3-mini"})
   sources?: {
     name?: 'system' | 'environment' | 'yolium';
     email?: 'system' | 'environment' | 'yolium';
