@@ -259,10 +259,10 @@ describe('opencode-access', () => {
       expect(getDisplayModel('opencode', 'haiku', undefined, 'opus')).toBe('haiku');
     });
 
-    it('should return kimi-k2.5-free even with item model when no auth', () => {
+    it('should use item model override for opencode even without auth', () => {
       mockLoadGitConfig.mockReturnValue(null);
-      // When no API key, OpenCode falls back to kimi-k2.5-free regardless of item model
-      expect(getDisplayModel('opencode', 'sonnet', undefined, 'opus')).toBe('kimi-k2.5-free');
+      // When item override is provided, it takes precedence (users can set any model)
+      expect(getDisplayModel('opencode', 'sonnet', undefined, 'opus')).toBe('sonnet');
     });
   });
 

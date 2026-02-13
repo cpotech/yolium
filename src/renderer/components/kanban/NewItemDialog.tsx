@@ -16,12 +16,7 @@ const agentProviderOptions: { value: KanbanAgentProvider; label: string }[] = [
   { value: 'opencode', label: 'OpenCode' },
 ]
 
-const modelOptions: { value: string; label: string }[] = [
-  { value: '', label: 'Agent default' },
-  { value: 'opus', label: 'Opus (most capable)' },
-  { value: 'sonnet', label: 'Sonnet (balanced)' },
-  { value: 'haiku', label: 'Haiku (fastest)' },
-]
+
 
 export function NewItemDialog({
   isOpen,
@@ -282,19 +277,18 @@ export function NewItemDialog({
                 >
                   Model <span className="normal-case tracking-normal">(optional)</span>
                 </label>
-                <select
+                <input
                   id="new-item-model"
-                  data-testid="model-select"
+                  data-testid="model-input"
+                  type="text"
                   value={model}
                   onChange={e => setModel(e.target.value)}
+                  placeholder="e.g., opus, sonnet, claude-opus-4-6"
                   className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
-                >
-                  {modelOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                />
+                <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
+                  Leave empty to use provider default
+                </p>
               </div>
             </div>
 

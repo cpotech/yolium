@@ -7,7 +7,7 @@ export type { GitConfigWithPat } from '@shared/types/git';
 interface GitConfigDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; agentModelDefaults?: Record<string, string> }) => void;
+  onSave: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string> }) => void;
   initialConfig?: GitConfigWithPat | null;
   onDeleteImage?: () => void;
   onBuildImage?: () => void;
@@ -60,7 +60,7 @@ export function GitConfigDialog({
   const [openaiKeyCleared, setOpenaiKeyCleared] = useState(false);
   const [useClaudeOAuth, setUseClaudeOAuth] = useState(false);
   const [useCodexOAuth, setUseCodexOAuth] = useState(false);
-  const [agentModelDefaults, setAgentModelDefaults] = useState<Record<string, string>>({});
+  const [providerModelDefaults, setProviderModelDefaults] = useState<Record<string, string>>({});
   const [dockerImageInfo, setDockerImageInfo] = useState<{ name: string; size: number; created: string; stale: boolean } | null>(null);
   const [dockerImageLoading, setDockerImageLoading] = useState(false);
   const [dockerImageError, setDockerImageError] = useState(false);
@@ -153,7 +153,7 @@ export function GitConfigDialog({
       setOpenaiKeyCleared(false);
       setUseClaudeOAuth(initialConfig?.useClaudeOAuth ?? false);
       setUseCodexOAuth(initialConfig?.useCodexOAuth ?? false);
-      setAgentModelDefaults(initialConfig?.agentModelDefaults ?? {});
+      setProviderModelDefaults(initialConfig?.providerModelDefaults ?? {});
       // Fetch Docker image info with retry
       setDockerImageLoading(true);
       setDockerImageError(false);
@@ -225,10 +225,10 @@ export function GitConfigDialog({
     [onClose]
   );
 
-  const handleSubmit = useCallback(
+    const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      const config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; agentModelDefaults?: Record<string, string> } = {};
+      const config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string> } = {};
       if (githubPat.trim()) {
         config.githubPat = githubPat.trim();
       } else if (patCleared) {
@@ -256,10 +256,10 @@ export function GitConfigDialog({
           config.openaiApiKey = '';  // Explicitly signal to clear the key
         }
       }
-      config.agentModelDefaults = agentModelDefaults;
+      config.providerModelDefaults = providerModelDefaults;
       onSave(config);
     },
-    [githubPat, patCleared, useClaudeOAuth, anthropicApiKey, anthropicKeyCleared, useCodexOAuth, openaiApiKey, openaiKeyCleared, agentModelDefaults, onSave]
+    [githubPat, patCleared, useClaudeOAuth, anthropicApiKey, anthropicKeyCleared, useCodexOAuth, openaiApiKey, openaiKeyCleared, providerModelDefaults, onSave]
   );
 
   if (!isOpen) return null;
@@ -644,46 +644,96 @@ export function GitConfigDialog({
 
               <section className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)]/50 p-4 sm:p-5 lg:col-span-2">
                 <div className="mb-4">
-                  <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Agent Model Defaults</h3>
+                  <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Default Models per Provider</h3>
                   <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                    Default Claude model for each agent type. Per-item model overrides still take priority.
+                    Set default models for each provider. Per-item model overrides still take priority. Leave empty to use agent frontmatter defaults.
                   </p>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-4">
-                  {[
-                    { key: 'code-agent', label: 'Code Agent', defaultModel: 'opus' },
-                    { key: 'plan-agent', label: 'Plan Agent', defaultModel: 'opus' },
-                    { key: 'verify-agent', label: 'Verify Agent', defaultModel: 'opus' },
-                    { key: 'marketing-agent', label: 'Marketing Agent', defaultModel: 'opus' },
-                  ].map(({ key, label, defaultModel }) => (
-                    <div key={key}>
-                      <label htmlFor={`model-${key}`} className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
-                        {label}
-                      </label>
-                      <select
-                        id={`model-${key}`}
-                        value={agentModelDefaults[key] || ''}
-                        onChange={(e) => {
-                          setAgentModelDefaults(prev => {
-                            const next = { ...prev };
-                            if (e.target.value) {
-                              next[key] = e.target.value;
-                            } else {
-                              delete next[key];
-                            }
-                            return next;
-                          });
-                        }}
-                        data-testid={`model-select-${key}`}
-                        className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border-secondary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="">Default ({defaultModel})</option>
-                        <option value="opus">Opus</option>
-                        <option value="sonnet">Sonnet</option>
-                        <option value="haiku">Haiku</option>
-                      </select>
-                    </div>
-                  ))}
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <label htmlFor="model-claude" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
+                      Claude Default Model
+                    </label>
+                    <input
+                      id="model-claude"
+                      type="text"
+                      value={providerModelDefaults['claude'] || ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setProviderModelDefaults((prev: Record<string, string>) => {
+                          const next = { ...prev };
+                          if (value) {
+                            next['claude'] = value;
+                          } else {
+                            delete next['claude'];
+                          }
+                          return next;
+                        });
+                      }}
+                      placeholder="opus"
+                      data-testid="model-input-claude"
+                      className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border-secondary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                      e.g., claude-opus-4-6, claude-sonnet-4-5-20250929
+                    </p>
+                  </div>
+                  <div>
+                    <label htmlFor="model-codex" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
+                      Codex Default Model
+                    </label>
+                    <input
+                      id="model-codex"
+                      type="text"
+                      value={providerModelDefaults['codex'] || ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setProviderModelDefaults((prev: Record<string, string>) => {
+                          const next = { ...prev };
+                          if (value) {
+                            next['codex'] = value;
+                          } else {
+                            delete next['codex'];
+                          }
+                          return next;
+                        });
+                      }}
+                      placeholder="codex CLI default"
+                      data-testid="model-input-codex"
+                      className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border-secondary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                      e.g., o3-mini, gpt-4o
+                    </p>
+                  </div>
+                  <div>
+                    <label htmlFor="model-opencode" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
+                      OpenCode Default Model
+                    </label>
+                    <input
+                      id="model-opencode"
+                      type="text"
+                      value={providerModelDefaults['opencode'] || ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setProviderModelDefaults((prev: Record<string, string>) => {
+                          const next = { ...prev };
+                          if (value) {
+                            next['opencode'] = value;
+                          } else {
+                            delete next['opencode'];
+                          }
+                          return next;
+                        });
+                      }}
+                      placeholder="sonnet"
+                      data-testid="model-input-opencode"
+                      className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border-secondary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                      e.g., claude-sonnet-4-5-20250929
+                    </p>
+                  </div>
                 </div>
               </section>
 
