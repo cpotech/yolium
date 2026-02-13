@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react'
-import { X, GitBranch, Clock, FolderOpen, GitMerge, GitPullRequest, Check, AlertTriangle, ExternalLink, Save, Trash2, ArrowLeftRight } from 'lucide-react'
+import { X, GitBranch, Clock, FolderOpen, GitMerge, GitPullRequest, Check, AlertTriangle, ExternalLink, Save, Trash2, ArrowLeftRight, ShieldCheck } from 'lucide-react'
 import type { KanbanItem, KanbanColumn } from '@shared/types/kanban'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
@@ -75,6 +75,7 @@ export function ItemDetailDialog({
   const [agentType, setAgentType] = useState('')
   const [agentProvider, setAgentProvider] = useState<KanbanItem['agentProvider']>('claude')
   const [model, setModel] = useState('')
+  const [verified, setVerified] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isStartingAgent, setIsStartingAgent] = useState(false)
@@ -110,8 +111,9 @@ export function ItemDetailDialog({
   const [baseAgentType, setBaseAgentType] = useState('')
   const [baseAgentProvider, setBaseAgentProvider] = useState<KanbanItem['agentProvider']>('claude')
   const [baseModel, setBaseModel] = useState('')
+  const [baseVerified, setBaseVerified] = useState(false)
 
-  const hasUnsavedChanges = title !== baseTitle || description !== baseDescription || column !== baseColumn || agentType !== baseAgentType || agentProvider !== baseAgentProvider || model !== baseModel
+  const hasUnsavedChanges = title !== baseTitle || description !== baseDescription || column !== baseColumn || agentType !== baseAgentType || agentProvider !== baseAgentProvider || model !== baseModel || verified !== baseVerified
 
   // Sync editable fields when item data changes
   useEffect(() => {
@@ -125,12 +127,14 @@ export function ItemDetailDialog({
         setAgentType(item.agentType || '')
         setAgentProvider(item.agentProvider)
         setModel(item.model || '')
+        setVerified(item.verified ?? false)
         setBaseTitle(item.title)
         setBaseDescription(item.description)
         setBaseColumn(item.column)
         setBaseAgentType(item.agentType || '')
         setBaseAgentProvider(item.agentProvider)
         setBaseModel(item.model || '')
+        setBaseVerified(item.verified ?? false)
         setPrUrl(item.prUrl || null)
         setConflictCheck(null)
         setCommentText('')
@@ -160,6 +164,7 @@ export function ItemDetailDialog({
         agentType: agentType || undefined,
         agentProvider,
         model: model || undefined,
+        verified,
       })
       setBaseTitle(trimmedTitle)
       setBaseDescription(trimmedDescription)
@@ -167,6 +172,7 @@ export function ItemDetailDialog({
       setBaseAgentType(agentType)
       setBaseAgentProvider(agentProvider)
       setBaseModel(model)
+      setBaseVerified(verified)
       setErrorMessage(null)
       onUpdated()
     } catch (error) {
@@ -175,7 +181,7 @@ export function ItemDetailDialog({
     } finally {
       setIsSaving(false)
     }
-  }, [item, isSaving, projectPath, title, description, column, agentType, agentProvider, model, onUpdated])
+  }, [item, isSaving, projectPath, title, description, column, agentType, agentProvider, model, verified, onUpdated])
 
   const handleDelete = useCallback(async () => {
     if (!item || isDeleting) return
@@ -691,6 +697,30 @@ export function ItemDetailDialog({
                     Items are moved to {column === 'in-progress' ? 'In Progress' : 'Verify'} by agents
                   </p>
                 )}
+              </div>
+
+              {/* Verified */}
+              <div>
+                <label
+                  htmlFor="detail-verified"
+                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
+                >
+                  Verified
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    id="detail-verified"
+                    data-testid="verified-checkbox"
+                    type="checkbox"
+                    checked={verified}
+                    onChange={e => setVerified(e.target.checked)}
+                    className="rounded border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-green-500 focus:ring-green-500"
+                  />
+                  <span className={`flex items-center gap-1 text-sm ${verified ? 'text-green-400' : 'text-[var(--color-text-secondary)]'}`}>
+                    <ShieldCheck size={14} />
+                    {verified ? 'Verified' : 'Not verified'}
+                  </span>
+                </label>
               </div>
 
               {/* Branch */}

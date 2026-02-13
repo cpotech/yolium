@@ -41,6 +41,7 @@ export interface KanbanItem {
   worktreePath?: string;
   mergeStatus?: MergeStatus;
   prUrl?: string;
+  verified?: boolean;
   comments: KanbanComment[];
   createdAt: string;
   updatedAt: string;
