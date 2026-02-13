@@ -236,12 +236,19 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
         {item.description}
       </p>
 
-      {item.lastAgentName && (
+      {item.lastAgentName ? (
         <p
           data-testid="last-run-agent"
           className="text-[11px] text-[var(--color-text-tertiary)] mb-2"
         >
-          Last run: {formatAgentRoleLabel(item.lastAgentName)}
+          Last run: <span data-testid="agent-provider-info">{agentProviderLabels[item.agentProvider]}</span> / {formatAgentRoleLabel(item.lastAgentName)}
+        </p>
+      ) : (
+        <p
+          data-testid="agent-provider-info"
+          className="text-[11px] text-[var(--color-text-tertiary)] mb-2"
+        >
+          Provider: {agentProviderLabels[item.agentProvider]}
         </p>
       )}
 
