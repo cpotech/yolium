@@ -188,6 +188,90 @@ export function parseStreamEvent(event: Record<string, unknown>): ParsedStreamEv
       };
     }
 
+    // ─── Codex JSONL event types ──────────────────────────────────────────
+    // Codex CLI with `--json` streams JSONL events:
+    //   {"type":"thread.started",...}
+    //   {"type":"turn.started",...}
+    //   {"type":"item.started","item":{"type":"command_execution","command":"..."}}
+    //   {"type":"item.completed","item":{"type":"agent_message","content":[{"type":"text","text":"..."}]}}
+    //   {"type":"item.completed","item":{"type":"command_execution","command":"...","output":"..."}}
+    //   {"type":"item.completed","item":{"type":"file_change","filename":"..."}}
+    //   {"type":"turn.completed","usage":{"input_tokens":N,"output_tokens":N,"cached_input_tokens":N},...}
+
+    case 'thread.started':
+      return { display: '[Agent] Codex session started' };
+
+    case 'turn.started':
+      return { display: '[Agent] Turn started' };
+
+    case 'item.started': {
+      const item = event.item as Record<string, unknown> | undefined;
+      if (!item) return {};
+      if (item.type === 'command_execution' && typeof item.command === 'string') {
+        return { display: `[Bash] ${item.command.slice(0, 120)}` };
+      }
+      return {};
+    }
+
+    case 'item.completed': {
+      const item = event.item as Record<string, unknown> | undefined;
+      if (!item) return {};
+
+      if (item.type === 'agent_message') {
+        const content = item.content as Array<Record<string, unknown>> | undefined;
+        if (!Array.isArray(content)) return {};
+
+        const displayParts: string[] = [];
+        let text = '';
+
+        for (const block of content) {
+          if (block.type === 'text' && typeof block.text === 'string') {
+            displayParts.push(block.text);
+            text += block.text;
+          }
+        }
+
+        return {
+          display: displayParts.length > 0 ? displayParts.join('\n') : undefined,
+          text: text || undefined,
+        };
+      }
+
+      if (item.type === 'command_execution') {
+        const command = typeof item.command === 'string' ? item.command.slice(0, 120) : '';
+        const output = typeof item.output === 'string' ? item.output.slice(0, 500) : '';
+        const parts: string[] = [];
+        if (command) parts.push(`[Bash] ${command}`);
+        if (output) parts.push(output);
+        return { display: parts.length > 0 ? parts.join('\n') : undefined };
+      }
+
+      if (item.type === 'file_change') {
+        const filename = typeof item.filename === 'string' ? item.filename : '';
+        return { display: filename ? `[File] ${filename}` : undefined };
+      }
+
+      return {};
+    }
+
+    case 'turn.completed': {
+      const usage = event.usage as Record<string, unknown> | undefined;
+      if (!usage) return {};
+
+      const inputTokens = (typeof usage.input_tokens === 'number' ? usage.input_tokens : 0)
+        + (typeof usage.cached_input_tokens === 'number' ? usage.cached_input_tokens : 0);
+      const outputTokens = typeof usage.output_tokens === 'number' ? usage.output_tokens : 0;
+
+      // Codex doesn't provide cost directly — estimate from tokens
+      // Using approximate o3/codex pricing: $2/1M input, $8/1M output
+      const costUsd = (inputTokens * 2 / 1_000_000) + (outputTokens * 8 / 1_000_000);
+
+      return {
+        display: `[Cost: $${costUsd.toFixed(4)}]`,
+        usage: { inputTokens, outputTokens, costUsd },
+      };
+    }
+
     default:
       return {};
   }
