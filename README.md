@@ -107,6 +107,9 @@ Licensed under the Yolium License Agreement. See [LICENSE](LICENSE) for details.
 - [Claude Code](https://claude.ai/) - AI coding assistant by Anthropic
 - [OpenCode](https://github.com/opencode-ai/opencode) - Open-source AI agent
 
-## Support
+## Feedback and Participation
+We're excited to have you join us early in the Yolium journey.
 
-For issues and feature requests, please use the GitHub issue tracker.
+This is an early-stage preview, and we're building quickly. Expect frequent updates--please keep your app up to date for the latest features and fixes!
+
+Your insights are invaluable! Open issue in this repo, for ERs and bugs you want prioritised!
