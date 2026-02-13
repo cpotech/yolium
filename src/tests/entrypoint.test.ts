@@ -306,7 +306,7 @@ Output: @@YOLIUM:{"type":"complete","summary":"done"}`;
       const agentScript = readToolScript('agent');
 
       expect(agentScript).toContain('elif [ "$AGENT_PROV" = "codex" ]');
-      expect(agentScript).toContain('codex exec');
+      expect(agentScript).toContain('codex exec --json');
     });
 
     it('should configure reasoning effort for Codex agent mode', () => {

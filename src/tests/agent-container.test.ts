@@ -142,6 +142,125 @@ describe('parseStreamEvent', () => {
     const parsed = parseStreamEvent({ type: 'result' });
     expect(parsed.usage).toBeUndefined();
   });
+
+  // ─── Codex JSONL event types ──────────────────────────────────────────
+
+  it('handles Codex thread.started event', () => {
+    const parsed = parseStreamEvent({ type: 'thread.started' });
+    expect(parsed.display).toBe('[Agent] Codex session started');
+  });
+
+  it('handles Codex turn.started event', () => {
+    const parsed = parseStreamEvent({ type: 'turn.started' });
+    expect(parsed.display).toBe('[Agent] Turn started');
+  });
+
+  it('handles Codex item.started with command_execution', () => {
+    const parsed = parseStreamEvent({
+      type: 'item.started',
+      item: { type: 'command_execution', command: 'npm test' },
+    });
+    expect(parsed.display).toBe('[Bash] npm test');
+  });
+
+  it('handles Codex item.started with no item', () => {
+    const parsed = parseStreamEvent({ type: 'item.started' });
+    expect(parsed.display).toBeUndefined();
+  });
+
+  it('handles Codex item.completed with agent_message', () => {
+    const parsed = parseStreamEvent({
+      type: 'item.completed',
+      item: {
+        type: 'agent_message',
+        content: [{ type: 'text', text: 'Hello from Codex agent' }],
+      },
+    });
+    expect(parsed.display).toBe('Hello from Codex agent');
+    expect(parsed.text).toBe('Hello from Codex agent');
+  });
+
+  it('handles Codex item.completed with agent_message containing multiple text blocks', () => {
+    const parsed = parseStreamEvent({
+      type: 'item.completed',
+      item: {
+        type: 'agent_message',
+        content: [
+          { type: 'text', text: 'Part 1' },
+          { type: 'text', text: 'Part 2' },
+        ],
+      },
+    });
+    expect(parsed.display).toBe('Part 1\nPart 2');
+    expect(parsed.text).toBe('Part 1Part 2');
+  });
+
+  it('extracts protocol messages from Codex agent_message text', () => {
+    const parsed = parseStreamEvent({
+      type: 'item.completed',
+      item: {
+        type: 'agent_message',
+        content: [
+          { type: 'text', text: '@@YOLIUM:{"type":"complete","summary":"done"}' },
+        ],
+      },
+    });
+    expect(parsed.text).toContain('@@YOLIUM:');
+    const messages = extractProtocolMessages(parsed.text || '');
+    expect(messages).toEqual([{ type: 'complete', summary: 'done' }]);
+  });
+
+  it('handles Codex item.completed with command_execution', () => {
+    const parsed = parseStreamEvent({
+      type: 'item.completed',
+      item: {
+        type: 'command_execution',
+        command: 'ls -la',
+        output: 'total 0\ndrwxr-xr-x 2 user user 40 Jan 1 00:00 .',
+      },
+    });
+    expect(parsed.display).toContain('[Bash] ls -la');
+    expect(parsed.display).toContain('total 0');
+  });
+
+  it('handles Codex item.completed with file_change', () => {
+    const parsed = parseStreamEvent({
+      type: 'item.completed',
+      item: { type: 'file_change', filename: 'src/index.ts' },
+    });
+    expect(parsed.display).toBe('[File] src/index.ts');
+  });
+
+  it('handles Codex item.completed with no item', () => {
+    const parsed = parseStreamEvent({ type: 'item.completed' });
+    expect(parsed.display).toBeUndefined();
+  });
+
+  it('handles Codex item.completed with unknown item type', () => {
+    const parsed = parseStreamEvent({
+      type: 'item.completed',
+      item: { type: 'unknown_type' },
+    });
+    expect(parsed.display).toBeUndefined();
+  });
+
+  it('handles Codex turn.completed with usage data', () => {
+    const parsed = parseStreamEvent({
+      type: 'turn.completed',
+      usage: { input_tokens: 500, output_tokens: 200, cached_input_tokens: 100 },
+    });
+    expect(parsed.usage).toBeDefined();
+    expect(parsed.usage!.inputTokens).toBe(600); // 500 + 100 cached
+    expect(parsed.usage!.outputTokens).toBe(200);
+    expect(parsed.usage!.costUsd).toBeGreaterThan(0);
+    expect(parsed.display).toContain('[Cost:');
+  });
+
+  it('handles Codex turn.completed without usage', () => {
+    const parsed = parseStreamEvent({ type: 'turn.completed' });
+    expect(parsed.usage).toBeUndefined();
+    expect(parsed.display).toBeUndefined();
+  });
 });
 
 describe('buildBindMounts', () => {
@@ -380,6 +499,44 @@ describe('buildAgentEnv', () => {
 
     expect(env).toContain('OPENAI_API_KEY=sk-openai-test');
     expect(env.find(e => e.startsWith('CODEX_OAUTH_ENABLED='))).toBeUndefined();
+  });
+});
+
+describe('processStreamChunk (Codex JSONL)', () => {
+  it('processes a sequence of Codex JSONL events', () => {
+    const codexSession = [
+      '{"type":"thread.started"}',
+      '{"type":"turn.started"}',
+      '{"type":"item.started","item":{"type":"command_execution","command":"npm test"}}',
+      '{"type":"item.completed","item":{"type":"agent_message","content":[{"type":"text","text":"Running tests now"}]}}',
+      '{"type":"item.completed","item":{"type":"command_execution","command":"npm test","output":"All tests passed"}}',
+      '{"type":"item.completed","item":{"type":"file_change","filename":"src/app.ts"}}',
+      '{"type":"turn.completed","usage":{"input_tokens":1000,"output_tokens":500,"cached_input_tokens":200}}',
+    ].join('\n') + '\n';
+
+    const result = processStreamChunk(codexSession, '');
+
+    expect(result.lineBuffer).toBe('');
+    expect(result.displayParts).toContain('[Agent] Codex session started');
+    expect(result.displayParts).toContain('[Agent] Turn started');
+    expect(result.displayParts).toContain('[Bash] npm test');
+    expect(result.displayParts).toContain('Running tests now');
+    expect(result.displayParts).toContain('[File] src/app.ts');
+    expect(result.textContent).toContain('Running tests now');
+    expect(result.usageParts).toHaveLength(1);
+    expect(result.usageParts[0].inputTokens).toBe(1200); // 1000 + 200 cached
+    expect(result.usageParts[0].outputTokens).toBe(500);
+  });
+
+  it('extracts protocol messages from Codex agent_message in stream', () => {
+    const data = '{"type":"item.completed","item":{"type":"agent_message","content":[{"type":"text","text":"@@YOLIUM:{\\"type\\":\\"progress\\",\\"step\\":\\"analyze\\",\\"detail\\":\\"Found 5 files\\"}"}]}}\n';
+    const result = processStreamChunk(data, '');
+
+    expect(result.textContent).toContain('@@YOLIUM:');
+    const messages = extractProtocolMessages(result.textContent);
+    expect(messages).toEqual([
+      { type: 'progress', step: 'analyze', detail: 'Found 5 files', attempt: undefined, maxAttempts: undefined },
+    ]);
   });
 });
 
