@@ -57,3 +57,15 @@ if [ -f "/home/agent/.codex-auth.json" ] && [ "${CODEX_OAUTH_ENABLED:-}" = "true
     add_status "✅ Codex OAuth credentials configured"
     log "Codex OAuth credentials staged at /home/agent/.codex/auth.json"
 fi
+
+# Configure OpenCode permissions — allow all operations inside container.
+# The container is already Docker-isolated, so permission prompts are unnecessary
+# (same rationale as Claude's --dangerously-skip-permissions and Codex's danger-full-access).
+mkdir -p /home/agent/.config/opencode
+cat > /home/agent/.config/opencode/opencode.json << 'OPENCODECFG'
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": "allow"
+}
+OPENCODECFG
+add_status "✅ OpenCode permissions configured (allow-all)"
