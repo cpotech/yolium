@@ -227,9 +227,9 @@ describe('opencode-access', () => {
       process.env = originalEnv;
     });
 
-    it('should return kimi-k2.5-free for opencode without anthropic API key', () => {
+    it('should return agent model for opencode without anthropic API key', () => {
       mockLoadGitConfig.mockReturnValue(null);
-      expect(getDisplayModel('opencode', undefined, undefined, 'opus')).toBe('kimi-k2.5-free');
+      expect(getDisplayModel('opencode', undefined, undefined, 'opus')).toBe('opus');
     });
 
     it('should return short model name for opencode with anthropic API key in config', () => {
@@ -243,9 +243,9 @@ describe('opencode-access', () => {
       expect(getDisplayModel('opencode', undefined, undefined, 'opus')).toBe('opus');
     });
 
-    it('should return kimi-k2.5-free when config exists but has no anthropic key', () => {
+    it('should return agent model when config exists but has no anthropic key', () => {
       mockLoadGitConfig.mockReturnValue({ name: 'test', email: 'test@test.com' });
-      expect(getDisplayModel('opencode', undefined, undefined, 'haiku')).toBe('kimi-k2.5-free');
+      expect(getDisplayModel('opencode', undefined, undefined, 'haiku')).toBe('haiku');
     });
 
     it('should prefer env variable over config when both are set', () => {

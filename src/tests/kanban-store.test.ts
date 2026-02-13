@@ -376,7 +376,7 @@ describe('kanban-store', () => {
       expect(result!.model).toBe('');
     });
 
-    it('should reject invalid model values', () => {
+    it('should accept custom model strings', () => {
       const board = createBoard('/path/to/project');
       const item = addItem(board, {
         title: 'Test',
@@ -385,8 +385,23 @@ describe('kanban-store', () => {
         order: 0,
       });
 
-      const result = updateItem(board, item.id, { model: 'invalid-model' });
-      expect(result).toBeNull();
+      const result = updateItem(board, item.id, { model: 'kimi-k2.5-free' });
+      expect(result).not.toBeNull();
+      expect(result!.model).toBe('kimi-k2.5-free');
+    });
+
+    it('should accept arbitrary provider-specific model IDs', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test',
+        description: 'Test',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      const result = updateItem(board, item.id, { model: 'minimax-m2.5-free' });
+      expect(result).not.toBeNull();
+      expect(result!.model).toBe('minimax-m2.5-free');
     });
 
     it('should accept updating agentType', () => {

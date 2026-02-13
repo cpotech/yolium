@@ -123,6 +123,16 @@ describe('agent-runner', () => {
       const result = resolveModel(undefined, 'sonnet', 'opus');
       expect(result).toBe('claude-sonnet-4-5-20250929');
     });
+
+    it('should resolve custom provider model from settings', () => {
+      const result = resolveModel(undefined, 'minimax-m2.5-free', 'sonnet');
+      expect(result).toBe('minimax-m2.5-free');
+    });
+
+    it('should resolve custom provider model from item override', () => {
+      const result = resolveModel('kimi-k2.5-free', 'sonnet', 'opus');
+      expect(result).toBe('kimi-k2.5-free');
+    });
   });
 
   describe('getDisplayModel', () => {
@@ -181,19 +191,24 @@ describe('agent-runner', () => {
       expect(getDisplayModel('opencode', undefined, undefined, 'sonnet')).toBe('sonnet');
     });
 
-    it('should return kimi-k2.5-free for opencode without any anthropic API key', () => {
+    it('should return agent model for opencode without any anthropic API key', () => {
       mockLoadGitConfig.mockReturnValue(null);
-      expect(getDisplayModel('opencode', undefined, undefined, 'opus')).toBe('kimi-k2.5-free');
+      expect(getDisplayModel('opencode', undefined, undefined, 'opus')).toBe('opus');
     });
 
-    it('should return kimi-k2.5-free for opencode with config but no anthropic key', () => {
+    it('should return agent model for opencode with config but no anthropic key', () => {
       mockLoadGitConfig.mockReturnValue({ name: 'test', email: 'test@test.com' });
-      expect(getDisplayModel('opencode', undefined, undefined, 'opus')).toBe('kimi-k2.5-free');
+      expect(getDisplayModel('opencode', undefined, undefined, 'opus')).toBe('opus');
     });
 
     it('should use override model for opencode with anthropic key', () => {
       mockLoadGitConfig.mockReturnValue({ anthropicApiKey: 'sk-ant-test-key' });
       expect(getDisplayModel('opencode', 'claude-opus-4-6', undefined, 'sonnet')).toBe('claude-opus-4-6');
+    });
+
+    it('should use settings override for opencode without anthropic key', () => {
+      mockLoadGitConfig.mockReturnValue(null);
+      expect(getDisplayModel('opencode', undefined, 'minimax-m2.5-free', 'sonnet')).toBe('minimax-m2.5-free');
     });
 
     it('should return agent model for unknown provider', () => {

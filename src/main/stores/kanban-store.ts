@@ -167,7 +167,6 @@ export function addItem(board: KanbanBoard, params: NewItemParams): KanbanItem {
 const VALID_COLUMNS = new Set(['backlog', 'ready', 'in-progress', 'verify', 'done']);
 const VALID_AGENT_STATUSES = new Set(['idle', 'running', 'waiting', 'interrupted', 'completed', 'failed']);
 const VALID_MERGE_STATUSES = new Set(['unmerged', 'merged', 'conflict']);
-const VALID_MODELS = new Set(['opus', 'sonnet', 'haiku']);
 const VALID_AGENT_PROVIDERS = new Set(['claude', 'opencode', 'codex']);
 
 export function updateItem(
@@ -182,7 +181,6 @@ export function updateItem(
   if (updates.column !== undefined && !VALID_COLUMNS.has(updates.column)) return null;
   if (updates.agentStatus !== undefined && !VALID_AGENT_STATUSES.has(updates.agentStatus)) return null;
   if (updates.mergeStatus !== undefined && !VALID_MERGE_STATUSES.has(updates.mergeStatus)) return null;
-  if (updates.model !== undefined && updates.model !== '' && !VALID_MODELS.has(updates.model)) return null;
   if (updates.agentProvider !== undefined && !VALID_AGENT_PROVIDERS.has(updates.agentProvider)) return null;
 
   Object.assign(item, updates, { updatedAt: new Date().toISOString() });
