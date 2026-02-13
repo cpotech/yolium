@@ -7,7 +7,7 @@ interface NewItemDialogProps {
   isOpen: boolean
   projectPath: string
   onClose: () => void
-  onCreated: () => void
+  onCreated: (item: { id: string; agentType?: string; agentProvider: string; description: string }) => void
 }
 
 const agentProviderOptions: { value: KanbanAgentProvider; label: string }[] = [
@@ -66,7 +66,7 @@ export function NewItemDialog({
 
     setIsSubmitting(true)
     try {
-      await window.electronAPI.kanban.addItem(projectPath, {
+      const result = await window.electronAPI.kanban.addItem(projectPath, {
         title: title.trim(),
         description: description.trim() || '',
         branch: branch.trim() || undefined,
@@ -85,7 +85,12 @@ export function NewItemDialog({
       setModel('')
 
       setErrorMessage(null)
-      onCreated()
+      onCreated({
+        id: result.id,
+        agentType: result.agentType,
+        agentProvider: result.agentProvider,
+        description: result.description,
+      })
     } catch (error) {
       console.error('Failed to create item:', error)
       setErrorMessage('Failed to create item. Please try again.')
