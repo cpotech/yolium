@@ -128,6 +128,7 @@ const fs = {
   listDirectory: (path: string) => ipcRenderer.invoke('fs:list-directory', path),
   createDirectory: (parentPath: string, folderName: string) =>
     ipcRenderer.invoke('fs:create-directory', parentPath, folderName),
+  readFile: (filePath: string) => ipcRenderer.invoke('fs:read-file', filePath),
 };
 
 // Git namespace
@@ -427,6 +428,11 @@ declare global {
         createDirectory: (parentPath: string, folderName: string) => Promise<{
           success: boolean;
           path: string | null;
+          error: string | null;
+        }>;
+        readFile: (filePath: string) => Promise<{
+          success: boolean;
+          content: string | null;
           error: string | null;
         }>;
       };

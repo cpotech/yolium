@@ -101,6 +101,74 @@ You MUST complete all three of these actions to finish the task. Output all thre
 3. Signal completion:
 `@@YOLIUM:{"type":"complete","summary":"Created implementation plan with N steps"}`
 
+## UI Mock Guidelines
+
+When your plan involves UI changes, include visual mocks to help the user and code agent understand the intended design. Two formats are available:
+
+### Quick Wireframe (SVG)
+
+For layout sketches and simple component placements, generate SVG markup and embed it directly in a comment using a data URI:
+
+```markdown
+![Component layout](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIi4uLg==)
+```
+
+To create the data URI:
+1. Write the SVG markup as a string
+2. Base64-encode it using `btoa()` in a Bash command: `echo -n '<svg>...</svg>' | base64 -w 0`
+3. Embed as `data:image/svg+xml;base64,<encoded>`
+
+**SVG wireframe tips:**
+- Use `width="400"` or similar reasonable widths — the image will scale to fit the comment
+- Use rectangles with rounded corners (`rx="4"`) for UI elements
+- Use `fill="#2d2d2d"` for dark backgrounds, `fill="#3b82f6"` for accent, `fill="#e5e7eb"` for borders
+- Add text labels with `<text>` elements to identify components
+- Keep wireframes simple — show layout and structure, not pixel-perfect design
+
+**Example SVG wireframe:**
+```svg
+<svg width="400" height="200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="200" fill="#1a1a1a" rx="8"/>
+  <rect x="10" y="10" width="380" height="30" fill="#2d2d2d" rx="4"/>
+  <text x="20" y="30" fill="#9ca3af" font-size="12" font-family="monospace">Header Bar</text>
+  <rect x="10" y="50" width="120" height="140" fill="#2d2d2d" rx="4"/>
+  <text x="20" y="75" fill="#9ca3af" font-size="11" font-family="monospace">Sidebar</text>
+  <rect x="140" y="50" width="250" height="140" fill="#2d2d2d" rx="4"/>
+  <text x="150" y="75" fill="#9ca3af" font-size="11" font-family="monospace">Main Content</text>
+</svg>
+```
+
+### Detailed Mock (HTML)
+
+For pixel-accurate designs with CSS styling, interactive examples, or multi-state views, write an HTML file:
+
+1. Write the mock to `.yolium/mocks/<descriptive-name>.html` in the project directory
+2. Link it in your comment using the `yolium-mock://` protocol:
+
+```markdown
+[View Mock: settings-dialog.html](yolium-mock:///absolute/path/to/project/.yolium/mocks/settings-dialog.html)
+```
+
+**HTML mock tips:**
+- Use inline `<style>` tags — the mock renders in a sandboxed iframe with no external access
+- No JavaScript will execute (the iframe has an empty `sandbox` attribute)
+- Match the app's dark theme: `background: #1a1a1a`, `color: #e5e7eb`, etc.
+- Include multiple states if relevant (e.g., empty state, loaded state, error state)
+- Keep HTML self-contained — no external stylesheets, fonts, or images
+
+### When to Use Each Format
+
+| Scenario | Format |
+|----------|--------|
+| Quick layout sketch | SVG wireframe |
+| Component placement / spacing | SVG wireframe |
+| Detailed dialog design | HTML mock |
+| Multi-state UI (hover, error, loading) | HTML mock |
+| Color palette / typography decisions | HTML mock |
+| Simple before/after comparison | SVG wireframe |
+
+Include mocks whenever the plan involves new UI components, significant layout changes, or when the design intent might be ambiguous without a visual reference.
+
 ## Guidelines
 
 1. **Be thorough but concise** - Include enough detail for a code agent to execute without ambiguity, but don't over-explain
