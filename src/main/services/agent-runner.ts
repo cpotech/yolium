@@ -404,7 +404,10 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
                 onError?.(incompleteMsg);
               } else {
                 // Exit code 0, no protocol messages, Claude provider — treat as success
-                updateItem(exitBoard, itemId, { agentStatus: 'completed', activeAgentName: undefined, column: 'verify' });
+                // Plan agents move to 'ready' (plan complete, waiting for code agent)
+                // Code agents move to 'verify' (implementation done, needs verification)
+                const completionColumn = agentName === 'plan-agent' ? 'ready' : 'verify';
+                updateItem(exitBoard, itemId, { agentStatus: 'completed', activeAgentName: undefined, column: completionColumn });
                 addComment(exitBoard, itemId, 'system', 'Agent finished successfully');
                 events.emit('complete', 'Agent finished successfully');
               }
@@ -559,8 +562,10 @@ export function handleAgentOutput(sessionId: string, data: string): void {
 
       case 'complete': {
         const comp = message as CompleteMessage;
-        // Move to verify column when agent completes successfully
-        updateItem(board, session.itemId, { agentStatus: 'completed', activeAgentName: undefined, column: 'verify' });
+        // Plan agents move to 'ready' (plan complete, waiting for code agent)
+        // Code agents move to 'verify' (implementation done, needs verification)
+        const completionColumn = session.agentName === 'plan-agent' ? 'ready' : 'verify';
+        updateItem(board, session.itemId, { agentStatus: 'completed', activeAgentName: undefined, column: completionColumn });
         addComment(board, session.itemId, 'system', `Completed: ${comp.summary}`);
 
         session.events.emit('complete', comp.summary);

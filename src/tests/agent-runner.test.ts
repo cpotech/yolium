@@ -424,7 +424,7 @@ describe('agent-runner', () => {
      * Items move to 'verify' (not 'done') so the verify agent can review them.
      */
 
-    it('should move item to verify column on exit-code-0 fallback', () => {
+    it('should move item to verify column on exit-code-0 fallback for code-agent', () => {
       // Simulates the onExit handler when code === 0 and item is still 'running'
       const board = createBoard('/path/to/project');
       const item = addItem(board, {
@@ -437,20 +437,49 @@ describe('agent-runner', () => {
       // Simulate agent start: move to in-progress with running status
       updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
 
-      // Simulate exit-code-0 fallback (the fix in agent-runner.ts:308)
+      // Simulate exit-code-0 fallback for code-agent
       const exitItem = board.items.find(i => i.id === item.id);
       expect(exitItem).toBeDefined();
       expect(exitItem!.agentStatus).toBe('running');
 
-      updateItem(board, item.id, { agentStatus: 'completed', activeAgentName: undefined, column: 'verify' });
+      const agentName = 'code-agent';
+      const completionColumn = agentName === 'plan-agent' ? 'ready' : 'verify';
+      updateItem(board, item.id, { agentStatus: 'completed', activeAgentName: undefined, column: completionColumn });
 
       const result = board.items.find(i => i.id === item.id)!;
       expect(result.column).toBe('verify');
       expect(result.agentStatus).toBe('completed');
     });
 
-    it('should move item to verify column on complete protocol message', () => {
-      // Simulates the handleAgentOutput 'complete' case (agent-runner.ts:457)
+    it('should move item to ready column on exit-code-0 fallback for plan-agent', () => {
+      // Simulates the onExit handler when code === 0 and item is still 'running' for plan-agent
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test work item',
+        description: 'Create implementation plan',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      // Simulate agent start: move to in-progress with running status
+      updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
+
+      // Simulate exit-code-0 fallback for plan-agent
+      const exitItem = board.items.find(i => i.id === item.id);
+      expect(exitItem).toBeDefined();
+      expect(exitItem!.agentStatus).toBe('running');
+
+      const agentName = 'plan-agent';
+      const completionColumn = agentName === 'plan-agent' ? 'ready' : 'verify';
+      updateItem(board, item.id, { agentStatus: 'completed', activeAgentName: undefined, column: completionColumn });
+
+      const result = board.items.find(i => i.id === item.id)!;
+      expect(result.column).toBe('ready');
+      expect(result.agentStatus).toBe('completed');
+    });
+
+    it('should move item to verify column on complete protocol message for code-agent', () => {
+      // Simulates the handleAgentOutput 'complete' case (agent-runner.ts:560-568) for code-agent
       const board = createBoard('/path/to/project');
       const item = addItem(board, {
         title: 'Test work item',
@@ -462,11 +491,36 @@ describe('agent-runner', () => {
       // Simulate agent start
       updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
 
-      // Simulate complete protocol message
-      updateItem(board, item.id, { agentStatus: 'completed', activeAgentName: undefined, column: 'verify' });
+      // Simulate complete protocol message for code-agent
+      const agentName = 'code-agent';
+      const completionColumn = agentName === 'plan-agent' ? 'ready' : 'verify';
+      updateItem(board, item.id, { agentStatus: 'completed', activeAgentName: undefined, column: completionColumn });
 
       const result = board.items.find(i => i.id === item.id)!;
       expect(result.column).toBe('verify');
+      expect(result.agentStatus).toBe('completed');
+    });
+
+    it('should move item to ready column on complete protocol message for plan-agent', () => {
+      // Simulates the handleAgentOutput 'complete' case (agent-runner.ts:560-568) for plan-agent
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test work item',
+        description: 'Create implementation plan',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      // Simulate agent start
+      updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
+
+      // Simulate complete protocol message for plan-agent
+      const agentName = 'plan-agent';
+      const completionColumn = agentName === 'plan-agent' ? 'ready' : 'verify';
+      updateItem(board, item.id, { agentStatus: 'completed', activeAgentName: undefined, column: completionColumn });
+
+      const result = board.items.find(i => i.id === item.id)!;
+      expect(result.column).toBe('ready');
       expect(result.agentStatus).toBe('completed');
     });
 
