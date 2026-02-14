@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react'
-import { X, GitBranch, Clock, FolderOpen, GitMerge, GitPullRequest, Check, AlertTriangle, ExternalLink, Save, Trash2, ArrowLeftRight, ShieldCheck } from 'lucide-react'
+import { X, GitBranch, Clock, FolderOpen, GitMerge, GitPullRequest, Check, AlertTriangle, ExternalLink, Trash2, ArrowLeftRight, ShieldCheck } from 'lucide-react'
 import type { KanbanItem, KanbanColumn } from '@shared/types/kanban'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
@@ -76,7 +76,7 @@ export function ItemDetailDialog({
   const [agentProvider, setAgentProvider] = useState<KanbanItem['agentProvider']>('claude')
   const [model, setModel] = useState('')
   const [verified, setVerified] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [isDeleting, setIsDeleting] = useState(false)
   const [isStartingAgent, setIsStartingAgent] = useState(false)
   const [answerText, setAnswerText] = useState('')
@@ -96,6 +96,10 @@ export function ItemDetailDialog({
   const dialogRef = useRef<HTMLDivElement>(null)
   // Track previous item ID to prevent form resets on same item updates
   const prevItemIdRef = useRef<string | null>(null)
+  // Auto-save debounce timer
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // "Saved" indicator fade timer
+  const savedFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Agent session hook
   const agentSession = useAgentSession({
@@ -174,9 +178,9 @@ export function ItemDetailDialog({
   }, [item?.agentStatus, item?.agentQuestion])
 
   const handleSave = useCallback(async () => {
-    if (!item || isSaving) return
+    if (!item || saveStatus === 'saving') return
 
-    setIsSaving(true)
+    setSaveStatus('saving')
     try {
       const trimmedTitle = title.trim()
       const trimmedDescription = description.trim()
@@ -197,14 +201,50 @@ export function ItemDetailDialog({
       setBaseModel(model)
       setBaseVerified(verified)
       setErrorMessage(null)
+      setSaveStatus('saved')
+      if (savedFadeTimerRef.current) clearTimeout(savedFadeTimerRef.current)
+      savedFadeTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000)
       onUpdated()
     } catch (error) {
       console.error('Failed to update item:', error)
       setErrorMessage('Failed to save changes. Please try again.')
-    } finally {
-      setIsSaving(false)
+      setSaveStatus('error')
     }
-  }, [item, isSaving, projectPath, title, description, column, agentType, agentProvider, model, verified, onUpdated])
+  }, [item, saveStatus, projectPath, title, description, column, agentType, agentProvider, model, verified, onUpdated])
+
+  // Keep a ref to handleSave so the debounce effect always calls the latest version
+  const handleSaveRef = useRef(handleSave)
+  handleSaveRef.current = handleSave
+
+  // Debounced auto-save: fires 800ms after any field change
+  useEffect(() => {
+    if (!hasUnsavedChanges || !title.trim()) {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+        autoSaveTimerRef.current = null
+      }
+      return
+    }
+
+    autoSaveTimerRef.current = setTimeout(() => {
+      handleSaveRef.current()
+    }, 800)
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+        autoSaveTimerRef.current = null
+      }
+    }
+  }, [hasUnsavedChanges, title, description, column, agentType, agentProvider, model, verified])
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+      if (savedFadeTimerRef.current) clearTimeout(savedFadeTimerRef.current)
+    }
+  }, [])
 
   const handleDelete = useCallback(async () => {
     if (!item || isDeleting) return
@@ -446,8 +486,16 @@ export function ItemDetailDialog({
   }, [item, isMerging, projectPath, onUpdated])
 
   const handleClose = useCallback(() => {
+    // Flush pending auto-save before closing
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current)
+      autoSaveTimerRef.current = null
+    }
+    if (hasUnsavedChanges && title.trim()) {
+      handleSave()
+    }
     onClose()
-  }, [onClose])
+  }, [onClose, hasUnsavedChanges, title, handleSave])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -455,8 +503,13 @@ export function ItemDetailDialog({
         e.preventDefault()
         handleClose()
       }
-      if (e.key === 'Enter' && e.ctrlKey && !isSaving && title.trim().length > 0) {
+      if (e.key === 'Enter' && e.ctrlKey && saveStatus !== 'saving' && title.trim().length > 0) {
         e.preventDefault()
+        // Flush: clear debounce timer and save immediately
+        if (autoSaveTimerRef.current) {
+          clearTimeout(autoSaveTimerRef.current)
+          autoSaveTimerRef.current = null
+        }
         handleSave()
       }
       if (e.key === 'Delete' && e.ctrlKey && !isDeleting) {
@@ -467,7 +520,7 @@ export function ItemDetailDialog({
         trapFocus(e, dialogRef.current)
       }
     },
-    [handleClose, isSaving, handleSave, isDeleting, handleDelete, title]
+    [handleClose, saveStatus, handleSave, isDeleting, handleDelete, title]
   )
 
   if (!isOpen || !item) return null
@@ -887,31 +940,34 @@ export function ItemDetailDialog({
               )}
             </div>
 
-            {/* Action Buttons */}
+            {/* Actions */}
             <div className="p-4 border-t border-[var(--color-border-primary)]">
-              {hasUnsavedChanges && (
+              {/* Save status indicator */}
+              {saveStatus === 'saving' && (
                 <div
-                  data-testid="unsaved-indicator"
-                  className="text-center text-xs text-yellow-400 font-medium mb-2"
+                  data-testid="save-status"
+                  className="text-center text-xs text-blue-400 font-medium mb-2"
                 >
-                  Unsaved changes
+                  Saving...
+                </div>
+              )}
+              {saveStatus === 'saved' && (
+                <div
+                  data-testid="save-status"
+                  className="text-center text-xs text-green-400 font-medium mb-2"
+                >
+                  Saved
+                </div>
+              )}
+              {saveStatus === 'error' && (
+                <div
+                  data-testid="save-status"
+                  className="text-center text-xs text-red-400 font-medium mb-2"
+                >
+                  Save failed
                 </div>
               )}
               <div className="space-y-2">
-                <button
-                  data-testid="save-button"
-                  onClick={handleSave}
-                  disabled={isSaving || !title.trim()}
-                  className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
-                    hasUnsavedChanges
-                      ? 'bg-yellow-600 hover:bg-yellow-700'
-                      : 'bg-[var(--color-accent-primary)] hover:bg-[var(--color-accent-hover)]'
-                  }`}
-                >
-                  <Save size={14} />
-                  {isSaving ? 'Saving...' : 'Save'}
-                  <span className="text-xs opacity-60 ml-1">(Ctrl+Enter)</span>
-                </button>
                 <button
                   data-testid="delete-button"
                   onClick={handleDelete}

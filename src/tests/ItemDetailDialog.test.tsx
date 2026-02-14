@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { ItemDetailDialog } from '@renderer/components/kanban/ItemDetailDialog'
 import type { KanbanItem } from '@shared/types/kanban'
@@ -62,6 +62,7 @@ beforeEach(() => {
     writable: true,
   })
 })
+
 
 const createMockItem = (overrides: Partial<KanbanItem> = {}): KanbanItem => ({
   id: 'item-1',
@@ -409,40 +410,46 @@ describe('ItemDetailDialog', () => {
     expect(statusBadge).toHaveClass('bg-red-500')
   })
 
-  it('should call kanbanUpdateItem on save with updated values', async () => {
-    mockKanbanUpdateItem.mockResolvedValueOnce({ id: 'item-1' })
-    const onUpdated = vi.fn()
-    const item = createMockItem()
+  it('should auto-save after debounce when fields are changed', async () => {
+    vi.useFakeTimers()
+    try {
+      mockKanbanUpdateItem.mockResolvedValue({ id: 'item-1' })
+      const onUpdated = vi.fn()
+      const item = createMockItem()
 
-    render(
-      <ItemDetailDialog
-        isOpen={true}
-        item={item}
-        projectPath="/test/project"
-        onClose={vi.fn()}
-        onUpdated={onUpdated}
-      />
-    )
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={item}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={onUpdated}
+        />
+      )
 
-    // Edit title
-    fireEvent.change(screen.getByTestId('title-input'), {
-      target: { value: 'Updated Title' },
-    })
+      // Edit title
+      fireEvent.change(screen.getByTestId('title-input'), {
+        target: { value: 'Updated Title' },
+      })
 
-    // Edit description
-    fireEvent.change(screen.getByTestId('description-input'), {
-      target: { value: 'Updated description' },
-    })
+      // Edit description
+      fireEvent.change(screen.getByTestId('description-input'), {
+        target: { value: 'Updated description' },
+      })
 
-    // Change column
-    fireEvent.change(screen.getByTestId('column-select'), {
-      target: { value: 'ready' },
-    })
+      // Change column
+      fireEvent.change(screen.getByTestId('column-select'), {
+        target: { value: 'ready' },
+      })
 
-    // Click save
-    fireEvent.click(screen.getByTestId('save-button'))
+      // Should not save before debounce
+      expect(mockKanbanUpdateItem).not.toHaveBeenCalled()
 
-    await waitFor(() => {
+      // Advance past debounce delay and flush microtasks
+      await act(async () => {
+        vi.advanceTimersByTime(800)
+      })
+
       expect(mockKanbanUpdateItem).toHaveBeenCalledWith('/test/project', 'item-1', {
         title: 'Updated Title',
         description: 'Updated description',
@@ -452,11 +459,9 @@ describe('ItemDetailDialog', () => {
         model: undefined,
         verified: false,
       })
-    })
-
-    await waitFor(() => {
-      expect(onUpdated).toHaveBeenCalled()
-    })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('should persist prBranch to item branch after successful merge', async () => {
@@ -635,8 +640,8 @@ describe('ItemDetailDialog', () => {
     expect(screen.getByTestId('no-comments')).toBeInTheDocument()
   })
 
-  it('should save on Ctrl+Enter', async () => {
-    mockKanbanUpdateItem.mockResolvedValueOnce({ id: 'item-1' })
+  it('should flush save immediately on Ctrl+Enter', async () => {
+    mockKanbanUpdateItem.mockResolvedValue({ id: 'item-1' })
     const onUpdated = vi.fn()
     const item = createMockItem()
 
@@ -655,7 +660,7 @@ describe('ItemDetailDialog', () => {
       target: { value: 'Ctrl+Enter Title' },
     })
 
-    // Press Ctrl+Enter on the overlay
+    // Press Ctrl+Enter on the overlay (should save immediately, no 800ms wait)
     fireEvent.keyDown(screen.getByTestId('item-detail-dialog').parentElement!, {
       key: 'Enter',
       ctrlKey: true,
@@ -742,7 +747,8 @@ describe('ItemDetailDialog', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('should show unsaved changes indicator when title is modified', () => {
+  it('should show "Saved" status after auto-save completes', async () => {
+    mockKanbanUpdateItem.mockResolvedValue({ id: 'item-1' })
     const item = createMockItem({ title: 'Original Title' })
 
     render(
@@ -755,43 +761,22 @@ describe('ItemDetailDialog', () => {
       />
     )
 
-    // No indicator initially
-    expect(screen.queryByTestId('unsaved-indicator')).not.toBeInTheDocument()
+    // No status initially
+    expect(screen.queryByTestId('save-status')).not.toBeInTheDocument()
 
-    // Edit title
+    // Edit title and flush immediately via Ctrl+Enter
     fireEvent.change(screen.getByTestId('title-input'), {
       target: { value: 'Changed Title' },
     })
 
-    // Indicator should appear
-    expect(screen.getByTestId('unsaved-indicator')).toBeInTheDocument()
-  })
-
-  it('should hide unsaved indicator after saving', async () => {
-    mockKanbanUpdateItem.mockResolvedValueOnce({ id: 'item-1' })
-    const item = createMockItem()
-
-    render(
-      <ItemDetailDialog
-        isOpen={true}
-        item={item}
-        projectPath="/test/project"
-        onClose={vi.fn()}
-        onUpdated={vi.fn()}
-      />
-    )
-
-    // Edit title
-    fireEvent.change(screen.getByTestId('title-input'), {
-      target: { value: 'Changed Title' },
+    fireEvent.keyDown(screen.getByTestId('item-detail-dialog').parentElement!, {
+      key: 'Enter',
+      ctrlKey: true,
     })
-    expect(screen.getByTestId('unsaved-indicator')).toBeInTheDocument()
 
-    // Save
-    fireEvent.click(screen.getByTestId('save-button'))
-
+    // Wait for save to complete and show "Saved"
     await waitFor(() => {
-      expect(screen.queryByTestId('unsaved-indicator')).not.toBeInTheDocument()
+      expect(screen.getByTestId('save-status')).toHaveTextContent('Saved')
     })
   })
 
@@ -863,7 +848,8 @@ describe('ItemDetailDialog', () => {
     expect(screen.getByText('Agent is running...')).toBeInTheDocument()
   })
 
-  it('should close immediately with unsaved changes (Escape)', async () => {
+  it('should flush unsaved changes on close (Escape)', async () => {
+    mockKanbanUpdateItem.mockResolvedValue({ id: 'item-1' })
     const onClose = vi.fn()
     const item = createMockItem({ title: 'Original Title' })
 
@@ -887,14 +873,15 @@ describe('ItemDetailDialog', () => {
       key: 'Escape',
     })
 
-    // Should close immediately without confirmation dialog
+    // Should close and flush save
+    expect(onClose).toHaveBeenCalled()
     await waitFor(() => {
-      expect(onClose).toHaveBeenCalled()
+      expect(mockKanbanUpdateItem).toHaveBeenCalled()
     })
-    expect(mockShowConfirmOkCancel).not.toHaveBeenCalled()
   })
 
-  it('should close immediately with unsaved changes from close button', async () => {
+  it('should flush unsaved changes on close button click', async () => {
+    mockKanbanUpdateItem.mockResolvedValue({ id: 'item-1' })
     const onClose = vi.fn()
     const item = createMockItem({ title: 'Original Title' })
 
@@ -916,11 +903,11 @@ describe('ItemDetailDialog', () => {
     // Click close button
     fireEvent.click(screen.getByTestId('close-button'))
 
-    // Should close immediately without confirmation dialog
+    // Should close and flush save
+    expect(onClose).toHaveBeenCalled()
     await waitFor(() => {
-      expect(onClose).toHaveBeenCalled()
+      expect(mockKanbanUpdateItem).toHaveBeenCalled()
     })
-    expect(mockShowConfirmOkCancel).not.toHaveBeenCalled()
   })
 
   it('should close immediately when no unsaved changes (no confirmation)', () => {
@@ -976,13 +963,13 @@ describe('ItemDetailDialog', () => {
     expect(modelInput).toHaveValue('opus')
   })
 
-  it('should include model change in save', async () => {
+  it('should include model change in auto-save', async () => {
     // Set up provider models so the dropdown has options
     ;(window.electronAPI.git.loadConfig as ReturnType<typeof vi.fn>).mockResolvedValue({
       providerModels: { claude: ['opus', 'sonnet', 'haiku'] },
     })
 
-    mockKanbanUpdateItem.mockResolvedValueOnce({ id: 'item-1' })
+    mockKanbanUpdateItem.mockResolvedValue({ id: 'item-1' })
     const item = createMockItem()
 
     render(
@@ -1006,8 +993,11 @@ describe('ItemDetailDialog', () => {
       target: { value: 'haiku' },
     })
 
-    // Save
-    fireEvent.click(screen.getByTestId('save-button'))
+    // Flush via Ctrl+Enter
+    fireEvent.keyDown(screen.getByTestId('item-detail-dialog').parentElement!, {
+      key: 'Enter',
+      ctrlKey: true,
+    })
 
     await waitFor(() => {
       expect(mockKanbanUpdateItem).toHaveBeenCalledWith('/test/project', 'item-1', {
@@ -1022,12 +1012,13 @@ describe('ItemDetailDialog', () => {
     })
   })
 
-  it('should show unsaved indicator when model is changed', async () => {
+  it('should auto-save when model is changed', async () => {
     // Set up provider models so the dropdown has options
     ;(window.electronAPI.git.loadConfig as ReturnType<typeof vi.fn>).mockResolvedValue({
       providerModels: { claude: ['opus', 'sonnet', 'haiku'] },
     })
 
+    mockKanbanUpdateItem.mockResolvedValue({ id: 'item-1' })
     const item = createMockItem()
 
     render(
@@ -1046,16 +1037,20 @@ describe('ItemDetailDialog', () => {
       expect(options.length).toBeGreaterThan(1)
     })
 
-    // No indicator initially
-    expect(screen.queryByTestId('unsaved-indicator')).not.toBeInTheDocument()
-
     // Change model
     fireEvent.change(screen.getByTestId('model-select'), {
       target: { value: 'sonnet' },
     })
 
-    // Should show indicator
-    expect(screen.getByTestId('unsaved-indicator')).toBeInTheDocument()
+    // Flush via Ctrl+Enter
+    fireEvent.keyDown(screen.getByTestId('item-detail-dialog').parentElement!, {
+      key: 'Enter',
+      ctrlKey: true,
+    })
+
+    await waitFor(() => {
+      expect(mockKanbanUpdateItem).toHaveBeenCalled()
+    })
   })
 
   it('should NOT reset form fields when same item updates (preserve user input)', () => {
@@ -1233,51 +1228,68 @@ describe('ItemDetailDialog', () => {
     expect(screen.queryByTestId('agent-type-select')).not.toBeInTheDocument()
   })
 
-  it('should disable save button when title is empty', () => {
-    const item = createMockItem({ title: 'Some Title' })
+  it('should not auto-save when title is empty', async () => {
+    vi.useFakeTimers()
+    try {
+      const item = createMockItem({ title: 'Some Title' })
 
-    render(
-      <ItemDetailDialog
-        isOpen={true}
-        item={item}
-        projectPath="/test/project"
-        onClose={vi.fn()}
-        onUpdated={vi.fn()}
-      />
-    )
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={item}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />
+      )
 
-    // Save button should be enabled initially
-    expect(screen.getByTestId('save-button')).not.toBeDisabled()
+      // Clear title
+      fireEvent.change(screen.getByTestId('title-input'), {
+        target: { value: '' },
+      })
 
-    // Clear title
-    fireEvent.change(screen.getByTestId('title-input'), {
-      target: { value: '' },
-    })
+      // Advance past debounce
+      await act(async () => {
+        vi.advanceTimersByTime(800)
+      })
 
-    // Save button should be disabled
-    expect(screen.getByTestId('save-button')).toBeDisabled()
+      // Should NOT have saved
+      expect(mockKanbanUpdateItem).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
-  it('should disable save button when title is whitespace-only', () => {
-    const item = createMockItem({ title: 'Some Title' })
+  it('should not auto-save when title is whitespace-only', async () => {
+    vi.useFakeTimers()
+    try {
+      const item = createMockItem({ title: 'Some Title' })
 
-    render(
-      <ItemDetailDialog
-        isOpen={true}
-        item={item}
-        projectPath="/test/project"
-        onClose={vi.fn()}
-        onUpdated={vi.fn()}
-      />
-    )
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={item}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />
+      )
 
-    // Set title to whitespace only
-    fireEvent.change(screen.getByTestId('title-input'), {
-      target: { value: '   ' },
-    })
+      // Set title to whitespace only
+      fireEvent.change(screen.getByTestId('title-input'), {
+        target: { value: '   ' },
+      })
 
-    // Save button should be disabled
-    expect(screen.getByTestId('save-button')).toBeDisabled()
+      // Advance past debounce
+      await act(async () => {
+        vi.advanceTimersByTime(800)
+      })
+
+      // Should NOT have saved
+      expect(mockKanbanUpdateItem).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('should not submit on Ctrl+Enter when title is empty', async () => {
@@ -1360,5 +1372,93 @@ describe('ItemDetailDialog', () => {
 
     // User input should be preserved
     expect(screen.getByTestId('description-input')).toHaveValue('User is writing a long description...')
+  })
+
+  it('should show "Save failed" when auto-save IPC call fails', async () => {
+    mockKanbanUpdateItem.mockRejectedValue(new Error('Network error'))
+    const item = createMockItem({ title: 'Original Title' })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    // Edit title
+    fireEvent.change(screen.getByTestId('title-input'), {
+      target: { value: 'Changed Title' },
+    })
+
+    // Flush via Ctrl+Enter
+    fireEvent.keyDown(screen.getByTestId('item-detail-dialog').parentElement!, {
+      key: 'Enter',
+      ctrlKey: true,
+    })
+
+    // Should show error status
+    await waitFor(() => {
+      expect(screen.getByTestId('save-status')).toHaveTextContent('Save failed')
+    })
+  })
+
+  it('should not have a save button (auto-save replaces manual save)', () => {
+    const item = createMockItem()
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByTestId('save-button')).not.toBeInTheDocument()
+    // Delete button should still exist
+    expect(screen.getByTestId('delete-button')).toBeInTheDocument()
+  })
+
+  it('should debounce rapid changes and only save once', async () => {
+    vi.useFakeTimers()
+    try {
+      mockKanbanUpdateItem.mockResolvedValue({ id: 'item-1' })
+      const item = createMockItem()
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={item}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />
+      )
+
+      // Type rapidly (each change resets the 800ms timer)
+      fireEvent.change(screen.getByTestId('title-input'), { target: { value: 'a' } })
+      await act(async () => { vi.advanceTimersByTime(200) })
+      fireEvent.change(screen.getByTestId('title-input'), { target: { value: 'ab' } })
+      await act(async () => { vi.advanceTimersByTime(200) })
+      fireEvent.change(screen.getByTestId('title-input'), { target: { value: 'abc' } })
+
+      // Not enough time has passed from last change
+      await act(async () => { vi.advanceTimersByTime(400) })
+      expect(mockKanbanUpdateItem).not.toHaveBeenCalled()
+
+      // Full debounce from last change
+      await act(async () => { vi.advanceTimersByTime(400) })
+
+      expect(mockKanbanUpdateItem).toHaveBeenCalledTimes(1)
+      expect(mockKanbanUpdateItem).toHaveBeenCalledWith('/test/project', 'item-1', expect.objectContaining({
+        title: 'abc',
+      }))
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
