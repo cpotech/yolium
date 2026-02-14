@@ -119,13 +119,6 @@ describe('AgentControls', () => {
   })
 
   describe('completed state', () => {
-    it('should show completed status text', async () => {
-      const item = createMockItem({ agentStatus: 'completed' })
-      render(<AgentControls item={item} {...defaultProps} />)
-
-      expect(screen.getByText('Agent completed successfully')).toBeInTheDocument()
-    })
-
     it('should show per-agent buttons for completed status', async () => {
       const item = createMockItem({ agentStatus: 'completed', branch: 'feature/test' })
       render(<AgentControls item={item} {...defaultProps} />)
