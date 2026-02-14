@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react'
-import { Code, Lightbulb, ShieldCheck, Play, RotateCcw, MessageSquare, XCircle, CheckCircle2 } from 'lucide-react'
+import { Code, Lightbulb, ShieldCheck, Play, RotateCcw, MessageSquare, XCircle } from 'lucide-react'
 import type { KanbanItem, AgentStatus } from '@shared/types/kanban'
 import type { AgentDefinition } from '@shared/types/agent'
 
@@ -284,10 +284,6 @@ export function AgentControls({
         {/* Completed - Show all agent buttons */}
         {item.agentStatus === 'completed' && (
           <div className="space-y-2">
-            <div className="text-sm text-green-400 flex items-center gap-2">
-              <CheckCircle2 size={14} />
-              Agent completed successfully
-            </div>
             {sortedAgents.length > 0 && (
               <AgentButtonList
                 agents={sortedAgents}
