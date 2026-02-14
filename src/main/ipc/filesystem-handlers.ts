@@ -70,6 +70,38 @@ export function registerFilesystemHandlers(ipcMain: IpcMain): void {
     }
   });
 
+  // Read a file as UTF-8 text (used for mock HTML preview)
+  ipcMain.handle('fs:read-file', async (_event, filePath: string) => {
+    try {
+      // Reject paths with directory traversal
+      if (filePath.includes('..')) {
+        return { success: false, content: null, error: 'Path traversal not allowed' };
+      }
+
+      const resolvedPath = path.resolve(filePath);
+
+      // Verify file exists and check size
+      const stats = await fs.stat(resolvedPath);
+      if (!stats.isFile()) {
+        return { success: false, content: null, error: 'Path is not a file' };
+      }
+
+      const MAX_FILE_SIZE = 1024 * 1024; // 1MB
+      if (stats.size > MAX_FILE_SIZE) {
+        return { success: false, content: null, error: 'File exceeds 1MB size limit' };
+      }
+
+      const content = await fs.readFile(resolvedPath, 'utf-8');
+      return { success: true, content, error: null };
+    } catch (err) {
+      const error = err as NodeJS.ErrnoException;
+      let message = error.message || 'Unknown error';
+      if (error.code === 'ENOENT') message = 'File not found';
+      if (error.code === 'EACCES') message = 'Permission denied';
+      return { success: false, content: null, error: message };
+    }
+  });
+
   // Create directory for path input dialog
   ipcMain.handle('fs:create-directory', async (_event, parentPath: string, folderName: string) => {
     try {

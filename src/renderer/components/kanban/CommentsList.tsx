@@ -3,33 +3,97 @@
  * Comments list component for displaying kanban item comments.
  */
 
-import React from 'react'
+import React, { useState } from 'react'
 import Markdown from 'react-markdown'
 import type { KanbanComment, CommentSource } from '@shared/types/kanban'
+import { MockPreviewModal } from './MockPreviewModal'
 
-const markdownComponents = {
-  h1: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => <h1 className="text-base font-bold mt-3 mb-1" {...props}>{children}</h1>,
-  h2: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => <h2 className="text-sm font-bold mt-3 mb-1" {...props}>{children}</h2>,
-  h3: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => <h3 className="text-sm font-semibold mt-2 mb-1" {...props}>{children}</h3>,
-  p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => <p className="my-1" {...props}>{children}</p>,
-  ul: ({ children, ...props }: React.HTMLAttributes<HTMLUListElement>) => <ul className="list-disc pl-4 my-1 space-y-0.5" {...props}>{children}</ul>,
-  ol: ({ children, ...props }: React.HTMLAttributes<HTMLOListElement>) => <ol className="list-decimal pl-4 my-1 space-y-0.5" {...props}>{children}</ol>,
-  li: ({ children, ...props }: React.HTMLAttributes<HTMLLIElement>) => <li className="text-sm" {...props}>{children}</li>,
-  code: ({ children, className, ...props }: React.HTMLAttributes<HTMLElement>) => {
-    const isBlock = className?.includes('language-')
-    if (isBlock) {
-      return <code className={`block bg-[var(--color-bg-secondary)] p-2 rounded text-xs font-mono overflow-x-auto ${className || ''}`} {...props}>{children}</code>
-    }
-    return <code className="bg-[var(--color-bg-secondary)] px-1 py-0.5 rounded text-xs font-mono" {...props}>{children}</code>
-  },
-  pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => <pre className="my-1" {...props}>{children}</pre>,
-  strong: ({ children, ...props }: React.HTMLAttributes<HTMLElement>) => <strong className="font-semibold" {...props}>{children}</strong>,
-  a: ({ children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => <a className="text-[var(--color-accent-primary)] hover:underline" {...props}>{children}</a>,
-  table: ({ children, ...props }: React.TableHTMLAttributes<HTMLTableElement>) => <table className="text-xs border-collapse my-2 w-full" {...props}>{children}</table>,
-  th: ({ children, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) => <th className="border border-[var(--color-border-primary)] px-2 py-1 text-left font-semibold bg-[var(--color-bg-secondary)]" {...props}>{children}</th>,
-  td: ({ children, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) => <td className="border border-[var(--color-border-primary)] px-2 py-1" {...props}>{children}</td>,
-  blockquote: ({ children, ...props }: React.BlockquoteHTMLAttributes<HTMLQuoteElement>) => <blockquote className="border-l-2 border-[var(--color-border-secondary)] pl-3 my-1 text-[var(--color-text-secondary)]" {...props}>{children}</blockquote>,
-  hr: (props: React.HTMLAttributes<HTMLHRElement>) => <hr className="border-[var(--color-border-primary)] my-2" {...props} />,
+/** Only allow data:image/svg+xml URIs for security — no external image loading. */
+function isSvgDataUri(src: string | undefined): boolean {
+  return typeof src === 'string' && src.startsWith('data:image/svg+xml')
+}
+
+/** Detect yolium-mock:// protocol links. */
+function isMockLink(href: string | undefined): boolean {
+  return typeof href === 'string' && href.startsWith('yolium-mock://')
+}
+
+/** Extract the file path from a yolium-mock:// URI. */
+function getMockFilePath(href: string): string {
+  return href.replace('yolium-mock://', '')
+}
+
+/**
+ * Custom URL transform that allows yolium-mock:// and data:image/svg+xml URIs
+ * while keeping default sanitization for everything else.
+ */
+function urlTransform(url: string): string | null {
+  if (url.startsWith('yolium-mock://')) return url
+  if (url.startsWith('data:image/svg+xml')) return url
+  // Default behavior: allow http, https, mailto
+  if (/^https?:\/\//i.test(url)) return url
+  if (/^mailto:/i.test(url)) return url
+  if (url.startsWith('#') || url.startsWith('/')) return url
+  return ''
+}
+
+function createMarkdownComponents(onOpenMock: (filePath: string) => void) {
+  return {
+    h1: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => <h1 className="text-base font-bold mt-3 mb-1" {...props}>{children}</h1>,
+    h2: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => <h2 className="text-sm font-bold mt-3 mb-1" {...props}>{children}</h2>,
+    h3: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => <h3 className="text-sm font-semibold mt-2 mb-1" {...props}>{children}</h3>,
+    p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => <p className="my-1" {...props}>{children}</p>,
+    ul: ({ children, ...props }: React.HTMLAttributes<HTMLUListElement>) => <ul className="list-disc pl-4 my-1 space-y-0.5" {...props}>{children}</ul>,
+    ol: ({ children, ...props }: React.HTMLAttributes<HTMLOListElement>) => <ol className="list-decimal pl-4 my-1 space-y-0.5" {...props}>{children}</ol>,
+    li: ({ children, ...props }: React.HTMLAttributes<HTMLLIElement>) => <li className="text-sm" {...props}>{children}</li>,
+    code: ({ children, className, ...props }: React.HTMLAttributes<HTMLElement>) => {
+      const isBlock = className?.includes('language-')
+      if (isBlock) {
+        return <code className={`block bg-[var(--color-bg-secondary)] p-2 rounded text-xs font-mono overflow-x-auto ${className || ''}`} {...props}>{children}</code>
+      }
+      return <code className="bg-[var(--color-bg-secondary)] px-1 py-0.5 rounded text-xs font-mono" {...props}>{children}</code>
+    },
+    pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => <pre className="my-1" {...props}>{children}</pre>,
+    strong: ({ children, ...props }: React.HTMLAttributes<HTMLElement>) => <strong className="font-semibold" {...props}>{children}</strong>,
+    a: ({ children, href, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
+      if (isMockLink(href)) {
+        return (
+          <button
+            data-testid="mock-preview-button"
+            onClick={() => onOpenMock(getMockFilePath(href!))}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-[var(--color-bg-secondary)] text-[var(--color-accent-primary)] rounded border border-[var(--color-border-primary)] hover:border-[var(--color-accent-primary)] transition-colors cursor-pointer"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+              <line x1="8" y1="21" x2="16" y2="21" />
+              <line x1="12" y1="17" x2="12" y2="21" />
+            </svg>
+            {children}
+          </button>
+        )
+      }
+      return <a className="text-[var(--color-accent-primary)] hover:underline" href={href} {...props}>{children}</a>
+    },
+    img: ({ src, alt, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => {
+      if (!isSvgDataUri(src)) {
+        return <span data-testid="blocked-image" className="text-xs text-[var(--color-text-tertiary)] italic">[image blocked]</span>
+      }
+      return (
+        <img
+          data-testid="svg-image"
+          src={src}
+          alt={alt || 'SVG wireframe'}
+          className="max-w-full rounded border border-[var(--color-border-primary)] my-2"
+          {...props}
+        />
+      )
+    },
+    table: ({ children, ...props }: React.TableHTMLAttributes<HTMLTableElement>) => <table className="text-xs border-collapse my-2 w-full" {...props}>{children}</table>,
+    th: ({ children, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) => <th className="border border-[var(--color-border-primary)] px-2 py-1 text-left font-semibold bg-[var(--color-bg-secondary)]" {...props}>{children}</th>,
+    td: ({ children, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) => <td className="border border-[var(--color-border-primary)] px-2 py-1" {...props}>{children}</td>,
+    blockquote: ({ children, ...props }: React.BlockquoteHTMLAttributes<HTMLQuoteElement>) => <blockquote className="border-l-2 border-[var(--color-border-secondary)] pl-3 my-1 text-[var(--color-text-secondary)]" {...props}>{children}</blockquote>,
+    hr: (props: React.HTMLAttributes<HTMLHRElement>) => <hr className="border-[var(--color-border-primary)] my-2" {...props} />,
+  }
 }
 
 const commentBadgeColors: Record<CommentSource, string> = {
@@ -91,6 +155,9 @@ interface CommentsListProps {
  * @param props - Component props
  */
 export function CommentsList({ comments, onSelectOption }: CommentsListProps): React.ReactElement {
+  const [mockFilePath, setMockFilePath] = useState<string | null>(null)
+  const markdownComponents = createMarkdownComponents(setMockFilePath)
+
   return (
     <div data-testid="comments-section">
       <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">
@@ -137,7 +204,7 @@ export function CommentsList({ comments, onSelectOption }: CommentsListProps): R
 
                 return (
                   <div className="text-sm text-[var(--color-text-primary)]">
-                    <Markdown components={markdownComponents}>{comment.text}</Markdown>
+                    <Markdown components={markdownComponents} urlTransform={urlTransform}>{comment.text}</Markdown>
                   </div>
                 )
               })()}
@@ -159,6 +226,11 @@ export function CommentsList({ comments, onSelectOption }: CommentsListProps): R
           ))}
         </div>
       )}
+      <MockPreviewModal
+        filePath={mockFilePath}
+        isOpen={mockFilePath !== null}
+        onClose={() => setMockFilePath(null)}
+      />
     </div>
   )
 }
