@@ -42,6 +42,8 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
   const searchInputRef = useRef<HTMLInputElement>(null)
   // Ref to track dialog open state without stale closures
   const dialogOpenRef = useRef(false)
+  // Ref to track when user is interacting with any input (prevents focus theft)
+  const isUserInputActiveRef = useRef(false)
   // Recover stale "running" items once per project path after restart/crash.
   const recoveredProjectsRef = useRef<Set<string>>(new Set())
 
@@ -121,6 +123,10 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
   // Auto-focus view after board loads so keyboard shortcuts work immediately
   useEffect(() => {
     if (board && !isLoading && viewRef.current) {
+      // Don't steal focus from active input elements
+      const active = document.activeElement
+      const tag = active?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
       viewRef.current.focus()
     }
   }, [board, isLoading])
@@ -130,8 +136,8 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     if (!projectPath) return
 
     const intervalId = setInterval(() => {
-      // Skip refresh if a dialog is open to prevent overwriting user input
-      if (!dialogOpenRef.current) {
+      // Skip refresh if a dialog is open or user is typing in an input
+      if (!dialogOpenRef.current && !isUserInputActiveRef.current) {
         loadBoard()
       }
     }, 15000)
@@ -501,6 +507,8 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
+              onFocus={() => { isUserInputActiveRef.current = true }}
+              onBlur={() => { isUserInputActiveRef.current = false }}
               placeholder="Search... (/)"
               className="w-40 pl-8 pr-3 py-1.5 text-sm bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:w-56 transition-all"
               onKeyDown={e => {

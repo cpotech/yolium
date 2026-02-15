@@ -212,9 +212,49 @@ export function ItemDetailDialog({
     }
   }, [item, saveStatus, projectPath, title, description, column, agentType, agentProvider, model, verified, onUpdated])
 
+  // Auto-save for persistence only (no onUpdated callback to avoid focus theft)
+  const handleAutoSave = useCallback(async () => {
+    if (!item || saveStatus === 'saving') return
+
+    setSaveStatus('saving')
+    try {
+      const trimmedTitle = title.trim()
+      const trimmedDescription = description.trim()
+      await window.electronAPI.kanban.updateItem(projectPath, item.id, {
+        title: trimmedTitle,
+        description: trimmedDescription,
+        column,
+        agentType: agentType || undefined,
+        agentProvider,
+        model: model || undefined,
+        verified,
+      })
+      setBaseTitle(trimmedTitle)
+      setBaseDescription(trimmedDescription)
+      setBaseColumn(column)
+      setBaseAgentType(agentType)
+      setBaseAgentProvider(agentProvider)
+      setBaseModel(model)
+      setBaseVerified(verified)
+      setErrorMessage(null)
+      setSaveStatus('saved')
+      if (savedFadeTimerRef.current) clearTimeout(savedFadeTimerRef.current)
+      savedFadeTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000)
+      // NOTE: No onUpdated() call — auto-save should not trigger board refresh
+    } catch (error) {
+      console.error('Failed to update item:', error)
+      setErrorMessage('Failed to save changes. Please try again.')
+      setSaveStatus('error')
+    }
+  }, [item, saveStatus, projectPath, title, description, column, agentType, agentProvider, model, verified])
+
   // Keep a ref to handleSave so the debounce effect always calls the latest version
   const handleSaveRef = useRef(handleSave)
   handleSaveRef.current = handleSave
+
+  // Keep a ref to handleAutoSave for auto-save debounce
+  const handleAutoSaveRef = useRef(handleAutoSave)
+  handleAutoSaveRef.current = handleAutoSave
 
   // Debounced auto-save: fires 800ms after any field change
   useEffect(() => {
@@ -227,7 +267,7 @@ export function ItemDetailDialog({
     }
 
     autoSaveTimerRef.current = setTimeout(() => {
-      handleSaveRef.current()
+      handleAutoSaveRef.current()
     }, 800)
 
     return () => {
