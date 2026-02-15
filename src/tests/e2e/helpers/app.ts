@@ -67,7 +67,7 @@ export async function closeApp(ctx: AppContext): Promise<void> {
   try {
     await ctx.window.evaluate(async () => {
       // @ts-expect-error - electronAPI is exposed via preload
-      await window.electronAPI.container.removeAll();
+      await window.electronAPI.docker.removeAllContainers();
     });
   } catch {
     // App may be in a broken state, fall back to docker CLI cleanup
