@@ -170,7 +170,7 @@ test.describe('Kanban Sidebar Integration', () => {
     await addProject();
 
     await expect(window.locator(selectors.kanbanColumnsContainer)).toBeVisible();
-    await expect(window.locator('[data-testid^="kanban-column-"]')).toHaveCount(4);
+    await expect(window.locator('[data-testid^="kanban-column-"]')).toHaveCount(5);
   });
 
   test('should show new item button in kanban toolbar', async () => {
