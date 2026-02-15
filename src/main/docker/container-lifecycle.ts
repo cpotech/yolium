@@ -40,6 +40,8 @@ export async function createYolium(
   branchName?: string
 ): Promise<string> {
   const sessionId = `yolium-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  const startupStart = performance.now();
+  let phaseStart = startupStart;
 
   // Resolve to absolute path to ensure drive letter is present on Windows
   // This fixes paths like "\Users\gaming\repos\test" -> "C:\Users\gaming\repos\test"
@@ -55,11 +57,12 @@ export async function createYolium(
   if (worktreeEnabled) {
     actualBranchName = branchName || generateBranchName();
     logger.info('Creating worktree', { sessionId, folderPath: resolvedFolderPath, branchName: actualBranchName });
+    phaseStart = performance.now();
 
     try {
       worktreePath = createWorktree(resolvedFolderPath, actualBranchName);
       mountPath = worktreePath;
-      logger.info('Worktree created', { sessionId, worktreePath });
+      logger.info('Worktree created', { sessionId, worktreePath, elapsedMs: Math.round(performance.now() - phaseStart) });
     } catch (err) {
       logger.error('Failed to create worktree', { sessionId, error: err instanceof Error ? err.message : String(err) });
       throw err;
@@ -68,10 +71,12 @@ export async function createYolium(
 
   // Create container with folder mounted (on Linux: same path, on Windows: /workspace)
   // Use mountPath (which may be a worktree) instead of original folderPath
+  phaseStart = performance.now();
   const containerProjectPath = getContainerProjectPath(mountPath);
   const projectTypes = detectProjectTypes(mountPath);
   const nodePackageManager = detectPackageManager(mountPath);
   const projectTypesValue = projectTypes.join(',');
+  logger.info('Project detection', { sessionId, projectTypes, nodePackageManager, elapsedMs: Math.round(performance.now() - phaseStart) });
 
   // The entrypoint script handles command selection based on TOOL env var
   // This avoids issues with Cmd array being corrupted by bundling/serialization
@@ -81,13 +86,12 @@ export async function createYolium(
     containerProjectPath,
     mountPath,
     worktreePath,
-    projectTypes,
-    nodePackageManager,
   });
 
   // Build bind mounts (extract to log them for debugging)
   // Use mountPath for project directory, but use original resolvedFolderPath for cache isolation
   // Pass resolvedFolderPath as originalRepoPath so worktrees can access the main repo's .git
+  phaseStart = performance.now();
   const binds = buildPersistentBindMounts(mountPath, agent, resolvedFolderPath, worktreePath ? resolvedFolderPath : undefined);
   // Add git-credentials for HTTPS auth if PAT is configured
   const gitCredBind = getGitCredentialsBind();
@@ -111,6 +115,7 @@ export async function createYolium(
   if (codexOAuthBind) {
     binds.push(codexOAuthBind);
   }
+  logger.info('Bind mounts prepared', { sessionId, bindCount: binds.length, elapsedMs: Math.round(performance.now() - phaseStart) });
 
   logger.debug('Container bind mounts', { sessionId, binds });
 
@@ -120,6 +125,7 @@ export async function createYolium(
     const useOAuth = storedConfig?.useClaudeOAuth && oauthBind;
     const useCodexOAuth = storedConfig?.useCodexOAuth && codexOAuthBind;
 
+    phaseStart = performance.now();
     container = await docker.createContainer({
       Image: DEFAULT_IMAGE,
       // Cmd is handled by entrypoint based on TOOL env var
@@ -176,8 +182,10 @@ export async function createYolium(
     });
     throw err;
   }
+  logger.info('Docker container created', { sessionId, containerId: container.id, elapsedMs: Math.round(performance.now() - phaseStart) });
 
   // Start the container
+  phaseStart = performance.now();
   try {
     await container.start();
   } catch (err) {
@@ -195,8 +203,10 @@ export async function createYolium(
     }
     throw err;
   }
+  logger.info('Docker container started', { sessionId, containerId: container.id, elapsedMs: Math.round(performance.now() - phaseStart) });
 
   // Attach to container with bidirectional stream (hijack required for stdin)
+  phaseStart = performance.now();
   const stream = await container.attach({
     stream: true,
     stdin: true,
@@ -204,6 +214,7 @@ export async function createYolium(
     stderr: true,
     hijack: true,
   });
+  logger.info('Docker container attached', { sessionId, elapsedMs: Math.round(performance.now() - phaseStart) });
 
   // Store session with running state (include worktree info if applicable)
   sessions.set(sessionId, {
@@ -272,6 +283,9 @@ export async function createYolium(
       session.state = 'crashed';
     }
   });
+
+  const totalElapsed = Math.round(performance.now() - startupStart);
+  logger.info('Container startup complete', { sessionId, totalElapsedMs: totalElapsed });
 
   return sessionId;
 }

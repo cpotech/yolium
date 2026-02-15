@@ -158,20 +158,26 @@ export async function ensureImage(
   imageName: string = DEFAULT_IMAGE,
   onProgress?: (msg: string) => void
 ): Promise<void> {
+  const ensureStart = performance.now();
+  let phaseStart = ensureStart;
+
   // Check if image already exists
   const images = await docker.listImages({
     filters: { reference: [imageName] },
   });
+  logger.info('Image list check', { imageName, found: images.length > 0, elapsedMs: Math.round(performance.now() - phaseStart) });
 
   if (images.length > 0) {
     // If this is the local yolium image, rebuild when Dockerfile/entrypoint changes
     if (imageName === DEFAULT_IMAGE) {
       try {
+        phaseStart = performance.now();
         const image = docker.getImage(imageName);
         const inspect = await image.inspect();
         const labels = inspect.Config?.Labels || {};
         const currentHash = computeDockerImageHash();
         const imageHash = labels['yolium.build_hash'];
+        logger.info('Image staleness check', { imageName, stale: !!(imageHash && imageHash !== currentHash), elapsedMs: Math.round(performance.now() - phaseStart) });
         // Only rebuild if the hash label exists but doesn't match.
         // If the label is missing, the image was built externally (e.g., CI) - skip rebuild.
         if (imageHash && imageHash !== currentHash) {
@@ -186,6 +192,7 @@ export async function ensureImage(
         await buildLocalImage(onProgress);
       }
     }
+    logger.info('ensureImage complete', { imageName, totalElapsedMs: Math.round(performance.now() - ensureStart) });
     return; // Image already present (or rebuilt above)
   }
 

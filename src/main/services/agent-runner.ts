@@ -183,6 +183,9 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     onProgress,
   } = params;
 
+  const agentStartupStart = performance.now();
+  let agentPhaseStart = agentStartupStart;
+
   let agent: ParsedAgent;
   try {
     agent = loadAgentDefinition(agentName);
@@ -192,6 +195,9 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
       error: `Unknown agent: ${agentName}. Valid agents: code-agent, plan-agent`,
     };
   }
+  logger.info('Agent definition loaded', { agentName, elapsedMs: Math.round(performance.now() - agentPhaseStart) });
+
+  agentPhaseStart = performance.now();
   const board = getOrCreateBoard(projectPath);
   const item = board.items.find(i => i.id === itemId);
 
@@ -214,16 +220,19 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
       error: `${provider} is not authenticated. Add your ${keyType} API Key in Settings.`,
     };
   }
+  logger.info('Board loaded and auth checked', { agentName, itemId, provider, elapsedMs: Math.round(performance.now() - agentPhaseStart) });
 
   // Use title as fallback when no description is provided
   const effectiveGoal = goal.trim() || item.title;
 
+  agentPhaseStart = performance.now();
   const conversationHistory = buildConversationHistory(item);
   const prompt = buildAgentPrompt({
     systemPrompt: agent.systemPrompt,
     goal: effectiveGoal,
     conversationHistory,
   });
+  logger.info('Prompt built', { agentName, promptLength: prompt.length, elapsedMs: Math.round(performance.now() - agentPhaseStart) });
 
   // Update item status to running and move to in-progress column
   updateItem(board, itemId, {
@@ -243,6 +252,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
   addComment(board, itemId, 'system', `${agentName} started (${provider}/${displayModel})`);
 
   // Create or reuse worktree for branch isolation (best-effort, graceful fallback)
+  agentPhaseStart = performance.now();
   const resolvedProjectPath = path.resolve(projectPath);
   let worktreePath: string | undefined;
   let worktreeOriginalPath: string | undefined;
@@ -262,7 +272,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
         // Reuse existing worktree
         worktreePath = item.worktreePath;
         worktreeOriginalPath = resolvedProjectPath;
-        logger.info('Reusing existing worktree', { agentName, branchName, worktreePath });
+        logger.info('Reusing existing worktree', { agentName, branchName, worktreePath, elapsedMs: Math.round(performance.now() - agentPhaseStart) });
       } else {
         // Clear stale path if directory is gone
         if (item.worktreePath) {
@@ -273,19 +283,20 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
         // Create fresh worktree
         worktreePath = createWorktree(resolvedProjectPath, branchName);
         worktreeOriginalPath = resolvedProjectPath;
-        logger.info('Created agent worktree', { agentName, branchName, worktreePath });
+        logger.info('Created agent worktree', { agentName, branchName, worktreePath, elapsedMs: Math.round(performance.now() - agentPhaseStart) });
 
         // Persist worktree path on the kanban item
         updateItem(board, itemId, { worktreePath, mergeStatus: 'unmerged' });
       }
     } else {
-      logger.info('Skipping worktree: not a git repo or no commits', { projectPath });
+      logger.info('Skipping worktree: not a git repo or no commits', { projectPath, elapsedMs: Math.round(performance.now() - agentPhaseStart) });
     }
   } catch (err) {
     logger.warn('Failed to create worktree, running without isolation', {
       agentName,
       projectPath,
       error: err instanceof Error ? err.message : String(err),
+      elapsedMs: Math.round(performance.now() - agentPhaseStart),
     });
     worktreePath = undefined;
     worktreeOriginalPath = undefined;
@@ -298,6 +309,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
   // For non-Claude providers, write system prompt to an instructions file
   // and build a shorter goal-focused prompt. Non-Claude CLIs (Codex, OpenCode)
   // work better with a file reference than receiving the full system prompt inline.
+  agentPhaseStart = performance.now();
   let agentPrompt = prompt;
   if (provider !== 'claude') {
     const instructionsFile = `.yolium-${agentName}-instructions.md`;
@@ -317,7 +329,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     }
   }
 
-  logger.info('Starting agent container', { agentName, projectPath, itemId, model, branchName });
+  logger.info('Starting agent container', { agentName, projectPath, itemId, model, branchName, promptPrepElapsedMs: Math.round(performance.now() - agentPhaseStart) });
 
   // Write a session header to the persistent log
   appendSessionHeader(projectPath, itemId, agentName);
@@ -336,6 +348,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
 
   try {
     // Create the agent container
+    agentPhaseStart = performance.now();
     const sessionId = await createAgentContainer(
       {
         webContentsId,
@@ -440,6 +453,9 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
         },
       }
     );
+
+    logger.info('Agent container created', { agentName, sessionId, elapsedMs: Math.round(performance.now() - agentPhaseStart) });
+    logger.info('Full agent startup complete', { agentName, sessionId, totalElapsedMs: Math.round(performance.now() - agentStartupStart) });
 
     // Register session immediately after getting sessionId
     const session: AgentSession = {

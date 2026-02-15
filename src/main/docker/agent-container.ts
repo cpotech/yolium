@@ -601,6 +601,8 @@ export async function createAgentContainer(
   const { onOutput, onDisplayOutput, onProtocolMessage, onExit } = callbacks;
 
   const sessionId = `agent-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  const startupStart = performance.now();
+  let phaseStart = startupStart;
   const resolvedProjectPath = path.resolve(projectPath);
   const mountPath = worktreePath || resolvedProjectPath;
 
@@ -610,11 +612,14 @@ export async function createAgentContainer(
   });
 
   // Resolve paths and detect project config
+  phaseStart = performance.now();
   const containerProjectPath = getContainerProjectPath(mountPath);
   const projectTypesValue = detectProjectTypes(mountPath).join(',');
   const nodePackageManager = detectPackageManager(mountPath);
+  logger.info('Agent project detection', { sessionId, elapsedMs: Math.round(performance.now() - phaseStart) });
 
   // Build bind mounts
+  phaseStart = performance.now();
   const gitCredentialsBind = getGitCredentialsBind();
   const claudeOAuthBind = getClaudeOAuthBind();
   if (agentProvider === 'codex') {
@@ -626,9 +631,11 @@ export async function createAgentContainer(
     mountPath, containerProjectPath, worktreePath, originalPath,
     gitCredentialsBind, claudeOAuthBind, codexOAuthBind,
   });
+  logger.info('Agent bind mounts prepared', { sessionId, bindCount: binds.length, elapsedMs: Math.round(performance.now() - phaseStart) });
   logger.debug('Agent container bind mounts', { sessionId, binds });
 
   // Encode prompt as base64
+  phaseStart = performance.now();
   const promptBase64 = Buffer.from(prompt).toString('base64');
   const goalBase64 = goal ? Buffer.from(goal).toString('base64') : undefined;
   logger.info('Agent prompt encoded', { sessionId, promptLength: prompt.length, base64Length: promptBase64.length });
@@ -644,19 +651,28 @@ export async function createAgentContainer(
     agentProvider: agentProvider || 'claude',
     worktreePath, originalPath, gitConfig, useOAuth, useCodexOAuth,
   });
+  logger.info('Agent env vars built', { sessionId, envCount: env.length, elapsedMs: Math.round(performance.now() - phaseStart) });
 
   // Create container, attach, start
+  phaseStart = performance.now();
   const container = await docker.createContainer({
     Image: DEFAULT_IMAGE, Tty: false, OpenStdin: false, AttachStdin: false,
     AttachStdout: true, AttachStderr: true, WorkingDir: containerProjectPath,
     Env: env, HostConfig: { CapAdd: ['NET_ADMIN'], ShmSize: 268435456, Binds: binds },
   });
+  logger.info('Agent Docker container created', { sessionId, containerId: container.id, elapsedMs: Math.round(performance.now() - phaseStart) });
+
+  phaseStart = performance.now();
   const stream = await container.attach({ stream: true, stdout: true, stderr: true });
   const stdout = new PassThrough();
   const stderr = new PassThrough();
   docker.modem.demuxStream(stream, stdout, stderr);
+  logger.info('Agent Docker container attached', { sessionId, elapsedMs: Math.round(performance.now() - phaseStart) });
+
+  phaseStart = performance.now();
   await container.start();
-  logger.info('Agent container started', { sessionId, containerId: container.id });
+  logger.info('Agent container started', { sessionId, containerId: container.id, elapsedMs: Math.round(performance.now() - phaseStart) });
+  logger.info('Agent container startup complete', { sessionId, totalElapsedMs: Math.round(performance.now() - startupStart) });
 
   // Timeout tracking
   let timeoutId: NodeJS.Timeout | undefined;
