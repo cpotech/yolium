@@ -199,6 +199,17 @@ EOF
 # Switch back to root for entrypoint setup
 USER root
 
+# Install Playwright Chromium system dependencies (as root)
+RUN bash -c "source /home/${USERNAME}/.nvm/nvm.sh && npx playwright install-deps chromium"
+
+# Install Playwright Chromium browser binary (as agent user)
+USER ${USERNAME}
+ENV PLAYWRIGHT_BROWSERS_PATH=/home/${USERNAME}/.cache/ms-playwright
+RUN bash -c "source $NVM_DIR/nvm.sh && npx playwright install chromium"
+
+# Back to root for entrypoint setup
+USER root
+
 # Copy entrypoint scripts and fix Windows CRLF line endings if present
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY entrypoint.d/ /usr/local/bin/entrypoint.d/
