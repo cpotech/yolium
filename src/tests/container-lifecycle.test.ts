@@ -147,4 +147,37 @@ describe('container onboarding metadata env vars', () => {
 
     await stopAgentContainer(sessionId);
   });
+
+  it('sets ShmSize to 256MB in interactive container HostConfig for Chromium', async () => {
+    const container = createMockContainer('interactive-shm');
+    createContainerMock.mockResolvedValueOnce(container);
+
+    await createYolium(1, '/tmp/project', 'claude', true, undefined, false);
+
+    const createCall = createContainerMock.mock.calls[0]?.[0] as { HostConfig: { ShmSize: number } };
+    expect(createCall.HostConfig.ShmSize).toBe(268435456);
+  });
+
+  it('sets ShmSize to 256MB in headless agent container HostConfig for Chromium', async () => {
+    const container = createMockContainer('agent-shm');
+    createContainerMock.mockResolvedValueOnce(container);
+    getContainerMock.mockReturnValue(container);
+
+    const sessionId = await createAgentContainer({
+      webContentsId: 1,
+      projectPath: '/tmp/project',
+      agentName: 'code-agent',
+      prompt: 'Implement feature',
+      model: 'sonnet',
+      tools: ['Read', 'Write'],
+      itemId: 'item-shm',
+      agentProvider: 'claude',
+      timeoutMs: 60000,
+    });
+
+    const createCall = createContainerMock.mock.calls[0]?.[0] as { HostConfig: { ShmSize: number } };
+    expect(createCall.HostConfig.ShmSize).toBe(268435456);
+
+    await stopAgentContainer(sessionId);
+  });
 });

@@ -649,7 +649,7 @@ export async function createAgentContainer(
   const container = await docker.createContainer({
     Image: DEFAULT_IMAGE, Tty: false, OpenStdin: false, AttachStdin: false,
     AttachStdout: true, AttachStderr: true, WorkingDir: containerProjectPath,
-    Env: env, HostConfig: { CapAdd: ['NET_ADMIN'], Binds: binds },
+    Env: env, HostConfig: { CapAdd: ['NET_ADMIN'], ShmSize: 268435456, Binds: binds },
   });
   const stream = await container.attach({ stream: true, stdout: true, stderr: true });
   const stdout = new PassThrough();

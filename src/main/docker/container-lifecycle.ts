@@ -164,6 +164,7 @@ export async function createYolium(
         ],
       HostConfig: {
         CapAdd: ['NET_ADMIN'],
+        ShmSize: 268435456, // 256MB for Chromium
         Binds: binds,
       },
     });
