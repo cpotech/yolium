@@ -9,6 +9,7 @@ import * as os from 'node:os';
 import { app } from 'electron';
 import { createLogger } from '@main/lib/logger';
 import { loadGitConfig, generateGitCredentials, getHostClaudeCredentialsPath, getHostCodexCredentialsPath } from '@main/git/git-config';
+import { getValidatedSharedDirs } from '@main/services/project-config';
 import { getProjectDirName, toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
 
 const logger = createLogger('project-registry');
@@ -174,6 +175,14 @@ export function buildPersistentBindMounts(mountPath: string, agent: string, cach
       const dockerGitDir = toDockerPath(mainGitDir);
       const containerGitDir = toContainerHomePath(mainGitDir);
       binds.push(`${dockerGitDir}:${containerGitDir}:rw`);
+    }
+
+    // Mount shared directories from the original repo into the worktree container (read-only)
+    const sharedDirs = getValidatedSharedDirs(originalRepoPath);
+    for (const dir of sharedDirs) {
+      const hostDir = path.join(originalRepoPath, dir);
+      const containerDir = `${containerPath}/${dir}`;
+      binds.push(`${toDockerPath(hostDir)}:${containerDir}:ro`);
     }
   }
 

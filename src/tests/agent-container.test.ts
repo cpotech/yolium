@@ -26,7 +26,12 @@ vi.mock('@main/docker/path-utils', () => ({
   toContainerHomePath: vi.fn((p: string) => p),
 }));
 
+vi.mock('@main/services/project-config', () => ({
+  getValidatedSharedDirs: vi.fn(() => []),
+}));
+
 import * as fs from 'node:fs';
+import { getValidatedSharedDirs } from '@main/services/project-config';
 import { parseStreamEvent, combineUsageParts, accumulateSessionUsage, buildBindMounts, buildAgentEnv, processStreamChunk, flushLineBuffer } from '@main/docker/agent-container';
 import { extractProtocolMessages } from '@main/services/agent-protocol';
 import type { AgentContainerSession } from '@main/docker';
@@ -377,6 +382,49 @@ describe('buildBindMounts', () => {
     });
 
     expect(binds).toHaveLength(1);
+  });
+
+  it('adds shared dir mounts when in worktree mode with sharedDirs configured', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => true } as fs.Stats);
+    vi.mocked(getValidatedSharedDirs).mockReturnValue(['samples', 'test-data']);
+
+    const binds = buildBindMounts({
+      mountPath: '/home/user/worktrees/feat-branch',
+      containerProjectPath: '/home/user/worktrees/feat-branch',
+      worktreePath: '/home/user/worktrees/feat-branch',
+      originalPath: '/home/user/project',
+      gitCredentialsBind: null,
+      claudeOAuthBind: null,
+      codexOAuthBind: null,
+    });
+
+    // 1 project + 1 .git + 2 shared dirs = 4
+    expect(binds).toHaveLength(4);
+    expect(binds[2]).toBe('/home/user/project/samples:/home/user/worktrees/feat-branch/samples:ro');
+    expect(binds[3]).toBe('/home/user/project/test-data:/home/user/worktrees/feat-branch/test-data:ro');
+
+    vi.mocked(getValidatedSharedDirs).mockReturnValue([]);
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+    vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false } as fs.Stats);
+  });
+
+  it('does not add shared dir mounts when not in worktree mode', () => {
+    vi.mocked(getValidatedSharedDirs).mockClear();
+    vi.mocked(getValidatedSharedDirs).mockReturnValue(['samples']);
+
+    const binds = buildBindMounts({
+      mountPath: '/home/user/project',
+      containerProjectPath: '/home/user/project',
+      gitCredentialsBind: null,
+      claudeOAuthBind: null,
+      codexOAuthBind: null,
+    });
+
+    expect(binds).toHaveLength(1);
+    expect(getValidatedSharedDirs).not.toHaveBeenCalled();
+
+    vi.mocked(getValidatedSharedDirs).mockReturnValue([]);
   });
 });
 
