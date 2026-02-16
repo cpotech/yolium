@@ -47,6 +47,8 @@ import {
   cleanupWorktreeAndBranch,
   checkMergeConflicts,
   rebaseBranchOntoDefault,
+  approvePR,
+  mergePR,
 } from '@main/git/git-worktree'
 
 /**
@@ -900,6 +902,144 @@ describe('git-worktree', () => {
       expect(result.success).toBe(false)
       expect(result.conflict).toBeUndefined()
       expect(result.error).toContain('Rebase failed')
+    })
+  })
+
+  describe('approvePR', () => {
+    it('approves a PR successfully', async () => {
+      setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'review' && args[3] === '--approve') {
+          return { stdout: '' }
+        }
+        return { error: new Error(`Unexpected command: ${cmd} ${args.join(' ')}`) }
+      })
+
+      const result = await approvePR('/home/user/project', 'https://github.com/owner/repo/pull/123')
+      expect(result.success).toBe(true)
+      expect(result.error).toBeUndefined()
+    })
+
+    it('returns error when gh CLI fails', async () => {
+      setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'review') {
+          const err = new Error('gh command failed') as Error & { stderr: string }
+          err.stderr = 'failed to approve PR: pull request not found'
+          return { error: err }
+        }
+        return { stdout: '' }
+      })
+
+      const result = await approvePR('/home/user/project', 'https://github.com/owner/repo/pull/123')
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Failed to approve PR')
+      expect(result.error).toContain('pull request not found')
+    })
+
+    it('uses correct gh CLI arguments', async () => {
+      let capturedArgs: readonly string[] = []
+      setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh') {
+          capturedArgs = args
+          return { stdout: '' }
+        }
+        return { error: new Error('Unexpected command') }
+      })
+
+      const prUrl = 'https://github.com/owner/repo/pull/456'
+      await approvePR('/home/user/project', prUrl)
+      expect(capturedArgs).toEqual(['pr', 'review', prUrl, '--approve'])
+    })
+
+    it('returns error with message when stderr is not available', async () => {
+      setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'review') {
+          const err = new Error('some error without stderr')
+          return { error: err }
+        }
+        return { stdout: '' }
+      })
+
+      const result = await approvePR('/home/user/project', 'https://github.com/owner/repo/pull/123')
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Failed to approve PR')
+      expect(result.error).toContain('some error without stderr')
+    })
+  })
+
+  describe('mergePR', () => {
+    it('merges a PR successfully with squash', async () => {
+      setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'merge') {
+          return { stdout: '' }
+        }
+        return { error: new Error(`Unexpected command: ${cmd} ${args.join(' ')}`) }
+      })
+
+      const result = await mergePR('/home/user/project', 'https://github.com/owner/repo/pull/123')
+      expect(result.success).toBe(true)
+      expect(result.error).toBeUndefined()
+    })
+
+    it('returns error when gh CLI fails', async () => {
+      setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'merge') {
+          const err = new Error('gh command failed') as Error & { stderr: string }
+          err.stderr = 'failed to merge PR: merge conflict'
+          return { error: err }
+        }
+        return { stdout: '' }
+      })
+
+      const result = await mergePR('/home/user/project', 'https://github.com/owner/repo/pull/123')
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Failed to merge PR')
+      expect(result.error).toContain('merge conflict')
+    })
+
+    it('uses correct gh CLI arguments including squash and delete-branch', async () => {
+      let capturedArgs: readonly string[] = []
+      setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh') {
+          capturedArgs = args
+          return { stdout: '' }
+        }
+        return { error: new Error('Unexpected command') }
+      })
+
+      const prUrl = 'https://github.com/owner/repo/pull/789'
+      await mergePR('/home/user/project', prUrl)
+      expect(capturedArgs).toEqual(['pr', 'merge', prUrl, '--squash', '--delete-branch'])
+    })
+
+    it('runs in correct working directory', async () => {
+      let capturedCwd: string | undefined
+      mockExecFileCustom.mockImplementation((cmd: string, cmdArgs?: readonly string[], options?: any) => {
+        if (cmd === 'gh' && cmdArgs?.[0] === 'pr' && cmdArgs?.[1] === 'merge') {
+          capturedCwd = options?.cwd
+          return Promise.resolve({ stdout: '', stderr: '' })
+        }
+        return Promise.resolve({ stdout: '', stderr: '' })
+      })
+
+      const projectPath = '/custom/project/path'
+      await mergePR(projectPath, 'https://github.com/owner/repo/pull/123')
+      expect(capturedCwd).toBe(projectPath)
+    })
+
+    it('returns error with default message when no stderr or message available', async () => {
+      setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'merge') {
+          const err = new Error('') as Error & { stderr?: string }
+          err.stderr = ''
+          return { error: err }
+        }
+        return { stdout: '' }
+      })
+
+      const result = await mergePR('/home/user/project', 'https://github.com/owner/repo/pull/123')
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Failed to merge PR')
+      expect(result.error).toContain('Unknown error')
     })
   })
 })

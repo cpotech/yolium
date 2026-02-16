@@ -151,6 +151,10 @@ const git = {
     ipcRenderer.invoke('git:check-merge-conflicts', projectPath, branchName),
   mergeAndPushPR: (projectPath: string, branchName: string, worktreePath: string, itemTitle: string, itemDescription: string) =>
     ipcRenderer.invoke('git:merge-and-push-pr', projectPath, branchName, worktreePath, itemTitle, itemDescription),
+  approvePR: (projectPath: string, prUrl: string) =>
+    ipcRenderer.invoke('git:approve-pr', projectPath, prUrl),
+  mergePR: (projectPath: string, prUrl: string) =>
+    ipcRenderer.invoke('git:merge-pr', projectPath, prUrl),
   worktreeChangedFiles: (projectPath: string, branchName: string) =>
     ipcRenderer.invoke('git:worktree-changed-files', projectPath, branchName),
   worktreeFileDiff: (projectPath: string, branchName: string, filePath: string) =>
@@ -449,6 +453,8 @@ declare global {
         cleanupWorktree: (projectPath: string, worktreePath: string, branchName: string) => Promise<void>;
         checkMergeConflicts: (projectPath: string, branchName: string) => Promise<{ clean: boolean; conflictingFiles: string[] }>;
         mergeAndPushPR: (projectPath: string, branchName: string, worktreePath: string, itemTitle: string, itemDescription: string) => Promise<{ success: boolean; prUrl?: string; prBranch?: string; error?: string; conflict?: boolean; conflictingFiles?: string[] }>;
+        approvePR: (projectPath: string, prUrl: string) => Promise<{ success: boolean; error?: string }>;
+        mergePR: (projectPath: string, prUrl: string) => Promise<{ success: boolean; error?: string }>;
         worktreeChangedFiles: (projectPath: string, branchName: string) => Promise<{
           files: Array<{ path: string; status: 'M' | 'A' | 'D' | 'R' }>;
           error?: string;

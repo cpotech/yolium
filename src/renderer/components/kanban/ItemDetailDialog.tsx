@@ -88,6 +88,8 @@ export function ItemDetailDialog({
   const [isCheckingConflicts, setIsCheckingConflicts] = useState(false)
   const [conflictCheck, setConflictCheck] = useState<{ clean: boolean; conflictingFiles: string[] } | null>(null)
   const [prUrl, setPrUrl] = useState<string | null>(null)
+  const [isApprovingPr, setIsApprovingPr] = useState(false)
+  const [isMergingPr, setIsMergingPr] = useState(false)
   const [showDiffViewer, setShowDiffViewer] = useState(false)
   const [providerModels, setProviderModels] = useState<Record<string, string[]>>({})
 
@@ -525,6 +527,60 @@ export function ItemDetailDialog({
     }
   }, [item, isMerging, projectPath, onUpdated])
 
+  const handleApprovePr = useCallback(async () => {
+    if (!item || !prUrl || isApprovingPr) return
+    setIsApprovingPr(true)
+    try {
+      const result = await window.electronAPI.git.approvePR(projectPath, prUrl)
+      if (result.success) {
+        await window.electronAPI.kanban.addComment(
+          projectPath, item.id, 'system',
+          `PR approved on GitHub: ${prUrl}`
+        )
+        setErrorMessage(null)
+        onUpdated()
+      } else {
+        setErrorMessage(result.error || 'Failed to approve PR')
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Unknown error'
+      setErrorMessage(`Failed to approve PR: ${msg}`)
+    } finally {
+      setIsApprovingPr(false)
+    }
+  }, [item, prUrl, isApprovingPr, projectPath, onUpdated])
+
+  const handleMergePr = useCallback(async () => {
+    if (!item || !prUrl || isMergingPr) return
+    const confirmed = await window.electronAPI.dialog.confirmOkCancel(
+      'Merge PR',
+      `Squash merge and delete the remote branch for this PR?\n\n${prUrl}`
+    )
+    if (!confirmed) return
+    setIsMergingPr(true)
+    try {
+      const result = await window.electronAPI.git.mergePR(projectPath, prUrl)
+      if (result.success) {
+        await window.electronAPI.kanban.addComment(
+          projectPath, item.id, 'system',
+          `PR merged on GitHub: ${prUrl}`
+        )
+        await window.electronAPI.kanban.updateItem(projectPath, item.id, {
+          column: 'done',
+        })
+        setErrorMessage(null)
+        onUpdated()
+      } else {
+        setErrorMessage(result.error || 'Failed to merge PR')
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Unknown error'
+      setErrorMessage(`Failed to merge PR: ${msg}`)
+    } finally {
+      setIsMergingPr(false)
+    }
+  }, [item, prUrl, isMergingPr, projectPath, onUpdated])
+
   const handleClose = useCallback(() => {
     // Flush pending auto-save before closing
     if (autoSaveTimerRef.current) {
@@ -895,15 +951,35 @@ export function ItemDetailDialog({
                         <span>Merged</span>
                       </div>
                       {prUrl && (
-                        <button
-                          data-testid="pr-link"
-                          onClick={() => window.electronAPI.app.openExternal(prUrl)}
-                          className="mt-1.5 w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 text-blue-400 rounded-md hover:bg-blue-600/10 border border-blue-600/30 transition-colors"
-                        >
-                          <GitPullRequest size={12} />
-                          <span>View PR</span>
-                          <ExternalLink size={10} />
-                        </button>
+                        <div className="space-y-2 mt-1.5">
+                          <button
+                            data-testid="pr-link"
+                            onClick={() => window.electronAPI.app.openExternal(prUrl)}
+                            className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 text-blue-400 rounded-md hover:bg-blue-600/10 border border-blue-600/30 transition-colors"
+                          >
+                            <GitPullRequest size={12} />
+                            <span>View PR</span>
+                            <ExternalLink size={10} />
+                          </button>
+                          <button
+                            data-testid="approve-pr-button"
+                            onClick={handleApprovePr}
+                            disabled={isApprovingPr || isMergingPr}
+                            className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            <Check size={12} />
+                            {isApprovingPr ? 'Approving...' : 'Approve PR'}
+                          </button>
+                          <button
+                            data-testid="merge-pr-button"
+                            onClick={handleMergePr}
+                            disabled={isMergingPr || isApprovingPr}
+                            className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            <GitMerge size={12} />
+                            {isMergingPr ? 'Merging...' : 'Merge PR'}
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}
