@@ -57,6 +57,41 @@ export function isValidSharedDir(dir: unknown): dir is string {
 }
 
 /**
+ * Save project configuration to .yolium.json.
+ * Preserves any existing keys not in the ProjectConfig interface.
+ */
+export function saveProjectConfig(projectPath: string, config: ProjectConfig): void {
+  const configPath = path.join(projectPath, '.yolium.json');
+  let existing: Record<string, unknown> = {};
+
+  try {
+    const raw = fs.readFileSync(configPath, 'utf-8');
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      existing = parsed;
+    }
+  } catch {
+    // File doesn't exist or invalid — start fresh
+  }
+
+  const merged = { ...existing, sharedDirs: config.sharedDirs };
+  fs.writeFileSync(configPath, JSON.stringify(merged, null, 2) + '\n', 'utf-8');
+  logger.info('Saved .yolium.json', { projectPath });
+}
+
+/**
+ * Check whether a shared directory path exists on disk and is a directory.
+ */
+export function checkSharedDirExists(projectPath: string, dir: string): boolean {
+  const fullPath = path.join(projectPath, dir);
+  try {
+    return fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Get validated shared directories that exist on disk.
  * Reads .yolium.json from projectPath, validates each entry, and filters
  * to only directories that actually exist.
