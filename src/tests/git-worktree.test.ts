@@ -49,6 +49,8 @@ import {
   rebaseBranchOntoDefault,
   approvePR,
   mergePR,
+  checkGhCliAvailable,
+  _resetGhCliCache,
 } from '@main/git/git-worktree'
 
 /**
@@ -74,6 +76,7 @@ describe('git-worktree', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(execFileSync).mockReturnValue(Buffer.from(''))
+    _resetGhCliCache()
   })
 
   describe('isGitRepo', () => {
@@ -523,6 +526,7 @@ describe('git-worktree', () => {
         if (command.includes('merge') && command.includes('--squash')) return {}
         if (command.includes('commit -m')) return {}
         if (command.includes('push -u')) return {}
+        if (cmd === 'gh' && args[0] === '--version') return { stdout: 'gh version 2.0.0' }
         if (cmd === 'gh') return { stdout: 'https://github.com/user/repo/pull/42\n' }
         // cleanup: worktree remove, branch delete
         if (command.includes('worktree remove')) return {}
@@ -544,7 +548,7 @@ describe('git-worktree', () => {
       expect(result.prBranch).toBe('yolium/add-auth-feature')
     })
 
-    it('returns partial success when PR creation fails but push succeeds', async () => {
+    it('returns partial success when gh CLI is not installed', async () => {
       setupSyncHelpers()
       setupExecFileAsyncMock((cmd, args) => {
         const command = `${cmd} ${args.join(' ')}`
@@ -556,8 +560,40 @@ describe('git-worktree', () => {
         if (command.includes('commit -m')) return {}
         if (command.includes('push -u')) return {}
         if (cmd === 'gh') {
+          return { error: new Error('spawn gh ENOENT') }
+        }
+        return {}
+      })
+
+      const result = await mergeBranchAndPushPR(
+        '/home/user/project',
+        'yolium-123-abc',
+        '/home/user/.yolium/worktrees/proj/yolium-123-abc',
+        'Add auth',
+        'Description',
+      )
+
+      expect(result.success).toBe(true)
+      expect(result.prUrl).toBeUndefined()
+      expect(result.prBranch).toBe('yolium/add-auth')
+      expect(result.error).toContain('GitHub CLI (gh) is not installed')
+    })
+
+    it('returns partial success when PR creation fails but push succeeds', async () => {
+      setupSyncHelpers()
+      setupExecFileAsyncMock((cmd, args) => {
+        const command = `${cmd} ${args.join(' ')}`
+        if (command.includes('fetch')) return {}
+        if (command.includes('checkout main') && !command.includes('-B')) return {}
+        if (command.includes('pull')) return {}
+        if (command.includes('checkout -B')) return {}
+        if (command.includes('merge') && command.includes('--squash')) return {}
+        if (command.includes('commit -m')) return {}
+        if (command.includes('push -u')) return {}
+        if (cmd === 'gh' && args[0] === '--version') return { stdout: 'gh version 2.0.0' }
+        if (cmd === 'gh') {
           const err = new Error('gh failed') as any
-          err.stderr = 'gh: not found'
+          err.stderr = 'authentication required'
           return { error: err }
         }
         return {}
@@ -588,6 +624,7 @@ describe('git-worktree', () => {
         if (command.includes('merge') && command.includes('--squash')) return {}
         if (command.includes('commit -m')) return {}
         if (command.includes('push -u')) return {}
+        if (cmd === 'gh' && args[0] === '--version') return { stdout: 'gh version 2.0.0' }
         if (cmd === 'gh') return { stdout: 'https://github.com/user/repo/pull/99\n' }
         if (command.includes('worktree remove')) return {}
         if (command.includes('worktree prune')) return {}
@@ -908,6 +945,7 @@ describe('git-worktree', () => {
   describe('approvePR', () => {
     it('approves a PR successfully', async () => {
       setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh' && args[0] === '--version') return { stdout: 'gh version 2.0.0' }
         if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'review' && args[3] === '--approve') {
           return { stdout: '' }
         }
@@ -919,8 +957,22 @@ describe('git-worktree', () => {
       expect(result.error).toBeUndefined()
     })
 
+    it('returns error when gh CLI is not installed', async () => {
+      setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh' && args[0] === '--version') {
+          return { error: new Error('spawn gh ENOENT') }
+        }
+        return { stdout: '' }
+      })
+
+      const result = await approvePR('/home/user/project', 'https://github.com/owner/repo/pull/123')
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('GitHub CLI (gh) is not installed')
+    })
+
     it('returns error when gh CLI fails', async () => {
       setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh' && args[0] === '--version') return { stdout: 'gh version 2.0.0' }
         if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'review') {
           const err = new Error('gh command failed') as Error & { stderr: string }
           err.stderr = 'failed to approve PR: pull request not found'
@@ -938,6 +990,7 @@ describe('git-worktree', () => {
     it('uses correct gh CLI arguments', async () => {
       let capturedArgs: readonly string[] = []
       setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh' && args[0] === '--version') return { stdout: 'gh version 2.0.0' }
         if (cmd === 'gh') {
           capturedArgs = args
           return { stdout: '' }
@@ -952,6 +1005,7 @@ describe('git-worktree', () => {
 
     it('returns error with message when stderr is not available', async () => {
       setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh' && args[0] === '--version') return { stdout: 'gh version 2.0.0' }
         if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'review') {
           const err = new Error('some error without stderr')
           return { error: err }
@@ -969,6 +1023,7 @@ describe('git-worktree', () => {
   describe('mergePR', () => {
     it('merges a PR successfully with squash', async () => {
       setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh' && args[0] === '--version') return { stdout: 'gh version 2.0.0' }
         if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'merge') {
           return { stdout: '' }
         }
@@ -980,8 +1035,22 @@ describe('git-worktree', () => {
       expect(result.error).toBeUndefined()
     })
 
+    it('returns error when gh CLI is not installed', async () => {
+      setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh' && args[0] === '--version') {
+          return { error: new Error('spawn gh ENOENT') }
+        }
+        return { stdout: '' }
+      })
+
+      const result = await mergePR('/home/user/project', 'https://github.com/owner/repo/pull/123')
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('GitHub CLI (gh) is not installed')
+    })
+
     it('returns error when gh CLI fails', async () => {
       setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh' && args[0] === '--version') return { stdout: 'gh version 2.0.0' }
         if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'merge') {
           const err = new Error('gh command failed') as Error & { stderr: string }
           err.stderr = 'failed to merge PR: merge conflict'
@@ -999,6 +1068,7 @@ describe('git-worktree', () => {
     it('uses correct gh CLI arguments including squash and delete-branch', async () => {
       let capturedArgs: readonly string[] = []
       setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh' && args[0] === '--version') return { stdout: 'gh version 2.0.0' }
         if (cmd === 'gh') {
           capturedArgs = args
           return { stdout: '' }
@@ -1014,6 +1084,9 @@ describe('git-worktree', () => {
     it('runs in correct working directory', async () => {
       let capturedCwd: string | undefined
       mockExecFileCustom.mockImplementation((cmd: string, cmdArgs?: readonly string[], options?: any) => {
+        if (cmd === 'gh' && cmdArgs?.[0] === '--version') {
+          return Promise.resolve({ stdout: 'gh version 2.0.0', stderr: '' })
+        }
         if (cmd === 'gh' && cmdArgs?.[0] === 'pr' && cmdArgs?.[1] === 'merge') {
           capturedCwd = options?.cwd
           return Promise.resolve({ stdout: '', stderr: '' })
@@ -1028,6 +1101,7 @@ describe('git-worktree', () => {
 
     it('returns error with default message when no stderr or message available', async () => {
       setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh' && args[0] === '--version') return { stdout: 'gh version 2.0.0' }
         if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'merge') {
           const err = new Error('') as Error & { stderr?: string }
           err.stderr = ''
@@ -1040,6 +1114,41 @@ describe('git-worktree', () => {
       expect(result.success).toBe(false)
       expect(result.error).toContain('Failed to merge PR')
       expect(result.error).toContain('Unknown error')
+    })
+  })
+
+  describe('checkGhCliAvailable', () => {
+    it('returns true when gh is installed', async () => {
+      setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh' && args[0] === '--version') return { stdout: 'gh version 2.62.0' }
+        return { error: new Error('Unexpected command') }
+      })
+
+      expect(await checkGhCliAvailable()).toBe(true)
+    })
+
+    it('returns false when gh is not installed', async () => {
+      setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh') return { error: new Error('spawn gh ENOENT') }
+        return { error: new Error('Unexpected command') }
+      })
+
+      expect(await checkGhCliAvailable()).toBe(false)
+    })
+
+    it('caches the result after first check', async () => {
+      let callCount = 0
+      setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'gh' && args[0] === '--version') {
+          callCount++
+          return { stdout: 'gh version 2.62.0' }
+        }
+        return { error: new Error('Unexpected command') }
+      })
+
+      await checkGhCliAvailable()
+      await checkGhCliAvailable()
+      expect(callCount).toBe(1)
     })
   })
 })

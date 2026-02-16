@@ -10,6 +10,29 @@ import type { ProjectType } from '@shared/types/onboarding';
 const execFileAsync = promisify(execFile);
 
 /**
+ * Check whether the GitHub CLI (gh) is available on the host system.
+ * Returns true if `gh --version` succeeds, false otherwise.
+ * Result is cached for the lifetime of the process.
+ */
+let ghCliAvailable: boolean | null = null;
+
+export async function checkGhCliAvailable(): Promise<boolean> {
+  if (ghCliAvailable !== null) return ghCliAvailable;
+  try {
+    await execFileAsync('gh', ['--version']);
+    ghCliAvailable = true;
+  } catch {
+    ghCliAvailable = false;
+  }
+  return ghCliAvailable;
+}
+
+/** Reset the cached gh CLI availability check. Exported for testing only. */
+export function _resetGhCliCache(): void {
+  ghCliAvailable = null;
+}
+
+/**
  * Validate that a branch name is safe for use in shell commands and file paths.
  * This prevents command injection attacks via malicious branch names.
  *
@@ -1078,6 +1101,20 @@ export async function mergeBranchAndPushPR(
 
   // Step 6: Create a PR using gh CLI
   let prUrl: string | undefined;
+  const ghAvailable = await checkGhCliAvailable();
+  if (!ghAvailable) {
+    // gh CLI not installed — branch was pushed, user can create PR manually
+    try {
+      await execFileAsync('git', ['checkout', defaultBranch], { cwd: projectPath });
+    } catch {
+      // Best effort
+    }
+    return {
+      success: true,
+      prBranch,
+      error: 'GitHub CLI (gh) is not installed. Install it from https://cli.github.com to create PRs automatically. Branch was pushed — create the PR manually.',
+    };
+  }
   try {
     const prBody = itemDescription || itemTitle;
     const { stdout } = await execFileAsync('gh', ['pr', 'create', '--title', itemTitle, '--body', prBody, '--base', defaultBranch, '--head', prBranch], {
@@ -1130,6 +1167,10 @@ export async function approvePR(
   projectPath: string,
   prUrl: string,
 ): Promise<ApprovePRResult> {
+  const ghAvailable = await checkGhCliAvailable();
+  if (!ghAvailable) {
+    return { success: false, error: 'GitHub CLI (gh) is not installed. Install it from https://cli.github.com to approve PRs.' };
+  }
   try {
     await execFileAsync('gh', ['pr', 'review', prUrl, '--approve'], {
       cwd: projectPath,
@@ -1156,6 +1197,10 @@ export async function mergePR(
   projectPath: string,
   prUrl: string,
 ): Promise<MergePRResult> {
+  const ghAvailable = await checkGhCliAvailable();
+  if (!ghAvailable) {
+    return { success: false, error: 'GitHub CLI (gh) is not installed. Install it from https://cli.github.com to merge PRs.' };
+  }
   try {
     await execFileAsync('gh', ['pr', 'merge', prUrl, '--squash', '--delete-branch'], {
       cwd: projectPath,
