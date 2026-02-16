@@ -56,7 +56,7 @@ Each agent is a single Markdown file with YAML frontmatter and a system prompt, 
 
 **Docker** (platform-specific):
 - **Windows**: [Docker Desktop](https://www.docker.com/products/docker-desktop/) required
-- **macOS**: [Docker Desktop](https://www.docker.com/products/docker-desktop/) or [Colima](https://github.com/abiosoft/colima) *(currently untested)*
+- **macOS**: [Docker Desktop](https://www.docker.com/products/docker-desktop/) or [Colima](https://github.com/abiosoft/colima) *(MacOS currently untested)*
 - **Linux**: [Docker Engine](https://docs.docker.com/engine/install/) only - no Desktop needed
 
 ### Downloads
