@@ -23,6 +23,8 @@ import {
   cleanupWorktreeAndBranch,
   mergeBranchAndPushPR,
   checkMergeConflicts,
+  approvePR,
+  mergePR,
 } from '@main/git/git-worktree';
 import type { GitConfig } from '@shared/types/git';
 import type { ProjectType } from '@shared/types/onboarding';
@@ -43,6 +45,8 @@ const GIT_CHANNELS = {
   checkMergeConflicts: 'git:check-merge-conflicts',
   cleanupWorktree: 'git:cleanup-worktree',
   mergeAndPushPr: 'git:merge-and-push-pr',
+  approvePr: 'git:approve-pr',
+  mergePr: 'git:merge-pr',
   worktreeChangedFiles: 'git:worktree-changed-files',
   worktreeFileDiff: 'git:worktree-file-diff',
   detectNestedRepos: 'git:detect-nested-repos',
@@ -468,6 +472,26 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     return withMergeLock(projectPath, async () => {
       return mergeBranchAndPushPR(projectPath, branchName, worktreePath, itemTitle, itemDescription);
     });
+  });
+
+  // Approve a GitHub PR
+  registerGitChannel(ipcMain, GIT_CHANNELS.approvePr, async (
+    _event,
+    projectPath: string,
+    prUrl: string,
+  ) => {
+    logger.info('IPC: git:approve-pr', { projectPath, prUrl });
+    return approvePR(projectPath, prUrl);
+  });
+
+  // Merge a GitHub PR (squash merge)
+  registerGitChannel(ipcMain, GIT_CHANNELS.mergePr, async (
+    _event,
+    projectPath: string,
+    prUrl: string,
+  ) => {
+    logger.info('IPC: git:merge-pr', { projectPath, prUrl });
+    return mergePR(projectPath, prUrl);
   });
 
   // Detect if folder is a git repo, and scan one level deep for nested repos if not

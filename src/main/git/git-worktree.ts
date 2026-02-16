@@ -1115,3 +1115,56 @@ export async function mergeBranchAndPushPR(
 
   return { success: true, prUrl, prBranch };
 }
+
+export interface ApprovePRResult {
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Approve a GitHub PR using the gh CLI.
+ * @param projectPath - The repository path
+ * @param prUrl - The PR URL (e.g. https://github.com/owner/repo/pull/123)
+ */
+export async function approvePR(
+  projectPath: string,
+  prUrl: string,
+): Promise<ApprovePRResult> {
+  try {
+    await execFileAsync('gh', ['pr', 'review', prUrl, '--approve'], {
+      cwd: projectPath,
+    });
+    return { success: true };
+  } catch (err) {
+    const error = err as { stderr?: string; message?: string };
+    const stderr = error.stderr || error.message || 'Unknown error';
+    return { success: false, error: `Failed to approve PR: ${stderr}` };
+  }
+}
+
+export interface MergePRResult {
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Merge a GitHub PR using the gh CLI (squash merge).
+ * @param projectPath - The repository path
+ * @param prUrl - The PR URL
+ */
+export async function mergePR(
+  projectPath: string,
+  prUrl: string,
+): Promise<MergePRResult> {
+  try {
+    await execFileAsync('gh', ['pr', 'merge', prUrl, '--squash', '--delete-branch'], {
+      cwd: projectPath,
+    });
+    return { success: true };
+  } catch (err) {
+    const error = err as { stderr?: string; message?: string };
+    const stderr = error.stderr || error.message || 'Unknown error';
+    return { success: false, error: `Failed to merge PR: ${stderr}` };
+  }
+}
+
