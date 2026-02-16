@@ -18,6 +18,7 @@ import { fixWorktreeGitFile } from '@main/git/git-worktree';
 import { docker, agentSessions, DEFAULT_IMAGE, type AgentContainerSession } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
 import { getGitCredentialsBind, getClaudeOAuthBind, getCodexOAuthBind } from './project-registry';
+import { getValidatedSharedDirs } from '@main/services/project-config';
 
 const logger = createLogger('agent-container');
 
@@ -305,6 +306,13 @@ export function buildBindMounts(params: {
       const dockerGitDir = toDockerPath(mainGitDir);
       const containerGitDir = toContainerHomePath(mainGitDir);
       binds.push(`${dockerGitDir}:${containerGitDir}:rw`);
+    }
+
+    // Mount shared directories from the original repo into the worktree container (read-only)
+    const sharedDirs = getValidatedSharedDirs(originalPath);
+    for (const dir of sharedDirs) {
+      const hostDir = path.join(originalPath, dir);
+      binds.push(`${toDockerPath(hostDir)}:${containerProjectPath}/${dir}:ro`);
     }
   }
 
