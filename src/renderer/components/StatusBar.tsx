@@ -1,5 +1,5 @@
 import React from 'react';
-import { Square, Loader2, Keyboard, GitBranch, TreeDeciduous, Sun, Moon, Settings } from 'lucide-react';
+import { Square, Loader2, Keyboard, GitBranch, TreeDeciduous, Sun, Moon, Settings, FileJson } from 'lucide-react';
 import type { ContainerState } from '@shared/types/tabs';
 import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper';
 import type { ClaudeUsageData } from '@shared/types/agent';
@@ -12,6 +12,7 @@ interface StatusBarProps {
   onStop?: () => void;
   onShowShortcuts: () => void;
   onOpenSettings: () => void;
+  onOpenProjectSettings?: () => void;
   gitBranch?: string;
   worktreeName?: string;
   // Speech-to-text props
@@ -86,6 +87,7 @@ export function StatusBar({
   onStop,
   onShowShortcuts,
   onOpenSettings,
+  onOpenProjectSettings,
   gitBranch,
   worktreeName,
   whisperRecordingState = 'idle',
@@ -194,6 +196,18 @@ export function StatusBar({
             />
             <span className="text-[var(--color-text-disabled)]">|</span>
           </>
+        )}
+
+        {/* Project settings button */}
+        {onOpenProjectSettings && (
+          <button
+            data-testid="project-settings-button"
+            onClick={onOpenProjectSettings}
+            className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+            title="Project settings"
+          >
+            <FileJson size={12} />
+          </button>
         )}
 
         {/* Settings button */}

@@ -22,7 +22,7 @@ vi.mock('node:fs', () => ({
 }));
 
 import * as fs from 'node:fs';
-import { loadProjectConfig, isValidSharedDir, getValidatedSharedDirs } from '@main/services/project-config';
+import { loadProjectConfig, isValidSharedDir, getValidatedSharedDirs, saveProjectConfig, checkSharedDirExists } from '@main/services/project-config';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -178,5 +178,79 @@ describe('getValidatedSharedDirs', () => {
     const dirs = getValidatedSharedDirs('/home/user/project');
 
     expect(dirs).toEqual([]);
+  });
+});
+
+describe('saveProjectConfig', () => {
+  it('saves new config when .yolium.json does not exist', () => {
+    vi.mocked(fs.readFileSync).mockImplementation(() => {
+      const err = new Error('ENOENT') as NodeJS.ErrnoException;
+      err.code = 'ENOENT';
+      throw err;
+    });
+
+    saveProjectConfig('/home/user/project', { sharedDirs: ['samples'] });
+
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      '/home/user/project/.yolium.json',
+      JSON.stringify({ sharedDirs: ['samples'] }, null, 2) + '\n',
+      'utf-8'
+    );
+  });
+
+  it('preserves existing unknown keys when saving', () => {
+    vi.mocked(fs.readFileSync).mockReturnValue('{"customKey":"value","sharedDirs":["old"]}');
+
+    saveProjectConfig('/home/user/project', { sharedDirs: ['new-dir'] });
+
+    const written = vi.mocked(fs.writeFileSync).mock.calls[0][1] as string;
+    const parsed = JSON.parse(written);
+    expect(parsed.customKey).toBe('value');
+    expect(parsed.sharedDirs).toEqual(['new-dir']);
+  });
+
+  it('overwrites sharedDirs field correctly', () => {
+    vi.mocked(fs.readFileSync).mockReturnValue('{"sharedDirs":["old-dir"]}');
+
+    saveProjectConfig('/home/user/project', { sharedDirs: ['new-dir-1', 'new-dir-2'] });
+
+    const written = vi.mocked(fs.writeFileSync).mock.calls[0][1] as string;
+    const parsed = JSON.parse(written);
+    expect(parsed.sharedDirs).toEqual(['new-dir-1', 'new-dir-2']);
+  });
+
+  it('writes valid JSON with pretty formatting', () => {
+    vi.mocked(fs.readFileSync).mockImplementation(() => {
+      throw new Error('ENOENT');
+    });
+
+    saveProjectConfig('/home/user/project', { sharedDirs: ['dir'] });
+
+    const written = vi.mocked(fs.writeFileSync).mock.calls[0][1] as string;
+    expect(written).toBe(JSON.stringify({ sharedDirs: ['dir'] }, null, 2) + '\n');
+    // Verify trailing newline
+    expect(written.endsWith('\n')).toBe(true);
+  });
+});
+
+describe('checkSharedDirExists', () => {
+  it('returns true for existing directory', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => true } as fs.Stats);
+
+    expect(checkSharedDirExists('/home/user/project', 'samples')).toBe(true);
+  });
+
+  it('returns false for non-existent path', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+
+    expect(checkSharedDirExists('/home/user/project', 'missing')).toBe(false);
+  });
+
+  it('returns false for a file (not directory)', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false } as fs.Stats);
+
+    expect(checkSharedDirExists('/home/user/project', 'a-file.txt')).toBe(false);
   });
 });

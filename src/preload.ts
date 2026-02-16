@@ -360,6 +360,15 @@ const whisper = {
   },
 };
 
+// Project config namespace
+const projectConfig = {
+  load: (projectPath: string) => ipcRenderer.invoke('project-config:load', projectPath),
+  save: (projectPath: string, config: { sharedDirs?: string[] }) =>
+    ipcRenderer.invoke('project-config:save', projectPath, config),
+  checkDirs: (projectPath: string, dirs: string[]) =>
+    ipcRenderer.invoke('project-config:check-dirs', projectPath, dirs),
+};
+
 // Usage namespace (Claude OAuth usage data)
 const usage = {
   getClaude: () => ipcRenderer.invoke('usage:get-claude'),
@@ -381,6 +390,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   agent,
   cache,
   whisper,
+  projectConfig,
   usage,
 });
 
@@ -633,6 +643,11 @@ declare global {
         getSelectedModel: () => Promise<string>;
         saveSelectedModel: (modelSize: string) => Promise<void>;
         onDownloadProgress: (callback: (progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) => void) => CleanupFunction;
+      };
+      projectConfig: {
+        load: (projectPath: string) => Promise<{ sharedDirs?: string[] } | null>;
+        save: (projectPath: string, config: { sharedDirs?: string[] }) => Promise<void>;
+        checkDirs: (projectPath: string, dirs: string[]) => Promise<Record<string, boolean>>;
       };
       usage: {
         getClaude: () => Promise<ClaudeUsageData | null>;

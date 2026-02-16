@@ -17,6 +17,7 @@ import { PathInputDialog } from '@renderer/components/navigation/PathInputDialog
 import { KeyboardShortcutsDialog } from '@renderer/components/settings/KeyboardShortcutsDialog';
 import { DockerSetupDialog } from '@renderer/components/docker/DockerSetupDialog';
 import { GitConfigDialog } from '@renderer/components/settings/GitConfigDialog';
+import { ProjectConfigDialog } from '@renderer/components/settings/ProjectConfigDialog';
 import { WhisperModelDialog } from '@renderer/components/settings/WhisperModelDialog';
 import { SpeechToTextButton } from '@renderer/components/SpeechToTextButton';
 import type { WhisperModelSize } from '@shared/types/whisper';
@@ -441,6 +442,13 @@ function App(): React.ReactElement {
         onClose={whisper.closeModelDialog}
       />
 
+      {/* Project config dialog */}
+      <ProjectConfigDialog
+        isOpen={dialogs.projectConfigDialogOpen}
+        projectPath={dialogs.projectConfigProjectPath}
+        onClose={dialogs.closeProjectConfigDialog}
+      />
+
       {/* Docker image build progress overlay */}
       {(docker.buildProgress || docker.buildError) && (
         <div data-testid="build-progress-overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
@@ -615,6 +623,7 @@ function App(): React.ReactElement {
                         folderPath={tab.cwd}
                         onShowShortcuts={dialogs.openShortcutsDialog}
                         onOpenSettings={dialogs.openGitConfigDialog}
+                        onOpenProjectSettings={() => dialogs.openProjectConfigDialog(tab.cwd)}
                         whisperRecordingState={whisper.state.recordingState}
                         whisperSelectedModel={whisper.state.selectedModel}
                         onToggleRecording={whisper.toggleRecording}
@@ -650,6 +659,7 @@ function App(): React.ReactElement {
                       onStop={() => handleStopYolium(tab.id)}
                       onShowShortcuts={dialogs.openShortcutsDialog}
                       onOpenSettings={dialogs.openGitConfigDialog}
+                      onOpenProjectSettings={() => dialogs.openProjectConfigDialog(tab.cwd)}
                       gitBranch={tab.gitBranch}
                       worktreeName={tab.worktreeName}
                       whisperRecordingState={whisper.state.recordingState}

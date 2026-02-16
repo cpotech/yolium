@@ -22,6 +22,10 @@ export interface UseDialogStateResult {
   gitConfigDialogOpen: boolean
   /** Current git configuration */
   gitConfig: GitConfigWithPat | null
+  /** Whether project config dialog is open */
+  projectConfigDialogOpen: boolean
+  /** Project path for the project config dialog */
+  projectConfigProjectPath: string
   /** Open path dialog in specified mode */
   openPathDialog: (mode: PathDialogMode) => void
   /** Close path dialog */
@@ -38,6 +42,10 @@ export interface UseDialogStateResult {
   closeGitConfigDialog: () => void
   /** Save git config */
   saveGitConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]> }) => Promise<void>
+  /** Open project config dialog for a specific project */
+  openProjectConfigDialog: (projectPath: string) => void
+  /** Close project config dialog */
+  closeProjectConfigDialog: () => void
 }
 
 /**
@@ -55,6 +63,8 @@ export function useDialogState(): UseDialogStateResult {
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false)
   const [gitConfigDialogOpen, setGitConfigDialogOpen] = useState(false)
   const [gitConfig, setGitConfig] = useState<GitConfigWithPat | null>(null)
+  const [projectConfigDialogOpen, setProjectConfigDialogOpen] = useState(false)
+  const [projectConfigProjectPath, setProjectConfigProjectPath] = useState('')
 
   // Load git config on mount
   useEffect(() => {
@@ -103,6 +113,15 @@ export function useDialogState(): UseDialogStateResult {
     setGitConfigDialogOpen(false)
   }, [])
 
+  const openProjectConfigDialog = useCallback((projectPath: string) => {
+    setProjectConfigProjectPath(projectPath)
+    setProjectConfigDialogOpen(true)
+  }, [])
+
+  const closeProjectConfigDialog = useCallback(() => {
+    setProjectConfigDialogOpen(false)
+  }, [])
+
   return {
     pathDialogOpen,
     lastUsedPath,
@@ -110,6 +129,8 @@ export function useDialogState(): UseDialogStateResult {
     shortcutsDialogOpen,
     gitConfigDialogOpen,
     gitConfig,
+    projectConfigDialogOpen,
+    projectConfigProjectPath,
     openPathDialog,
     closePathDialog,
     setLastUsedPath,
@@ -118,5 +139,7 @@ export function useDialogState(): UseDialogStateResult {
     openGitConfigDialog,
     closeGitConfigDialog,
     saveGitConfig,
+    openProjectConfigDialog,
+    closeProjectConfigDialog,
   }
 }
