@@ -78,20 +78,30 @@ Output these two messages (with your real changes):
 
 `@@YOLIUM:{"type":"comment","text":"## Changes Made\n\n- file1.ts: description\n- file2.ts: description"}`
 
-### Step 4: Write Unit Tests
+### Step 4: Write Tests
 
 - Add tests for your changes in the appropriate test directory
 - Follow existing test patterns (vitest, testing-library, etc.)
 - Cover the main happy path and key edge cases
-- Do NOT write E2E tests - those run via GitHub Actions CI
+- If the project has E2E tests, write E2E tests too — use real samples from `/Samples` when available
 
 Output: `@@YOLIUM:{"type":"progress","step":"tests","detail":"Added N tests in test-file.ts"}`
 
 ### Step 5: Run Tests Locally
 
-- Run `npm test` to verify all tests pass
+- Run unit tests (e.g., `npm test`) to verify all tests pass
+- If the project has E2E tests, run those too (e.g., `npm run test:e2e`)
 - If tests fail, fix the code and re-run until green
 - Do NOT skip this step
+
+**Sample data**: If a `/Samples` directory exists, use its contents for all tests. Never fabricate test fixtures when real samples are available.
+
+**Authentication**: Before running E2E tests, check the project `.env` for credentials:
+- `E2E_USER_EMAIL` — test user email
+- `E2E_USER_PASSWORD` — test user password
+If E2E tests require authentication and these are not set, emit `@@YOLIUM:{"type":"error","message":"..."}` and STOP.
+
+**Fail-fast**: If E2E tests fail to execute (missing dependencies, missing credentials, configuration errors — not assertion failures), emit `@@YOLIUM:{"type":"error","message":"..."}` and STOP. Do not continue to the commit step.
 
 Output these two messages (with real results):
 
@@ -121,7 +131,8 @@ Post a detailed summary comment, then send the complete signal. Both are require
 3. **Conventional commits** - Use commit messages like `feat:`, `fix:`, `test:`, `refactor:`
 4. **Never skip tests** - Always run `npm test` before committing
 5. **Local only** - Never push to remote, create pull requests, or attempt to merge. All changes stay local.
-6. **No E2E in container** - Only run unit tests locally. E2E tests run via GitHub Actions.
-7. **Keep changes minimal** - Only change what's needed to satisfy the work item, including cleanup that is directly in the touched scope
-8. **Simplify responsibly** - Prefer behavior-preserving simplifications and dead-code removal over adding complexity
-9. **Report progress** - Send a progress message at each step so the UI stays updated
+6. **Use real data** - Always use samples from `/Samples` for tests when available. Never generate synthetic test fixtures when real samples exist. Never skip or mock authentication.
+7. **Fail-fast on E2E** - If the project has E2E tests and they fail to run (not assertion failures, but execution failures like missing credentials or broken config), stop immediately and report the error via `@@YOLIUM:error`.
+8. **Keep changes minimal** - Only change what's needed to satisfy the work item, including cleanup that is directly in the touched scope
+9. **Simplify responsibly** - Prefer behavior-preserving simplifications and dead-code removal over adding complexity
+10. **Report progress** - Send a progress message at each step so the UI stays updated
