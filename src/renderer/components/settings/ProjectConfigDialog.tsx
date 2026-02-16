@@ -47,20 +47,26 @@ export function ProjectConfigDialog({
     setValidationError(null);
 
     (async () => {
-      const config = await window.electronAPI.projectConfig.load(projectPath);
-      const dirs = config?.sharedDirs ?? [];
-      setSharedDirs(dirs);
+      try {
+        const config = await window.electronAPI.projectConfig.load(projectPath);
+        const dirs = config?.sharedDirs ?? [];
+        setSharedDirs(dirs);
 
-      if (dirs.length > 0) {
-        const status = await window.electronAPI.projectConfig.checkDirs(projectPath, dirs);
-        setDirStatus(status);
-      } else {
+        if (dirs.length > 0) {
+          const status = await window.electronAPI.projectConfig.checkDirs(projectPath, dirs);
+          setDirStatus(status);
+        } else {
+          setDirStatus({});
+        }
+      } catch (err) {
+        console.error('Failed to load project config:', err);
+        setSharedDirs([]);
         setDirStatus({});
+      } finally {
+        setLoading(false);
+        // Focus input after loading
+        setTimeout(() => inputRef.current?.focus(), 50);
       }
-
-      setLoading(false);
-      // Focus input after loading
-      setTimeout(() => inputRef.current?.focus(), 50);
     })();
   }, [isOpen, projectPath]);
 

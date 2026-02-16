@@ -323,6 +323,25 @@ describe('ProjectConfigDialog', () => {
     expect(preview.textContent).toContain('"samples"')
   })
 
+  it('recovers from IPC load error and shows empty state', async () => {
+    mockLoad.mockRejectedValue(new Error('IPC channel not found'))
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    render(
+      <ProjectConfigDialog
+        isOpen={true}
+        projectPath="/home/user/project"
+        onClose={vi.fn()}
+      />
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('empty-state')).toBeInTheDocument()
+    })
+    expect(screen.getByTestId('empty-state')).toHaveTextContent('No shared directories configured')
+    consoleSpy.mockRestore()
+  })
+
   it('adds entry via Enter key in input', async () => {
     mockLoad.mockResolvedValue({ sharedDirs: [] })
     mockCheckDirs.mockResolvedValue({ fixtures: true })
