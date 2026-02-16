@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { execSync } from 'node:child_process';
 import type { GitConfig } from '@shared/types/git';
+import type { ClaudeUsageData } from '@shared/types/agent';
 
 export type { GitConfig } from '@shared/types/git';
 
@@ -174,6 +175,49 @@ export function hasHostClaudeOAuth(): boolean {
     return !!(creds?.claudeAiOauth?.accessToken);
   } catch {
     return false;
+  }
+}
+
+/**
+ * Fetch Claude OAuth usage data from Anthropic API.
+ * Returns 5-hour and 7-day rate limit utilization percentages and reset times.
+ *
+ * @returns ClaudeUsageData or null on any error (no OAuth, API error, etc.)
+ */
+export async function fetchClaudeUsage(): Promise<ClaudeUsageData | null> {
+  try {
+    const credPath = path.join(os.homedir(), '.claude', '.credentials.json');
+    if (!fs.existsSync(credPath)) return null;
+
+    const content = fs.readFileSync(credPath, 'utf-8');
+    const creds = JSON.parse(content);
+    const accessToken = creds?.claudeAiOauth?.accessToken;
+
+    if (!accessToken) return null;
+
+    const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'anthropic-beta': 'oauth-2025-04-20',
+      },
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+
+    return {
+      fiveHour: {
+        utilization: data.five_hour?.utilization ?? 0,
+        resetsAt: data.five_hour?.resets_at ?? '',
+      },
+      sevenDay: {
+        utilization: data.seven_day?.utilization ?? 0,
+        resetsAt: data.seven_day?.resets_at ?? '',
+      },
+    };
+  } catch {
+    return null;
   }
 }
 

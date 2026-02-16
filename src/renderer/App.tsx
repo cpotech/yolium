@@ -7,6 +7,7 @@ import { useDialogState } from '@renderer/hooks/useDialogState';
 import { useAgentCreation } from '@renderer/hooks/useAgentCreation';
 import { useKeyboardShortcuts } from '@renderer/hooks/useKeyboardShortcuts';
 import { useGitBranchPolling } from '@renderer/hooks/useGitBranchPolling';
+import { useClaudeUsage } from '@renderer/hooks/useClaudeUsage';
 import { TabBar } from '@renderer/components/tabs/TabBar';
 import { Terminal } from '@renderer/components/terminal/Terminal';
 import { StatusBar } from '@renderer/components/StatusBar';
@@ -51,6 +52,9 @@ function App(): React.ReactElement {
 
   // Whisper speech-to-text
   const whisper = useWhisper();
+
+  // Claude OAuth usage data
+  const claudeUsage = useClaudeUsage();
 
   // Stable ref for toggleRecording to avoid IPC listener re-registration
   const stableToggleRecording = useCallback(() => whisper.toggleRecording(), [whisper]);
@@ -530,6 +534,26 @@ function App(): React.ReactElement {
               </div>
               {/* Minimal status bar for empty state */}
               <div className="flex items-center justify-end h-7 px-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)] text-xs shrink-0 gap-2">
+                {claudeUsage && (
+                  <>
+                    <span className="flex items-center gap-1" title={`Resets in ${Math.ceil((new Date(claudeUsage.fiveHour.resetsAt).getTime() - Date.now()) / (60 * 1000))}m`}>
+                      <span style={{ color: 'var(--color-accent-primary)' }}>5h</span>
+                      <span className="inline-block w-12 h-1.5 bg-[var(--color-bg-tertiary)] rounded-sm overflow-hidden">
+                        <span className="block h-full rounded-sm" style={{ width: `${Math.round(claudeUsage.fiveHour.utilization)}%`, backgroundColor: claudeUsage.fiveHour.utilization > 95 ? 'var(--color-status-error)' : claudeUsage.fiveHour.utilization > 80 ? 'var(--color-status-warning)' : 'var(--color-accent-primary)' }} />
+                      </span>
+                      <span className="text-[var(--color-text-muted)]">{Math.round(claudeUsage.fiveHour.utilization)}%</span>
+                    </span>
+                    <span className="text-[var(--color-text-muted)]">|</span>
+                    <span className="flex items-center gap-1" title={`Resets in ${Math.ceil((new Date(claudeUsage.sevenDay.resetsAt).getTime() - Date.now()) / (60 * 1000))}m`}>
+                      <span style={{ color: 'var(--color-accent-primary)' }}>7d</span>
+                      <span className="inline-block w-12 h-1.5 bg-[var(--color-bg-tertiary)] rounded-sm overflow-hidden">
+                        <span className="block h-full rounded-sm" style={{ width: `${Math.round(claudeUsage.sevenDay.utilization)}%`, backgroundColor: claudeUsage.sevenDay.utilization > 95 ? 'var(--color-status-error)' : claudeUsage.sevenDay.utilization > 80 ? 'var(--color-status-warning)' : 'var(--color-accent-primary)' }} />
+                      </span>
+                      <span className="text-[var(--color-text-muted)]">{Math.round(claudeUsage.sevenDay.utilization)}%</span>
+                    </span>
+                    <span className="text-[var(--color-text-disabled)]">|</span>
+                  </>
+                )}
                 {/* Speech-to-text button */}
                 <SpeechToTextButton
                   recordingState={whisper.state.recordingState}
@@ -595,6 +619,7 @@ function App(): React.ReactElement {
                         whisperSelectedModel={whisper.state.selectedModel}
                         onToggleRecording={whisper.toggleRecording}
                         onOpenModelDialog={whisper.openModelDialog}
+                        claudeUsage={claudeUsage}
                       />
                     </div>
                   );
@@ -631,6 +656,7 @@ function App(): React.ReactElement {
                       whisperSelectedModel={whisper.state.selectedModel}
                       onToggleRecording={whisper.toggleRecording}
                       onOpenModelDialog={whisper.openModelDialog}
+                      claudeUsage={claudeUsage}
                     />
                   </div>
                 );

@@ -9,7 +9,7 @@ import * as os from 'node:os';
 import { execFile } from 'node:child_process';
 import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 import { createLogger } from '@main/lib/logger';
-import { loadGitConfig, loadDetectedGitConfig, saveGitConfig, fetchGitHubUser, hasHostClaudeOAuth, hasHostCodexOAuth, generateGitCredentials } from '@main/git/git-config';
+import { loadGitConfig, loadDetectedGitConfig, saveGitConfig, fetchGitHubUser, hasHostClaudeOAuth, hasHostCodexOAuth, generateGitCredentials, fetchClaudeUsage } from '@main/git/git-config';
 import {
   isGitRepo,
   hasCommits,
@@ -46,6 +46,7 @@ const GIT_CHANNELS = {
   worktreeChangedFiles: 'git:worktree-changed-files',
   worktreeFileDiff: 'git:worktree-file-diff',
   detectNestedRepos: 'git:detect-nested-repos',
+  getClaudeUsage: 'usage:get-claude',
 } as const;
 
 export const GIT_IPC_CHANNELS = Object.values(GIT_CHANNELS);
@@ -491,6 +492,11 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     }
 
     return { isRepo: false, nestedRepos };
+  });
+
+  // Get Claude OAuth usage data
+  registerGitChannel(ipcMain, GIT_CHANNELS.getClaudeUsage, async () => {
+    return fetchClaudeUsage();
   });
 
   logger.info('Git IPC handlers registered', {

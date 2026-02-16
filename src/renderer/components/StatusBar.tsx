@@ -2,6 +2,7 @@ import React from 'react';
 import { Square, Loader2, Keyboard, GitBranch, TreeDeciduous, Sun, Moon, Settings } from 'lucide-react';
 import type { ContainerState } from '@shared/types/tabs';
 import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper';
+import type { ClaudeUsageData } from '@shared/types/agent';
 import { useTheme } from '@renderer/theme';
 import { SpeechToTextButton } from './SpeechToTextButton';
 
@@ -18,6 +19,65 @@ interface StatusBarProps {
   whisperSelectedModel?: WhisperModelSize;
   onToggleRecording?: () => void;
   onOpenModelDialog?: () => void;
+  // Claude OAuth usage data
+  claudeUsage?: ClaudeUsageData | null;
+}
+
+function formatResetTime(resetsAt: string): string {
+  if (!resetsAt) return '';
+  try {
+    const resetDate = new Date(resetsAt);
+    const now = new Date();
+    const diffMs = resetDate.getTime() - now.getTime();
+    const diffMins = Math.ceil(diffMs / (60 * 1000));
+    const diffHours = Math.floor(diffMins / 60);
+    const remainingMins = diffMins % 60;
+
+    if (diffMs <= 0) return 'Resets soon';
+    if (diffHours > 0) return `Resets in ${diffHours}h ${remainingMins}m`;
+    return `Resets in ${diffMins}m`;
+  } catch {
+    return '';
+  }
+}
+
+function getUsageBarColor(utilization: number): string {
+  if (utilization > 95) return 'var(--color-status-error)';
+  if (utilization > 80) return 'var(--color-status-warning)';
+  return 'var(--color-accent-primary)';
+}
+
+function UsageBar({
+  label,
+  utilization,
+  resetsAt,
+}: {
+  label: string;
+  utilization: number;
+  resetsAt: string;
+}): React.ReactElement {
+  const color = getUsageBarColor(utilization);
+  const percentage = Math.round(utilization);
+  const resetText = formatResetTime(resetsAt);
+
+  return (
+    <span className="flex items-center gap-1" title={resetText || undefined}>
+      <span style={{ color: 'var(--color-accent-primary)' }}>{label}</span>
+      <span
+        className="inline-block w-12 h-1.5 bg-[var(--color-bg-tertiary)] rounded-sm overflow-hidden"
+        title={resetText || undefined}
+      >
+        <span
+          className="block h-full rounded-sm"
+          style={{
+            width: `${percentage}%`,
+            backgroundColor: color,
+          }}
+        />
+      </span>
+      <span className="text-[var(--color-text-muted)]">{percentage}%</span>
+    </span>
+  );
 }
 
 export function StatusBar({
@@ -32,6 +92,7 @@ export function StatusBar({
   whisperSelectedModel = 'small',
   onToggleRecording,
   onOpenModelDialog,
+  claudeUsage,
 }: StatusBarProps): React.ReactElement {
   const stateDisplay: Record<ContainerState, { text: string; className: string }> = {
     starting: { text: 'Starting...', className: 'text-[var(--color-status-warning)]' },
@@ -75,6 +136,22 @@ export function StatusBar({
               )}
               {containerInfo.text}
             </span>
+          </>
+        )}
+        {claudeUsage && (
+          <>
+            <span className="text-[var(--color-text-muted)]">|</span>
+            <UsageBar
+              label="5h"
+              utilization={claudeUsage.fiveHour.utilization}
+              resetsAt={claudeUsage.fiveHour.resetsAt}
+            />
+            <span className="text-[var(--color-text-muted)]">|</span>
+            <UsageBar
+              label="7d"
+              utilization={claudeUsage.sevenDay.utilization}
+              resetsAt={claudeUsage.sevenDay.resetsAt}
+            />
           </>
         )}
       </div>
