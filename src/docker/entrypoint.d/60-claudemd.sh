@@ -46,9 +46,22 @@ No other host config directories (e.g., `~/.codex`) are mounted into the contain
 - `/home/agent/.git-credentials` - GitHub PAT (if configured)
 - `/home/agent/.yolium_history` - Shell history (persistent)
 
-## Testing Limitations
+## Testing
 
-**Do NOT run E2E tests inside this container.** E2E tests (`npm run test:e2e`) require Electron and a display server, which are not available in the container environment. Only run unit tests (`npm test`) here.
+**Always run both unit tests and E2E tests** when the project has them.
+
+### Sample Data
+If a \`/Samples\` directory is mounted (via \`.yolium.json\` \`sharedDirs\`), use its contents for all tests. Never fabricate test fixtures when real samples are available.
+
+### Authentication
+Check the project \`.env\` file for E2E credentials:
+- \`E2E_USER_EMAIL\` — test user email
+- \`E2E_USER_PASSWORD\` — test user password
+
+If these are required by the project's E2E tests but not set, STOP and report the error. Do not skip authentication or use mocked credentials.
+
+### Fail-Fast
+If E2E tests fail to execute (missing dependencies, missing credentials, configuration errors), stop immediately and report why. Do not proceed to commit.
 CLAUDEMD
 
 {

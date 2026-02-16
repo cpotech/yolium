@@ -128,10 +128,11 @@ describe('entrypoint.sh', () => {
       expect(entrypointContent).toContain('rm -f /tmp/.git-credentials');
     });
 
-    it('should warn against using E2E tests in container', () => {
-      // CLAUDE.md should tell Claude not to run E2E tests in container
+    it('should include testing instructions for E2E and sample data', () => {
+      // CLAUDE.md should include E2E testing, sample data, and authentication instructions
       expect(entrypointContent).toContain('E2E');
-      expect(entrypointContent).toContain('test:e2e');
+      expect(entrypointContent).toContain('/Samples');
+      expect(entrypointContent).toContain('E2E_USER_EMAIL');
     });
 
     it('should handle codex tool selection', () => {

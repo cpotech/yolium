@@ -239,6 +239,27 @@ timeout: 30
 - Run `npm start` before committing to verify production build works
 - Test OpenCode/Claude in container after terminal-related changes
 
+## Agent Testing Requirements for User Projects
+
+When agents work on user projects (not Yolium itself), they must:
+
+### Use Real Samples
+- Projects can mount a `/Samples` directory into agent containers via `.yolium.json` `sharedDirs`
+- Agents must use data from `/Samples` for all tests — never fabricate test fixtures when real samples exist
+
+### Never Skip Authentication
+- Projects requiring authenticated E2E tests must provide credentials in `.env`:
+  ```
+  E2E_USER_EMAIL="..."
+  E2E_USER_PASSWORD="..."
+  ```
+- Agents must check `.env` for these values before running E2E tests
+- Agents must never skip, mock, or bypass authentication in tests
+
+### Run All Tests
+- Agents must run both unit tests and E2E tests when the project has them
+- If E2E tests fail to execute (not assertion failures — execution failures like missing creds or broken config), agents must stop and report the error
+
 ## Test-Driven Development
 
 Use TDD when adding new features or fixing bugs:
