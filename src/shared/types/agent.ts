@@ -71,3 +71,9 @@ export interface ProgressMessage extends ProtocolMessage {
   attempt?: number;
   maxAttempts?: number;
 }
+
+// Claude OAuth usage data (5-hour and 7-day rate limit utilization)
+export interface ClaudeUsageData {
+  fiveHour: { utilization: number; resetsAt: string };
+  sevenDay: { utilization: number; resetsAt: string };
+}

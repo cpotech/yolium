@@ -5,6 +5,7 @@
 
 import { contextBridge, ipcRenderer } from 'electron';
 import type { PreFlightResult, ProjectType } from '@shared/types/onboarding';
+import type { ClaudeUsageData } from '@shared/types/agent';
 
 type CleanupFn = () => void;
 
@@ -355,6 +356,11 @@ const whisper = {
   },
 };
 
+// Usage namespace (Claude OAuth usage data)
+const usage = {
+  getClaude: () => ipcRenderer.invoke('usage:get-claude'),
+};
+
 // Expose all namespaces to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   app,
@@ -371,6 +377,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   agent,
   cache,
   whisper,
+  usage,
 });
 
 // Type declarations for TypeScript
@@ -620,6 +627,9 @@ declare global {
         getSelectedModel: () => Promise<string>;
         saveSelectedModel: (modelSize: string) => Promise<void>;
         onDownloadProgress: (callback: (progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) => void) => CleanupFunction;
+      };
+      usage: {
+        getClaude: () => Promise<ClaudeUsageData | null>;
       };
     };
   }
