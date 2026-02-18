@@ -21,9 +21,9 @@ vi.mock('node:fs', () => ({
 }));
 
 vi.mock('@main/docker/path-utils', () => ({
-  toDockerPath: vi.fn((p: string) => p),
+  toDockerPath: vi.fn((p: string) => p.replace(/\\/g, '/')),
   getContainerProjectPath: vi.fn((p: string) => p),
-  toContainerHomePath: vi.fn((p: string) => p),
+  toContainerHomePath: vi.fn((p: string) => p.replace(/\\/g, '/')),
 }));
 
 vi.mock('@main/services/project-config', () => ({

@@ -299,7 +299,9 @@ describe('ItemDetailDialog', () => {
       )
     })
     expect(onUpdated).toHaveBeenCalled()
-    expect(commentInput).toHaveValue('')
+    await waitFor(() => {
+      expect(commentInput).toHaveValue('')
+    })
   })
 
   it('should show agent status with correct color for idle', () => {
