@@ -25,6 +25,7 @@ import {
   checkMergeConflicts,
   approvePR,
   mergePR,
+  rebaseBranchOntoDefault,
 } from '@main/git/git-worktree';
 import type { GitConfig } from '@shared/types/git';
 import type { ProjectType } from '@shared/types/onboarding';
@@ -50,6 +51,7 @@ const GIT_CHANNELS = {
   worktreeChangedFiles: 'git:worktree-changed-files',
   worktreeFileDiff: 'git:worktree-file-diff',
   detectNestedRepos: 'git:detect-nested-repos',
+  rebaseOntoDefault: 'git:rebase-onto-default',
   getClaudeUsage: 'usage:get-claude',
 } as const;
 
@@ -492,6 +494,18 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   ) => {
     logger.info('IPC: git:merge-pr', { projectPath, prUrl });
     return mergePR(projectPath, prUrl);
+  });
+
+  // Rebase a worktree branch onto the latest default branch
+  registerGitChannel(ipcMain, GIT_CHANNELS.rebaseOntoDefault, async (
+    _event,
+    worktreePath: string,
+    projectPath: string,
+  ) => {
+    logger.info('IPC: git:rebase-onto-default', { worktreePath, projectPath });
+    return withMergeLock(projectPath, async () => {
+      return rebaseBranchOntoDefault(worktreePath, projectPath);
+    });
   });
 
   // Detect if folder is a git repo, and scan one level deep for nested repos if not
