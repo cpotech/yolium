@@ -3,7 +3,7 @@
  * Comments list component for displaying kanban item comments.
  */
 
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import Markdown from 'react-markdown'
 import type { KanbanComment, CommentSource } from '@shared/types/kanban'
 import { MockPreviewModal } from './MockPreviewModal'
@@ -35,6 +35,54 @@ function urlTransform(url: string): string | null {
   if (/^mailto:/i.test(url)) return url
   if (url.startsWith('#') || url.startsWith('/')) return url
   return ''
+}
+
+/**
+ * Non-navigable link that displays the URL as a copyable path.
+ * Prevents Electron from navigating away from the app when links are clicked.
+ */
+function CopyableLink({ href, children }: { href?: string; children?: React.ReactNode }): React.ReactElement {
+  const [copied, setCopied] = useState(false)
+  const displayUrl = href || ''
+
+  const handleCopy = useCallback(() => {
+    if (!displayUrl) return
+    navigator.clipboard.writeText(displayUrl).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }, [displayUrl])
+
+  // If link text is different from the URL, show both; otherwise just show the URL
+  const linkText = typeof children === 'string' ? children : undefined
+  const showLabel = linkText && linkText !== displayUrl
+
+  return (
+    <span
+      data-testid="copyable-link"
+      className="inline-flex items-center gap-1 text-[var(--color-accent-primary)]"
+    >
+      {showLabel && <span>{children} — </span>}
+      <code className="text-xs bg-[var(--color-bg-secondary)] px-1 py-0.5 rounded select-all">{displayUrl}</code>
+      <button
+        data-testid="copy-link-button"
+        onClick={handleCopy}
+        title="Copy path"
+        className="inline-flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--color-bg-secondary)] transition-colors"
+      >
+        {copied ? (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        ) : (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+        )}
+      </button>
+    </span>
+  )
 }
 
 function createMarkdownComponents(onOpenMock: (filePath: string) => void) {
@@ -72,7 +120,7 @@ function createMarkdownComponents(onOpenMock: (filePath: string) => void) {
           </button>
         )
       }
-      return <a className="text-[var(--color-accent-primary)] hover:underline" href={href} {...props}>{children}</a>
+      return <CopyableLink href={href}>{children}</CopyableLink>
     },
     img: ({ src, alt, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => {
       if (!isSvgDataUri(src)) {
