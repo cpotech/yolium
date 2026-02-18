@@ -1,3 +1,5 @@
+> **⚠️ Yolium is under rapid development.** Expect breaking changes, incomplete features, and frequent updates. We recommend keeping your app up to date. Issues and feedback are welcome — see [Feedback and Participation](#feedback-and-participation).
+
 <video src="https://github.com/user-attachments/assets/dcf55f73-33af-4c08-bb18-8c531fb96fc0" width="320" height="240" controls></video>
 
 ## Architecture
@@ -49,8 +51,6 @@ Each agent is a single Markdown file with YAML frontmatter and a system prompt, 
 > **[Technical Documentation](docs/TECHNICAL.md)** - Detailed architecture, mount paths, and development guide
 
 ## Installation
-
-**This project is in early development. Issues and feedback appreciated.**
 
 ### Prerequisites
 
