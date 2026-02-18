@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as path from 'node:path';
 
 vi.mock('electron', () => ({
   app: { isPackaged: false },
@@ -35,7 +36,7 @@ describe('loadProjectConfig', () => {
     const config = loadProjectConfig('/home/user/project');
 
     expect(config).toEqual({ sharedDirs: ['samples', 'test-data'] });
-    expect(fs.readFileSync).toHaveBeenCalledWith('/home/user/project/.yolium.json', 'utf-8');
+    expect(fs.readFileSync).toHaveBeenCalledWith(path.join('/home/user/project', '.yolium.json'), 'utf-8');
   });
 
   it('returns null when file does not exist', () => {
@@ -192,7 +193,7 @@ describe('saveProjectConfig', () => {
     saveProjectConfig('/home/user/project', { sharedDirs: ['samples'] });
 
     expect(fs.writeFileSync).toHaveBeenCalledWith(
-      '/home/user/project/.yolium.json',
+      path.join('/home/user/project', '.yolium.json'),
       JSON.stringify({ sharedDirs: ['samples'] }, null, 2) + '\n',
       'utf-8'
     );
