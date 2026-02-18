@@ -6,7 +6,10 @@ export default defineConfig({
   timeout: 60000,
   retries: process.env.CI ? 2 : 0,
   workers: 1, // Electron tests must run serially
-  reporter: process.env.CI ? 'github' : 'list',
+  reporter: [
+    [process.env.CI ? 'github' : 'list'],
+    ['html', { open: 'never' }],
+  ],
   use: {
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
