@@ -228,7 +228,7 @@ describe('CommentsList', () => {
     expect(screen.getByTestId('mock-preview-modal')).toBeInTheDocument()
   })
 
-  it('should render regular https links normally', () => {
+  it('should render regular https links as copyable paths, not navigable links', () => {
     const comments: KanbanComment[] = [
       {
         id: 'c1',
@@ -240,9 +240,66 @@ describe('CommentsList', () => {
 
     render(<CommentsList comments={comments} />)
 
-    const link = screen.getByText('this link')
-    expect(link.tagName).toBe('A')
-    expect(link).toHaveAttribute('href', 'https://example.com')
+    // Should NOT render as a navigable <a> tag
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+
+    // Should render as a copyable link span
+    const copyableLink = screen.getByTestId('copyable-link')
+    expect(copyableLink).toBeInTheDocument()
+
+    // Should display the URL in a code element
+    expect(copyableLink.querySelector('code')?.textContent).toBe('https://example.com')
+
+    // Should show the link text label when it differs from the URL
+    expect(screen.getByText(/this link/)).toBeInTheDocument()
+
+    // Should have a copy button
+    expect(screen.getByTestId('copy-link-button')).toBeInTheDocument()
+
+    // Should NOT render as a mock button
     expect(screen.queryByTestId('mock-preview-button')).not.toBeInTheDocument()
+  })
+
+  it('should render link with same text and URL without duplicate label', () => {
+    const url = 'https://example.com/report'
+    const comments: KanbanComment[] = [
+      {
+        id: 'c1',
+        source: 'agent',
+        text: `Visit [${url}](${url}) for the report`,
+        timestamp: new Date().toISOString(),
+      },
+    ]
+
+    render(<CommentsList comments={comments} />)
+
+    const copyableLink = screen.getByTestId('copyable-link')
+    expect(copyableLink).toBeInTheDocument()
+    expect(copyableLink.querySelector('code')?.textContent).toBe(url)
+
+    // When link text equals the URL, no separate label should appear
+    const spans = copyableLink.querySelectorAll('span')
+    // The outer span is the copyable-link itself; no inner span should have the label
+    const labelSpans = Array.from(spans).filter(s => s.textContent?.includes(' — '))
+    expect(labelSpans).toHaveLength(0)
+  })
+
+  it('should copy URL to clipboard when copy button is clicked', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+
+    const comments: KanbanComment[] = [
+      {
+        id: 'c1',
+        source: 'agent',
+        text: 'Report: [E2E Results](https://example.com/playwright-report/index.html)',
+        timestamp: new Date().toISOString(),
+      },
+    ]
+
+    render(<CommentsList comments={comments} />)
+
+    fireEvent.click(screen.getByTestId('copy-link-button'))
+    expect(writeText).toHaveBeenCalledWith('https://example.com/playwright-report/index.html')
   })
 })
