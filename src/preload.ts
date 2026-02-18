@@ -162,6 +162,8 @@ const git = {
     ipcRenderer.invoke('git:worktree-file-diff', projectPath, branchName, filePath),
   detectNestedRepos: (folderPath: string) =>
     ipcRenderer.invoke('git:detect-nested-repos', folderPath),
+  rebaseOntoDefault: (worktreePath: string, projectPath: string) =>
+    ipcRenderer.invoke('git:rebase-onto-default', worktreePath, projectPath),
 };
 
 // Onboarding namespace
@@ -483,6 +485,12 @@ declare global {
         detectNestedRepos: (folderPath: string) => Promise<{
           isRepo: boolean;
           nestedRepos: Array<{ name: string; path: string }>;
+        }>;
+        rebaseOntoDefault: (worktreePath: string, projectPath: string) => Promise<{
+          success: boolean;
+          error?: string;
+          conflict?: boolean;
+          conflictingFiles?: string[];
         }>;
       };
       onboarding: {

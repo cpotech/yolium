@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react'
-import { X, GitBranch, Clock, FolderOpen, GitMerge, GitPullRequest, Check, AlertTriangle, ExternalLink, Trash2, ArrowLeftRight, ShieldCheck } from 'lucide-react'
+import { X, GitBranch, Clock, FolderOpen, GitMerge, GitPullRequest, Check, AlertTriangle, ExternalLink, Trash2, ArrowLeftRight, ShieldCheck, ArrowDownToLine } from 'lucide-react'
 import type { KanbanItem, KanbanColumn } from '@shared/types/kanban'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
@@ -91,6 +91,8 @@ export function ItemDetailDialog({
   const [isApprovingPr, setIsApprovingPr] = useState(false)
   const [isMergingPr, setIsMergingPr] = useState(false)
   const [showDiffViewer, setShowDiffViewer] = useState(false)
+  const [isRebasing, setIsRebasing] = useState(false)
+  const [rebaseResult, setRebaseResult] = useState<{ success: boolean; error?: string; conflict?: boolean; conflictingFiles?: string[] } | null>(null)
   const [providerModels, setProviderModels] = useState<Record<string, string[]>>({})
 
   // Refs
@@ -166,6 +168,7 @@ export function ItemDetailDialog({
         setBaseVerified(item.verified ?? false)
         setPrUrl(item.prUrl || null)
         setConflictCheck(null)
+        setRebaseResult(null)
         setCommentText('')
         prevItemIdRef.current = item.id
       }
@@ -448,6 +451,26 @@ export function ItemDetailDialog({
       setIsCheckingConflicts(false)
     }
   }, [item, isCheckingConflicts, projectPath])
+
+  const handleRebase = useCallback(async () => {
+    if (!item || !item.branch || !item.worktreePath || isRebasing) return
+    setIsRebasing(true)
+    setRebaseResult(null)
+    try {
+      const result = await window.electronAPI.git.rebaseOntoDefault(
+        item.worktreePath, projectPath
+      )
+      setRebaseResult(result)
+      if (result.success) {
+        setConflictCheck(null)
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Unknown error'
+      setRebaseResult({ success: false, error: msg })
+    } finally {
+      setIsRebasing(false)
+    }
+  }, [item, isRebasing, projectPath])
 
   const handleMerge = useCallback(async () => {
     if (!item || !item.branch || !item.worktreePath || isMerging) return
@@ -1001,6 +1024,44 @@ export function ItemDetailDialog({
                   )}
                   {item.mergeStatus === 'unmerged' && (
                     <div data-testid="merge-status-unmerged">
+                      {/* Pull Latest (rebase onto default) */}
+                      {item.worktreePath && (
+                        <>
+                          <button
+                            data-testid="pull-latest-button"
+                            onClick={handleRebase}
+                            disabled={isRebasing || isMerging}
+                            className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 text-purple-400 rounded-md hover:bg-purple-600/10 border border-purple-600/30 transition-colors mb-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <ArrowDownToLine size={12} />
+                            {isRebasing ? 'Pulling...' : 'Pull Latest (Rebase)'}
+                          </button>
+                          {rebaseResult && (
+                            <div data-testid="rebase-result" className="mb-2">
+                              {rebaseResult.success ? (
+                                <div className="flex items-center gap-1 text-xs text-green-400">
+                                  <Check size={12} />
+                                  <span>Rebased onto latest default</span>
+                                </div>
+                              ) : (
+                                <div className="text-xs text-red-400">
+                                  <div className="flex items-center gap-1 mb-1">
+                                    <AlertTriangle size={12} />
+                                    <span>{rebaseResult.conflict ? 'Rebase conflicts — aborted' : rebaseResult.error}</span>
+                                  </div>
+                                  {rebaseResult.conflictingFiles && rebaseResult.conflictingFiles.length > 0 && (
+                                    <ul className="ml-4 space-y-0.5">
+                                      {rebaseResult.conflictingFiles.map((file, i) => (
+                                        <li key={i} className="font-mono text-[10px] truncate">{file}</li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
                       {/* Conflict pre-check */}
                       <button
                         data-testid="check-conflicts-button"
