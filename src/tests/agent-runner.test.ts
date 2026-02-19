@@ -68,6 +68,93 @@ describe('agent-runner', () => {
       expect(prompt).toContain('[agent]: Which method?');
       expect(prompt).toContain('[user]: OAuth');
     });
+
+    it('should not include inline protocol for Claude provider', () => {
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Code Agent.',
+        goal: 'Fix bug',
+        conversationHistory: '',
+        provider: 'claude',
+      });
+
+      expect(prompt).toContain('You are the Code Agent.');
+      expect(prompt).toContain('Fix bug');
+      expect(prompt).not.toContain('@@YOLIUM: Protocol (MANDATORY)');
+      expect(prompt).not.toContain('REMINDER: You MUST output @@YOLIUM:');
+    });
+
+    it('should not include inline protocol when provider is undefined', () => {
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Code Agent.',
+        goal: 'Fix bug',
+        conversationHistory: '',
+      });
+
+      expect(prompt).not.toContain('@@YOLIUM: Protocol (MANDATORY)');
+    });
+
+    it('should include inline protocol for codex provider', () => {
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Code Agent.',
+        goal: 'Fix bug',
+        conversationHistory: '',
+        provider: 'codex',
+      });
+
+      // Should contain the full protocol reference inline
+      expect(prompt).toContain('@@YOLIUM: Protocol (MANDATORY)');
+      expect(prompt).toContain('You MUST communicate with Yolium');
+
+      // Should contain all message types
+      expect(prompt).toContain('"type":"progress"');
+      expect(prompt).toContain('"type":"comment"');
+      expect(prompt).toContain('"type":"ask_question"');
+      expect(prompt).toContain('"type":"complete"');
+      expect(prompt).toContain('"type":"error"');
+      expect(prompt).toContain('"type":"create_item"');
+      expect(prompt).toContain('"type":"update_description"');
+
+      // Should contain the system prompt inline
+      expect(prompt).toContain('You are the Code Agent.');
+
+      // Should contain the goal
+      expect(prompt).toContain('Fix bug');
+
+      // Should include bookend instructions
+      expect(prompt).toContain('Your FIRST output MUST be a progress message');
+      expect(prompt).toContain('LAST protocol message MUST be either a complete or error message');
+      expect(prompt).toContain('REMINDER: You MUST output @@YOLIUM:');
+    });
+
+    it('should include inline protocol for opencode provider', () => {
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Plan Agent.',
+        goal: 'Create plan',
+        conversationHistory: '',
+        provider: 'opencode',
+      });
+
+      // Same inline protocol as codex
+      expect(prompt).toContain('@@YOLIUM: Protocol (MANDATORY)');
+      expect(prompt).toContain('You are the Plan Agent.');
+      expect(prompt).toContain('Create plan');
+      expect(prompt).toContain('REMINDER: You MUST output @@YOLIUM:');
+    });
+
+    it('should include conversation history in non-Claude prompt', () => {
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Code Agent.',
+        goal: 'Fix bug',
+        conversationHistory: '[agent]: What file?\n\n[user]: src/main.ts',
+        provider: 'codex',
+      });
+
+      expect(prompt).toContain('@@YOLIUM: Protocol (MANDATORY)');
+      expect(prompt).toContain('Previous conversation:');
+      expect(prompt).toContain('[agent]: What file?');
+      expect(prompt).toContain('[user]: src/main.ts');
+      expect(prompt).toContain('Continue from where you left off.');
+    });
   });
 
   describe('resolveModel', () => {

@@ -101,6 +101,8 @@ function formatToolUse(name: string, input: Record<string, unknown> | undefined)
 export interface ParsedStreamEvent {
   display?: string;
   text?: string;
+  /** True only for Codex `item.completed` → `agent_message` events */
+  isAgentMessage?: boolean;
   usage?: {
     inputTokens: number;
     outputTokens: number;
@@ -235,16 +237,26 @@ export function parseStreamEvent(event: Record<string, unknown>): ParsedStreamEv
         return {
           display: displayParts.length > 0 ? displayParts.join('\n') : undefined,
           text: text || undefined,
+          isAgentMessage: true,
         };
       }
 
       if (item.type === 'command_execution') {
-        const command = typeof item.command === 'string' ? item.command.slice(0, 120) : '';
-        const output = typeof item.output === 'string' ? item.output.slice(0, 500) : '';
-        const parts: string[] = [];
-        if (command) parts.push(`[Bash] ${command}`);
-        if (output) parts.push(output);
-        return { display: parts.length > 0 ? parts.join('\n') : undefined };
+        // Don't repeat [Bash] command — item.started already displayed it.
+        // Only show the command output here.
+        const output = typeof item.output === 'string' ? item.output : '';
+        const displayOutput = output.length > 500 ? output.slice(0, 500) + '…' : output;
+
+        // Extract protocol messages from command output (e.g., agent runs echo '@@YOLIUM:...')
+        let text: string | undefined;
+        if (output.includes('@@YOLIUM:')) {
+          text = output;
+        }
+
+        return {
+          display: displayOutput || undefined,
+          text,
+        };
       }
 
       if (item.type === 'file_change') {
@@ -344,6 +356,7 @@ export function buildAgentEnv(params: {
   model: string;
   tools: string[];
   itemId: string;
+  agentName: string;
   agentProvider: string;
   worktreePath?: string;
   originalPath?: string;
@@ -353,7 +366,7 @@ export function buildAgentEnv(params: {
 }): string[] {
   const {
     containerProjectPath, projectTypesValue, nodePackageManager,
-    promptBase64, goalBase64, model, tools, itemId, agentProvider,
+    promptBase64, goalBase64, model, tools, itemId, agentName, agentProvider,
     worktreePath, originalPath, gitConfig, useOAuth, useCodexOAuth,
   } = params;
 
@@ -366,6 +379,7 @@ export function buildAgentEnv(params: {
     `AGENT_MODEL=${model}`,
     `AGENT_TOOLS=${tools.join(',')}`,
     `AGENT_ITEM_ID=${itemId}`,
+    `AGENT_NAME=${agentName}`,
     `AGENT_PROVIDER=${agentProvider}`,
     ...(goalBase64 ? [`AGENT_GOAL=${goalBase64}`] : []),
     `HOST_HOME=${toContainerHomePath(os.homedir())}`,
@@ -409,6 +423,7 @@ function dispatchOutput(
     webContentsId: number;
     resolvedProjectPath: string;
     itemId: string;
+    agentProvider?: string;
     onOutput?: (data: string) => void;
     onDisplayOutput?: (data: string) => void;
     onProtocolMessage?: (message: unknown) => void;
@@ -454,6 +469,26 @@ function dispatchOutput(
       }
     }
   }
+
+  // Synthesize add_comment protocol messages from Codex agent_message text.
+  // Non-Claude providers don't emit @@YOLIUM: protocol messages, so we convert
+  // their substantive agent_message text into kanban comments automatically.
+  if (ctx.agentProvider && ctx.agentProvider !== 'claude' && result.agentMessageTexts.length > 0) {
+    for (const text of result.agentMessageTexts) {
+      // Skip text that contains @@YOLIUM: — already handled as protocol messages above
+      if (text.includes('@@YOLIUM:')) continue;
+      // Skip short messages (noise filter)
+      if (text.length < 50) continue;
+
+      const syntheticMessage = { type: 'add_comment' as const, text };
+      const session = agentSessions.get(ctx.sessionId);
+      if (session) session.protocolMessageCount += 1;
+      ctx.onProtocolMessage?.(syntheticMessage);
+      if (webContents && !webContents.isDestroyed()) {
+        webContents.send('agent:protocol-message', ctx.sessionId, syntheticMessage);
+      }
+    }
+  }
 }
 
 /**
@@ -463,13 +498,14 @@ function dispatchOutput(
 export function processStreamChunk(
   dataStr: string,
   lineBuffer: string
-): { lineBuffer: string; displayParts: string[]; textContent: string; usageParts: NonNullable<ParsedStreamEvent['usage']>[] } {
+): { lineBuffer: string; displayParts: string[]; textContent: string; usageParts: NonNullable<ParsedStreamEvent['usage']>[]; agentMessageTexts: string[] } {
   lineBuffer += dataStr;
   const lines = lineBuffer.split('\n');
   lineBuffer = lines.pop() || ''; // Keep incomplete last line in buffer
 
   const displayParts: string[] = [];
   const usageParts: Array<NonNullable<ParsedStreamEvent['usage']>> = [];
+  const agentMessageTexts: string[] = [];
   let textContent = '';
 
   for (const line of lines) {
@@ -482,6 +518,7 @@ export function processStreamChunk(
       if (parsed.display) displayParts.push(parsed.display);
       if (parsed.text) textContent += parsed.text + '\n';
       if (parsed.usage) usageParts.push(parsed.usage);
+      if (parsed.isAgentMessage && parsed.text) agentMessageTexts.push(parsed.text);
     } catch {
       // Not JSON — forward as raw text (e.g., entrypoint echo messages, stderr)
       displayParts.push(trimmed);
@@ -489,7 +526,7 @@ export function processStreamChunk(
     }
   }
 
-  return { lineBuffer, displayParts, textContent, usageParts };
+  return { lineBuffer, displayParts, textContent, usageParts, agentMessageTexts };
 }
 
 /**
@@ -655,7 +692,7 @@ export async function createAgentContainer(
 
   const env = buildAgentEnv({
     containerProjectPath, projectTypesValue, nodePackageManager,
-    promptBase64, goalBase64, model, tools, itemId,
+    promptBase64, goalBase64, model, tools, itemId, agentName,
     agentProvider: agentProvider || 'claude',
     worktreePath, originalPath, gitConfig, useOAuth, useCodexOAuth,
   });
@@ -713,6 +750,7 @@ export async function createAgentContainer(
   let lineBuffer = '';
   const dispatchCtx = {
     sessionId, webContentsId, resolvedProjectPath, itemId,
+    agentProvider,
     onOutput, onDisplayOutput, onProtocolMessage,
   };
 

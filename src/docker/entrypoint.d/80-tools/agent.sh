@@ -51,26 +51,10 @@ log "Agent provider: $AGENT_PROV"
 
 if [ "$AGENT_PROV" = "opencode" ]; then
     log "Starting OpenCode headless agent mode"
-
-    # Write full agent instructions to a file for OpenCode to read.
-    # Non-Claude models don't follow long system prompts in a single user message well.
-    # By writing instructions to a file and passing a focused goal, the model gets:
-    # 1. A clear, short task as its primary prompt
-    # 2. Full instructions available via Read tool
-    INSTRUCTIONS_FILE="$PROJECT_DIR/.yolium-agent-instructions.md"
-    echo "$PROMPT" > "$INSTRUCTIONS_FILE"
-    log "Agent instructions written to $INSTRUCTIONS_FILE"
-
-    # Build a focused run prompt: goal + instruction to read the full protocol
-    RUN_PROMPT="You are a Yolium AI agent. Your task:
-
-$GOAL
-
-IMPORTANT: Read the file .yolium-agent-instructions.md in the project root FIRST. It contains your full instructions, process steps, and the @@YOLIUM: protocol you MUST use to communicate progress.
-
-Start by reading that file, then follow the process described in it step by step."
-
-    exec opencode run -m "$MODEL_ID" "$RUN_PROMPT"
+    # The full prompt (with inline protocol + system prompt) is passed directly.
+    # No need to write a separate instructions file — agent-runner.ts already
+    # inlines everything the model needs into $PROMPT.
+    exec opencode run -m "$MODEL_ID" "$PROMPT"
 elif [ "$AGENT_PROV" = "codex" ]; then
     log "Starting Codex headless agent mode"
     if [ -z "$OPENAI_API_KEY" ] && [ ! -f "$HOME/.codex/auth.json" ]; then
@@ -88,12 +72,22 @@ CODEXCFG
     # Use danger-full-access sandbox — Codex's Landlock sandbox panics on
     # kernels where Landlock is compiled but not functional.
     # Docker already provides container-level isolation.
+
+    # Emit start protocol message (parsed by Yolium from raw stdout)
+    AGENT_LABEL="${AGENT_NAME:-codex}"
+    echo "@@YOLIUM:{\"type\":\"progress\",\"step\":\"start\",\"detail\":\"Starting ${AGENT_LABEL} agent\"}"
+
     codex exec --json -c 'model_reasoning_effort="high"' --sandbox danger-full-access "$PROMPT" 2>&1 || {
         EXIT_CODE=$?
-        echo "YOLIUM_AGENT_ERROR: Codex exited with error (exit code $EXIT_CODE)"
+        echo "@@YOLIUM:{\"type\":\"error\",\"message\":\"Codex exited with error (exit code ${EXIT_CODE})\"}"
         exit $EXIT_CODE
     }
-    exit $?
+
+    # Agent completed — check for commits and emit completion protocol messages
+    LAST_COMMIT=$(git log --oneline -1 --format="%s" 2>/dev/null | sed 's/\\/\\\\/g; s/"/\\"/g' | head -c 200 || true)
+    SUMMARY="${LAST_COMMIT:-Agent completed work}"
+    echo "@@YOLIUM:{\"type\":\"complete\",\"summary\":\"${SUMMARY}\"}"
+    exit 0
 else
     log "Starting Claude Code agent"
     if [ -z "$ANTHROPIC_API_KEY" ] && [ ! -f "$HOME/.claude/.credentials.json" ]; then

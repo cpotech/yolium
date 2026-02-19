@@ -52,21 +52,41 @@ export function getDockerDir(): string {
 }
 
 /**
- * Compute a combined hash of Dockerfile + entrypoint.sh to detect image staleness.
+ * Recursively collect all file paths under a directory, sorted for deterministic hashing.
+ */
+function collectFiles(dir: string): string[] {
+  const results: string[] = [];
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...collectFiles(fullPath));
+    } else if (entry.isFile()) {
+      results.push(fullPath);
+    }
+  }
+  return results.sort();
+}
+
+/**
+ * Compute a hash of all files in the docker directory to detect image staleness.
+ * Includes Dockerfile, entrypoint.sh, entrypoint.d/ scripts, marketing-skills, etc.
  * @returns 20-character hash string
  */
 export function computeDockerImageHash(): string {
   const dockerDir = getDockerDir();
-  const dockerfilePath = path.join(dockerDir, 'Dockerfile');
-  const entrypointPath = path.join(dockerDir, 'entrypoint.sh');
-  const dockerfile = fs.readFileSync(dockerfilePath, 'utf-8');
-  const entrypoint = fs.readFileSync(entrypointPath, 'utf-8');
-  return createHash('sha256')
-    .update(dockerfile)
-    .update('\n---\n')
-    .update(entrypoint)
-    .digest('hex')
-    .substring(0, 20);
+  const hash = createHash('sha256');
+
+  for (const filePath of collectFiles(dockerDir)) {
+    // Use relative path as part of the hash so renames are detected
+    const relativePath = path.relative(dockerDir, filePath);
+    hash.update(relativePath);
+    hash.update('\n');
+    hash.update(fs.readFileSync(filePath, 'utf-8'));
+    hash.update('\n---\n');
+  }
+
+  return hash.digest('hex').substring(0, 20);
 }
 
 /**
@@ -181,7 +201,7 @@ export async function ensureImage(
         // Only rebuild if the hash label exists but doesn't match.
         // If the label is missing, the image was built externally (e.g., CI) - skip rebuild.
         if (imageHash && imageHash !== currentHash) {
-          onProgress?.('Dockerfile or entrypoint changed, rebuilding image...');
+          onProgress?.('Docker files changed (Dockerfile, entrypoint scripts, or agent skills), rebuilding image...');
           await buildLocalImage(onProgress);
         }
       } catch (err) {
