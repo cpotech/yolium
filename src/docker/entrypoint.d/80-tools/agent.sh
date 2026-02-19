@@ -51,26 +51,10 @@ log "Agent provider: $AGENT_PROV"
 
 if [ "$AGENT_PROV" = "opencode" ]; then
     log "Starting OpenCode headless agent mode"
-
-    # Write full agent instructions to a file for OpenCode to read.
-    # Non-Claude models don't follow long system prompts in a single user message well.
-    # By writing instructions to a file and passing a focused goal, the model gets:
-    # 1. A clear, short task as its primary prompt
-    # 2. Full instructions available via Read tool
-    INSTRUCTIONS_FILE="$PROJECT_DIR/.yolium-agent-instructions.md"
-    echo "$PROMPT" > "$INSTRUCTIONS_FILE"
-    log "Agent instructions written to $INSTRUCTIONS_FILE"
-
-    # Build a focused run prompt: goal + instruction to read the full protocol
-    RUN_PROMPT="You are a Yolium AI agent. Your task:
-
-$GOAL
-
-IMPORTANT: Read the file .yolium-agent-instructions.md in the project root FIRST. It contains your full instructions, process steps, and the @@YOLIUM: protocol you MUST use to communicate progress.
-
-Start by reading that file, then follow the process described in it step by step."
-
-    exec opencode run -m "$MODEL_ID" "$RUN_PROMPT"
+    # The full prompt (with inline protocol + system prompt) is passed directly.
+    # No need to write a separate instructions file — agent-runner.ts already
+    # inlines everything the model needs into $PROMPT.
+    exec opencode run -m "$MODEL_ID" "$PROMPT"
 elif [ "$AGENT_PROV" = "codex" ]; then
     log "Starting Codex headless agent mode"
     if [ -z "$OPENAI_API_KEY" ] && [ ! -f "$HOME/.codex/auth.json" ]; then

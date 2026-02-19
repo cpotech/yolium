@@ -344,6 +344,7 @@ export function buildAgentEnv(params: {
   model: string;
   tools: string[];
   itemId: string;
+  agentName: string;
   agentProvider: string;
   worktreePath?: string;
   originalPath?: string;
@@ -353,7 +354,7 @@ export function buildAgentEnv(params: {
 }): string[] {
   const {
     containerProjectPath, projectTypesValue, nodePackageManager,
-    promptBase64, goalBase64, model, tools, itemId, agentProvider,
+    promptBase64, goalBase64, model, tools, itemId, agentName, agentProvider,
     worktreePath, originalPath, gitConfig, useOAuth, useCodexOAuth,
   } = params;
 
@@ -366,6 +367,7 @@ export function buildAgentEnv(params: {
     `AGENT_MODEL=${model}`,
     `AGENT_TOOLS=${tools.join(',')}`,
     `AGENT_ITEM_ID=${itemId}`,
+    `AGENT_NAME=${agentName}`,
     `AGENT_PROVIDER=${agentProvider}`,
     ...(goalBase64 ? [`AGENT_GOAL=${goalBase64}`] : []),
     `HOST_HOME=${toContainerHomePath(os.homedir())}`,
@@ -655,7 +657,7 @@ export async function createAgentContainer(
 
   const env = buildAgentEnv({
     containerProjectPath, projectTypesValue, nodePackageManager,
-    promptBase64, goalBase64, model, tools, itemId,
+    promptBase64, goalBase64, model, tools, itemId, agentName,
     agentProvider: agentProvider || 'claude',
     worktreePath, originalPath, gitConfig, useOAuth, useCodexOAuth,
   });

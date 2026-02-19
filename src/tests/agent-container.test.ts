@@ -437,6 +437,7 @@ describe('buildAgentEnv', () => {
     model: 'sonnet',
     tools: ['Read', 'Write', 'Bash'],
     itemId: 'item-123',
+    agentName: 'code-agent',
     agentProvider: 'claude',
     gitConfig: null,
     useOAuth: false,
@@ -454,6 +455,7 @@ describe('buildAgentEnv', () => {
     expect(env).toContain('AGENT_MODEL=sonnet');
     expect(env).toContain('AGENT_TOOLS=Read,Write,Bash');
     expect(env).toContain('AGENT_ITEM_ID=item-123');
+    expect(env).toContain('AGENT_NAME=code-agent');
     expect(env).toContain('AGENT_PROVIDER=claude');
     expect(env).toContain('OPENCODE_YOLO=true');
   });

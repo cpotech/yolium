@@ -51,11 +51,89 @@ export interface BuildPromptParams {
   systemPrompt: string;
   goal: string;
   conversationHistory: string;
+  provider?: string;
 }
 
-export function buildAgentPrompt(params: BuildPromptParams): string {
-  const { systemPrompt, goal, conversationHistory } = params;
+/**
+ * Inline protocol reference for non-Claude providers.
+ * Embeds the full @@YOLIUM: protocol directly in the prompt so models
+ * that deprioritize file-based instructions still follow the protocol.
+ */
+const INLINE_PROTOCOL = `## @@YOLIUM: Protocol (MANDATORY)
 
+You MUST communicate with Yolium by outputting JSON messages prefixed with \`@@YOLIUM:\` as plain text lines in your output.
+Your work will be marked as FAILED if you do not output these messages.
+
+### Message Types
+
+**progress** — Report step progress (does not pause execution):
+\`\`\`
+@@YOLIUM:{"type":"progress","step":"<step>","detail":"<what you are doing>"}
+\`\`\`
+Fields: step (string, required), detail (string, required), attempt (number, optional), maxAttempts (number, optional)
+
+**comment** — Post commentary to the work item thread:
+\`\`\`
+@@YOLIUM:{"type":"comment","text":"<your commentary>"}
+\`\`\`
+Fields: text (string, required — supports markdown)
+
+**ask_question** — Pause and wait for user input (only when truly blocked):
+\`\`\`
+@@YOLIUM:{"type":"ask_question","text":"<question>","options":["A","B"]}
+\`\`\`
+Fields: text (string, required), options (string[], optional)
+
+**complete** — Signal successful completion (MUST be your last protocol message):
+\`\`\`
+@@YOLIUM:{"type":"complete","summary":"<what you accomplished>"}
+\`\`\`
+Fields: summary (string, required)
+
+**error** — Signal failure:
+\`\`\`
+@@YOLIUM:{"type":"error","message":"<reason for failure>"}
+\`\`\`
+Fields: message (string, required)
+
+**create_item** — Create a new kanban work item:
+\`\`\`
+@@YOLIUM:{"type":"create_item","title":"<title>","description":"<details>","agentProvider":"claude","order":1}
+\`\`\`
+Fields: title (string, required), description (string, optional), branch (string, optional), agentProvider (enum: claude|codex|opencode, required), order (number, required), model (string, optional)
+
+**update_description** — Update the current work item's description:
+\`\`\`
+@@YOLIUM:{"type":"update_description","description":"<new description>"}
+\`\`\`
+Fields: description (string, required)
+
+### Required Protocol Usage
+
+1. Your FIRST output MUST be a progress message: \`@@YOLIUM:{"type":"progress","step":"analyze","detail":"Starting analysis"}\`
+2. Output progress messages at each major step of your work
+3. Post comment messages with your findings and results
+4. Your LAST protocol message MUST be either a complete or error message
+5. Output these as plain text lines — they will be parsed from your stdout`;
+
+export function buildAgentPrompt(params: BuildPromptParams): string {
+  const { systemPrompt, goal, conversationHistory, provider } = params;
+
+  // For non-Claude providers, inline the protocol and system prompt
+  // so the model has everything in its primary prompt context
+  if (provider && provider !== 'claude') {
+    let prompt = `# Yolium Agent Instructions\n\n${INLINE_PROTOCOL}\n\n---\n\n${systemPrompt}\n\n## Current Goal\n\n${goal}`;
+
+    if (conversationHistory.trim()) {
+      prompt += `\n\n## Previous conversation:\n\n${conversationHistory}\n\nContinue from where you left off.`;
+    }
+
+    prompt += `\n\n---\n\nREMINDER: You MUST output @@YOLIUM: protocol messages throughout your work. Start NOW with a progress message.`;
+
+    return prompt;
+  }
+
+  // Claude path: system prompt + goal (protocol is already woven into agent definitions)
   let prompt = `${systemPrompt}\n\n## Current Goal\n\n${goal}`;
 
   if (conversationHistory.trim()) {
@@ -231,6 +309,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     systemPrompt: agent.systemPrompt,
     goal: effectiveGoal,
     conversationHistory,
+    provider,
   });
   logger.info('Prompt built', { agentName, promptLength: prompt.length, elapsedMs: Math.round(performance.now() - agentPhaseStart) });
 
@@ -306,26 +385,19 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
   // Resolve model: item-level > settings default > agent frontmatter
   const model = resolveModel(item.model, settingsModel, agent.model);
 
-  // For non-Claude providers, write system prompt to an instructions file
-  // and build a shorter goal-focused prompt. Non-Claude CLIs (Codex, OpenCode)
-  // work better with a file reference than receiving the full system prompt inline.
+  // For non-Claude providers, write system prompt to an instructions file as a
+  // fallback reference. The full protocol + system prompt is already inlined in
+  // the prompt by buildAgentPrompt(), so this file is just a backup.
   agentPhaseStart = performance.now();
-  let agentPrompt = prompt;
+  const agentPrompt = prompt;
   if (provider !== 'claude') {
     const instructionsFile = `.yolium-${agentName}-instructions.md`;
     const writePath = worktreePath || resolvedProjectPath;
     try {
       fs.writeFileSync(path.join(writePath, instructionsFile), agent.systemPrompt);
-      let shortPrompt = effectiveGoal;
-      if (conversationHistory.trim()) {
-        shortPrompt += `\n\n## Previous conversation:\n\n${conversationHistory}\n\nContinue from where you left off.`;
-      }
-      shortPrompt += `\n\nIMPORTANT: Read the file ${instructionsFile} in the project root FIRST. It contains your full instructions, process steps, and the @@YOLIUM: protocol you MUST use to communicate progress.\nStart by reading that file, then follow the process described in it step by step.`;
-      shortPrompt += `\n\nCRITICAL — @@YOLIUM: PROTOCOL MESSAGES ARE MANDATORY. Your work will be marked as FAILED if you do not output these messages. Output them as plain text lines throughout your work:\n- Start with: @@YOLIUM:{"type":"progress","step":"analyze","detail":"Starting analysis"}\n- At each step: @@YOLIUM:{"type":"progress","step":"<step>","detail":"<what you did>"}\n- Post findings: @@YOLIUM:{"type":"comment","text":"<your findings>"}\n- When done: @@YOLIUM:{"type":"complete","summary":"<what you accomplished>"}\nSee ${instructionsFile} for the full protocol reference with examples at each step.`;
-      agentPrompt = shortPrompt;
-      logger.info('Wrote agent instructions file for non-Claude provider', { instructionsFile, provider });
+      logger.info('Wrote agent instructions file as fallback reference', { instructionsFile, provider });
     } catch {
-      logger.warn('Failed to write agent instructions file, using inline prompt', { instructionsFile });
+      logger.warn('Failed to write agent instructions file', { instructionsFile });
     }
   }
 
