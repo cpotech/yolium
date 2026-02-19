@@ -72,12 +72,22 @@ CODEXCFG
     # Use danger-full-access sandbox — Codex's Landlock sandbox panics on
     # kernels where Landlock is compiled but not functional.
     # Docker already provides container-level isolation.
+
+    # Emit start protocol message (parsed by Yolium from raw stdout)
+    AGENT_LABEL="${AGENT_NAME:-codex}"
+    echo "@@YOLIUM:{\"type\":\"progress\",\"step\":\"start\",\"detail\":\"Starting ${AGENT_LABEL} agent\"}"
+
     codex exec --json -c 'model_reasoning_effort="high"' --sandbox danger-full-access "$PROMPT" 2>&1 || {
         EXIT_CODE=$?
-        echo "YOLIUM_AGENT_ERROR: Codex exited with error (exit code $EXIT_CODE)"
+        echo "@@YOLIUM:{\"type\":\"error\",\"message\":\"Codex exited with error (exit code ${EXIT_CODE})\"}"
         exit $EXIT_CODE
     }
-    exit $?
+
+    # Agent completed — check for commits and emit completion protocol messages
+    LAST_COMMIT=$(git log --oneline -1 --format="%s" 2>/dev/null | sed 's/\\/\\\\/g; s/"/\\"/g' | head -c 200 || true)
+    SUMMARY="${LAST_COMMIT:-Agent completed work}"
+    echo "@@YOLIUM:{\"type\":\"complete\",\"summary\":\"${SUMMARY}\"}"
+    exit 0
 else
     log "Starting Claude Code agent"
     if [ -z "$ANTHROPIC_API_KEY" ] && [ ! -f "$HOME/.claude/.credentials.json" ]; then
