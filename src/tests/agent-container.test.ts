@@ -33,6 +33,9 @@ vi.mock('@main/services/project-config', () => ({
 import * as fs from 'node:fs';
 import { getValidatedSharedDirs } from '@main/services/project-config';
 import { parseStreamEvent, combineUsageParts, accumulateSessionUsage, buildBindMounts, buildAgentEnv, processStreamChunk, flushLineBuffer } from '@main/docker/agent-container';
+
+/** Normalize path separators for cross-platform test assertions */
+const normPath = (p: string) => p.replace(/\\/g, '/');
 import { extractProtocolMessages } from '@main/services/agent-protocol';
 import type { AgentContainerSession } from '@main/docker';
 
@@ -448,8 +451,8 @@ describe('buildBindMounts', () => {
 
     // 1 project + 1 .git + 2 shared dirs = 4
     expect(binds).toHaveLength(4);
-    expect(binds[2]).toBe('/home/user/project/samples:/home/user/worktrees/feat-branch/samples:ro');
-    expect(binds[3]).toBe('/home/user/project/test-data:/home/user/worktrees/feat-branch/test-data:ro');
+    expect(normPath(binds[2])).toBe('/home/user/project/samples:/home/user/worktrees/feat-branch/samples:ro');
+    expect(normPath(binds[3])).toBe('/home/user/project/test-data:/home/user/worktrees/feat-branch/test-data:ro');
 
     vi.mocked(getValidatedSharedDirs).mockReturnValue([]);
     vi.mocked(fs.existsSync).mockReturnValue(false);

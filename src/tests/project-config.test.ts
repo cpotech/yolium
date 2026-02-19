@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import * as path from 'node:path';
 
 vi.mock('electron', () => ({
   app: { isPackaged: false },
@@ -25,6 +24,9 @@ vi.mock('node:fs', () => ({
 import * as fs from 'node:fs';
 import { loadProjectConfig, isValidSharedDir, getValidatedSharedDirs, saveProjectConfig, checkSharedDirExists } from '@main/services/project-config';
 
+/** Normalize path separators for cross-platform test assertions */
+const normPath = (p: string | Buffer | URL | number) => String(p).replace(/\\/g, '/');
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -36,7 +38,9 @@ describe('loadProjectConfig', () => {
     const config = loadProjectConfig('/home/user/project');
 
     expect(config).toEqual({ sharedDirs: ['samples', 'test-data'] });
-    expect(fs.readFileSync).toHaveBeenCalledWith(path.join('/home/user/project', '.yolium.json'), 'utf-8');
+    const readCall = vi.mocked(fs.readFileSync).mock.calls[0];
+    expect(normPath(readCall[0])).toBe('/home/user/project/.yolium.json');
+    expect(readCall[1]).toBe('utf-8');
   });
 
   it('returns null when file does not exist', () => {
@@ -192,11 +196,10 @@ describe('saveProjectConfig', () => {
 
     saveProjectConfig('/home/user/project', { sharedDirs: ['samples'] });
 
-    expect(fs.writeFileSync).toHaveBeenCalledWith(
-      path.join('/home/user/project', '.yolium.json'),
-      JSON.stringify({ sharedDirs: ['samples'] }, null, 2) + '\n',
-      'utf-8'
-    );
+    const writeCall = vi.mocked(fs.writeFileSync).mock.calls[0];
+    expect(normPath(writeCall[0])).toBe('/home/user/project/.yolium.json');
+    expect(writeCall[1]).toBe(JSON.stringify({ sharedDirs: ['samples'] }, null, 2) + '\n');
+    expect(writeCall[2]).toBe('utf-8');
   });
 
   it('preserves existing unknown keys when saving', () => {
