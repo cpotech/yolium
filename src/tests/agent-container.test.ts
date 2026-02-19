@@ -215,7 +215,7 @@ describe('parseStreamEvent', () => {
     expect(messages).toEqual([{ type: 'complete', summary: 'done' }]);
   });
 
-  it('handles Codex item.completed with command_execution', () => {
+  it('handles Codex item.completed with command_execution (output only, no duplicate command)', () => {
     const parsed = parseStreamEvent({
       type: 'item.completed',
       item: {
@@ -224,8 +224,23 @@ describe('parseStreamEvent', () => {
         output: 'total 0\ndrwxr-xr-x 2 user user 40 Jan 1 00:00 .',
       },
     });
-    expect(parsed.display).toContain('[Bash] ls -la');
+    // Should NOT repeat [Bash] command — item.started already showed it
+    expect(parsed.display).not.toContain('[Bash]');
     expect(parsed.display).toContain('total 0');
+  });
+
+  it('extracts protocol messages from Codex command_execution output', () => {
+    const parsed = parseStreamEvent({
+      type: 'item.completed',
+      item: {
+        type: 'command_execution',
+        command: 'echo \'@@YOLIUM:{"type":"complete","summary":"done"}\'',
+        output: '@@YOLIUM:{"type":"complete","summary":"done"}',
+      },
+    });
+    expect(parsed.text).toContain('@@YOLIUM:');
+    const messages = extractProtocolMessages(parsed.text || '');
+    expect(messages).toEqual([{ type: 'complete', summary: 'done' }]);
   });
 
   it('handles Codex item.completed with file_change', () => {
@@ -569,8 +584,9 @@ describe('processStreamChunk (Codex JSONL)', () => {
     expect(result.lineBuffer).toBe('');
     expect(result.displayParts).toContain('[Agent] Codex session started');
     expect(result.displayParts).toContain('[Agent] Turn started');
-    expect(result.displayParts).toContain('[Bash] npm test');
+    expect(result.displayParts).toContain('[Bash] npm test'); // from item.started
     expect(result.displayParts).toContain('Running tests now');
+    expect(result.displayParts).toContain('All tests passed'); // from item.completed (output only, no [Bash] prefix)
     expect(result.displayParts).toContain('[File] src/app.ts');
     expect(result.textContent).toContain('Running tests now');
     expect(result.usageParts).toHaveLength(1);

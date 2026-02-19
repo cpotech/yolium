@@ -473,12 +473,14 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
                 events.emit('error', detectedError);
                 onError?.(detectedError);
               } else if (isNonClaude && protocolCount === 0) {
-                // Non-Claude provider exited with no protocol messages - suspicious
-                const warningMsg = 'Agent exited without reporting progress. Check the agent log for details.';
-                updateItem(exitBoard, itemId, { agentStatus: 'failed', activeAgentName: undefined });
-                addComment(exitBoard, itemId, 'system', warningMsg);
-                events.emit('error', warningMsg);
-                onError?.(warningMsg);
+                // Non-Claude provider exited cleanly with no protocol messages.
+                // The agent likely completed its work but didn't output @@YOLIUM: messages.
+                // Treat as success — exit code 0 means the agent finished without errors.
+                const completionColumn = agentName === 'plan-agent' ? 'ready' : 'verify';
+                updateItem(exitBoard, itemId, { agentStatus: 'completed', activeAgentName: undefined, column: completionColumn });
+                addComment(exitBoard, itemId, 'system', 'Agent finished (no progress messages reported — check agent log for details)');
+                events.emit('complete', 'Agent finished successfully');
+                onComplete?.('Agent finished successfully');
               } else if (protocolCount > 0) {
                 // Agent sent protocol messages but never sent 'complete' — it stopped mid-workflow.
                 // Common cause: model hit its output token limit (e.g., free-tier models).

@@ -239,12 +239,21 @@ export function parseStreamEvent(event: Record<string, unknown>): ParsedStreamEv
       }
 
       if (item.type === 'command_execution') {
-        const command = typeof item.command === 'string' ? item.command.slice(0, 120) : '';
-        const output = typeof item.output === 'string' ? item.output.slice(0, 500) : '';
-        const parts: string[] = [];
-        if (command) parts.push(`[Bash] ${command}`);
-        if (output) parts.push(output);
-        return { display: parts.length > 0 ? parts.join('\n') : undefined };
+        // Don't repeat [Bash] command — item.started already displayed it.
+        // Only show the command output here.
+        const output = typeof item.output === 'string' ? item.output : '';
+        const displayOutput = output.length > 500 ? output.slice(0, 500) + '…' : output;
+
+        // Extract protocol messages from command output (e.g., agent runs echo '@@YOLIUM:...')
+        let text: string | undefined;
+        if (output.includes('@@YOLIUM:')) {
+          text = output;
+        }
+
+        return {
+          display: displayOutput || undefined,
+          text,
+        };
       }
 
       if (item.type === 'file_change') {
