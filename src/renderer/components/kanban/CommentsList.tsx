@@ -38,7 +38,7 @@ function urlTransform(url: string): string | null {
 }
 
 /**
- * Non-navigable link that displays the URL as a copyable path.
+ * Non-navigable link that displays the URL as a copyable and openable path.
  * Prevents Electron from navigating away from the app when links are clicked.
  */
 function CopyableLink({ href, children }: { href?: string; children?: React.ReactNode }): React.ReactElement {
@@ -51,6 +51,11 @@ function CopyableLink({ href, children }: { href?: string; children?: React.Reac
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
+  }, [displayUrl])
+
+  const handleOpen = useCallback(() => {
+    if (!displayUrl) return
+    window.electronAPI.app.openExternal(displayUrl)
   }, [displayUrl])
 
   // If link text is different from the URL, show both; otherwise just show the URL
@@ -67,7 +72,7 @@ function CopyableLink({ href, children }: { href?: string; children?: React.Reac
       <button
         data-testid="copy-link-button"
         onClick={handleCopy}
-        title="Copy path"
+        title="Copy URL"
         className="inline-flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--color-bg-secondary)] transition-colors"
       >
         {copied ? (
@@ -80,6 +85,18 @@ function CopyableLink({ href, children }: { href?: string; children?: React.Reac
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
           </svg>
         )}
+      </button>
+      <button
+        data-testid="open-link-button"
+        onClick={handleOpen}
+        title="Open in browser"
+        className="inline-flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--color-bg-secondary)] transition-colors"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+          <polyline points="15 3 21 3 21 9" />
+          <line x1="10" y1="14" x2="21" y2="3" />
+        </svg>
       </button>
     </span>
   )

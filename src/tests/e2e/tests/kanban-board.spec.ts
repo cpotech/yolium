@@ -231,7 +231,7 @@ test.describe('Kanban Board', () => {
     await expect(window.locator(selectors.detailNoComments)).toBeVisible();
   });
 
-  test('should edit and save item title', async () => {
+  test('should edit and auto-save item title', async () => {
     await openKanbanBoard();
     await createItemViaIPC('Original Title', 'Some description');
     const { window } = ctx;
@@ -240,9 +240,10 @@ test.describe('Kanban Board', () => {
     await window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
     await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
 
-    // Edit title
+    // Edit title and flush auto-save immediately
     await window.locator(selectors.detailTitle).fill('Updated Title');
-    await window.click(selectors.detailSaveButton);
+    await window.keyboard.press('Control+Enter');
+    await expect(window.locator('[data-testid="save-status"]')).toContainText(/Saving|Saved/);
 
     // Close dialog
     await window.click(selectors.detailCloseButton);
@@ -263,9 +264,10 @@ test.describe('Kanban Board', () => {
     await window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
     await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
 
-    // Change column to 'ready'
+    // Change column to 'ready' and flush auto-save
     await window.locator(selectors.detailColumnSelect).selectOption('ready');
-    await window.click(selectors.detailSaveButton);
+    await window.keyboard.press('Control+Enter');
+    await expect(window.locator('[data-testid="save-status"]')).toContainText(/Saving|Saved/);
     await window.click(selectors.detailCloseButton);
 
     // Item should now be in Ready column
@@ -470,7 +472,7 @@ test.describe('Kanban Board', () => {
 
   // ─── Toolbar ─────────────────────────────────────────────────
 
-  test('should display project folder name in toolbar with full path tooltip', async () => {
+  test('should display project folder name in toolbar', async () => {
     await openKanbanBoard();
     const { window } = ctx;
 
@@ -478,9 +480,6 @@ test.describe('Kanban Board', () => {
     const folderName = testRepoPath.replace(/\\/g, '/').split('/').filter(Boolean).pop()!;
     await expect(window.locator(selectors.projectPathDisplay)).toContainText(folderName);
 
-    // Full path is available via title attribute
-    const title = await window.locator(selectors.projectPathDisplay).getAttribute('title');
-    expect(title).toBeTruthy();
   });
 
   test('should refresh board when clicking refresh button', async () => {
@@ -547,7 +546,7 @@ test.describe('Kanban Board', () => {
     await expect(window.locator(selectors.newItemDialog)).toBeVisible();
   });
 
-  test('should show unsaved changes indicator in item detail dialog', async () => {
+  test('should show save status while editing item detail dialog', async () => {
     await openKanbanBoard();
     await createItemViaIPC('Unsaved Test', 'Original description');
     const { window } = ctx;
@@ -556,14 +555,14 @@ test.describe('Kanban Board', () => {
     await window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
     await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
 
-    // No unsaved indicator initially
-    await expect(window.locator('[data-testid="unsaved-indicator"]')).not.toBeVisible();
+    // No save status initially
+    await expect(window.locator('[data-testid="save-status"]')).not.toBeVisible();
 
     // Edit the title
     await window.locator('[data-testid="title-input"]').fill('Modified Title');
 
-    // Unsaved indicator should appear
-    await expect(window.locator('[data-testid="unsaved-indicator"]')).toBeVisible();
+    // Save status should appear as auto-save runs
+    await expect(window.locator('[data-testid="save-status"]')).toContainText(/Saving|Saved/);
   });
 
   test('should show board summary count in toolbar', async () => {

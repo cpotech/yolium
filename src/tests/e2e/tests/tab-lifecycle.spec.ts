@@ -181,7 +181,7 @@ test.describe('Tab Lifecycle', () => {
   test('should create tab when agent is selected and confirmed', async () => {
     // This test requires Docker to actually create a container
     // It may be slow and should be run with appropriate timeout
-    test.skip(!!process.env.CI, 'Skipped in CI - requires Docker container');
+    test.skip(!!process.env.CI || process.env.YOLIUM_E2E_SKIP_DOCKER_TESTS === '1', 'Skipped in CI - requires Docker container');
     test.setTimeout(120000);
 
     ctx = await launchApp();
@@ -216,7 +216,7 @@ test.describe('Tab Lifecycle', () => {
   });
 
   test('should close tab when clicking close button', async () => {
-    test.skip(!!process.env.CI, 'Skipped in CI - requires Docker container');
+    test.skip(!!process.env.CI || process.env.YOLIUM_E2E_SKIP_DOCKER_TESTS === '1', 'Skipped in CI - requires Docker container');
     test.setTimeout(120000);
 
     ctx = await launchApp();
@@ -244,7 +244,7 @@ test.describe('Tab Lifecycle', () => {
   test('should navigate between multiple tabs', async () => {
     // Note: Playwright cannot trigger Electron menu accelerators (keyboard shortcuts).
     // This test uses click-based navigation instead.
-    test.skip(!!process.env.CI, 'Skipped in CI - requires Docker container');
+    test.skip(!!process.env.CI || process.env.YOLIUM_E2E_SKIP_DOCKER_TESTS === '1', 'Skipped in CI - requires Docker container');
     test.setTimeout(180000);
 
     ctx = await launchApp();

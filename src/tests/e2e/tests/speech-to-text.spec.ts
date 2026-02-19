@@ -89,7 +89,7 @@ test.describe('Speech-to-Text', () => {
 
   test.describe('Whisper Model Dialog', () => {
     test('should open model dialog from status bar and close with Escape', async () => {
-      test.skip(!!process.env.CI, 'Skipped in CI - requires Docker container');
+      test.skip(!!process.env.CI || process.env.YOLIUM_E2E_SKIP_DOCKER_TESTS === '1', 'Skipped in CI - requires Docker container');
       ctx = await launchApp();
       const { window } = ctx;
 
@@ -120,7 +120,7 @@ test.describe('Speech-to-Text', () => {
     });
 
     test('should open model dialog and close with Close button', async () => {
-      test.skip(!!process.env.CI, 'Skipped in CI - requires Docker container');
+      test.skip(!!process.env.CI || process.env.YOLIUM_E2E_SKIP_DOCKER_TESTS === '1', 'Skipped in CI - requires Docker container');
       ctx = await launchApp();
       const { window } = ctx;
 
@@ -197,7 +197,7 @@ test.describe('Speech-to-Text', () => {
 
   test.describe('Speech-to-Text Button in Terminal Status Bar', () => {
     test('should show mic button and model selector', async () => {
-      test.skip(!!process.env.CI, 'Skipped in CI - requires Docker container');
+      test.skip(!!process.env.CI || process.env.YOLIUM_E2E_SKIP_DOCKER_TESTS === '1', 'Skipped in CI - requires Docker container');
       ctx = await launchApp();
       const { window } = ctx;
 
@@ -218,7 +218,7 @@ test.describe('Speech-to-Text', () => {
     });
 
     test('should show shortcut hint on mic button', async () => {
-      test.skip(!!process.env.CI, 'Skipped in CI - requires Docker container');
+      test.skip(!!process.env.CI || process.env.YOLIUM_E2E_SKIP_DOCKER_TESTS === '1', 'Skipped in CI - requires Docker container');
       ctx = await launchApp();
       const { window } = ctx;
 
@@ -234,7 +234,7 @@ test.describe('Speech-to-Text', () => {
     });
 
     test('should show default model name in selector', async () => {
-      test.skip(!!process.env.CI, 'Skipped in CI - requires Docker container');
+      test.skip(!!process.env.CI || process.env.YOLIUM_E2E_SKIP_DOCKER_TESTS === '1', 'Skipped in CI - requires Docker container');
       ctx = await launchApp();
       const { window } = ctx;
 
@@ -251,7 +251,7 @@ test.describe('Speech-to-Text', () => {
     });
 
     test('should open model dialog from terminal status bar model selector', async () => {
-      test.skip(!!process.env.CI, 'Skipped in CI - requires Docker container');
+      test.skip(!!process.env.CI || process.env.YOLIUM_E2E_SKIP_DOCKER_TESTS === '1', 'Skipped in CI - requires Docker container');
       ctx = await launchApp();
       const { window } = ctx;
 

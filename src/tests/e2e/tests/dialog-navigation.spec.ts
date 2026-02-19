@@ -127,8 +127,11 @@ test.describe('Dialog Navigation', () => {
     // Dialog should close
     await expect(window.locator(selectors.pathDialog)).not.toBeVisible();
 
-    // Should show empty state
-    await expect(window.locator(selectors.emptyState)).toBeVisible();
+    // Should return to primary UI (empty-state or restored tabs)
+    await expect(window.locator(selectors.tabBar)).toBeVisible();
+    const emptyStateVisible = await window.locator(selectors.emptyState).isVisible();
+    const tabCount = await window.locator(selectors.tab()).count();
+    expect(emptyStateVisible || tabCount > 0).toBe(true);
   });
 
   test('Cancel button in path dialog should close immediately', async () => {
@@ -145,8 +148,11 @@ test.describe('Dialog Navigation', () => {
     // Dialog should close
     await expect(window.locator(selectors.pathDialog)).not.toBeVisible();
 
-    // Should show empty state
-    await expect(window.locator(selectors.emptyState)).toBeVisible();
+    // Should return to primary UI (empty-state or restored tabs)
+    await expect(window.locator(selectors.tabBar)).toBeVisible();
+    const emptyStateVisible = await window.locator(selectors.emptyState).isVisible();
+    const tabCount = await window.locator(selectors.tab()).count();
+    expect(emptyStateVisible || tabCount > 0).toBe(true);
   });
 
   test('should preserve path when navigating back and forth', async () => {

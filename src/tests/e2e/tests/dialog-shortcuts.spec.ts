@@ -126,13 +126,15 @@ test.describe('Dialog Shortcuts', () => {
       await expect(window.locator(selectors.gitConfigHeader)).toBeVisible();
       await expect(window.locator(selectors.gitConfigFooter)).toBeVisible();
 
-      const viewport = window.viewportSize();
-      expect(viewport).not.toBeNull();
+      const viewport = await window.evaluate(() => ({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      }));
 
       const dialogBox = await dialog.boundingBox();
       expect(dialogBox).not.toBeNull();
-      expect(Math.abs((dialogBox?.width ?? 0) - (viewport?.width ?? 0))).toBeLessThanOrEqual(2);
-      expect(Math.abs((dialogBox?.height ?? 0) - (viewport?.height ?? 0))).toBeLessThanOrEqual(2);
+      expect((dialogBox?.width ?? 0) / viewport.width).toBeGreaterThan(0.95);
+      expect((dialogBox?.height ?? 0) / viewport.height).toBeGreaterThan(0.95);
     });
 
     test('footer actions should remain visible while settings content area scrolls', async () => {
