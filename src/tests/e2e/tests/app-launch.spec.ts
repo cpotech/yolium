@@ -11,15 +11,18 @@ test.describe('App Launch', () => {
     }
   });
 
-  test('should launch and show empty state when Docker is running', async () => {
+  test('should launch and show primary UI when Docker is running', async () => {
     ctx = await launchApp();
     const { window } = ctx;
 
-    // Should show empty state (no tabs open)
-    await expect(window.locator(selectors.emptyState)).toBeVisible();
-
     // Tab bar should be visible
     await expect(window.locator(selectors.tabBar)).toBeVisible();
+
+    // Depending on persisted session state we may render either empty-state
+    // or restored tabs. Both confirm successful app launch.
+    const emptyStateVisible = await window.locator(selectors.emptyState).isVisible();
+    const tabCount = await window.locator(selectors.tab()).count();
+    expect(emptyStateVisible || tabCount > 0).toBe(true);
 
     // New tab button should be visible
     await expect(window.locator(selectors.newTabButton)).toBeVisible();

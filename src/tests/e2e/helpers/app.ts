@@ -19,27 +19,32 @@ export async function launchApp(options: {
   /** Environment variables to pass to the app */
   env?: Record<string, string>;
 } = {}): Promise<AppContext> {
+  const needsHeadlessLinux = process.platform === 'linux' && !process.env.DISPLAY;
+  const extraArgs = needsHeadlessLinux
+    ? [
+        // Allow Electron/Chromium to start in headless Linux CI shells that
+        // do not provide an X server.
+        '--ozone-platform=headless',
+        '--disable-gpu',
+      ]
+    : [];
+
   const app = await electron.launch({
     args: [
       path.join(__dirname, '../../../../.vite/build/main.js'),
       // Disable sandbox for CI/headless environments (Linux without chrome-sandbox setuid)
       '--no-sandbox',
+      ...extraArgs,
     ],
     env: {
       ...process.env,
       NODE_ENV: 'test',
+      YOLIUM_E2E_MOCK_DOCKER: '1',
       // Disable hardware acceleration for CI stability
       ELECTRON_DISABLE_GPU: '1',
+      ...(needsHeadlessLinux ? { ELECTRON_OZONE_PLATFORM_HINT: 'headless' } : {}),
       ...options.env,
     },
-  });
-
-  // Mock ensureImage to prevent the build-progress-overlay from blocking
-  // all pointer events. In CI, ensureImage() hangs even with a pre-built
-  // image, causing every test that clicks the UI to time out.
-  await app.evaluate(({ ipcMain }) => {
-    ipcMain.removeHandler('docker:ensure-image');
-    ipcMain.handle('docker:ensure-image', () => Promise.resolve());
   });
 
   const window = await app.firstWindow();

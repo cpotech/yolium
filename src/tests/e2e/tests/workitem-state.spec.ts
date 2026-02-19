@@ -31,6 +31,13 @@ test.describe('Work Item State Updates', () => {
     ctx = await launchApp();
     const { window } = ctx;
 
+    // Keep lifecycle assertions deterministic in E2E by disabling stale-agent
+    // recovery for this test file.
+    await ctx.app.evaluate(({ ipcMain }) => {
+      ipcMain.removeHandler('agent:recover');
+      ipcMain.handle('agent:recover', () => []);
+    });
+
     // Clear stale sidebar projects and kanban tabs from previous test runs
     // to prevent duplicate kanban-view elements accumulating across launches
     await window.evaluate(() => {

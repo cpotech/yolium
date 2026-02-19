@@ -6,10 +6,14 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { CommentsList } from '@renderer/components/kanban/CommentsList'
 import type { KanbanComment } from '@shared/types/kanban'
 
-// Mock electronAPI for MockPreviewModal
+// Mock electronAPI for MockPreviewModal and openExternal
 beforeEach(() => {
   window.electronAPI = {
     ...window.electronAPI,
+    app: {
+      ...(window.electronAPI?.app || {}),
+      openExternal: vi.fn().mockResolvedValue(undefined),
+    },
     fs: {
       ...(window.electronAPI?.fs || {}),
       readFile: vi.fn().mockResolvedValue({ success: true, content: '<html><body>Mock</body></html>', error: null }),
@@ -301,5 +305,48 @@ describe('CommentsList', () => {
 
     fireEvent.click(screen.getByTestId('copy-link-button'))
     expect(writeText).toHaveBeenCalledWith('https://example.com/playwright-report/index.html')
+  })
+
+  it('should have an open button for external links', () => {
+    const comments: KanbanComment[] = [
+      {
+        id: 'c1',
+        source: 'agent',
+        text: 'Check [this link](https://example.com) for details',
+        timestamp: new Date().toISOString(),
+      },
+    ]
+
+    render(<CommentsList comments={comments} />)
+
+    // Should have an open button
+    const openButton = screen.getByTestId('open-link-button')
+    expect(openButton).toBeInTheDocument()
+    expect(openButton).toHaveAttribute('title', 'Open in browser')
+  })
+
+  it('should open URL in browser when open button is clicked', () => {
+    const openExternal = vi.fn().mockResolvedValue(undefined)
+    window.electronAPI = {
+      ...window.electronAPI,
+      app: {
+        ...(window.electronAPI?.app || {}),
+        openExternal,
+      },
+    } as typeof window.electronAPI
+
+    const comments: KanbanComment[] = [
+      {
+        id: 'c1',
+        source: 'agent',
+        text: 'Report: [E2E Results](https://example.com/playwright-report/index.html)',
+        timestamp: new Date().toISOString(),
+      },
+    ]
+
+    render(<CommentsList comments={comments} />)
+
+    fireEvent.click(screen.getByTestId('open-link-button'))
+    expect(openExternal).toHaveBeenCalledWith('https://example.com/playwright-report/index.html')
   })
 })
