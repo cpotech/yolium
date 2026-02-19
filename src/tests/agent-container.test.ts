@@ -183,6 +183,7 @@ describe('parseStreamEvent', () => {
     });
     expect(parsed.display).toBe('Hello from Codex agent');
     expect(parsed.text).toBe('Hello from Codex agent');
+    expect(parsed.isAgentMessage).toBe(true);
   });
 
   it('handles Codex item.completed with agent_message containing multiple text blocks', () => {
@@ -280,6 +281,37 @@ describe('parseStreamEvent', () => {
     const parsed = parseStreamEvent({ type: 'turn.completed' });
     expect(parsed.usage).toBeUndefined();
     expect(parsed.display).toBeUndefined();
+  });
+
+  it('does not set isAgentMessage for Claude assistant text events', () => {
+    const parsed = parseStreamEvent({
+      type: 'assistant',
+      message: {
+        content: [{ type: 'text', text: 'Hello from Claude' }],
+      },
+    });
+    expect(parsed.text).toBe('Hello from Claude');
+    expect(parsed.isAgentMessage).toBeUndefined();
+  });
+
+  it('does not set isAgentMessage for Codex command_execution events', () => {
+    const parsed = parseStreamEvent({
+      type: 'item.completed',
+      item: {
+        type: 'command_execution',
+        command: 'ls -la',
+        output: 'total 0',
+      },
+    });
+    expect(parsed.isAgentMessage).toBeUndefined();
+  });
+
+  it('does not set isAgentMessage for Codex file_change events', () => {
+    const parsed = parseStreamEvent({
+      type: 'item.completed',
+      item: { type: 'file_change', filename: 'src/index.ts' },
+    });
+    expect(parsed.isAgentMessage).toBeUndefined();
   });
 });
 
@@ -604,6 +636,40 @@ describe('processStreamChunk (Codex JSONL)', () => {
       { type: 'progress', step: 'analyze', detail: 'Found 5 files', attempt: undefined, maxAttempts: undefined },
     ]);
   });
+
+  it('collects agentMessageTexts from Codex agent_message events', () => {
+    const data = '{"type":"item.completed","item":{"type":"agent_message","content":[{"type":"text","text":"Analysis complete: found 3 issues in the codebase"}]}}\n';
+    const result = processStreamChunk(data, '');
+
+    expect(result.agentMessageTexts).toEqual(['Analysis complete: found 3 issues in the codebase']);
+  });
+
+  it('collects multiple agentMessageTexts from multiple agent_message events', () => {
+    const data = [
+      '{"type":"item.completed","item":{"type":"agent_message","content":[{"type":"text","text":"First analysis message"}]}}',
+      '{"type":"item.completed","item":{"type":"agent_message","content":[{"type":"text","text":"Second analysis message"}]}}',
+    ].join('\n') + '\n';
+    const result = processStreamChunk(data, '');
+
+    expect(result.agentMessageTexts).toEqual(['First analysis message', 'Second analysis message']);
+  });
+
+  it('does not collect agentMessageTexts from non-agent_message events', () => {
+    const data = [
+      '{"type":"item.completed","item":{"type":"command_execution","command":"ls","output":"file.txt"}}',
+      '{"type":"item.completed","item":{"type":"file_change","filename":"src/app.ts"}}',
+    ].join('\n') + '\n';
+    const result = processStreamChunk(data, '');
+
+    expect(result.agentMessageTexts).toEqual([]);
+  });
+
+  it('collects short agentMessageTexts (filtering happens in dispatchOutput)', () => {
+    const data = '{"type":"item.completed","item":{"type":"agent_message","content":[{"type":"text","text":"OK"}]}}\n';
+    const result = processStreamChunk(data, '');
+
+    expect(result.agentMessageTexts).toEqual(['OK']);
+  });
 });
 
 describe('processStreamChunk', () => {
@@ -675,6 +741,7 @@ describe('processStreamChunk', () => {
     expect(result.displayParts).toEqual([]);
     expect(result.textContent).toBe('');
     expect(result.usageParts).toEqual([]);
+    expect(result.agentMessageTexts).toEqual([]);
   });
 
   it('handles multiple lines in one chunk', () => {

@@ -101,6 +101,8 @@ function formatToolUse(name: string, input: Record<string, unknown> | undefined)
 export interface ParsedStreamEvent {
   display?: string;
   text?: string;
+  /** True only for Codex `item.completed` → `agent_message` events */
+  isAgentMessage?: boolean;
   usage?: {
     inputTokens: number;
     outputTokens: number;
@@ -235,6 +237,7 @@ export function parseStreamEvent(event: Record<string, unknown>): ParsedStreamEv
         return {
           display: displayParts.length > 0 ? displayParts.join('\n') : undefined,
           text: text || undefined,
+          isAgentMessage: true,
         };
       }
 
@@ -420,6 +423,7 @@ function dispatchOutput(
     webContentsId: number;
     resolvedProjectPath: string;
     itemId: string;
+    agentProvider?: string;
     onOutput?: (data: string) => void;
     onDisplayOutput?: (data: string) => void;
     onProtocolMessage?: (message: unknown) => void;
@@ -465,6 +469,26 @@ function dispatchOutput(
       }
     }
   }
+
+  // Synthesize add_comment protocol messages from Codex agent_message text.
+  // Non-Claude providers don't emit @@YOLIUM: protocol messages, so we convert
+  // their substantive agent_message text into kanban comments automatically.
+  if (ctx.agentProvider && ctx.agentProvider !== 'claude' && result.agentMessageTexts.length > 0) {
+    for (const text of result.agentMessageTexts) {
+      // Skip text that contains @@YOLIUM: — already handled as protocol messages above
+      if (text.includes('@@YOLIUM:')) continue;
+      // Skip short messages (noise filter)
+      if (text.length < 50) continue;
+
+      const syntheticMessage = { type: 'add_comment' as const, text };
+      const session = agentSessions.get(ctx.sessionId);
+      if (session) session.protocolMessageCount += 1;
+      ctx.onProtocolMessage?.(syntheticMessage);
+      if (webContents && !webContents.isDestroyed()) {
+        webContents.send('agent:protocol-message', ctx.sessionId, syntheticMessage);
+      }
+    }
+  }
 }
 
 /**
@@ -474,13 +498,14 @@ function dispatchOutput(
 export function processStreamChunk(
   dataStr: string,
   lineBuffer: string
-): { lineBuffer: string; displayParts: string[]; textContent: string; usageParts: NonNullable<ParsedStreamEvent['usage']>[] } {
+): { lineBuffer: string; displayParts: string[]; textContent: string; usageParts: NonNullable<ParsedStreamEvent['usage']>[]; agentMessageTexts: string[] } {
   lineBuffer += dataStr;
   const lines = lineBuffer.split('\n');
   lineBuffer = lines.pop() || ''; // Keep incomplete last line in buffer
 
   const displayParts: string[] = [];
   const usageParts: Array<NonNullable<ParsedStreamEvent['usage']>> = [];
+  const agentMessageTexts: string[] = [];
   let textContent = '';
 
   for (const line of lines) {
@@ -493,6 +518,7 @@ export function processStreamChunk(
       if (parsed.display) displayParts.push(parsed.display);
       if (parsed.text) textContent += parsed.text + '\n';
       if (parsed.usage) usageParts.push(parsed.usage);
+      if (parsed.isAgentMessage && parsed.text) agentMessageTexts.push(parsed.text);
     } catch {
       // Not JSON — forward as raw text (e.g., entrypoint echo messages, stderr)
       displayParts.push(trimmed);
@@ -500,7 +526,7 @@ export function processStreamChunk(
     }
   }
 
-  return { lineBuffer, displayParts, textContent, usageParts };
+  return { lineBuffer, displayParts, textContent, usageParts, agentMessageTexts };
 }
 
 /**
@@ -724,6 +750,7 @@ export async function createAgentContainer(
   let lineBuffer = '';
   const dispatchCtx = {
     sessionId, webContentsId, resolvedProjectPath, itemId,
+    agentProvider,
     onOutput, onDisplayOutput, onProtocolMessage,
   };
 
