@@ -561,7 +561,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
                     const planText = fs.readFileSync(planFile, 'utf-8').trim();
                     if (planText.length > 0) {
                       updateItem(exitBoard, itemId, { description: planText });
-                      addComment(exitBoard, itemId, 'system', 'Plan saved to work item description');
+                      addComment(exitBoard, itemId, 'agent', planText);
                       logger.info('Read plan from .yolium-plan.md', { itemId, planLength: planText.length });
                     }
                   }
@@ -595,7 +595,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
                 if (currentItem && currentItem.description === originalItem?.description) {
                   const planText = accumulated.reduce((a, b) => a.length > b.length ? a : b, '');
                   updateItem(exitBoard, itemId, { description: planText });
-                  addComment(exitBoard, itemId, 'system', 'Plan saved to work item description (synthesized from agent output)');
+                  addComment(exitBoard, itemId, 'agent', planText);
                 }
               }
             }
@@ -738,7 +738,7 @@ export function handleAgentOutput(sessionId: string, data: string): void {
       case 'update_description': {
         const ud = message as UpdateDescriptionMessage;
         updateItem(board, session.itemId, { description: ud.description });
-        addComment(board, session.itemId, 'agent', `Updated description`);
+        addComment(board, session.itemId, 'agent', ud.description);
         session.events.emit('descriptionUpdated', ud.description);
         // Track that agent sent update_description (for non-Claude conclusion synthesis)
         const udSession = getAgentSession(sessionId);
