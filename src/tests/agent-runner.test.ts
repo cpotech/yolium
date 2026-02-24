@@ -40,7 +40,7 @@ vi.mock('node:path', async () => {
   };
 });
 
-import { buildAgentPrompt, resolveModel, getDisplayModel, stopAllAgentsForProject, clearSessions } from '@main/services/agent-runner';
+import { buildAgentPrompt, resolveModel, getDisplayModel, getCompletionColumn, stopAllAgentsForProject, clearSessions } from '@main/services/agent-runner';
 import { createBoard, addItem, updateItem, addComment } from '@main/stores/kanban-store';
 
 describe('agent-runner', () => {
@@ -152,6 +152,21 @@ describe('agent-runner', () => {
       expect(prompt).toContain('.yolium-summary.md');
       expect(prompt).toContain('Write Your Summary to a File');
       expect(prompt).not.toContain('.yolium-plan.md');
+    });
+
+    it('should include file-based output instructions for codex scout-agent', () => {
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Scout Agent.',
+        goal: 'Find leads',
+        conversationHistory: '',
+        provider: 'codex',
+        agentName: 'scout-agent',
+      });
+
+      expect(prompt).toContain('.yolium-scout.json');
+      expect(prompt).toContain('Write Your Dossier to a File');
+      expect(prompt).not.toContain('.yolium-plan.md');
+      expect(prompt).not.toContain('.yolium-summary.md');
     });
 
     it('should not include file-based output instructions for claude provider', () => {
@@ -355,6 +370,29 @@ describe('agent-runner', () => {
 
     it('should use override for unknown provider', () => {
       expect(getDisplayModel('unknown-provider', 'custom-model', undefined, 'opus')).toBe('custom-model');
+    });
+  });
+
+  describe('getCompletionColumn', () => {
+    it('should route plan-agent to ready column', () => {
+      expect(getCompletionColumn('plan-agent')).toBe('ready');
+    });
+
+    it('should route scout-agent to done column', () => {
+      expect(getCompletionColumn('scout-agent')).toBe('done');
+    });
+
+    it('should route code-agent to verify column', () => {
+      expect(getCompletionColumn('code-agent')).toBe('verify');
+    });
+
+    it('should route verify-agent to verify column', () => {
+      expect(getCompletionColumn('verify-agent')).toBe('verify');
+    });
+
+    it('should route unknown agents to verify column', () => {
+      expect(getCompletionColumn('unknown-agent')).toBe('verify');
+      expect(getCompletionColumn('marketing-agent')).toBe('verify');
     });
   });
 
@@ -773,6 +811,27 @@ describe('agent-runner', () => {
 
       const result = board.items.find(i => i.id === item.id)!;
       expect(result.column).toBe('ready');
+      expect(result.agentStatus).toBe('completed');
+    });
+
+    it('should move item to done column on complete protocol message for scout-agent', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test work item',
+        description: 'Find leads for SaaS companies',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      // Simulate agent start
+      updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
+
+      // Simulate complete protocol message for scout-agent using getCompletionColumn
+      const completionColumn = getCompletionColumn('scout-agent');
+      updateItem(board, item.id, { agentStatus: 'completed', activeAgentName: undefined, column: completionColumn });
+
+      const result = board.items.find(i => i.id === item.id)!;
+      expect(result.column).toBe('done');
       expect(result.agentStatus).toBe('completed');
     });
 
