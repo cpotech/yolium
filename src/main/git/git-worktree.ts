@@ -570,6 +570,191 @@ function resolveDiffBranchRef(projectPath: string, branchName: string): string {
 }
 
 /**
+ * Get the current branch name in a repository.
+ * Returns null if in detached HEAD state.
+ */
+function getCurrentBranch(cwd: string): string | null {
+  try {
+    return execFileSync('git', ['symbolic-ref', '--short', 'HEAD'], {
+      cwd,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+  } catch {
+    return null; // Detached HEAD
+  }
+}
+
+/**
+ * Parse the conflicting worktree path from a "already checked out" git error.
+ * E.g.: "fatal: 'main' is already checked out at '/path/to/worktree'"
+ */
+function parseConflictingWorktreePath(stderr: string): string | null {
+  const match = stderr.match(/already checked out at '([^']+)'/);
+  return match ? match[1] : null;
+}
+
+/**
+ * Ensure the repository at projectPath has the default branch checked out.
+ *
+ * Handles the common worktree scenario where the default branch is already
+ * checked out in another worktree by:
+ * 1. Skipping checkout if already on the default branch
+ * 2. Pruning stale worktree references
+ * 3. Detaching conflicting Yolium-managed worktrees
+ */
+function ensureDefaultBranchCheckout(projectPath: string, defaultBranch: string): void {
+  // Fast path: already on the default branch
+  if (getCurrentBranch(projectPath) === defaultBranch) {
+    return;
+  }
+
+  // Prune stale worktree references before attempting checkout
+  try {
+    execFileSync('git', ['worktree', 'prune'], { cwd: projectPath, stdio: 'pipe' });
+  } catch {
+    // Ignore prune errors
+  }
+
+  // Attempt checkout
+  try {
+    execFileSync('git', ['checkout', defaultBranch], {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+    return;
+  } catch (err) {
+    const error = err as { stderr?: Buffer; message?: string };
+    const stderr = error.stderr?.toString() || error.message || 'Unknown error';
+
+    if (!stderr.includes('already checked out')) {
+      throw new Error(`Failed to checkout ${defaultBranch}: ${stderr}`);
+    }
+
+    // The default branch is checked out in another worktree — try to recover
+    const conflictingPath = parseConflictingWorktreePath(stderr);
+
+    if (conflictingPath) {
+      if (!fs.existsSync(conflictingPath)) {
+        // Worktree directory no longer exists — remove the stale entry and retry
+        try {
+          execFileSync('git', ['worktree', 'remove', conflictingPath, '--force'], {
+            cwd: projectPath,
+            stdio: 'pipe',
+          });
+        } catch {
+          // Ignore
+        }
+        try {
+          execFileSync('git', ['worktree', 'prune'], { cwd: projectPath, stdio: 'pipe' });
+        } catch {
+          // Ignore
+        }
+      } else if (conflictingPath.includes('.yolium/worktrees/') || conflictingPath.includes('.yolium\\worktrees\\')) {
+        // Yolium-managed worktree has the default branch checked out (likely from
+        // a previous merge or agent operation). Detach it so we can use the branch here.
+        try {
+          execFileSync('git', ['checkout', '--detach'], {
+            cwd: conflictingPath,
+            stdio: 'pipe',
+          });
+        } catch {
+          // Ignore — will fail on retry below
+        }
+      }
+
+      // Retry checkout after recovery
+      try {
+        execFileSync('git', ['checkout', defaultBranch], {
+          cwd: projectPath,
+          stdio: 'pipe',
+        });
+        return;
+      } catch (retryErr) {
+        const retryError = retryErr as { stderr?: Buffer; message?: string };
+        const retryStderr = retryError.stderr?.toString() || retryError.message || 'Unknown error';
+        throw new Error(`Failed to checkout ${defaultBranch}: ${retryStderr}`);
+      }
+    }
+
+    throw new Error(`Failed to checkout ${defaultBranch}: ${stderr}`);
+  }
+}
+
+/**
+ * Async version of ensureDefaultBranchCheckout for use in async merge flows.
+ */
+async function ensureDefaultBranchCheckoutAsync(projectPath: string, defaultBranch: string): Promise<void> {
+  // Fast path: already on the default branch
+  if (getCurrentBranch(projectPath) === defaultBranch) {
+    return;
+  }
+
+  // Prune stale worktree references
+  try {
+    await execFileAsync('git', ['worktree', 'prune'], { cwd: projectPath });
+  } catch {
+    // Ignore
+  }
+
+  // Attempt checkout
+  try {
+    await execFileAsync('git', ['checkout', defaultBranch], {
+      cwd: projectPath,
+    });
+    return;
+  } catch (err) {
+    const error = err as { stderr?: string; message?: string };
+    const stderr = error.stderr || error.message || 'Unknown error';
+
+    if (!stderr.includes('already checked out')) {
+      throw new Error(`Failed to checkout ${defaultBranch}: ${stderr}`);
+    }
+
+    const conflictingPath = parseConflictingWorktreePath(stderr);
+
+    if (conflictingPath) {
+      if (!fs.existsSync(conflictingPath)) {
+        try {
+          await execFileAsync('git', ['worktree', 'remove', conflictingPath, '--force'], {
+            cwd: projectPath,
+          });
+        } catch {
+          // Ignore
+        }
+        try {
+          await execFileAsync('git', ['worktree', 'prune'], { cwd: projectPath });
+        } catch {
+          // Ignore
+        }
+      } else if (conflictingPath.includes('.yolium/worktrees/') || conflictingPath.includes('.yolium\\worktrees\\')) {
+        try {
+          await execFileAsync('git', ['checkout', '--detach'], {
+            cwd: conflictingPath,
+          });
+        } catch {
+          // Ignore
+        }
+      }
+
+      // Retry
+      try {
+        await execFileAsync('git', ['checkout', defaultBranch], {
+          cwd: projectPath,
+        });
+        return;
+      } catch (retryErr) {
+        const retryError = retryErr as { stderr?: string; message?: string };
+        const retryStderr = retryError.stderr || retryError.message || 'Unknown error';
+        throw new Error(`Failed to checkout ${defaultBranch}: ${retryStderr}`);
+      }
+    }
+
+    throw new Error(`Failed to checkout ${defaultBranch}: ${stderr}`);
+  }
+}
+
+/**
  * Merge a branch into the default branch using --no-ff.
  *
  * @param projectPath - The repository path (main worktree)
@@ -581,17 +766,8 @@ export function mergeWorktreeBranch(projectPath: string, branchName: string): vo
 
   const defaultBranch = getDefaultBranch(projectPath);
 
-  // Ensure we're on the default branch
-  try {
-    execFileSync('git', ['checkout', defaultBranch], {
-      cwd: projectPath,
-      stdio: 'pipe',
-    });
-  } catch (err) {
-    const error = err as { stderr?: Buffer; message?: string };
-    const stderr = error.stderr?.toString() || error.message || 'Unknown error';
-    throw new Error(`Failed to checkout ${defaultBranch}: ${stderr}`);
-  }
+  // Ensure we're on the default branch (handles worktree conflicts gracefully)
+  ensureDefaultBranchCheckout(projectPath, defaultBranch);
 
   // Attempt the merge
   try {
@@ -796,10 +972,7 @@ export function checkMergeConflicts(projectPath: string, branchName: string): Co
 
   // Fallback: dry-run merge (modifies index temporarily)
   try {
-    execFileSync('git', ['checkout', defaultBranch], {
-      cwd: projectPath,
-      stdio: 'pipe',
-    });
+    ensureDefaultBranchCheckout(projectPath, defaultBranch);
   } catch {
     return { clean: false, conflictingFiles: ['(unable to checkout default branch)'] };
   }
@@ -1009,28 +1182,20 @@ export async function mergeBranchAndPushPR(
     // Fetch may fail if no remote configured — continue anyway
   }
 
-  // Step 2: Checkout default branch and pull latest
-  try {
-    await execFileAsync('git', ['checkout', defaultBranch], {
-      cwd: projectPath,
-    });
-  } catch (err) {
-    const error = err as { stderr?: string; message?: string };
-    const stderr = error.stderr || error.message || 'Unknown error';
-    return { success: false, error: `Failed to checkout ${defaultBranch}: ${stderr}` };
+  // Step 2: Determine the base ref for the PR branch.
+  // Prefer the remote-tracking branch (has latest fetched changes).
+  let baseRef = defaultBranch;
+  if (gitRefExists(projectPath, `origin/${defaultBranch}`)) {
+    baseRef = `origin/${defaultBranch}`;
   }
 
+  // Step 3: Create the PR branch from the base ref without checking out the
+  // default branch. This avoids the "already checked out in another worktree"
+  // error entirely — we never need to touch the main repo's working tree.
   try {
-    await execFileAsync('git', ['pull', '--ff-only', 'origin', defaultBranch], {
-      cwd: projectPath,
-    });
-  } catch {
-    // Pull may fail if no remote or if diverged — continue with local state
-  }
-
-  // Step 3: Create the PR branch from default branch
-  try {
-    await execFileAsync('git', ['checkout', '-B', prBranch], {
+    // Remove stale PR branch from a previous failed attempt if it exists
+    await execFileAsync('git', ['branch', '-D', prBranch], { cwd: projectPath }).catch(() => {});
+    await execFileAsync('git', ['branch', prBranch, baseRef], {
       cwd: projectPath,
     });
   } catch (err) {
@@ -1039,13 +1204,33 @@ export async function mergeBranchAndPushPR(
     return { success: false, error: `Failed to create PR branch: ${stderr}` };
   }
 
-  // Step 4: Squash merge the worktree branch into the PR branch
+  // Step 4: Create a temporary worktree for the PR branch to perform the merge.
+  // Since prBranch is brand new and not checked out anywhere, this always works.
+  const tempWorktreePath = path.join(os.tmpdir(), `yolium-merge-${Date.now()}`);
   try {
-    await execFileAsync('git', ['merge', '--squash', worktreeBranch], {
+    await execFileAsync('git', ['worktree', 'add', tempWorktreePath, prBranch], {
       cwd: projectPath,
     });
+  } catch (err) {
+    const error = err as { stderr?: string; message?: string };
+    const stderr = error.stderr || error.message || 'Unknown error';
+    try { await execFileAsync('git', ['branch', '-D', prBranch], { cwd: projectPath }); } catch { /* best effort */ }
+    return { success: false, error: `Failed to create temporary worktree: ${stderr}` };
+  }
+
+  // Helper to clean up the temp worktree and PR branch on error
+  const cleanupTemp = async () => {
+    try { await execFileAsync('git', ['worktree', 'remove', tempWorktreePath, '--force'], { cwd: projectPath }); } catch { /* best effort */ }
+    try { await execFileAsync('git', ['branch', '-D', prBranch], { cwd: projectPath }); } catch { /* best effort */ }
+  };
+
+  // Step 5: Squash merge the worktree branch into the PR branch (in temp worktree)
+  try {
+    await execFileAsync('git', ['merge', '--squash', worktreeBranch], {
+      cwd: tempWorktreePath,
+    });
     await execFileAsync('git', ['commit', '-m', `Squash merge branch '${worktreeBranch}' for: ${itemTitle}`], {
-      cwd: projectPath,
+      cwd: tempWorktreePath,
     });
   } catch (err) {
     const error = err as { stderr?: string; stdout?: string; message?: string };
@@ -1054,61 +1239,33 @@ export async function mergeBranchAndPushPR(
     const output = stderr + stdout;
 
     if (output.includes('CONFLICT') || output.includes('Automatic merge failed')) {
-      try {
-        await execFileAsync('git', ['merge', '--abort'], { cwd: projectPath });
-      } catch {
-        // Ignore
-      }
-      try {
-        await execFileAsync('git', ['checkout', defaultBranch], { cwd: projectPath });
-        await execFileAsync('git', ['branch', '-D', prBranch], { cwd: projectPath });
-      } catch {
-        // Best effort
-      }
+      try { await execFileAsync('git', ['merge', '--abort'], { cwd: tempWorktreePath }); } catch { /* ignore */ }
+      await cleanupTemp();
       return { success: false, conflict: true, error: 'Merge conflicts detected. Please resolve manually.' };
     }
 
-    try {
-      await execFileAsync('git', ['checkout', defaultBranch], { cwd: projectPath });
-      await execFileAsync('git', ['branch', '-D', prBranch], { cwd: projectPath });
-    } catch {
-      // Best effort
-    }
+    await cleanupTemp();
     return { success: false, error: `Merge failed: ${output || error.message || 'Unknown error'}` };
   }
 
-  // Step 5: Push the PR branch to remote
+  // Step 6: Push the PR branch to remote
   try {
     await execFileAsync('git', ['push', '-u', 'origin', prBranch], {
-      cwd: projectPath,
+      cwd: tempWorktreePath,
     });
   } catch (err) {
     const error = err as { stderr?: string; message?: string };
     const stderr = error.stderr || error.message || 'Unknown error';
-    // Clean up: go back to default branch
-    try {
-      await execFileAsync('git', ['checkout', defaultBranch], {
-        cwd: projectPath,
-      });
-      await execFileAsync('git', ['branch', '-D', prBranch], {
-        cwd: projectPath,
-      });
-    } catch {
-      // Best effort
-    }
+    await cleanupTemp();
     return { success: false, error: `Failed to push branch: ${stderr}` };
   }
 
-  // Step 6: Create a PR using gh CLI
+  // Step 7: Create a PR using gh CLI
   let prUrl: string | undefined;
   const ghAvailable = await checkGhCliAvailable();
   if (!ghAvailable) {
-    // gh CLI not installed — branch was pushed, user can create PR manually
-    try {
-      await execFileAsync('git', ['checkout', defaultBranch], { cwd: projectPath });
-    } catch {
-      // Best effort
-    }
+    // Remove temp worktree (keep the pushed PR branch)
+    try { await execFileAsync('git', ['worktree', 'remove', tempWorktreePath, '--force'], { cwd: projectPath }); } catch { /* best effort */ }
     return {
       success: true,
       prBranch,
@@ -1121,13 +1278,12 @@ export async function mergeBranchAndPushPR(
       cwd: projectPath,
       encoding: 'utf-8',
     });
-    // gh pr create outputs the PR URL
     prUrl = stdout.trim();
   } catch (err) {
     const error = err as { stderr?: string; message?: string };
     const stderr = error.stderr || error.message || 'Unknown error';
     // Branch was pushed successfully — PR creation failed but that's not fatal
-    // User can create PR manually
+    try { await execFileAsync('git', ['worktree', 'remove', tempWorktreePath, '--force'], { cwd: projectPath }); } catch { /* best effort */ }
     return {
       success: true,
       prBranch,
@@ -1135,11 +1291,9 @@ export async function mergeBranchAndPushPR(
     };
   }
 
-  // Step 7: Clean up worktree and old branch, return to default branch
+  // Step 8: Clean up temp worktree, then clean up agent worktree and branch
   try {
-    await execFileAsync('git', ['checkout', defaultBranch], {
-      cwd: projectPath,
-    });
+    await execFileAsync('git', ['worktree', 'remove', tempWorktreePath, '--force'], { cwd: projectPath });
   } catch {
     // Best effort
   }

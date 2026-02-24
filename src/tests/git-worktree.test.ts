@@ -489,9 +489,8 @@ describe('git-worktree', () => {
       setupExecFileAsyncMock((cmd, args) => {
         const command = `${cmd} ${args.join(' ')}`
         if (command.includes('fetch')) return {}
-        if (command.includes('checkout main') && !command.includes('-B')) return {}
-        if (command.includes('pull')) return {}
-        if (command.includes('checkout -B')) return {}
+        if (command.includes('branch') && !command.includes('branch -d')) return {}
+        if (command.includes('worktree add')) return {}
         if (command.includes('merge') && command.includes('--squash')) return {}
         if (command.includes('commit -m')) return {}
         if (command.includes('push -u')) {
@@ -520,9 +519,8 @@ describe('git-worktree', () => {
       setupExecFileAsyncMock((cmd, args) => {
         const command = `${cmd} ${args.join(' ')}`
         if (command.includes('fetch')) return {}
-        if (command.includes('checkout main') && !command.includes('-B')) return {}
-        if (command.includes('pull')) return {}
-        if (command.includes('checkout -B')) return {}
+        if (command.includes('branch') && !command.includes('branch -d')) return {}
+        if (command.includes('worktree add')) return {}
         if (command.includes('merge') && command.includes('--squash')) return {}
         if (command.includes('commit -m')) return {}
         if (command.includes('push -u')) return {}
@@ -553,15 +551,16 @@ describe('git-worktree', () => {
       setupExecFileAsyncMock((cmd, args) => {
         const command = `${cmd} ${args.join(' ')}`
         if (command.includes('fetch')) return {}
-        if (command.includes('checkout main') && !command.includes('-B')) return {}
-        if (command.includes('pull')) return {}
-        if (command.includes('checkout -B')) return {}
+        if (command.includes('branch') && !command.includes('branch -d')) return {}
+        if (command.includes('worktree add')) return {}
         if (command.includes('merge') && command.includes('--squash')) return {}
         if (command.includes('commit -m')) return {}
         if (command.includes('push -u')) return {}
         if (cmd === 'gh') {
           return { error: new Error('spawn gh ENOENT') }
         }
+        // cleanup: worktree remove
+        if (command.includes('worktree remove')) return {}
         return {}
       })
 
@@ -584,9 +583,8 @@ describe('git-worktree', () => {
       setupExecFileAsyncMock((cmd, args) => {
         const command = `${cmd} ${args.join(' ')}`
         if (command.includes('fetch')) return {}
-        if (command.includes('checkout main') && !command.includes('-B')) return {}
-        if (command.includes('pull')) return {}
-        if (command.includes('checkout -B')) return {}
+        if (command.includes('branch') && !command.includes('branch -d')) return {}
+        if (command.includes('worktree add')) return {}
         if (command.includes('merge') && command.includes('--squash')) return {}
         if (command.includes('commit -m')) return {}
         if (command.includes('push -u')) return {}
@@ -596,6 +594,8 @@ describe('git-worktree', () => {
           err.stderr = 'authentication required'
           return { error: err }
         }
+        // cleanup: worktree remove
+        if (command.includes('worktree remove')) return {}
         return {}
       })
 
@@ -618,9 +618,8 @@ describe('git-worktree', () => {
       setupExecFileAsyncMock((cmd, args) => {
         const command = `${cmd} ${args.join(' ')}`
         if (command.includes('fetch')) return {}
-        if (command.includes('checkout main') && !command.includes('-B')) return {}
-        if (command.includes('pull')) return {}
-        if (command.includes('checkout -B')) return {}
+        if (command.includes('branch') && !command.includes('branch -d')) return {}
+        if (command.includes('worktree add')) return {}
         if (command.includes('merge') && command.includes('--squash')) return {}
         if (command.includes('commit -m')) return {}
         if (command.includes('push -u')) return {}
@@ -644,14 +643,17 @@ describe('git-worktree', () => {
       expect(result.prBranch).toBe('(bug)-agent-type-wrong')
     })
 
-    it('returns error when checkout of default branch fails', async () => {
+    it('returns error when PR branch creation fails', async () => {
       setupSyncHelpers()
       setupExecFileAsyncMock((cmd, args) => {
         const command = `${cmd} ${args.join(' ')}`
         if (command.includes('fetch')) return {}
-        if (command.includes('checkout main')) {
-          const err = new Error('checkout failed') as any
-          err.stderr = 'error: uncommitted changes'
+        // branch -D (pre-cleanup) can fail silently
+        if (command.includes('branch -D')) return {}
+        // creating the PR branch fails
+        if (command.startsWith('git branch')) {
+          const err = new Error('branch failed') as any
+          err.stderr = 'fatal: not a valid object name'
           return { error: err }
         }
         return {}
@@ -666,7 +668,7 @@ describe('git-worktree', () => {
       )
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain('Failed to checkout main')
+      expect(result.error).toContain('Failed to create PR branch')
     })
 
   })
