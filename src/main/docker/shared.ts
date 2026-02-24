@@ -31,6 +31,10 @@ export interface AgentContainerSession {
   protocolMessageCount: number;
   /** Cumulative token usage emitted by this session. */
   cumulativeUsage: AgentTokenUsage;
+  /** Accumulated agent message texts for non-Claude providers (used for conclusion synthesis) */
+  agentMessageTexts?: string[];
+  /** Whether the agent emitted an update_description protocol message */
+  receivedUpdateDescription?: boolean;
 }
 
 /** Shared Docker client instance (auto-detects socket path). */

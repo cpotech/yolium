@@ -473,6 +473,7 @@ function dispatchOutput(
   // Synthesize add_comment protocol messages from Codex agent_message text.
   // Non-Claude providers don't emit @@YOLIUM: protocol messages, so we convert
   // their substantive agent_message text into kanban comments automatically.
+  // Also accumulate texts for conclusion synthesis on exit.
   if (ctx.agentProvider && ctx.agentProvider !== 'claude' && result.agentMessageTexts.length > 0) {
     for (const text of result.agentMessageTexts) {
       // Skip text that contains @@YOLIUM: — already handled as protocol messages above
@@ -480,9 +481,15 @@ function dispatchOutput(
       // Skip short messages (noise filter)
       if (text.length < 50) continue;
 
-      const syntheticMessage = { type: 'add_comment' as const, text };
+      // Accumulate for conclusion synthesis when agent exits
       const session = agentSessions.get(ctx.sessionId);
-      if (session) session.protocolMessageCount += 1;
+      if (session) {
+        if (!session.agentMessageTexts) session.agentMessageTexts = [];
+        session.agentMessageTexts.push(text);
+        session.protocolMessageCount += 1;
+      }
+
+      const syntheticMessage = { type: 'add_comment' as const, text };
       ctx.onProtocolMessage?.(syntheticMessage);
       if (webContents && !webContents.isDestroyed()) {
         webContents.send('agent:protocol-message', ctx.sessionId, syntheticMessage);

@@ -52,6 +52,7 @@ export interface BuildPromptParams {
   goal: string;
   conversationHistory: string;
   provider?: string;
+  agentName?: string;
 }
 
 /**
@@ -116,13 +117,56 @@ Fields: description (string, required)
 4. Your LAST protocol message MUST be either a complete or error message
 5. Output these as plain text lines — they will be parsed from your stdout`;
 
+/**
+ * File-based output instructions for non-Claude plan agents.
+ * Codex models have internal reasoning and often don't externalize their
+ * analysis as text. This forces them to write their plan to a file that
+ * the system reads after the agent exits.
+ */
+const FILE_OUTPUT_PLAN = `## CRITICAL: Write Your Plan to a File
+
+After completing your analysis, you MUST write your final implementation plan to a file named \`.yolium-plan.md\` in the project root directory.
+
+The file must include:
+- Context and summary of your findings
+- Chosen approach and rationale
+- Ordered implementation steps with specific files to modify
+- Acceptance criteria
+
+This file is MANDATORY — the system reads it to capture your plan. If you do not write this file, your work will be lost.`;
+
+/**
+ * File-based output instructions for non-Claude code agents.
+ * Ensures Codex writes a summary of changes for visibility.
+ */
+const FILE_OUTPUT_CODE = `## CRITICAL: Write Your Summary to a File
+
+After completing your implementation and committing changes, you MUST write a summary to a file named \`.yolium-summary.md\` in the project root directory.
+
+The file must include:
+- What was implemented
+- Files modified and why
+- Tests added and results
+- Any caveats or follow-up items
+
+This file is MANDATORY — the system reads it to capture your work summary. If you do not write this file, your conclusions will be lost.`;
+
 export function buildAgentPrompt(params: BuildPromptParams): string {
-  const { systemPrompt, goal, conversationHistory, provider } = params;
+  const { systemPrompt, goal, conversationHistory, provider, agentName } = params;
 
   // For non-Claude providers, inline the protocol and system prompt
   // so the model has everything in its primary prompt context
   if (provider && provider !== 'claude') {
     let prompt = `# Yolium Agent Instructions\n\n${INLINE_PROTOCOL}\n\n---\n\n${systemPrompt}\n\n## Current Goal\n\n${goal}`;
+
+    // Add file-based output instructions (Codex models don't reliably emit
+    // protocol messages, so we also ask them to write output to files that
+    // the system reads after the agent exits)
+    if (agentName === 'plan-agent') {
+      prompt += `\n\n${FILE_OUTPUT_PLAN}`;
+    } else if (agentName === 'code-agent') {
+      prompt += `\n\n${FILE_OUTPUT_CODE}`;
+    }
 
     if (conversationHistory.trim()) {
       prompt += `\n\n## Previous conversation:\n\n${conversationHistory}\n\nContinue from where you left off.`;
@@ -310,6 +354,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     goal: effectiveGoal,
     conversationHistory,
     provider,
+    agentName,
   });
   logger.info('Prompt built', { agentName, promptLength: prompt.length, elapsedMs: Math.round(performance.now() - agentPhaseStart) });
 
@@ -499,6 +544,61 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
                 events.emit('complete', 'Agent finished successfully');
               }
             }
+
+            // Conclusion synthesis for non-Claude providers (e.g., Codex).
+            // These providers don't follow the @@YOLIUM protocol natively, so we
+            // synthesize missing protocol actions from their output.
+            if (isNonClaude && agentSession) {
+              const outputDir = worktreePath || resolvedProjectPath;
+
+              // Strategy 1: Read file-based output (most reliable for Codex,
+              // which has internal reasoning and doesn't externalize as text).
+              // The prompt instructs non-Claude agents to write their output here.
+              if (agentName === 'plan-agent' && !agentSession.receivedUpdateDescription) {
+                const planFile = path.join(outputDir, '.yolium-plan.md');
+                try {
+                  if (fs.existsSync(planFile)) {
+                    const planText = fs.readFileSync(planFile, 'utf-8').trim();
+                    if (planText.length > 0) {
+                      updateItem(exitBoard, itemId, { description: planText });
+                      addComment(exitBoard, itemId, 'system', 'Plan saved to work item description');
+                      logger.info('Read plan from .yolium-plan.md', { itemId, planLength: planText.length });
+                    }
+                  }
+                } catch (err) {
+                  logger.warn('Failed to read .yolium-plan.md', { itemId, error: err instanceof Error ? err.message : String(err) });
+                }
+              }
+
+              if (agentName === 'code-agent') {
+                const summaryFile = path.join(outputDir, '.yolium-summary.md');
+                try {
+                  if (fs.existsSync(summaryFile)) {
+                    const summaryText = fs.readFileSync(summaryFile, 'utf-8').trim();
+                    if (summaryText.length > 0) {
+                      addComment(exitBoard, itemId, 'agent', summaryText);
+                      logger.info('Read summary from .yolium-summary.md', { itemId, summaryLength: summaryText.length });
+                    }
+                  }
+                } catch (err) {
+                  logger.warn('Failed to read .yolium-summary.md', { itemId, error: err instanceof Error ? err.message : String(err) });
+                }
+              }
+
+              // Strategy 2: Fall back to accumulated agent message texts
+              // (for providers that do externalize reasoning, like some OpenCode setups)
+              const accumulated = agentSession.agentMessageTexts || [];
+              if (agentName === 'plan-agent' && !agentSession.receivedUpdateDescription && accumulated.length > 0) {
+                // Only use if file-based approach didn't produce a description
+                const currentItem = exitBoard.items.find(i => i.id === itemId);
+                const originalItem = board.items.find(i => i.id === itemId);
+                if (currentItem && currentItem.description === originalItem?.description) {
+                  const planText = accumulated.reduce((a, b) => a.length > b.length ? a : b, '');
+                  updateItem(exitBoard, itemId, { description: planText });
+                  addComment(exitBoard, itemId, 'system', 'Plan saved to work item description (synthesized from agent output)');
+                }
+              }
+            }
           } else if (code === 124) {
             // Timeout
             const timeoutMinutes = agent.timeout || 30;
@@ -640,6 +740,9 @@ export function handleAgentOutput(sessionId: string, data: string): void {
         updateItem(board, session.itemId, { description: ud.description });
         addComment(board, session.itemId, 'agent', `Updated description`);
         session.events.emit('descriptionUpdated', ud.description);
+        // Track that agent sent update_description (for non-Claude conclusion synthesis)
+        const udSession = getAgentSession(sessionId);
+        if (udSession) udSession.receivedUpdateDescription = true;
         break;
       }
 
