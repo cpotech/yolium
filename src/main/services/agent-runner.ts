@@ -34,7 +34,7 @@ import {
   checkAgentAuth,
   getAgentSession,
 } from '@main/docker';
-import type { KanbanBoard, KanbanItem } from '@shared/types/kanban';
+import type { KanbanBoard, KanbanColumn, KanbanItem } from '@shared/types/kanban';
 import type {
   AskQuestionMessage,
   CreateItemMessage,
@@ -151,6 +151,24 @@ The file must include:
 
 This file is MANDATORY — the system reads it to capture your work summary. If you do not write this file, your conclusions will be lost.`;
 
+/**
+ * File-based output instructions for non-Claude scout agents.
+ * Ensures the scout dossier is written to a known path for capture.
+ */
+const FILE_OUTPUT_SCOUT = `## CRITICAL: Write Your Dossier to a File
+
+After completing your research, you MUST write the final JSON dossier array to a file named \`.yolium-scout.json\` in the project root directory.
+
+The file must be a valid JSON array of lead dossier objects, each containing:
+- company (name, website, industry, description, headquarters, employeeCount)
+- contacts (name, title, relevance)
+- techStack (array of technologies)
+- signals (recentFunding, hiring, recentNews, growthIndicators)
+- qualification (grade, mustHavesMet, confidence, notes)
+- sources (array of URLs)
+
+This file is MANDATORY — the system reads it to capture your dossier. If you do not write this file, your research will be lost.`;
+
 export function buildAgentPrompt(params: BuildPromptParams): string {
   const { systemPrompt, goal, conversationHistory, provider, agentName } = params;
 
@@ -166,6 +184,8 @@ export function buildAgentPrompt(params: BuildPromptParams): string {
       prompt += `\n\n${FILE_OUTPUT_PLAN}`;
     } else if (agentName === 'code-agent') {
       prompt += `\n\n${FILE_OUTPUT_CODE}`;
+    } else if (agentName === 'scout-agent') {
+      prompt += `\n\n${FILE_OUTPUT_SCOUT}`;
     }
 
     if (conversationHistory.trim()) {
@@ -234,6 +254,18 @@ const MODEL_MAP: Record<string, string> = {
   sonnet: 'claude-sonnet-4-5-20250929',
   haiku: 'claude-haiku-4-5-20251001',
 };
+
+/**
+ * Determine which kanban column an item moves to on agent completion.
+ * - plan-agent → 'ready' (plan complete, waiting for code agent)
+ * - scout-agent → 'done' (intelligence dossier is a finished deliverable)
+ * - all others → 'verify' (code changes need review)
+ */
+export function getCompletionColumn(agentName: string): KanbanColumn {
+  if (agentName === 'plan-agent') return 'ready';
+  if (agentName === 'scout-agent') return 'done';
+  return 'verify';
+}
 
 /**
  * Resolve the model to use for an agent run.
@@ -521,7 +553,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
                 // Non-Claude provider exited cleanly with no protocol messages.
                 // The agent likely completed its work but didn't output @@YOLIUM: messages.
                 // Treat as success — exit code 0 means the agent finished without errors.
-                const completionColumn = agentName === 'plan-agent' ? 'ready' : 'verify';
+                const completionColumn = getCompletionColumn(agentName);
                 updateItem(exitBoard, itemId, { agentStatus: 'completed', activeAgentName: undefined, column: completionColumn });
                 addComment(exitBoard, itemId, 'system', 'Agent finished (no progress messages reported — check agent log for details)');
                 events.emit('complete', 'Agent finished successfully');
@@ -536,9 +568,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
                 onError?.(incompleteMsg);
               } else {
                 // Exit code 0, no protocol messages, Claude provider — treat as success
-                // Plan agents move to 'ready' (plan complete, waiting for code agent)
-                // Code agents move to 'verify' (implementation done, needs verification)
-                const completionColumn = agentName === 'plan-agent' ? 'ready' : 'verify';
+                const completionColumn = getCompletionColumn(agentName);
                 updateItem(exitBoard, itemId, { agentStatus: 'completed', activeAgentName: undefined, column: completionColumn });
                 addComment(exitBoard, itemId, 'system', 'Agent finished successfully');
                 events.emit('complete', 'Agent finished successfully');
@@ -582,6 +612,21 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
                   }
                 } catch (err) {
                   logger.warn('Failed to read .yolium-summary.md', { itemId, error: err instanceof Error ? err.message : String(err) });
+                }
+              }
+
+              if (agentName === 'scout-agent') {
+                const scoutFile = path.join(outputDir, '.yolium-scout.json');
+                try {
+                  if (fs.existsSync(scoutFile)) {
+                    const scoutText = fs.readFileSync(scoutFile, 'utf-8').trim();
+                    if (scoutText.length > 0) {
+                      addComment(exitBoard, itemId, 'agent', scoutText);
+                      logger.info('Read dossier from .yolium-scout.json', { itemId, dossierLength: scoutText.length });
+                    }
+                  }
+                } catch (err) {
+                  logger.warn('Failed to read .yolium-scout.json', { itemId, error: err instanceof Error ? err.message : String(err) });
                 }
               }
 
@@ -755,9 +800,7 @@ export function handleAgentOutput(sessionId: string, data: string): void {
 
       case 'complete': {
         const comp = message as CompleteMessage;
-        // Plan agents move to 'ready' (plan complete, waiting for code agent)
-        // Code agents move to 'verify' (implementation done, needs verification)
-        const completionColumn = session.agentName === 'plan-agent' ? 'ready' : 'verify';
+        const completionColumn = getCompletionColumn(session.agentName);
         updateItem(board, session.itemId, { agentStatus: 'completed', activeAgentName: undefined, column: completionColumn });
         addComment(board, session.itemId, 'system', `Completed: ${comp.summary}`);
 
