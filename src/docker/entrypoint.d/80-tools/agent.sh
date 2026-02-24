@@ -83,9 +83,25 @@ CODEXCFG
         exit $EXIT_CODE
     }
 
-    # Agent completed — check for commits and emit completion protocol messages
-    LAST_COMMIT=$(git log --oneline -1 --format="%s" 2>/dev/null | sed 's/\\/\\\\/g; s/"/\\"/g' | head -c 200 || true)
-    SUMMARY="${LAST_COMMIT:-Agent completed work}"
+    # Agent completed — build a meaningful completion summary
+    if [ "$AGENT_NAME" = "plan-agent" ]; then
+        if [ -f ".yolium-plan.md" ]; then
+            SUMMARY="Implementation plan created and saved to .yolium-plan.md"
+        else
+            SUMMARY="Implementation plan created"
+        fi
+    else
+        LAST_COMMIT=$(git log --oneline -1 --format="%s" 2>/dev/null | sed 's/\\/\\\\/g; s/"/\\"/g' | head -c 200 || true)
+        if [ -f ".yolium-summary.md" ]; then
+            # Use first line of summary file as the completion message
+            FIRST_LINE=$(head -1 .yolium-summary.md | sed 's/^#* *//' | sed 's/\\/\\\\/g; s/"/\\"/g' | head -c 200 || true)
+            SUMMARY="${FIRST_LINE:-Agent completed work}"
+        elif [ -n "$LAST_COMMIT" ]; then
+            SUMMARY="$LAST_COMMIT"
+        else
+            SUMMARY="Agent completed work"
+        fi
+    fi
     echo "@@YOLIUM:{\"type\":\"complete\",\"summary\":\"${SUMMARY}\"}"
     exit 0
 else

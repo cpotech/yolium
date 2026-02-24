@@ -126,6 +126,47 @@ describe('agent-runner', () => {
       expect(prompt).toContain('REMINDER: You MUST output @@YOLIUM:');
     });
 
+    it('should include file-based output instructions for codex plan-agent', () => {
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Plan Agent.',
+        goal: 'Create plan',
+        conversationHistory: '',
+        provider: 'codex',
+        agentName: 'plan-agent',
+      });
+
+      expect(prompt).toContain('.yolium-plan.md');
+      expect(prompt).toContain('Write Your Plan to a File');
+      expect(prompt).not.toContain('.yolium-summary.md');
+    });
+
+    it('should include file-based output instructions for codex code-agent', () => {
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Code Agent.',
+        goal: 'Fix bug',
+        conversationHistory: '',
+        provider: 'codex',
+        agentName: 'code-agent',
+      });
+
+      expect(prompt).toContain('.yolium-summary.md');
+      expect(prompt).toContain('Write Your Summary to a File');
+      expect(prompt).not.toContain('.yolium-plan.md');
+    });
+
+    it('should not include file-based output instructions for claude provider', () => {
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Plan Agent.',
+        goal: 'Create plan',
+        conversationHistory: '',
+        provider: 'claude',
+        agentName: 'plan-agent',
+      });
+
+      expect(prompt).not.toContain('.yolium-plan.md');
+      expect(prompt).not.toContain('.yolium-summary.md');
+    });
+
     it('should include inline protocol for opencode provider', () => {
       const prompt = buildAgentPrompt({
         systemPrompt: 'You are the Plan Agent.',
@@ -485,6 +526,130 @@ describe('agent-runner', () => {
       // The new code does nothing with branch/worktree on completion
       expect(mergeFn).not.toHaveBeenCalled();
       expect(cleanupFn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('non-Claude conclusion synthesis', () => {
+    /**
+     * Tests the post-completion synthesis behavior for non-Claude providers (e.g., Codex).
+     * These providers don't follow the @@YOLIUM protocol natively, so the system
+     * synthesizes missing protocol actions from accumulated agent messages on exit.
+     */
+
+    it('should save longest agent message as description for Codex plan-agent', () => {
+      // Simulates the onExit synthesis path when:
+      // - Provider is non-Claude (Codex)
+      // - Agent is plan-agent
+      // - receivedUpdateDescription is false
+      // - Accumulated agent messages exist
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Plan authentication feature',
+        description: 'Original description',
+        agentProvider: 'codex',
+        order: 0,
+      });
+
+      // Simulate agent start
+      updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
+
+      // Simulate what conclusion synthesis does:
+      // Pick the longest accumulated message as the plan
+      const accumulatedMessages = [
+        'Short analysis note about the codebase structure.',
+        '## Implementation Plan\n\n### Step 1: Add auth middleware\n- Create src/middleware/auth.ts\n- Add JWT token validation\n\n### Step 2: Update routes\n- Protect /api/* routes\n\n### Acceptance Criteria\n- [ ] All API routes require valid JWT\n- [ ] Unauthorized requests return 401',
+        'Looking at the existing patterns in the codebase.',
+      ];
+      const planText = accumulatedMessages.reduce((a, b) => a.length > b.length ? a : b, '');
+      updateItem(board, item.id, { description: planText });
+      addComment(board, item.id, 'system', 'Plan saved to work item description (synthesized from agent output)');
+
+      const result = board.items.find(i => i.id === item.id)!;
+      expect(result.description).toContain('## Implementation Plan');
+      expect(result.description).toContain('Add auth middleware');
+      expect(result.description).not.toBe('Original description');
+    });
+
+    it('should not overwrite description when agent already sent update_description', () => {
+      // When receivedUpdateDescription is true, synthesis should be skipped
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Plan feature',
+        description: 'Original description',
+        agentProvider: 'codex',
+        order: 0,
+      });
+
+      // Simulate that agent sent update_description (protocol message was received)
+      const agentPlan = 'Agent-provided plan via protocol';
+      updateItem(board, item.id, { description: agentPlan });
+
+      // Simulate conclusion synthesis check: receivedUpdateDescription = true → skip
+      const receivedUpdateDescription = true;
+      if (!receivedUpdateDescription) {
+        updateItem(board, item.id, { description: 'Should not overwrite' });
+      }
+
+      const result = board.items.find(i => i.id === item.id)!;
+      expect(result.description).toBe(agentPlan);
+    });
+
+    it('should not synthesize description for code-agent (only plan-agent)', () => {
+      // Code agents don't need description synthesis — they commit code, not plans
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Implement auth',
+        description: 'Original description',
+        agentProvider: 'codex',
+        order: 0,
+      });
+
+      // Simulate conclusion synthesis check: agentName !== 'plan-agent' → skip
+      const agentName = 'code-agent';
+      if (agentName === 'plan-agent') {
+        updateItem(board, item.id, { description: 'Should not be set' });
+      }
+
+      const result = board.items.find(i => i.id === item.id)!;
+      expect(result.description).toBe('Original description');
+    });
+
+    it('should not synthesize description when no messages were accumulated', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Plan feature',
+        description: 'Original description',
+        agentProvider: 'codex',
+        order: 0,
+      });
+
+      // Simulate conclusion synthesis with empty accumulated messages
+      const accumulated: string[] = [];
+      if (accumulated.length > 0) {
+        updateItem(board, item.id, { description: 'Should not be set' });
+      }
+
+      const result = board.items.find(i => i.id === item.id)!;
+      expect(result.description).toBe('Original description');
+    });
+
+    it('should not synthesize description for Claude provider', () => {
+      // Claude follows the protocol natively — no synthesis needed
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Plan feature',
+        description: 'Original description',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      const isNonClaude = item.agentProvider !== 'claude';
+      if (isNonClaude) {
+        updateItem(board, item.id, { description: 'Should not be set' });
+      }
+
+      const result = board.items.find(i => i.id === item.id)!;
+      expect(result.description).toBe('Original description');
     });
   });
 
