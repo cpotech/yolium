@@ -37,21 +37,132 @@ function urlTransform(url: string): string | null {
   return ''
 }
 
+interface CopyButtonProps {
+  text: string
+  title: string
+  testId: string
+  size?: number
+  className?: string
+}
+
+function CopyButton({ text, title, testId, size = 12, className = '' }: CopyButtonProps): React.ReactElement {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = useCallback(() => {
+    if (!text || !navigator.clipboard?.writeText) return
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }, [text])
+
+  return (
+    <button
+      data-testid={testId}
+      onClick={handleCopy}
+      title={title}
+      className={`inline-flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--color-bg-secondary)] transition-colors ${className}`}
+    >
+      {copied ? (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      ) : (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+      )}
+    </button>
+  )
+}
+
+function extractTextContent(node: React.ReactNode): string {
+  if (node === null || node === undefined || typeof node === 'boolean') {
+    return ''
+  }
+
+  if (typeof node === 'string' || typeof node === 'number') {
+    return String(node)
+  }
+
+  if (Array.isArray(node)) {
+    return node.map(extractTextContent).join('')
+  }
+
+  if (React.isValidElement(node)) {
+    return extractTextContent((node.props as { children?: React.ReactNode }).children)
+  }
+
+  return ''
+}
+
+function extractLanguage(node: React.ReactNode): string | null {
+  if (node === null || node === undefined || typeof node === 'boolean') {
+    return null
+  }
+
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      const language = extractLanguage(child)
+      if (language) return language
+    }
+    return null
+  }
+
+  if (!React.isValidElement(node)) {
+    return null
+  }
+
+  const { className, children } = node.props as { className?: string; children?: React.ReactNode }
+  const languageMatch = className?.match(/language-([a-z0-9_-]+)/i)
+  if (languageMatch?.[1]) {
+    return languageMatch[1].toLowerCase()
+  }
+
+  return extractLanguage(children)
+}
+
+function CopyableCodeBlock({
+  children,
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLPreElement>): React.ReactElement {
+  const codeText = extractTextContent(children)
+  const language = extractLanguage(children)
+
+  return (
+    <div className="relative group my-1">
+      {language && (
+        <span
+          data-testid="code-language-label"
+          className="absolute top-2 left-2 z-10 text-[10px] uppercase tracking-wide text-[var(--color-text-tertiary)] bg-[var(--color-bg-primary)] px-1 py-0.5 rounded"
+        >
+          {language}
+        </span>
+      )}
+      <CopyButton
+        text={codeText}
+        title="Copy code"
+        testId="copy-code-block-button"
+        className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+      />
+      <pre
+        className={`text-sm text-[var(--color-text-primary)] font-mono bg-[var(--color-bg-secondary)] rounded border border-[var(--color-border-primary)] ${className || ''}`}
+        {...props}
+      >
+        {children}
+      </pre>
+    </div>
+  )
+}
+
 /**
  * Non-navigable link that displays the URL as a copyable and openable path.
  * Prevents Electron from navigating away from the app when links are clicked.
  */
 function CopyableLink({ href, children }: { href?: string; children?: React.ReactNode }): React.ReactElement {
-  const [copied, setCopied] = useState(false)
   const displayUrl = href || ''
-
-  const handleCopy = useCallback(() => {
-    if (!displayUrl) return
-    navigator.clipboard.writeText(displayUrl).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    })
-  }, [displayUrl])
 
   const handleOpen = useCallback(() => {
     if (!displayUrl) return
@@ -69,23 +180,11 @@ function CopyableLink({ href, children }: { href?: string; children?: React.Reac
     >
       {showLabel && <span>{children} — </span>}
       <code className="text-xs bg-[var(--color-bg-secondary)] px-1 py-0.5 rounded select-all">{displayUrl}</code>
-      <button
-        data-testid="copy-link-button"
-        onClick={handleCopy}
+      <CopyButton
+        text={displayUrl}
         title="Copy URL"
-        className="inline-flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--color-bg-secondary)] transition-colors"
-      >
-        {copied ? (
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        ) : (
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-          </svg>
-        )}
-      </button>
+        testId="copy-link-button"
+      />
       <button
         data-testid="open-link-button"
         onClick={handleOpen}
@@ -114,11 +213,11 @@ function createMarkdownComponents(onOpenMock: (filePath: string) => void) {
     code: ({ children, className, ...props }: React.HTMLAttributes<HTMLElement>) => {
       const isBlock = className?.includes('language-')
       if (isBlock) {
-        return <code className={`block bg-[var(--color-bg-secondary)] p-2 rounded text-xs font-mono overflow-x-auto ${className || ''}`} {...props}>{children}</code>
+        return <code className={`block text-xs font-mono overflow-x-auto p-2 pt-7 ${className || ''}`} {...props}>{children}</code>
       }
       return <code className="bg-[var(--color-bg-secondary)] px-1 py-0.5 rounded text-xs font-mono" {...props}>{children}</code>
     },
-    pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => <pre className="my-1" {...props}>{children}</pre>,
+    pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => <CopyableCodeBlock {...props}>{children}</CopyableCodeBlock>,
     strong: ({ children, ...props }: React.HTMLAttributes<HTMLElement>) => <strong className="font-semibold" {...props}>{children}</strong>,
     a: ({ children, href, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
       if (isMockLink(href)) {
@@ -242,28 +341,47 @@ export function CommentsList({ comments, onSelectOption }: CommentsListProps): R
               key={comment.id}
               className="bg-[var(--color-bg-primary)] rounded-md p-3 border border-[var(--color-border-primary)]"
             >
-              <div className="flex items-center gap-2 mb-1">
-                <span
-                  data-testid={`comment-badge-${comment.id}`}
-                  className={`px-1.5 py-0.5 text-[10px] font-medium rounded text-white ${commentBadgeColors[comment.source]}`}
-                >
-                  {comment.source}
-                </span>
-                <span className="text-[11px] text-[var(--color-text-tertiary)]">
-                  {formatTimestamp(comment.timestamp)}
-                </span>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center gap-2">
+                  <span
+                    data-testid={`comment-badge-${comment.id}`}
+                    className={`px-1.5 py-0.5 text-[10px] font-medium rounded text-white ${commentBadgeColors[comment.source]}`}
+                  >
+                    {comment.source}
+                  </span>
+                  <span className="text-[11px] text-[var(--color-text-tertiary)]">
+                    {formatTimestamp(comment.timestamp)}
+                  </span>
+                </div>
+                <CopyButton
+                  text={comment.text}
+                  title="Copy comment"
+                  testId={`copy-comment-${comment.id}`}
+                  className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
+                />
               </div>
               {(() => {
                 const prettyJson = getPrettyJson(comment.text)
 
                 if (prettyJson) {
                   return (
-                    <pre
-                      data-testid={`comment-json-${comment.id}`}
-                      className="text-sm text-[var(--color-text-primary)] font-mono whitespace-pre-wrap bg-[var(--color-bg-secondary)] p-2 rounded border border-[var(--color-border-primary)]"
-                    >
-                      {prettyJson}
-                    </pre>
+                    <div className="relative group my-1">
+                      <span className="absolute top-2 left-2 z-10 text-[10px] uppercase tracking-wide text-[var(--color-text-tertiary)] bg-[var(--color-bg-primary)] px-1 py-0.5 rounded">
+                        JSON
+                      </span>
+                      <CopyButton
+                        text={prettyJson}
+                        title="Copy JSON"
+                        testId={`copy-json-${comment.id}`}
+                        className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                      />
+                      <pre
+                        data-testid={`comment-json-${comment.id}`}
+                        className="text-sm text-[var(--color-text-primary)] font-mono whitespace-pre-wrap bg-[var(--color-bg-secondary)] p-2 pt-7 rounded border border-[var(--color-border-primary)]"
+                      >
+                        {prettyJson}
+                      </pre>
+                    </div>
                   )
                 }
 
