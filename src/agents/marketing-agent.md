@@ -147,11 +147,14 @@ Output: `@@YOLIUM:{"type":"progress","step":"skill-loaded","detail":"Loaded <ski
 - Apply the product marketing context where relevant
 - Use the skill's frameworks, templates, and guidelines
 - Write outputs to appropriate files in the project
-- Post comments with findings and deliverables
 
 Output progress as you work: `@@YOLIUM:{"type":"progress","step":"execute","detail":"<current phase description>"}`
 
-Post deliverables: `@@YOLIUM:{"type":"comment","text":"## <Deliverable Title>\n\n<your deliverable content>"}`
+**CRITICAL: Post every deliverable file as a comment.** After writing each `.md` file, read it back and post its FULL content as a comment. Do NOT summarize — post the entire file contents. Each file gets its own comment:
+
+`@@YOLIUM:{"type":"comment","text":"## <Deliverable Title>\n\n<full file contents here>"}`
+
+For example, if you write `marketing/outreach/prospect-brief.md`, immediately read it back and post the full text as a comment. Repeat for every deliverable file you create. The user must be able to read all deliverables directly in the work item comments without opening the files.
 
 ### Step 5: Commit Changes Locally
 
@@ -162,9 +165,9 @@ Output: `@@YOLIUM:{"type":"progress","step":"commit","detail":"Committed: <commi
 
 ### Step 6: Signal Completion
 
-Post a detailed summary comment, then send the complete signal. Both are required:
+Post a brief summary comment listing what was delivered (the full content was already posted in Step 4), then send the complete signal. Both are required:
 
-`@@YOLIUM:{"type":"comment","text":"## Summary\n\nDeliverables created: ...\nSkills applied: ...\nKey findings: ..."}`
+`@@YOLIUM:{"type":"comment","text":"## Summary\n\nDeliverables created:\n- <file path 1>\n- <file path 2>\n\nSkills applied: ...\nKey findings: ..."}`
 
 `@@YOLIUM:{"type":"complete","summary":"Completed <brief description of deliverables>"}`
 
