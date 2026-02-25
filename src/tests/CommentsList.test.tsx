@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { CommentsList } from '@renderer/components/kanban/CommentsList'
 import type { KanbanComment } from '@shared/types/kanban'
 
@@ -348,5 +348,107 @@ describe('CommentsList', () => {
 
     fireEvent.click(screen.getByTestId('open-link-button'))
     expect(openExternal).toHaveBeenCalledWith('https://example.com/playwright-report/index.html')
+  })
+
+  it('should copy code block content when code block copy button is clicked', () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+
+    const comments: KanbanComment[] = [
+      {
+        id: 'c1',
+        source: 'agent',
+        text: '```typescript\nconst value = 42\nconsole.log(value)\n```',
+        timestamp: new Date().toISOString(),
+      },
+    ]
+
+    render(<CommentsList comments={comments} />)
+
+    fireEvent.click(screen.getByTestId('copy-code-block-button'))
+
+    expect(writeText).toHaveBeenCalledTimes(1)
+    expect(writeText.mock.calls[0][0]).toContain('const value = 42')
+    expect(writeText.mock.calls[0][0]).toContain('console.log(value)')
+    expect(writeText.mock.calls[0][0]).not.toContain('typescript')
+  })
+
+  it('should copy JSON content when JSON block copy button is clicked', () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+
+    const comments: KanbanComment[] = [
+      {
+        id: 'c1',
+        source: 'agent',
+        text: '{"result":"ok","count":2}',
+        timestamp: new Date().toISOString(),
+      },
+    ]
+
+    render(<CommentsList comments={comments} />)
+
+    fireEvent.click(screen.getByTestId('copy-json-c1'))
+
+    expect(writeText).toHaveBeenCalledWith('{\n  "result": "ok",\n  "count": 2\n}')
+  })
+
+  it('should copy raw comment text when comment copy button is clicked', () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+
+    const commentText = '## Plan\n\n- One\n- Two'
+    const comments: KanbanComment[] = [
+      {
+        id: 'c1',
+        source: 'agent',
+        text: commentText,
+        timestamp: new Date().toISOString(),
+      },
+    ]
+
+    render(<CommentsList comments={comments} />)
+
+    fireEvent.click(screen.getByTestId('copy-comment-c1'))
+
+    expect(writeText).toHaveBeenCalledWith(commentText)
+  })
+
+  it('should show language label on fenced code blocks', () => {
+    const comments: KanbanComment[] = [
+      {
+        id: 'c1',
+        source: 'agent',
+        text: '```typescript\nconst value = 42\n```',
+        timestamp: new Date().toISOString(),
+      },
+    ]
+
+    render(<CommentsList comments={comments} />)
+
+    expect(screen.getByTestId('code-language-label')).toHaveTextContent('typescript')
+  })
+
+  it('should show checkmark after successful copy', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+
+    const comments: KanbanComment[] = [
+      {
+        id: 'c1',
+        source: 'agent',
+        text: 'Simple comment',
+        timestamp: new Date().toISOString(),
+      },
+    ]
+
+    render(<CommentsList comments={comments} />)
+
+    const button = screen.getByTestId('copy-comment-c1')
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(button.querySelector('polyline')).toBeInTheDocument()
+    })
   })
 })
