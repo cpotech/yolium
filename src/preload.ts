@@ -371,6 +371,11 @@ const projectConfig = {
     ipcRenderer.invoke('project-config:check-dirs', projectPath, dirs),
 };
 
+// Report namespace (open HTML test reports in new window)
+const report = {
+  openFile: (filePath: string) => ipcRenderer.invoke('report:open-file', filePath),
+};
+
 // Usage namespace (Claude OAuth usage data)
 const usage = {
   getClaude: () => ipcRenderer.invoke('usage:get-claude'),
@@ -393,6 +398,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   cache,
   whisper,
   projectConfig,
+  report,
   usage,
 });
 
@@ -656,6 +662,9 @@ declare global {
         load: (projectPath: string) => Promise<{ sharedDirs?: string[] } | null>;
         save: (projectPath: string, config: { sharedDirs?: string[] }) => Promise<void>;
         checkDirs: (projectPath: string, dirs: string[]) => Promise<Record<string, boolean>>;
+      };
+      report: {
+        openFile: (filePath: string) => Promise<{ success: boolean; error?: string }>;
       };
       usage: {
         getClaude: () => Promise<ClaudeUsageData | null>;

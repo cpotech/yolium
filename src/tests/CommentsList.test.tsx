@@ -6,7 +6,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { CommentsList } from '@renderer/components/kanban/CommentsList'
 import type { KanbanComment } from '@shared/types/kanban'
 
-// Mock electronAPI for MockPreviewModal and openExternal
+// Mock electronAPI for MockPreviewModal, openExternal, and report
 beforeEach(() => {
   window.electronAPI = {
     ...window.electronAPI,
@@ -19,6 +19,9 @@ beforeEach(() => {
       readFile: vi.fn().mockResolvedValue({ success: true, content: '<html><body>Mock</body></html>', error: null }),
       listDirectory: vi.fn().mockResolvedValue({ success: true, basePath: '', entries: [], error: null }),
       createDirectory: vi.fn().mockResolvedValue({ success: true, path: null, error: null }),
+    },
+    report: {
+      openFile: vi.fn().mockResolvedValue({ success: true }),
     },
   } as typeof window.electronAPI
 })
@@ -450,5 +453,76 @@ describe('CommentsList', () => {
     await waitFor(() => {
       expect(button.querySelector('polyline')).toBeInTheDocument()
     })
+  })
+
+  it('should render yolium-report:// links as View Report buttons', () => {
+    const comments: KanbanComment[] = [
+      {
+        id: 'c1',
+        source: 'agent',
+        text: '[View Report: vitest-report](yolium-report:///home/user/project/vitest-report/index.html)',
+        timestamp: new Date().toISOString(),
+      },
+    ]
+
+    render(<CommentsList comments={comments} />)
+
+    const button = screen.getByTestId('report-preview-button')
+    expect(button).toBeInTheDocument()
+    expect(button.tagName).toBe('BUTTON')
+    expect(button).toHaveTextContent('View Report: vitest-report')
+  })
+
+  it('should call report.openFile when report button is clicked', () => {
+    const openFile = vi.fn().mockResolvedValue({ success: true })
+    window.electronAPI = {
+      ...window.electronAPI,
+      report: { openFile },
+    } as typeof window.electronAPI
+
+    const comments: KanbanComment[] = [
+      {
+        id: 'c1',
+        source: 'agent',
+        text: '[View Report](yolium-report:///home/user/project/vitest-report/index.html)',
+        timestamp: new Date().toISOString(),
+      },
+    ]
+
+    render(<CommentsList comments={comments} />)
+
+    fireEvent.click(screen.getByTestId('report-preview-button'))
+    expect(openFile).toHaveBeenCalledWith('/home/user/project/vitest-report/index.html')
+  })
+
+  it('should not render report button for regular links', () => {
+    const comments: KanbanComment[] = [
+      {
+        id: 'c1',
+        source: 'agent',
+        text: '[Check results](https://example.com/report)',
+        timestamp: new Date().toISOString(),
+      },
+    ]
+
+    render(<CommentsList comments={comments} />)
+
+    expect(screen.queryByTestId('report-preview-button')).not.toBeInTheDocument()
+  })
+
+  it('should not render report button for mock links', () => {
+    const comments: KanbanComment[] = [
+      {
+        id: 'c1',
+        source: 'agent',
+        text: '[View Mock](yolium-mock:///home/user/project/.yolium/mocks/dialog.html)',
+        timestamp: new Date().toISOString(),
+      },
+    ]
+
+    render(<CommentsList comments={comments} />)
+
+    expect(screen.queryByTestId('report-preview-button')).not.toBeInTheDocument()
+    expect(screen.getByTestId('mock-preview-button')).toBeInTheDocument()
   })
 })

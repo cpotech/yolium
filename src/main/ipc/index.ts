@@ -19,6 +19,7 @@ import { registerCacheHandlers } from './cache-handlers';
 import { registerWhisperHandlers } from './whisper-handlers';
 import { registerOnboardingHandlers } from './onboarding-handlers';
 import { registerProjectConfigHandlers } from './project-config-handlers';
+import { registerReportHandlers } from './report-handlers';
 
 const logger = createLogger('ipc');
 let handlersRegistered = false;
@@ -65,6 +66,7 @@ export function registerAllHandlers(): boolean {
     { name: 'whisper', register: () => registerWhisperHandlers(ipcMain) },
     { name: 'onboarding', register: () => registerOnboardingHandlers(ipcMain) },
     { name: 'project-config', register: () => registerProjectConfigHandlers(ipcMain) },
+    { name: 'report', register: () => registerReportHandlers(ipcMain) },
   ] as const;
 
   for (const handler of handlers) {
