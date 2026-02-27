@@ -103,11 +103,18 @@ If E2E tests require authentication and these are not set, emit `@@YOLIUM:{"type
 
 **Fail-fast**: If E2E tests fail to execute (missing dependencies, missing credentials, configuration errors — not assertion failures), emit `@@YOLIUM:{"type":"error","message":"..."}` and STOP. Do not continue to the commit step.
 
+After tests pass, check if HTML reports were generated and include report links in your comment:
+- Check for `vitest-report/index.html` relative to the project root
+- Check for `playwright-report/index.html` relative to the project root
+- Only include links for reports that actually exist on disk
+
 Output these two messages (with real results):
 
 `@@YOLIUM:{"type":"progress","step":"local-tests","detail":"All N tests passing"}`
 
-`@@YOLIUM:{"type":"comment","text":"## Test Results\n\nAll N tests passing. ..."}`
+`@@YOLIUM:{"type":"comment","text":"## Test Results\n\nAll N tests passing.\n\nHTML Reports:\n\n- [View Report: vitest-report](yolium-report://{absolute-path}/vitest-report/index.html)\n- [View Report: playwright-report](yolium-report://{absolute-path}/playwright-report/index.html)"}`
+
+Note: Replace `{absolute-path}` with the actual absolute path to the project root. Use `yolium-report://` protocol prefix (not `http://` or `file://`). Only include report links for reports that exist — check with `ls` before posting.
 
 ### Step 6: Commit Changes Locally
 

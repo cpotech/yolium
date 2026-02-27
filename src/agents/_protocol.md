@@ -100,3 +100,19 @@ Signals failure.
 ```json
 {"type":"error","message":"Reason for failure"}
 ```
+
+## Link Protocols
+
+### yolium-report://
+
+Use `yolium-report://` links in comments to link to HTML test reports. When rendered in the Yolium UI, these links appear as clickable "View Report" buttons that open the report in a new window with full JavaScript execution.
+
+**Format:** `yolium-report://{absolute-path-to-report-index.html}`
+
+**Example in markdown comment:**
+```
+- [View Report: vitest-report](yolium-report:///home/user/project/vitest-report/index.html)
+- [View Report: playwright-report](yolium-report:///home/user/project/playwright-report/index.html)
+```
+
+The path must be an absolute path to the report's `index.html` file. Only include report links for files that exist on disk.

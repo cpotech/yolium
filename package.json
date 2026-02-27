@@ -49,6 +49,7 @@
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
+    "@vitest/ui": "^4.0.18",
     "autoprefixer": "^10.4.23",
     "cross-env": "^10.1.0",
     "electron": "40.0.0",

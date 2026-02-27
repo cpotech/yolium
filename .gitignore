@@ -41,7 +41,8 @@ out/
 # Agent instructions (written by entrypoint for non-Claude providers)
 .yolium-agent-instructions.md
 
-# E2E test results
+# Test reports
+vitest-report/
 src/tests/e2e-results/
 playwright-report/
 

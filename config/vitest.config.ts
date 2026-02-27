@@ -19,5 +19,9 @@ export default defineConfig({
       ['src/tests/**/*.test.ts', 'node'],
     ],
     setupFiles: ['./config/vitest.setup.ts'],
+    reporters: ['default', 'html'],
+    outputFile: {
+      html: './vitest-report/index.html',
+    },
   },
 })
