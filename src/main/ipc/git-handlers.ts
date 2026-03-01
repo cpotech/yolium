@@ -198,22 +198,27 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   // Load git config (returns detected config with secrets redacted)
   registerGitChannel(ipcMain, GIT_CHANNELS.loadConfig, () => {
     const detectedConfig = loadDetectedGitConfig();
-    if (!detectedConfig) return null;
-
-    // Also load stored config to get githubLogin
     const storedConfig = loadGitConfig();
+
+    const hasClaudeOAuth = hasHostClaudeOAuth();
+    const hasCodexOAuth = hasHostCodexOAuth();
+
+    // Return null only if there's truly no config anywhere (no git identity, no keys, no OAuth)
+    if (!detectedConfig && !hasClaudeOAuth && !hasCodexOAuth && !storedConfig?.useClaudeOAuth && !storedConfig?.useCodexOAuth) {
+      return null;
+    }
 
     // Return detected config with source info and flags instead of actual secrets for security
     return {
-      name: detectedConfig.name,
-      email: detectedConfig.email,
-      sources: detectedConfig.sources,
-      hasPat: !!detectedConfig.githubPat,
-      hasOpenaiKey: !!detectedConfig.openaiApiKey,
-      hasAnthropicKey: !!detectedConfig.anthropicApiKey,
-      hasClaudeOAuth: hasHostClaudeOAuth(),
+      name: detectedConfig?.name ?? '',
+      email: detectedConfig?.email ?? '',
+      sources: detectedConfig?.sources ?? {},
+      hasPat: !!detectedConfig?.githubPat,
+      hasOpenaiKey: !!detectedConfig?.openaiApiKey,
+      hasAnthropicKey: !!detectedConfig?.anthropicApiKey,
+      hasClaudeOAuth,
       useClaudeOAuth: storedConfig?.useClaudeOAuth ?? false,
-      hasCodexOAuth: hasHostCodexOAuth(),
+      hasCodexOAuth,
       useCodexOAuth: storedConfig?.useCodexOAuth ?? false,
       githubLogin: storedConfig?.githubLogin,
       providerModelDefaults: storedConfig?.providerModelDefaults,
