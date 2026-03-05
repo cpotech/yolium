@@ -85,6 +85,21 @@ Posts detailed commentary to the work item (shown as agent message). Use this to
 |-------|------|----------|-------------|
 | text | string | yes | The commentary text to post |
 
+### set_test_specs
+
+Attaches concrete test specifications to the current work item. Used by plan agents to define tests that the code agent will implement first (TDD).
+
+```json
+{"type":"set_test_specs","specs":[{"file":"src/tests/foo.test.ts","description":"Unit tests for foo module","specs":["should return empty array when no items","should throw on invalid input"]}]}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| specs | array | yes | Array of test spec objects |
+| specs[].file | string | yes | Test file path |
+| specs[].description | string | yes | What the test file covers |
+| specs[].specs | string[] | yes | Individual test case descriptions |
+
 ### complete
 
 Signals successful completion.

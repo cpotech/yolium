@@ -3,15 +3,16 @@ import type {
   CreateItemMessage,
   UpdateDescriptionMessage,
   AddCommentMessage,
+  SetTestSpecsMessage,
   CompleteMessage,
   ErrorMessage,
   ProgressMessage,
 } from '@shared/types/agent';
 
 const PROTOCOL_PREFIX = '@@YOLIUM:';
-const VALID_TYPES = ['ask_question', 'create_item', 'update_description', 'add_comment', 'comment', 'complete', 'error', 'progress'] as const;
+const VALID_TYPES = ['ask_question', 'create_item', 'update_description', 'add_comment', 'comment', 'set_test_specs', 'complete', 'error', 'progress'] as const;
 
-type AnyProtocolMessage = AskQuestionMessage | CreateItemMessage | UpdateDescriptionMessage | AddCommentMessage | CompleteMessage | ErrorMessage | ProgressMessage;
+type AnyProtocolMessage = AskQuestionMessage | CreateItemMessage | UpdateDescriptionMessage | AddCommentMessage | SetTestSpecsMessage | CompleteMessage | ErrorMessage | ProgressMessage;
 
 /**
  * Extract the first balanced JSON object from a string.
@@ -100,6 +101,27 @@ export function parseProtocolMessage(json: string): AnyProtocolMessage | null {
           type: 'add_comment',
           text: parsed.text,
         };
+
+      case 'set_test_specs': {
+        if (!Array.isArray(parsed.specs)) return null;
+        const validSpecs = parsed.specs
+          .filter((s: unknown) =>
+            typeof s === 'object' && s !== null &&
+            typeof (s as Record<string, unknown>).file === 'string' &&
+            typeof (s as Record<string, unknown>).description === 'string' &&
+            Array.isArray((s as Record<string, unknown>).specs)
+          )
+          .map((s: Record<string, unknown>) => ({
+            file: s.file as string,
+            description: s.description as string,
+            specs: (s.specs as unknown[]).filter((sp): sp is string => typeof sp === 'string'),
+          }));
+        if (validSpecs.length === 0) return null;
+        return {
+          type: 'set_test_specs',
+          specs: validSpecs,
+        };
+      }
 
       case 'complete':
         if (typeof parsed.summary !== 'string') return null;

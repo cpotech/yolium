@@ -49,4 +49,22 @@ describe('plan-agent', () => {
     expect(agent.systemPrompt).toContain('update_description');
     expect(agent.systemPrompt).toContain('complete');
   });
+
+  it('should include set_test_specs in protocol reference', () => {
+    const agent = parseAgentDefinition(agentMarkdown);
+    expect(agent.systemPrompt).toContain('set_test_specs');
+  });
+
+  it('should include test specification step in planning flow', () => {
+    const agent = parseAgentDefinition(agentMarkdown);
+    expect(agent.systemPrompt).toContain('Write Test Specifications');
+    expect(agent.systemPrompt).toContain('test-driven development');
+    expect(agent.systemPrompt).toContain('"type":"set_test_specs"');
+  });
+
+  it('should reference 5 steps in the planning flow', () => {
+    const agent = parseAgentDefinition(agentMarkdown);
+    expect(agent.systemPrompt).toContain('ALL 5 steps');
+    expect(agent.systemPrompt).toContain('Step 5: Deliver');
+  });
 });

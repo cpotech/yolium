@@ -547,6 +547,52 @@ describe('agent-runner', () => {
     });
   });
 
+  describe('test specs handling', () => {
+    it('should store testSpecs on kanban item via updateItem', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test work item',
+        description: 'Implement feature',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      const testSpecs = [
+        {
+          file: 'src/tests/foo.test.ts',
+          description: 'Unit tests for foo module',
+          specs: ['should return empty array when no items', 'should throw on invalid input'],
+        },
+        {
+          file: 'src/tests/bar.test.ts',
+          description: 'Unit tests for bar module',
+          specs: ['should handle concurrent calls'],
+        },
+      ];
+
+      updateItem(board, item.id, { testSpecs });
+
+      const result = board.items.find(i => i.id === item.id)!;
+      expect(result.testSpecs).toEqual(testSpecs);
+      expect(result.testSpecs).toHaveLength(2);
+      expect(result.testSpecs![0].specs).toHaveLength(2);
+      expect(result.testSpecs![1].specs).toHaveLength(1);
+    });
+
+    it('should include set_test_specs in non-Claude inline protocol', () => {
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Plan Agent.',
+        goal: 'Create plan',
+        conversationHistory: '',
+        provider: 'codex',
+        agentName: 'plan-agent',
+      });
+
+      expect(prompt).toContain('set_test_specs');
+      expect(prompt).toContain('test specifications');
+    });
+  });
+
   describe('completion behavior', () => {
     /**
      * Verifies that the completion handler does NOT auto-merge.

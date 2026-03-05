@@ -49,4 +49,24 @@ describe('code-agent', () => {
     expect(agent.systemPrompt).toContain('comment');
     expect(agent.systemPrompt).toContain('complete');
   });
+
+  it('should include TDD workflow with write-tests-first step', () => {
+    const agent = parseAgentDefinition(agentMarkdown);
+    expect(agent.systemPrompt).toContain('Write Tests First (TDD)');
+    expect(agent.systemPrompt).toContain('test specifications');
+    expect(agent.systemPrompt).toContain('before writing any production code');
+    expect(agent.systemPrompt).toContain('write-tests');
+  });
+
+  it('should reference 8 steps in the process', () => {
+    const agent = parseAgentDefinition(agentMarkdown);
+    expect(agent.systemPrompt).toContain('8 steps');
+    expect(agent.systemPrompt).toContain('Step 8: Signal Completion');
+  });
+
+  it('should include TDD rule', () => {
+    const agent = parseAgentDefinition(agentMarkdown);
+    expect(agent.systemPrompt).toContain('Tests first (TDD)');
+    expect(agent.systemPrompt).toContain('implement them before writing production code');
+  });
 });

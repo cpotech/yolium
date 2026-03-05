@@ -22,7 +22,7 @@ export interface AgentDefinition {
 }
 
 // Protocol message types from agent stdout
-export type ProtocolMessageType = 'ask_question' | 'create_item' | 'update_description' | 'add_comment' | 'complete' | 'error' | 'progress';
+export type ProtocolMessageType = 'ask_question' | 'create_item' | 'update_description' | 'add_comment' | 'set_test_specs' | 'complete' | 'error' | 'progress';
 
 export interface ProtocolMessage {
   type: ProtocolMessageType;
@@ -52,6 +52,15 @@ export interface UpdateDescriptionMessage extends ProtocolMessage {
 export interface AddCommentMessage extends ProtocolMessage {
   type: 'add_comment';
   text: string;
+}
+
+export interface SetTestSpecsMessage extends ProtocolMessage {
+  type: 'set_test_specs';
+  specs: Array<{
+    file: string;
+    description: string;
+    specs: string[];
+  }>;
 }
 
 export interface CompleteMessage extends ProtocolMessage {
