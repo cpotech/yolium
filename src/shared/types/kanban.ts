@@ -23,6 +23,12 @@ export interface KanbanComment {
 
 export type MergeStatus = 'unmerged' | 'merged' | 'conflict';
 
+export interface TestSpec {
+  file: string;
+  description: string;
+  specs: string[];
+}
+
 export interface KanbanItem {
   id: string;
   title: string;
@@ -38,6 +44,7 @@ export interface KanbanItem {
   lastAgentName?: string;
   agentQuestion?: string;
   agentQuestionOptions?: string[];
+  testSpecs?: TestSpec[];
   worktreePath?: string;
   mergeStatus?: MergeStatus;
   prUrl?: string;

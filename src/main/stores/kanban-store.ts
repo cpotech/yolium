@@ -172,7 +172,7 @@ const VALID_AGENT_PROVIDERS = new Set(['claude', 'opencode', 'codex']);
 export function updateItem(
   board: KanbanBoard,
   itemId: string,
-  updates: Partial<Pick<KanbanItem, 'title' | 'description' | 'column' | 'branch' | 'model' | 'agentType' | 'agentStatus' | 'activeAgentName' | 'lastAgentName' | 'agentQuestion' | 'agentQuestionOptions' | 'worktreePath' | 'mergeStatus' | 'agentProvider' | 'verified'>>
+  updates: Partial<Pick<KanbanItem, 'title' | 'description' | 'column' | 'branch' | 'model' | 'agentType' | 'agentStatus' | 'activeAgentName' | 'lastAgentName' | 'agentQuestion' | 'agentQuestionOptions' | 'testSpecs' | 'worktreePath' | 'mergeStatus' | 'agentProvider' | 'verified'>>
 ): KanbanItem | null {
   const item = board.items.find(i => i.id === itemId);
   if (!item) return null;

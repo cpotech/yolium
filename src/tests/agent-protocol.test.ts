@@ -160,6 +160,54 @@ describe('agent-protocol', () => {
       expect(result).toBeNull();
     });
 
+    it('should parse set_test_specs message', () => {
+      const json = '{"type":"set_test_specs","specs":[{"file":"src/tests/foo.test.ts","description":"Unit tests for foo","specs":["should return empty array","should throw on invalid input"]}]}';
+      const result = parseProtocolMessage(json);
+
+      expect(result).toEqual({
+        type: 'set_test_specs',
+        specs: [
+          {
+            file: 'src/tests/foo.test.ts',
+            description: 'Unit tests for foo',
+            specs: ['should return empty array', 'should throw on invalid input'],
+          },
+        ],
+      });
+    });
+
+    it('should parse set_test_specs with multiple files', () => {
+      const json = '{"type":"set_test_specs","specs":[{"file":"src/tests/a.test.ts","description":"A tests","specs":["test1"]},{"file":"src/tests/b.test.ts","description":"B tests","specs":["test2","test3"]}]}';
+      const result = parseProtocolMessage(json);
+
+      expect(result).toEqual({
+        type: 'set_test_specs',
+        specs: [
+          { file: 'src/tests/a.test.ts', description: 'A tests', specs: ['test1'] },
+          { file: 'src/tests/b.test.ts', description: 'B tests', specs: ['test2', 'test3'] },
+        ],
+      });
+    });
+
+    it('should reject set_test_specs without specs array', () => {
+      expect(parseProtocolMessage('{"type":"set_test_specs"}')).toBeNull();
+      expect(parseProtocolMessage('{"type":"set_test_specs","specs":"not-array"}')).toBeNull();
+    });
+
+    it('should reject set_test_specs with empty specs array', () => {
+      expect(parseProtocolMessage('{"type":"set_test_specs","specs":[]}')).toBeNull();
+    });
+
+    it('should filter out invalid spec entries in set_test_specs', () => {
+      const json = '{"type":"set_test_specs","specs":[{"file":"valid.test.ts","description":"Valid","specs":["test1"]},{"bad":"entry"}]}';
+      const result = parseProtocolMessage(json);
+
+      expect(result).toEqual({
+        type: 'set_test_specs',
+        specs: [{ file: 'valid.test.ts', description: 'Valid', specs: ['test1'] }],
+      });
+    });
+
     it('should parse comment as alias for add_comment', () => {
       const json = '{"type":"comment","text":"Access: I can read/write files."}';
       const result = parseProtocolMessage(json);

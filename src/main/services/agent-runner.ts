@@ -40,6 +40,7 @@ import type {
   CreateItemMessage,
   UpdateDescriptionMessage,
   AddCommentMessage,
+  SetTestSpecsMessage,
   CompleteMessage,
   ErrorMessage,
   ProgressMessage,
@@ -108,6 +109,12 @@ Fields: title (string, required), description (string, optional), branch (string
 @@YOLIUM:{"type":"update_description","description":"<new description>"}
 \`\`\`
 Fields: description (string, required)
+
+**set_test_specs** — Attach concrete test specifications to the work item (plan agents use this so code agents implement tests first):
+\`\`\`
+@@YOLIUM:{"type":"set_test_specs","specs":[{"file":"src/tests/foo.test.ts","description":"Unit tests for foo module","specs":["should return empty array when no items","should throw on invalid input"]}]}
+\`\`\`
+Fields: specs (array, required — each element: file (string), description (string), specs (string[]))
 
 ### Required Protocol Usage
 
@@ -795,6 +802,15 @@ export function handleAgentOutput(sessionId: string, data: string): void {
         const ac = message as AddCommentMessage;
         addComment(board, session.itemId, 'agent', ac.text);
         session.events.emit('commentAdded', ac.text);
+        break;
+      }
+
+      case 'set_test_specs': {
+        const ts = message as SetTestSpecsMessage;
+        updateItem(board, session.itemId, { testSpecs: ts.specs });
+        const specCount = ts.specs.reduce((sum, s) => sum + s.specs.length, 0);
+        addComment(board, session.itemId, 'system', `Test specs set: ${specCount} specs across ${ts.specs.length} files`);
+        session.events.emit('testSpecsSet', ts.specs);
         break;
       }
 

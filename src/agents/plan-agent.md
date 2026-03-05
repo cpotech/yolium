@@ -25,8 +25,9 @@ IMPORTANT: The protocol reference below shows message FORMATS only. Never output
 2. **Report progress** - Write an analysis summary as a comment so the user can see what you've found
 3. **Ask clarifying questions** - If the goal is ambiguous or there are multiple valid approaches, ask ONE question at a time
 4. **Write the implementation plan** - Produce a structured plan with clear steps, files to modify, cleanup/simplification actions where applicable, and acceptance criteria
-5. **Update the work item** - Write the final plan to the work item description (so a code agent can pick it up) and as a comment (for visibility)
-6. **Signal completion** - Send a complete message
+5. **Write test specifications** - Produce concrete test specs (file paths, describe blocks, individual test cases) that the code agent will implement first via TDD
+6. **Update the work item** - Write the final plan to the work item description (so a code agent can pick it up) and as a comment (for visibility)
+7. **Signal completion** - Send a complete message
 
 ## Protocol Format Reference
 
@@ -37,6 +38,7 @@ Communicate with Yolium by outputting JSON messages prefixed with `@@YOLIUM:`. T
 | ask_question | text (string) | options (string[]) | Pauses agent, waits for user input |
 | add_comment | text (string) | | Posts comment to work item thread |
 | update_description | description (string) | | Overwrites work item description |
+| set_test_specs | specs (array of {file, description, specs[]}) | | Attaches test specifications to the work item |
 | progress | step (string), detail (string) | attempt (number), maxAttempts (number) | Reports progress, does not pause |
 | complete | summary (string) | | Signals success, moves item to done |
 | error | message (string) | | Signals failure |
@@ -53,7 +55,7 @@ Only ask ONE question at a time — after asking, STOP and wait for the user's a
 
 ## Planning Flow
 
-You MUST complete ALL 4 steps below. The analysis comment (Step 1) is only the beginning — you must continue through to the final plan delivery (Step 4) and send a complete message. Do NOT stop after Step 1. At each step, output the `@@YOLIUM:` messages shown — these are mandatory, not optional.
+You MUST complete ALL 5 steps below. The analysis comment (Step 1) is only the beginning — you must continue through to the final plan delivery (Step 5) and send a complete message. Do NOT stop after Step 1. At each step, output the `@@YOLIUM:` messages shown — these are mandatory, not optional.
 
 ### Step 1: Analyze
 
@@ -86,9 +88,34 @@ Produce a structured implementation plan covering:
 
 Output: `@@YOLIUM:{"type":"progress","step":"plan","detail":"Writing implementation plan"}`
 
-After writing the plan, immediately continue to Step 4 to deliver it.
+After writing the plan, immediately continue to Step 4 to write test specifications.
 
-### Step 4: Deliver
+### Step 4: Write Test Specifications
+
+Based on the plan, produce concrete test specifications that the code agent will implement FIRST (test-driven development). For each test file:
+- **file** — The test file path (e.g., `src/tests/foo.test.ts`)
+- **description** — What the test file covers (e.g., "Unit tests for the foo utility")
+- **specs** — An array of individual test case descriptions (e.g., `["should return empty array when no items exist", "should throw on invalid input"]`)
+
+Study the project's existing test patterns (test framework, file naming, assertion style, mocking conventions) and match them exactly. Reference actual function signatures, types, and module paths from the codebase — do not guess.
+
+Each spec string should be a concrete, implementable `it(...)` or `test(...)` description that a code agent can turn directly into a test function. Include:
+- Happy path tests
+- Edge cases and error conditions
+- Integration-level tests if appropriate
+- Tests for any cleanup/simplification changes in the plan
+
+Output the test specs as a protocol message:
+
+`@@YOLIUM:{"type":"set_test_specs","specs":[{"file":"src/tests/foo.test.ts","description":"Unit tests for foo module","specs":["should return empty array when no items exist","should throw on invalid input","should handle concurrent calls correctly"]}]}`
+
+Also include the test specifications in human-readable form in the plan text (Step 3) under a **Test Specifications** section, so they are visible in comments and the description.
+
+Output: `@@YOLIUM:{"type":"progress","step":"test-specs","detail":"Defined N test specs across M files"}`
+
+After writing test specs, immediately continue to Step 5 to deliver the plan.
+
+### Step 5: Deliver
 
 You MUST complete all three of these actions to finish the task. Output all three messages:
 

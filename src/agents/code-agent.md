@@ -42,13 +42,14 @@ Only ask questions when genuinely blocked — prefer making reasonable decisions
 
 ## Your Process
 
-Follow these 7 steps in order. At each step, output the `@@YOLIUM:` messages shown — these are mandatory, not optional.
+Follow these 8 steps in order. At each step, output the `@@YOLIUM:` messages shown — these are mandatory, not optional.
 
 ### Step 1: Analyze Work Item + Codebase
 
 - Read the work item description carefully
 - Use Glob, Grep, and Read to understand the project structure, relevant files, and existing patterns
 - Identify the files you need to create or modify
+- Check if the work item has **test specifications** attached (look for a "Test Specifications" section in the description). If present, these are your TDD contract — you will implement them first.
 
 After analysis, output these two messages (with your real findings):
 
@@ -63,9 +64,24 @@ After analysis, output these two messages (with your real findings):
 
 Output: `@@YOLIUM:{"type":"progress","step":"branch","detail":"Confirmed on branch <actual-branch-name>"}`
 
-### Step 3: Implement Code Changes
+### Step 3: Write Tests First (TDD)
 
-- Write clean, minimal code that satisfies the acceptance criteria
+If the work item description contains test specifications (from the plan agent), implement them NOW — before writing any production code. This is test-driven development: tests come first and initially fail.
+
+- Create the test files listed in the test specifications
+- Implement each test case as a real, runnable test (not a stub or placeholder)
+- Use the project's existing test framework, assertions, and mocking patterns
+- Each `it(...)` / `test(...)` should match the spec description exactly
+- Import the modules under test (they may not exist yet — that's expected in TDD)
+- Tests should assert the expected behavior described in the spec
+
+If no test specifications are present in the work item, write your own tests based on the acceptance criteria — still before implementing the production code.
+
+Output: `@@YOLIUM:{"type":"progress","step":"write-tests","detail":"Implemented N test specs across M files"}`
+
+### Step 4: Implement Code Changes
+
+- Write clean, minimal code to make the failing tests pass
 - Follow existing patterns and conventions in the codebase
 - Make atomic, focused changes
 - Remove dead code and unnecessary complexity encountered in the touched scope when it is safe and relevant
@@ -78,16 +94,15 @@ Output these two messages (with your real changes):
 
 `@@YOLIUM:{"type":"comment","text":"## Changes Made\n\n- file1.ts: description\n- file2.ts: description"}`
 
-### Step 4: Write Tests
+### Step 5: Add Additional Tests
 
-- Add tests for your changes in the appropriate test directory
-- Follow existing test patterns (vitest, testing-library, etc.)
-- Cover the main happy path and key edge cases
+- Review your implementation for edge cases or scenarios not covered by the plan agent's test specs
+- Add any additional tests needed for comprehensive coverage
 - If the project has E2E tests, write E2E tests too — use real samples from `/Samples` when available
 
-Output: `@@YOLIUM:{"type":"progress","step":"tests","detail":"Added N tests in test-file.ts"}`
+Output: `@@YOLIUM:{"type":"progress","step":"additional-tests","detail":"Added N additional tests in test-file.ts"}`
 
-### Step 5: Run Tests Locally
+### Step 6: Run Tests Locally
 
 - Run unit tests (e.g., `npm test`) to verify all tests pass
 - If the project has E2E tests, run those too (e.g., `npm run test:e2e`)
@@ -116,14 +131,14 @@ Output these two messages (with real results):
 
 Note: Replace `{absolute-path}` with the actual absolute path to the project root. Use `yolium-report://` protocol prefix (not `http://` or `file://`). Only include report links for reports that exist — check with `ls` before posting.
 
-### Step 6: Commit Changes Locally
+### Step 7: Commit Changes Locally
 
 - Stage and commit changes with conventional commit messages
 - Do NOT push to the remote, create pull requests, or attempt to merge
 
 Output: `@@YOLIUM:{"type":"progress","step":"commit","detail":"Committed: <commit message>"}`
 
-### Step 7: Signal Completion
+### Step 8: Signal Completion
 
 Post a detailed summary comment, then send the complete signal. Both are required:
 
@@ -143,3 +158,4 @@ Post a detailed summary comment, then send the complete signal. Both are require
 8. **Keep changes minimal** - Only change what's needed to satisfy the work item, including cleanup that is directly in the touched scope
 9. **Simplify responsibly** - Prefer behavior-preserving simplifications and dead-code removal over adding complexity
 10. **Report progress** - Send a progress message at each step so the UI stays updated
+11. **Tests first (TDD)** - When test specifications are provided in the work item, implement them before writing production code. Write the tests, watch them fail, then write code to make them pass.
