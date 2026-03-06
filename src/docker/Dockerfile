@@ -56,8 +56,8 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
     rm -rf /var/lib/apt/lists/*
 
 # Install GitLab CLI
+ARG GLAB_VERSION=1.89.0
 RUN ARCH=$(dpkg --print-architecture) && \
-    GLAB_VERSION=$(curl -sL "https://gitlab.com/api/v4/projects/34675721/releases/permalink/latest" | sed -n 's/.*"tag_name":"v\?\([^"]*\)".*/\1/p') && \
     echo "Installing glab version ${GLAB_VERSION} for ${ARCH}" && \
     curl -fsSL -o /tmp/glab.deb \
         "https://gitlab.com/gitlab-org/cli/-/releases/v${GLAB_VERSION}/downloads/glab_${GLAB_VERSION}_linux_${ARCH}.deb" && \
@@ -85,10 +85,10 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
     echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 
 # Install Node.js via NVM
+ARG NVM_VERSION=v0.40.4
 ENV NVM_DIR="/home/${USERNAME}/.nvm"
-RUN NVM_VERSION=$(curl -s https://api.github.com/repos/nvm-sh/nvm/releases/latest | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/') && \
-    echo "Installing nvm version ${NVM_VERSION}" && \
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh | bash && \
+RUN echo "Installing nvm version ${NVM_VERSION}" && \
+    curl -fsSL -o- https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh | bash && \
     . "$NVM_DIR/nvm.sh" && \
     nvm install --lts && \
     nvm alias default node && \
