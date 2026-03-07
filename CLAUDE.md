@@ -140,6 +140,9 @@ Full API reference with types: [docs/IPC.md](docs/IPC.md).
 ### Agent Definitions (`src/agents/`)
 - `plan-agent.md` — Planning agent: decomposes goals into kanban items
 - `code-agent.md` — Code execution agent: implements work items
+- `verify-agent.md` — Verification agent: read-only code reviewer
+- `scout-agent.md` — Scout agent: lead generation and business intelligence
+- `marketing-agent.md` — Marketing agent: executes marketing tasks via specialized skills
 - `_protocol.md` — Protocol reference for `@@YOLIUM:{...}` messages
 
 ### Tests (`src/tests/`)

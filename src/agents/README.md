@@ -30,6 +30,8 @@ System prompt content here...
 | plan-agent | Claude, Codex, OpenCode | Analyzes codebase and produces implementation plans |
 | code-agent | Claude, Codex, OpenCode | Implements code changes, writes tests, and commits locally |
 | verify-agent | Claude, Codex, OpenCode | Reviews changes for correctness, over-engineering, and guideline compliance |
+| scout-agent | Claude, Codex, OpenCode | Discovers, qualifies, and profiles businesses matching a campaign brief |
+| marketing-agent | Claude, Codex, OpenCode | Executes marketing tasks by routing to specialized skills (CRO, SEO, copy, etc.) |
 
 ## Adding New Agents
 
@@ -43,5 +45,7 @@ System prompt content here...
 - `plan-agent.md` - Plan Agent definition
 - `code-agent.md` - Code Agent definition
 - `verify-agent.md` - Verify Agent definition
+- `scout-agent.md` - Scout Agent definition
+- `marketing-agent.md` - Marketing Agent definition
 - `_protocol.md` - Protocol reference (not loaded as agent)
 - `README.md` - This file

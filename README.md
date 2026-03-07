@@ -13,13 +13,15 @@
 
 ## Agent Workflows
 
-Yolium orchestrates three single-purpose agents in a **Plan → Code → Verify** pipeline:
+Yolium orchestrates single-purpose agents in a **Plan → Code → Verify** pipeline for development, plus specialized agents for business intelligence and marketing:
 
 | Agent | Role |
 |-------|------|
 | **Plan Agent** | Analyzes the codebase, asks clarifying questions, produces a structured implementation plan |
 | **Code Agent** | Implements changes, writes tests, runs tests, commits to an isolated worktree branch |
 | **Verify Agent** | Read-only reviewer: checks correctness, over-engineering, and guideline compliance |
+| **Scout Agent** | Lead generation: discovers, qualifies, and profiles businesses matching a campaign brief |
+| **Marketing Agent** | Executes marketing tasks via specialized skills — CRO, SEO, copywriting, ads, strategy |
 
 Each agent runs in its own Docker container with an isolated git worktree — no conflicts, clean branches ready for PR.
 

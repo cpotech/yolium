@@ -1,14 +1,23 @@
 # Agent Workflows
 
-Yolium orchestrates AI coding agents in a **Plan → Code → Verify** pipeline. Each agent is a single-purpose tool that runs in its own Docker container with an isolated git worktree branch.
+Yolium orchestrates AI agents in a **Plan → Code → Verify** pipeline for development tasks, plus specialized agents for business intelligence and marketing.
 
 ```
+Development Pipeline:
 ┌──────────┐     ┌──────────┐     ┌──────────┐
 │   Plan   │────▶│   Code   │────▶│  Verify  │
 │  Agent   │     │  Agent   │     │  Agent   │
 └──────────┘     └──────────┘     └──────────┘
  Analyzes &       Implements,      Reviews code
  plans work       tests, commits   for correctness
+
+Specialized Agents:
+┌──────────┐     ┌────────────┐
+│  Scout   │     │ Marketing  │
+│  Agent   │     │  Agent     │
+└──────────┘     └────────────┘
+ Lead gen &       CRO, SEO, copy,
+ prospecting      ads, strategy
 ```
 
 ## Plan Agent
@@ -64,6 +73,38 @@ The Verify Agent is a read-only reviewer. It inspects changes made by a Code Age
 **Tools:** Read, Glob, Grep, Bash
 **Model:** opus | **Timeout:** 30 min
 **Definition:** [`src/agents/verify-agent.md`](../src/agents/verify-agent.md)
+
+## Scout Agent
+
+The Scout Agent is a lead-generation and business intelligence operative. It discovers, qualifies, and profiles businesses matching a campaign brief using web research. It does not write code or contact businesses.
+
+**Process:**
+
+1. **Interpret Brief** — Reads the work item to understand the campaign's target criteria, ideal customer profile, and geographic/industry focus.
+2. **Discover** — Uses web search to find businesses matching the brief's criteria.
+3. **Qualify** — Grades each prospect (A/B/C/D) based on how well they match the brief's requirements.
+4. **Profile** — Builds detailed dossiers for qualified prospects with actionable intelligence.
+5. **Deliver** — Writes structured JSON dossiers to `scout-dossier.json` and signals completion.
+
+**Tools:** Read, Glob, Grep, Bash, Write, Edit, WebSearch, WebFetch
+**Model:** opus | **Timeout:** 60 min
+**Definition:** [`src/agents/scout-agent.md`](../src/agents/scout-agent.md)
+
+## Marketing Agent
+
+The Marketing Agent executes marketing tasks by routing to specialized skills. It covers 25 skills across 7 categories: Conversion Optimization, Content & Copy, SEO & Discovery, Paid & Distribution, Testing & Measurement, Growth Engineering, and Strategy & Planning.
+
+**Process:**
+
+1. **Identify Skill** — Reads the work item goal and matches it to the appropriate marketing skill(s).
+2. **Load Methodology** — Loads the full skill file from `/opt/marketing-skills/<skill-name>/SKILL.md`.
+3. **Check Context** — Looks for a product marketing context document to inform execution.
+4. **Execute** — Applies the skill's methodology to produce deliverables (copy, audits, strategies, analyses, etc.).
+5. **Deliver** — Posts results as comments and signals completion.
+
+**Tools:** Read, Glob, Grep, Bash, Write, Edit, WebSearch, WebFetch
+**Model:** opus | **Timeout:** 60 min
+**Definition:** [`src/agents/marketing-agent.md`](../src/agents/marketing-agent.md)
 
 ## Agent Memory
 
@@ -179,3 +220,5 @@ Use `@@YOLIUM:{"type":"complete","summary":"..."}` when done.
 | Plan Agent | `plan-agent.md` | Analyzes codebase and produces implementation plans with in-scope simplification/dead-code guidance |
 | Code Agent | `code-agent.md` | Implements code changes, simplifies touched scope, writes tests, commits locally |
 | Verify Agent | `verify-agent.md` | Reviews changes for correctness, guideline compliance, and cleanup quality evidence |
+| Scout Agent | `scout-agent.md` | Discovers, qualifies, and profiles businesses matching a campaign brief |
+| Marketing Agent | `marketing-agent.md` | Executes marketing tasks via 25 specialized skills across 7 categories |
