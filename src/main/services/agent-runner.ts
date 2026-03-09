@@ -44,7 +44,9 @@ import type {
   CompleteMessage,
   ErrorMessage,
   ProgressMessage,
+  RunResultMessage,
 } from '@shared/types/agent';
+import type { SpecialistDefinition, ScheduleType, RunOutcome } from '@shared/types/schedule';
 
 const logger = createLogger('agent-runner');
 
@@ -1034,4 +1036,140 @@ export function backfillWorktreePaths(projectPath: string): number {
   }
 
   return backfilled;
+}
+
+// ─── Scheduled Agent Execution ──────────────────────────────────────────────
+
+/**
+ * Sentinel value for headless agent containers (no renderer window).
+ * Using -1 means getWebContents() returns undefined, naturally skipping all IPC to renderer.
+ */
+const HEADLESS_WEB_CONTENTS_ID = -1;
+
+export interface ScheduledAgentParams {
+  specialist: SpecialistDefinition;
+  scheduleType: ScheduleType;
+  memoryContext: string;
+}
+
+export interface ScheduledAgentResult {
+  outcome: RunOutcome;
+  summary: string;
+  tokensUsed: number;
+  costUsd: number;
+  durationMs: number;
+}
+
+/**
+ * Start a scheduled agent run (headless — no renderer window required).
+ * Builds prompt from specialist definition + memory context, creates a Docker container,
+ * parses output for protocol messages, and resolves with the run result.
+ */
+export function startScheduledAgent(params: ScheduledAgentParams): Promise<ScheduledAgentResult> {
+  const { specialist, scheduleType, memoryContext } = params;
+
+  // Check auth (scheduled agents use the default Claude provider)
+  const auth = checkAgentAuth('claude');
+  if (!auth.authenticated) {
+    return Promise.resolve({
+      outcome: 'failed',
+      summary: 'Claude is not authenticated. Add your Anthropic API Key in Settings.',
+      tokensUsed: 0,
+      costUsd: 0,
+      durationMs: 0,
+    });
+  }
+
+  const startTime = Date.now();
+
+  // Build prompt from specialist definition
+  const promptTemplate = specialist.promptTemplates[scheduleType] || '';
+  let prompt = specialist.systemPrompt;
+  if (promptTemplate) {
+    prompt += `\n\n## Schedule: ${scheduleType}\n\n${promptTemplate}`;
+  }
+  if (memoryContext) {
+    prompt += `\n\n${memoryContext}`;
+  }
+
+  // Resolve model
+  const model = resolveModel(undefined, undefined, specialist.model);
+
+  return new Promise<ScheduledAgentResult>((resolve) => {
+    let outcome: RunOutcome = 'completed';
+    let summary = 'Run completed';
+    let lastRunResult: RunResultMessage | undefined;
+    let capturedSessionId: string | undefined;
+
+    createAgentContainer(
+      {
+        webContentsId: HEADLESS_WEB_CONTENTS_ID,
+        projectPath: process.cwd(),
+        agentName: `cron-${specialist.name}`,
+        prompt,
+        model,
+        tools: specialist.tools,
+        itemId: `scheduled-${specialist.name}-${Date.now()}`,
+        agentProvider: 'claude',
+        timeoutMs: (specialist.timeout || 30) * 60 * 1000,
+      },
+      {
+        onOutput: (data: string) => {
+          // Parse protocol messages from agent output
+          const messages = extractProtocolMessages(data);
+          for (const msg of messages) {
+            if (msg.type === 'run_result') {
+              lastRunResult = msg as RunResultMessage;
+            } else if (msg.type === 'complete') {
+              outcome = 'completed';
+              summary = (msg as CompleteMessage).summary;
+            } else if (msg.type === 'error') {
+              outcome = 'failed';
+              summary = (msg as ErrorMessage).message;
+            }
+          }
+        },
+        onExit: (code: number) => {
+          const durationMs = Date.now() - startTime;
+          const session = capturedSessionId ? getAgentSession(capturedSessionId) : undefined;
+          const costUsd = session?.cumulativeUsage?.costUsd ?? 0;
+          const tokensUsed = session?.cumulativeUsage
+            ? session.cumulativeUsage.inputTokens + session.cumulativeUsage.outputTokens
+            : 0;
+
+          // Use run_result protocol message if agent sent one
+          if (lastRunResult) {
+            resolve({
+              outcome: lastRunResult.outcome as RunOutcome,
+              summary: lastRunResult.summary,
+              tokensUsed: lastRunResult.tokensUsed ?? tokensUsed,
+              costUsd,
+              durationMs,
+            });
+            return;
+          }
+
+          if (code === 124) {
+            outcome = 'timeout';
+            summary = 'Agent timed out';
+          } else if (code !== 0 && outcome !== 'failed') {
+            outcome = 'failed';
+            summary = `Agent exited with code ${code}`;
+          }
+
+          resolve({ outcome, summary, tokensUsed, costUsd, durationMs });
+        },
+      }
+    ).then((sessionId) => {
+      capturedSessionId = sessionId;
+    }).catch((err) => {
+      resolve({
+        outcome: 'failed',
+        summary: err instanceof Error ? err.message : String(err),
+        tokensUsed: 0,
+        costUsd: 0,
+        durationMs: Date.now() - startTime,
+      });
+    });
+  });
 }

@@ -9,6 +9,7 @@ import started from 'electron-squirrel-startup';
 import { createLogger, getLogPath } from '@main/lib/logger';
 import { clearSessions } from '@main/services/agent-runner';
 import { registerAllHandlers, performCleanup, isCleanupDone } from '@main/ipc';
+import { scheduler } from '@main/services/scheduler';
 
 const logger = createLogger('main');
 
@@ -58,6 +59,11 @@ function createAppMenu(window: BrowserWindow): void {
           label: 'Toggle Recording',
           accelerator: 'CmdOrCtrl+Shift+R',
           click: () => window.webContents.send('recording:toggle'),
+        },
+        {
+          label: 'Scheduled Agents',
+          accelerator: 'CmdOrCtrl+Shift+H',
+          click: () => window.webContents.send('schedule:show'),
         },
       ],
     },
@@ -195,6 +201,10 @@ app.on('ready', () => {
 
   // Clear stale agent sessions from any previous crash
   clearSessions();
+
+  // Start the CRON scheduler for specialist agents
+  scheduler.start();
+
   createWindow();
 });
 

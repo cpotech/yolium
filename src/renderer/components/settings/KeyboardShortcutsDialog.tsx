@@ -50,6 +50,7 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: 'Ctrl+?', description: 'Keyboard shortcuts' },
       { keys: 'Ctrl+Shift+S', description: 'Settings' },
       { keys: 'Ctrl+Shift+P', description: 'New project' },
+      { keys: 'Ctrl+Shift+H', description: 'Scheduled agents' },
       { keys: 'Ctrl+Shift+R', description: 'Toggle recording' },
     ],
   },

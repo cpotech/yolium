@@ -109,6 +109,11 @@ const events = {
     ipcRenderer.on('recording:toggle', handler);
     return () => ipcRenderer.removeListener('recording:toggle', handler);
   },
+  onScheduleShow: (callback: () => void): CleanupFn => {
+    const handler = () => callback();
+    ipcRenderer.on('schedule:show', handler);
+    return () => ipcRenderer.removeListener('schedule:show', handler);
+  },
 };
 
 // Dialog namespace
@@ -376,6 +381,36 @@ const report = {
   openFile: (filePath: string) => ipcRenderer.invoke('report:open-file', filePath),
 };
 
+// Schedule namespace (CRON agent scheduling)
+const schedule = {
+  getState: () => ipcRenderer.invoke('schedule:get-state'),
+  toggleSpecialist: (id: string, enabled: boolean) =>
+    ipcRenderer.invoke('schedule:toggle-specialist', id, enabled),
+  toggleGlobal: (enabled: boolean) =>
+    ipcRenderer.invoke('schedule:toggle-global', enabled),
+  triggerRun: (id: string, type: string) =>
+    ipcRenderer.invoke('schedule:trigger-run', id, type),
+  getHistory: (id: string, limit?: number) =>
+    ipcRenderer.invoke('schedule:get-history', id, limit),
+  getStats: (id: string) =>
+    ipcRenderer.invoke('schedule:get-stats', id),
+  reload: () => ipcRenderer.invoke('schedule:reload'),
+  getSpecialists: () => ipcRenderer.invoke('schedule:get-specialists'),
+  scaffold: (name: string, options?: { description?: string }) =>
+    ipcRenderer.invoke('schedule:scaffold', name, options),
+  onAlert: (callback: (specialistId: string, message: string) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, specialistId: string, message: string) =>
+      callback(specialistId, message);
+    ipcRenderer.on('schedule:alert', handler);
+    return () => ipcRenderer.removeListener('schedule:alert', handler);
+  },
+  onStateChanged: (callback: (state: unknown) => void): CleanupFn => {
+    const handler = (_event: Electron.IpcRendererEvent, state: unknown) => callback(state);
+    ipcRenderer.on('schedule:state-changed', handler);
+    return () => ipcRenderer.removeListener('schedule:state-changed', handler);
+  },
+};
+
 // Usage namespace (Claude OAuth usage data)
 const usage = {
   getClaude: () => ipcRenderer.invoke('usage:get-claude'),
@@ -400,6 +435,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   projectConfig,
   report,
   usage,
+  schedule,
 });
 
 // Type declarations for TypeScript
@@ -439,6 +475,7 @@ declare global {
         onGitSettingsShow: (callback: () => void) => CleanupFunction;
         onProjectNew: (callback: () => void) => CleanupFunction;
         onRecordingToggle: (callback: () => void) => CleanupFunction;
+        onScheduleShow: (callback: () => void) => CleanupFunction;
       };
       dialog: {
         confirmClose: (message: string) => Promise<boolean>;
@@ -668,6 +705,56 @@ declare global {
       };
       usage: {
         getClaude: () => Promise<ClaudeUsageData | null>;
+      };
+      schedule: {
+        getState: () => Promise<{
+          specialists: Record<string, {
+            id: string;
+            enabled: boolean;
+            lastRun?: object;
+            nextRun?: string;
+            consecutiveNoAction: number;
+            consecutiveFailures: number;
+            totalRuns: number;
+            successRate: number;
+            weeklyCost: number;
+          }>;
+          globalEnabled: boolean;
+        }>;
+        toggleSpecialist: (id: string, enabled: boolean) => Promise<object>;
+        toggleGlobal: (enabled: boolean) => Promise<object>;
+        triggerRun: (id: string, type: string) => Promise<{ skipped?: boolean; reason?: string }>;
+        getHistory: (id: string, limit?: number) => Promise<Array<{
+          id: string;
+          specialistId: string;
+          scheduleType: string;
+          startedAt: string;
+          completedAt: string;
+          status: string;
+          tokensUsed: number;
+          costUsd: number;
+          summary: string;
+          outcome: string;
+        }>>;
+        getStats: (id: string) => Promise<{
+          totalRuns: number;
+          successRate: number;
+          weeklyCost: number;
+          averageTokensPerRun: number;
+          averageDurationMs: number;
+        }>;
+        reload: () => Promise<object>;
+        getSpecialists: () => Promise<Record<string, {
+          name: string;
+          description: string;
+          model: string;
+          schedules: Array<{ type: string; cron: string; enabled: boolean }>;
+          memory: { strategy: string; maxEntries: number; retentionDays: number };
+          escalation: { onFailure?: string; onPattern?: string };
+        }>>;
+        scaffold: (name: string, options?: { description?: string }) => Promise<{ filePath: string }>;
+        onAlert: (callback: (specialistId: string, message: string) => void) => CleanupFunction;
+        onStateChanged: (callback: (state: unknown) => void) => CleanupFunction;
       };
     };
   }

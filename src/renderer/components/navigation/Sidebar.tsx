@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { ProjectList } from './ProjectList';
 import type { SidebarWorkItem } from './ProjectList';
 import type { SidebarProject } from '@renderer/stores/sidebar-store';
@@ -13,6 +13,7 @@ interface SidebarProps {
   onProjectRemove: (path: string) => void;
   onAddProject: () => void;
   onAnswerAndResume: (projectPath: string, itemId: string, answer: string, agentName: string) => void;
+  onOpenSchedule?: () => void;
 }
 
 export function Sidebar({
@@ -24,6 +25,7 @@ export function Sidebar({
   onProjectRemove,
   onAddProject,
   onAnswerAndResume,
+  onOpenSchedule,
 }: SidebarProps): React.ReactElement {
   return (
     <div
@@ -44,6 +46,21 @@ export function Sidebar({
           onAnswerAndResume={onAnswerAndResume}
         />
       </div>
+
+      {/* Scheduled agents button */}
+      {onOpenSchedule && (
+        <button
+          data-testid="sidebar-schedule"
+          onClick={onOpenSchedule}
+          className={`flex items-center gap-2 px-2 py-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] border-t border-[var(--color-border-primary)] transition-colors ${
+            collapsed ? 'justify-center' : ''
+          }`}
+          title="Scheduled Agents"
+        >
+          <Clock size={16} />
+          {!collapsed && <span className="text-xs truncate">Scheduled</span>}
+        </button>
+      )}
 
       {/* Collapse toggle */}
       <button
