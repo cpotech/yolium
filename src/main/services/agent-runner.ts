@@ -47,6 +47,7 @@ import type {
   RunResultMessage,
 } from '@shared/types/agent';
 import type { SpecialistDefinition, ScheduleType, RunOutcome } from '@shared/types/schedule';
+import { loadCredentials } from '@main/stores/specialist-credentials-store';
 
 const logger = createLogger('agent-runner');
 
@@ -1101,6 +1102,10 @@ export function startScheduledAgent(params: ScheduledAgentParams): Promise<Sched
     let lastRunResult: RunResultMessage | undefined;
     let capturedSessionId: string | undefined;
 
+    // Load specialist credentials for injection
+    const specialistCreds = loadCredentials(specialist.name);
+    const hasCredentials = Object.keys(specialistCreds).length > 0;
+
     createAgentContainer(
       {
         webContentsId: HEADLESS_WEB_CONTENTS_ID,
@@ -1112,6 +1117,7 @@ export function startScheduledAgent(params: ScheduledAgentParams): Promise<Sched
         itemId: `scheduled-${specialist.name}-${Date.now()}`,
         agentProvider: 'claude',
         timeoutMs: (specialist.timeout || 30) * 60 * 1000,
+        ...(hasCredentials && { specialistCredentials: specialistCreds }),
       },
       {
         onOutput: (data: string) => {

@@ -26,6 +26,12 @@ memory:
 escalation:
   onFailure: notify_slack
   onPattern: reduce_frequency
+integrations:
+  - service: twitter-api
+    env:
+      TWITTER_API_KEY: ""
+      TWITTER_API_SECRET: ""
+      TWITTER_BEARER_TOKEN: ""
 promptTemplates:
   heartbeat: |
     Review the last 30 minutes of engagement data.

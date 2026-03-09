@@ -522,3 +522,46 @@ onDownloadProgress(callback: (progress: {
   percent: number;
 }) => void): CleanupFn
 ```
+
+---
+
+## schedule
+
+CRON agent scheduling and specialist credential management.
+
+| Method | Channel | Direction | Description |
+|--------|---------|-----------|-------------|
+| `getState()` | `schedule:get-state` | invoke | Get full schedule state |
+| `toggleSpecialist(id, enabled)` | `schedule:toggle-specialist` | invoke | Toggle specialist enabled/disabled |
+| `toggleGlobal(enabled)` | `schedule:toggle-global` | invoke | Toggle global scheduling |
+| `triggerRun(id, type)` | `schedule:trigger-run` | invoke | Manual trigger: run a specialist now |
+| `getHistory(id, limit?)` | `schedule:get-history` | invoke | Get run history for a specialist |
+| `getStats(id)` | `schedule:get-stats` | invoke | Get run statistics |
+| `reload()` | `schedule:reload` | invoke | Reload specialist definitions |
+| `getSpecialists()` | `schedule:get-specialists` | invoke | Get loaded specialist definitions |
+| `scaffold(name, options?)` | `schedule:scaffold` | invoke | Create a new specialist definition file |
+| `getCredentials(id)` | `schedule:get-credentials` | invoke | Get redacted credentials (has-secret flags) |
+| `saveCredentials(id, serviceId, creds)` | `schedule:save-credentials` | invoke | Save credentials for a specialist service |
+| `deleteCredentials(id)` | `schedule:delete-credentials` | invoke | Delete all credentials for a specialist |
+| `onAlert(cb)` | `schedule:alert` | event | Specialist alert notification |
+| `onStateChanged(cb)` | `schedule:state-changed` | event | Schedule state changed |
+
+### Types
+
+```typescript
+scaffold(name: string, options?: {
+  description?: string;
+  content?: string;  // Raw markdown content (validates and writes directly)
+}): Promise<{ filePath: string }>
+
+getCredentials(specialistId: string): Promise<Record<string, Record<string, boolean>>>
+  // Returns { serviceId: { keyName: hasValue } } — never exposes raw secrets to renderer
+
+saveCredentials(
+  specialistId: string,
+  serviceId: string,
+  credentials: Record<string, string>
+): Promise<void>
+
+deleteCredentials(specialistId: string): Promise<void>
+```

@@ -35,6 +35,9 @@ export function SpecialistConfigDialog({
     averageTokensPerRun: number;
     averageDurationMs: number;
   } | null>(null);
+  const [credentials, setCredentials] = useState<Record<string, Record<string, boolean>>>({});
+  const [editingCreds, setEditingCreds] = useState<Record<string, Record<string, string>>>({});
+  const [savingCreds, setSavingCreds] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,6 +51,20 @@ export function SpecialistConfigDialog({
 
     // Load stats
     window.electronAPI.schedule.getStats(specialistId).then(setStats).catch(() => {});
+
+    // Load redacted credentials
+    window.electronAPI.schedule.getCredentials(specialistId).then((creds) => {
+      setCredentials(creds);
+      // Initialize editing state with empty values
+      const editing: Record<string, Record<string, string>> = {};
+      for (const [serviceId, keys] of Object.entries(creds)) {
+        editing[serviceId] = {};
+        for (const key of Object.keys(keys)) {
+          editing[serviceId][key] = '';
+        }
+      }
+      setEditingCreds(editing);
+    }).catch(() => {});
   }, [isOpen, specialistId]);
 
   useEffect(() => {
@@ -155,6 +172,73 @@ export function SpecialistConfigDialog({
                 )}
               </div>
             </div>
+
+            {/* Service Credentials */}
+            {Object.keys(credentials).length > 0 && (
+              <div>
+                <label className="block text-xs text-[var(--color-text-secondary)] mb-2">Service Credentials</label>
+                {Object.entries(credentials).map(([serviceId, keys]) => (
+                  <div key={serviceId} className="mb-2 rounded border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] p-3">
+                    <div className="text-xs font-medium text-[var(--color-text-primary)] mb-2">{serviceId}</div>
+                    {Object.entries(keys).map(([key, hasValue]) => (
+                      <div key={key} className="flex items-center gap-2 mb-1.5">
+                        <span className="text-xs text-[var(--color-text-secondary)] w-[140px] truncate font-mono">{key}</span>
+                        {hasValue ? (
+                          <span className="text-[10px] text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded">configured</span>
+                        ) : (
+                          <span className="text-[10px] text-[var(--color-text-muted)] bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded">not set</span>
+                        )}
+                        <input
+                          type="password"
+                          value={editingCreds[serviceId]?.[key] || ''}
+                          onChange={(e) => {
+                            setEditingCreds(prev => ({
+                              ...prev,
+                              [serviceId]: { ...prev[serviceId], [key]: e.target.value },
+                            }));
+                          }}
+                          placeholder="Enter new value"
+                          className="flex-1 rounded border border-[var(--color-border-secondary)] bg-[var(--color-bg-secondary)] px-2 py-1 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)]"
+                        />
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      disabled={savingCreds}
+                      onClick={async () => {
+                        if (!specialistId) return;
+                        const creds = editingCreds[serviceId];
+                        if (!creds) return;
+                        const filledCreds: Record<string, string> = {};
+                        let hasChanges = false;
+                        for (const [k, v] of Object.entries(creds)) {
+                          if (v) {
+                            filledCreds[k] = v;
+                            hasChanges = true;
+                          }
+                        }
+                        if (!hasChanges) return;
+                        setSavingCreds(true);
+                        try {
+                          await window.electronAPI.schedule.saveCredentials(specialistId, serviceId, filledCreds);
+                          const updated = await window.electronAPI.schedule.getCredentials(specialistId);
+                          setCredentials(updated);
+                          setEditingCreds(prev => ({
+                            ...prev,
+                            [serviceId]: Object.fromEntries(Object.keys(prev[serviceId] || {}).map(k => [k, ''])),
+                          }));
+                        } finally {
+                          setSavingCreds(false);
+                        }
+                      }}
+                      className="mt-1 text-[11px] text-[var(--color-accent-primary)] hover:underline disabled:opacity-50"
+                    >
+                      Save credentials
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Stats */}
             {stats && stats.totalRuns > 0 && (

@@ -813,6 +813,68 @@ describe('flushLineBuffer', () => {
   });
 });
 
+describe('buildAgentEnv specialist credentials', () => {
+  const baseParams = {
+    containerProjectPath: '/workspace',
+    projectTypesValue: 'node',
+    nodePackageManager: 'npm' as string | null,
+    promptBase64: 'dGVzdA==',
+    model: 'sonnet',
+    tools: ['Read', 'Bash'],
+    itemId: 'item-1',
+    agentName: 'code-agent',
+    agentProvider: 'claude',
+    gitConfig: null,
+    useOAuth: false,
+    useCodexOAuth: false,
+  };
+
+  it('should inject specialist credential env vars when specialistCredentials provided', () => {
+    const env = buildAgentEnv({
+      ...baseParams,
+      specialistCredentials: {
+        'twitter-api': { API_KEY: 'abc123', API_SECRET: 'secret456' },
+        slack: { WEBHOOK_URL: 'https://hooks.slack.com/xxx' },
+      },
+    });
+
+    expect(env).toContain('API_KEY=abc123');
+    expect(env).toContain('API_SECRET=secret456');
+    expect(env).toContain('WEBHOOK_URL=https://hooks.slack.com/xxx');
+  });
+
+  it('should not inject credential env vars when specialistCredentials is empty', () => {
+    const env = buildAgentEnv({
+      ...baseParams,
+      specialistCredentials: {},
+    });
+
+    const envWithout = buildAgentEnv(baseParams);
+
+    // Should be the same length — no extra env vars
+    expect(env.length).toBe(envWithout.length);
+  });
+
+  it('should not overwrite core env vars with credential env vars', () => {
+    const env = buildAgentEnv({
+      ...baseParams,
+      specialistCredentials: {
+        malicious: {
+          PROJECT_DIR: '/hacked',
+          ANTHROPIC_API_KEY: 'stolen-key',
+          AGENT_NAME: 'evil-agent',
+        },
+      },
+    });
+
+    // Core vars should keep their original values
+    expect(env).toContain('PROJECT_DIR=/workspace');
+    expect(env).not.toContain('PROJECT_DIR=/hacked');
+    expect(env).not.toContain('ANTHROPIC_API_KEY=stolen-key');
+    expect(env).not.toContain('AGENT_NAME=evil-agent');
+  });
+});
+
 describe('cumulative usage helpers', () => {
   it('combines usage parts and accumulates into session totals', () => {
     const combined = combineUsageParts([

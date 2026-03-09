@@ -13,6 +13,7 @@ import type {
   MemoryStrategy,
   MemoryConfig,
   EscalationConfig,
+  ServiceIntegration,
 } from '@shared/types/schedule';
 
 const VALID_MODELS = ['opus', 'sonnet', 'haiku'];
@@ -105,6 +106,25 @@ export function parseSpecialistDefinition(markdown: string): SpecialistDefinitio
     }
   }
 
+  // Parse integrations
+  const integrations: ServiceIntegration[] = [];
+  if (data.integrations && Array.isArray(data.integrations)) {
+    for (const entry of data.integrations) {
+      if (
+        entry &&
+        typeof entry === 'object' &&
+        typeof entry.service === 'string' &&
+        entry.env &&
+        typeof entry.env === 'object'
+      ) {
+        integrations.push({
+          service: entry.service,
+          env: entry.env as Record<string, string>,
+        });
+      }
+    }
+  }
+
   return {
     name: data.name,
     description: data.description,
@@ -116,6 +136,7 @@ export function parseSpecialistDefinition(markdown: string): SpecialistDefinitio
     memory,
     escalation,
     promptTemplates,
+    integrations,
   };
 }
 
