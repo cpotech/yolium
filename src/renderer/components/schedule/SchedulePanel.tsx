@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Clock, Play, History, Settings, Power, PowerOff, RefreshCw, AlertTriangle, ChevronDown } from 'lucide-react';
+import { Clock, Play, History, Settings, Power, PowerOff, RefreshCw, AlertTriangle, ChevronDown, Plus } from 'lucide-react';
 import { RunHistoryTable } from './RunHistoryTable';
 import { SpecialistConfigDialog } from './SpecialistConfigDialog';
+import { AddSpecialistDialog } from './AddSpecialistDialog';
 
 interface SpecialistInfo {
   name: string;
@@ -33,6 +34,7 @@ export function SchedulePanel(): React.ReactElement {
   const [specialists, setSpecialists] = useState<Record<string, SpecialistInfo>>({});
   const [selectedSpecialist, setSelectedSpecialist] = useState<string | null>(null);
   const [configSpecialist, setConfigSpecialist] = useState<string | null>(null);
+  const [showAddDialog, setShowAddDialog] = useState(false);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [runTypeMenu, setRunTypeMenu] = useState<string | null>(null);
@@ -102,6 +104,11 @@ export function SchedulePanel(): React.ReactElement {
     await loadState();
   }, [loadState]);
 
+  const handleSpecialistCreated = useCallback(() => {
+    loadState();
+    setShowAddDialog(false);
+  }, [loadState]);
+
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center" data-testid="schedule-panel-loading">
@@ -144,6 +151,14 @@ export function SchedulePanel(): React.ReactElement {
         </div>
         <div className="flex items-center gap-2">
           <button
+            data-testid="add-specialist-btn"
+            onClick={() => setShowAddDialog(true)}
+            className="flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]"
+          >
+            <Plus size={12} />
+            Add
+          </button>
+          <button
             data-testid="schedule-reload-btn"
             onClick={handleReload}
             className="p-1.5 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
@@ -183,9 +198,13 @@ export function SchedulePanel(): React.ReactElement {
           <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)]">
             <Clock size={48} className="mb-3 opacity-30" />
             <p className="text-sm">No specialists found</p>
-            <p className="text-xs mt-1">
-              Add specialist definitions to <code>src/agents/cron/</code>
-            </p>
+            <button
+              type="button"
+              onClick={() => setShowAddDialog(true)}
+              className="mt-3 rounded bg-[var(--color-accent-primary)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
+            >
+              Add Specialist
+            </button>
           </div>
         ) : (
           <div className="grid gap-3 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
@@ -338,6 +357,11 @@ export function SchedulePanel(): React.ReactElement {
         isOpen={configSpecialist !== null}
         specialistId={configSpecialist}
         onClose={() => setConfigSpecialist(null)}
+      />
+      <AddSpecialistDialog
+        isOpen={showAddDialog}
+        onClose={() => setShowAddDialog(false)}
+        onCreated={handleSpecialistCreated}
       />
     </div>
   );
