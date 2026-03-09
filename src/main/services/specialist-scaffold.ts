@@ -5,7 +5,8 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { getSpecialistsDir } from './specialist-loader';
+import matter from 'gray-matter';
+import { getSpecialistsDir, parseSpecialistDefinition } from './specialist-loader';
 
 const TEMPLATE = `---
 name: {{name}}
@@ -62,10 +63,12 @@ You are a specialist agent for {{description}}.
 
 /**
  * Scaffold a new specialist definition file.
+ * When `options.content` is provided, validates it and writes directly (replacing the name in frontmatter).
+ * When `options.content` is absent/empty, uses the default template.
  */
 export function scaffoldSpecialist(
   name: string,
-  options: { description?: string } = {}
+  options: { description?: string; content?: string } = {}
 ): string {
   const dir = getSpecialistsDir();
   if (!fs.existsSync(dir)) {
@@ -77,14 +80,27 @@ export function scaffoldSpecialist(
     throw new Error(`Specialist "${name}" already exists at ${filePath}`);
   }
 
-  const description = options.description || `${name} monitoring and analysis`;
-  const displayName = name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  if (options.content && options.content.trim()) {
+    // Validate raw markdown through parseSpecialistDefinition
+    parseSpecialistDefinition(options.content);
 
-  const content = TEMPLATE
-    .replace(/\{\{name\}\}/g, name)
-    .replace(/\{\{description\}\}/g, description)
-    .replace(/\{\{displayName\}\}/g, displayName);
+    // Replace the name field in frontmatter with the provided name
+    const parsed = matter(options.content);
+    parsed.data.name = name;
+    const finalContent = matter.stringify(parsed.content, parsed.data);
 
-  fs.writeFileSync(filePath, content, 'utf-8');
+    fs.writeFileSync(filePath, finalContent, 'utf-8');
+  } else {
+    const description = options.description || `${name} monitoring and analysis`;
+    const displayName = name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+    const content = TEMPLATE
+      .replace(/\{\{name\}\}/g, name)
+      .replace(/\{\{description\}\}/g, description)
+      .replace(/\{\{displayName\}\}/g, displayName);
+
+    fs.writeFileSync(filePath, content, 'utf-8');
+  }
+
   return filePath;
 }

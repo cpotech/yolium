@@ -105,6 +105,35 @@ Toggle the specialist's enable switch in the Schedule Panel.
 | `memory` | No | MemoryConfig | Memory strategy config |
 | `escalation` | No | EscalationConfig | Escalation behavior |
 | `promptTemplates` | No | Record<string, string> | Per-schedule-type prompt templates |
+| `integrations` | No | ServiceIntegration[] | Service integrations requiring credentials |
+
+### Integrations
+
+Specialists can declare service integrations in their frontmatter. This tells Yolium which external services the specialist needs credentials for:
+
+```yaml
+integrations:
+  - service: twitter-api
+    env:
+      TWITTER_API_KEY: ""
+      TWITTER_API_SECRET: ""
+  - service: slack
+    env:
+      SLACK_WEBHOOK_URL: ""
+```
+
+Each integration declares:
+- `service` — A human-readable service identifier (any string)
+- `env` — A map of environment variable names that the service requires
+
+The actual credential values are stored separately in `~/.yolium/specialist-credentials.json` (mode 0o600, never committed to git). When a scheduled agent runs, its credentials are injected as environment variables into the Docker container.
+
+### Managing Credentials
+
+Credentials can be configured in two ways:
+
+1. **Add Specialist Dialog** — When creating a specialist with a markdown definition that includes `integrations`, the credential fields auto-populate. Enter values before creating.
+2. **Specialist Config Dialog** — Click on an existing specialist to view its configuration. The "Service Credentials" section shows configured services and allows editing credential values.
 
 ### Schedule Types
 

@@ -29,6 +29,15 @@ export interface EscalationConfig {
   onPattern?: EscalationAction;
 }
 
+/** Service integration declared in specialist frontmatter */
+export interface ServiceIntegration {
+  service: string;
+  env: Record<string, string>;
+}
+
+/** Per-specialist credentials: serviceId -> key/value pairs */
+export type ServiceCredentials = Record<string, Record<string, string>>;
+
 /** Specialist definition extending AgentDefinition with scheduling fields */
 export interface SpecialistDefinition {
   name: string;
@@ -41,6 +50,7 @@ export interface SpecialistDefinition {
   memory: MemoryConfig;
   escalation: EscalationConfig;
   promptTemplates: Record<string, string>;
+  integrations?: ServiceIntegration[];
 }
 
 /** Outcome of a scheduled run */

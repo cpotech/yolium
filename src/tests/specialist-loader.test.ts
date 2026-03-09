@@ -24,71 +24,7 @@ vi.mock('node-cron', () => {
   return { default: { validate: validateFn }, validate: validateFn };
 });
 
-// Mock gray-matter
-vi.mock('gray-matter', () => {
-  return {
-    default: vi.fn((content: string) => {
-      // Simple YAML frontmatter parser for tests
-      const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-      if (!match) return { data: {}, content };
-
-      const yamlStr = match[1];
-      const bodyContent = match[2];
-      const data: Record<string, unknown> = {};
-
-      // Parse simple YAML fields
-      const lines = yamlStr.split('\n');
-      let currentKey = '';
-      let currentArray: string[] | null = null;
-      let currentObject: Record<string, unknown> | null = null;
-
-      for (const line of lines) {
-        const keyMatch = line.match(/^(\w+):\s*(.*)$/);
-        if (keyMatch) {
-          if (currentArray && currentKey) {
-            data[currentKey] = currentArray;
-            currentArray = null;
-          }
-          if (currentObject && currentKey) {
-            data[currentKey] = currentObject;
-            currentObject = null;
-          }
-          currentKey = keyMatch[1];
-          const value = keyMatch[2].trim();
-          if (value === '' || value === undefined) {
-            // Could be start of array or object
-          } else if (value === 'true') {
-            data[currentKey] = true;
-          } else if (value === 'false') {
-            data[currentKey] = false;
-          } else if (!isNaN(Number(value))) {
-            data[currentKey] = Number(value);
-          } else {
-            data[currentKey] = value;
-          }
-        } else if (line.match(/^\s+-\s+(.*)$/)) {
-          if (!currentArray) currentArray = [];
-          const arrayMatch = line.match(/^\s+-\s+(.*)$/);
-          if (arrayMatch) currentArray.push(arrayMatch[1]);
-        } else if (line.match(/^\s+(\w+):\s*(.*)$/)) {
-          if (!currentObject) currentObject = {};
-          const objMatch = line.match(/^\s+(\w+):\s*(.*)$/);
-          if (objMatch) {
-            const val = objMatch[2].trim();
-            if (val === 'true') currentObject[objMatch[1]] = true;
-            else if (val === 'false') currentObject[objMatch[1]] = false;
-            else if (!isNaN(Number(val)) && val !== '') currentObject[objMatch[1]] = Number(val);
-            else currentObject[objMatch[1]] = val;
-          }
-        }
-      }
-      if (currentArray && currentKey) data[currentKey] = currentArray;
-      if (currentObject && currentKey) data[currentKey] = currentObject;
-
-      return { data, content: bodyContent.trim() };
-    }),
-  };
-});
+// Use real gray-matter — it's a pure JS library that parses YAML frontmatter correctly
 
 import {
   parseSpecialistDefinition,
@@ -302,6 +238,115 @@ escalation:
 Content`;
 
       expect(() => parseSpecialistDefinition(markdown)).toThrow();
+    });
+
+    it('should parse integrations array from frontmatter when present', () => {
+      const markdown = `---
+name: twitter-growth
+description: Social media specialist
+model: sonnet
+tools:
+  - Read
+  - Bash
+schedules:
+  - { type: daily, cron: "0 0 * * *", enabled: true }
+memory:
+  strategy: raw
+  maxEntries: 100
+  retentionDays: 30
+escalation:
+  onFailure: alert_user
+integrations:
+  - { service: twitter-api, env: { API_KEY: "", API_SECRET: "" } }
+  - { service: slack, env: { WEBHOOK_URL: "" } }
+---
+
+Content`;
+
+      const result = parseSpecialistDefinition(markdown);
+      expect(result.integrations).toBeDefined();
+      expect(result.integrations).toHaveLength(2);
+      expect(result.integrations![0].service).toBe('twitter-api');
+      expect(result.integrations![0].env).toEqual({ API_KEY: '', API_SECRET: '' });
+      expect(result.integrations![1].service).toBe('slack');
+    });
+
+    it('should return empty integrations array when frontmatter has no integrations field', () => {
+      const markdown = `---
+name: test-specialist
+description: Test
+model: haiku
+tools:
+  - Read
+schedules:
+  - { type: daily, cron: "0 0 * * *", enabled: true }
+memory:
+  strategy: raw
+  maxEntries: 100
+  retentionDays: 30
+escalation:
+  onFailure: alert_user
+---
+
+Content`;
+
+      const result = parseSpecialistDefinition(markdown);
+      expect(result.integrations).toEqual([]);
+    });
+
+    it('should validate integration entries have required service and env fields', () => {
+      const markdown = `---
+name: test-specialist
+description: Test
+model: haiku
+tools:
+  - Read
+schedules:
+  - { type: daily, cron: "0 0 * * *", enabled: true }
+memory:
+  strategy: raw
+  maxEntries: 100
+  retentionDays: 30
+escalation:
+  onFailure: alert_user
+integrations:
+  - { service: valid-service, env: { KEY: "" } }
+  - { badfield: invalid }
+---
+
+Content`;
+
+      const result = parseSpecialistDefinition(markdown);
+      // Should only include the valid integration, skipping the malformed one
+      expect(result.integrations).toHaveLength(1);
+      expect(result.integrations![0].service).toBe('valid-service');
+    });
+
+    it('should ignore malformed integration entries without crashing', () => {
+      const markdown = `---
+name: test-specialist
+description: Test
+model: haiku
+tools:
+  - Read
+schedules:
+  - { type: daily, cron: "0 0 * * *", enabled: true }
+memory:
+  strategy: raw
+  maxEntries: 100
+  retentionDays: 30
+escalation:
+  onFailure: alert_user
+integrations:
+  - not-an-object
+  - 12345
+---
+
+Content`;
+
+      // Should not throw, just return empty integrations
+      const result = parseSpecialistDefinition(markdown);
+      expect(result.integrations).toEqual([]);
     });
   });
 });

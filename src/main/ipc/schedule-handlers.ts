@@ -13,6 +13,11 @@ import {
 } from '@main/stores/schedule-store';
 import { getRecentRuns, getRunStats } from '@main/stores/run-history-store';
 import { scaffoldSpecialist } from '@main/services/specialist-scaffold';
+import {
+  loadRedactedCredentials,
+  saveCredentials,
+  deleteCredentials,
+} from '@main/stores/specialist-credentials-store';
 import type { ScheduleType } from '@shared/types/schedule';
 
 export function registerScheduleHandlers(ipcMain: IpcMain): void {
@@ -79,9 +84,24 @@ export function registerScheduleHandlers(ipcMain: IpcMain): void {
   });
 
   // Scaffold a new specialist definition
-  ipcMain.handle('schedule:scaffold', (_event, name: string, options?: { description?: string }) => {
+  ipcMain.handle('schedule:scaffold', (_event, name: string, options?: { description?: string; content?: string }) => {
     const filePath = scaffoldSpecialist(name, options);
     scheduler.reload();
     return { filePath };
+  });
+
+  // Get redacted credentials for a specialist (has-secret flags, never raw values)
+  ipcMain.handle('schedule:get-credentials', (_event, specialistId: string) => {
+    return loadRedactedCredentials(specialistId);
+  });
+
+  // Save credentials for a specialist service
+  ipcMain.handle('schedule:save-credentials', (_event, specialistId: string, serviceId: string, credentials: Record<string, string>) => {
+    saveCredentials(specialistId, serviceId, credentials);
+  });
+
+  // Delete all credentials for a specialist
+  ipcMain.handle('schedule:delete-credentials', (_event, specialistId: string) => {
+    deleteCredentials(specialistId);
   });
 }

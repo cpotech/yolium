@@ -396,8 +396,14 @@ const schedule = {
     ipcRenderer.invoke('schedule:get-stats', id),
   reload: () => ipcRenderer.invoke('schedule:reload'),
   getSpecialists: () => ipcRenderer.invoke('schedule:get-specialists'),
-  scaffold: (name: string, options?: { description?: string }) =>
+  scaffold: (name: string, options?: { description?: string; content?: string }) =>
     ipcRenderer.invoke('schedule:scaffold', name, options),
+  getCredentials: (specialistId: string) =>
+    ipcRenderer.invoke('schedule:get-credentials', specialistId),
+  saveCredentials: (specialistId: string, serviceId: string, credentials: Record<string, string>) =>
+    ipcRenderer.invoke('schedule:save-credentials', specialistId, serviceId, credentials),
+  deleteCredentials: (specialistId: string) =>
+    ipcRenderer.invoke('schedule:delete-credentials', specialistId),
   onAlert: (callback: (specialistId: string, message: string) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, specialistId: string, message: string) =>
       callback(specialistId, message);
@@ -752,7 +758,10 @@ declare global {
           memory: { strategy: string; maxEntries: number; retentionDays: number };
           escalation: { onFailure?: string; onPattern?: string };
         }>>;
-        scaffold: (name: string, options?: { description?: string }) => Promise<{ filePath: string }>;
+        scaffold: (name: string, options?: { description?: string; content?: string }) => Promise<{ filePath: string }>;
+        getCredentials: (specialistId: string) => Promise<Record<string, Record<string, boolean>>>;
+        saveCredentials: (specialistId: string, serviceId: string, credentials: Record<string, string>) => Promise<void>;
+        deleteCredentials: (specialistId: string) => Promise<void>;
         onAlert: (callback: (specialistId: string, message: string) => void) => CleanupFunction;
         onStateChanged: (callback: (state: unknown) => void) => CleanupFunction;
       };

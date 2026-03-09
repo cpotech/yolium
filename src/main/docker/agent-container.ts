@@ -347,6 +347,16 @@ export function buildBindMounts(params: {
  * Build the environment variable array for agent containers.
  * Pure function: takes config, returns env var strings.
  */
+/** Core env var names that must not be overwritten by specialist credentials */
+const PROTECTED_ENV_VARS = new Set([
+  'PROJECT_DIR', 'TOOL', 'PROJECT_TYPES', 'NODE_PACKAGE_MANAGER',
+  'AGENT_PROMPT', 'AGENT_MODEL', 'AGENT_TOOLS', 'AGENT_ITEM_ID',
+  'AGENT_NAME', 'AGENT_PROVIDER', 'AGENT_GOAL', 'HOST_HOME',
+  'OPENCODE_YOLO', 'YOLIUM_NETWORK_FULL', 'WORKTREE_REPO_PATH',
+  'GIT_USER_NAME', 'GIT_USER_EMAIL', 'ANTHROPIC_API_KEY',
+  'OPENAI_API_KEY', 'CLAUDE_OAUTH_ENABLED', 'CODEX_OAUTH_ENABLED',
+]);
+
 export function buildAgentEnv(params: {
   containerProjectPath: string;
   projectTypesValue: string;
@@ -363,14 +373,16 @@ export function buildAgentEnv(params: {
   gitConfig: GitConfig | null;
   useOAuth: boolean;
   useCodexOAuth: boolean;
+  specialistCredentials?: Record<string, Record<string, string>>;
 }): string[] {
   const {
     containerProjectPath, projectTypesValue, nodePackageManager,
     promptBase64, goalBase64, model, tools, itemId, agentName, agentProvider,
     worktreePath, originalPath, gitConfig, useOAuth, useCodexOAuth,
+    specialistCredentials,
   } = params;
 
-  return [
+  const env = [
     `PROJECT_DIR=${containerProjectPath}`,
     'TOOL=agent',
     ...(projectTypesValue ? [`PROJECT_TYPES=${projectTypesValue}`] : []),
@@ -400,6 +412,19 @@ export function buildAgentEnv(params: {
       return key ? [`OPENAI_API_KEY=${key}`] : [];
     })(),
   ];
+
+  // Append specialist credentials as env vars, guarding against overwriting core vars
+  if (specialistCredentials) {
+    for (const creds of Object.values(specialistCredentials)) {
+      for (const [key, value] of Object.entries(creds)) {
+        if (!PROTECTED_ENV_VARS.has(key)) {
+          env.push(`${key}=${value}`);
+        }
+      }
+    }
+  }
+
+  return env;
 }
 
 /**
@@ -624,6 +649,7 @@ export interface AgentContainerParams {
   originalPath?: string;
   branchName?: string;
   timeoutMs?: number; // Inactivity timeout in milliseconds (default: 30 min)
+  specialistCredentials?: Record<string, Record<string, string>>;
 }
 
 /**
@@ -649,7 +675,7 @@ export async function createAgentContainer(
   params: AgentContainerParams,
   callbacks: AgentContainerCallbacks = {}
 ): Promise<string> {
-  const { webContentsId, projectPath, agentName, prompt, goal, model, tools, itemId, agentProvider, worktreePath, originalPath, branchName, timeoutMs } = params;
+  const { webContentsId, projectPath, agentName, prompt, goal, model, tools, itemId, agentProvider, worktreePath, originalPath, branchName, timeoutMs, specialistCredentials } = params;
   const { onOutput, onDisplayOutput, onProtocolMessage, onExit } = callbacks;
 
   const sessionId = `agent-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -702,6 +728,7 @@ export async function createAgentContainer(
     promptBase64, goalBase64, model, tools, itemId, agentName,
     agentProvider: agentProvider || 'claude',
     worktreePath, originalPath, gitConfig, useOAuth, useCodexOAuth,
+    specialistCredentials,
   });
   logger.info('Agent env vars built', { sessionId, envCount: env.length, elapsedMs: Math.round(performance.now() - phaseStart) });
 
