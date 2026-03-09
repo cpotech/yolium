@@ -567,17 +567,19 @@ export function processStreamChunk(
  */
 export function flushLineBuffer(
   lineBuffer: string
-): { textContent: string; protocolMessages: unknown[] } {
+): { textContent: string; protocolMessages: unknown[]; usage?: NonNullable<ParsedStreamEvent['usage']> } {
   const trimmed = lineBuffer.trim();
   if (!trimmed) {
     return { textContent: '', protocolMessages: [] };
   }
 
   let textContent: string;
+  let usage: NonNullable<ParsedStreamEvent['usage']> | undefined;
   try {
     const event = JSON.parse(trimmed);
     const parsed = parseStreamEvent(event);
     textContent = parsed.text ? parsed.text + '\n' : '';
+    usage = parsed.usage;
   } catch {
     textContent = trimmed + '\n';
   }
@@ -587,7 +589,7 @@ export function flushLineBuffer(
     ? extractProtocolMessages(textContent.endsWith('\n') ? textContent.slice(0, -1) : textContent)
     : [];
 
-  return { textContent, protocolMessages };
+  return { textContent, protocolMessages, usage };
 }
 
 /**
@@ -819,6 +821,16 @@ export async function createAgentContainer(
       const s = agentSessions.get(sessionId);
       if (s) s.protocolMessageCount += flushed.protocolMessages.length;
       for (const msg of flushed.protocolMessages) onProtocolMessage?.(msg);
+    }
+
+    // Dispatch usage that was buffered (e.g., result event without trailing newline)
+    if (flushed.usage) {
+      const session = agentSessions.get(sessionId);
+      if (session) accumulateSessionUsage(session, flushed.usage);
+      const webContents = getWebContents(webContentsId);
+      if (webContents && !webContents.isDestroyed()) {
+        webContents.send('agent:cost-update', sessionId, resolvedProjectPath, itemId, flushed.usage);
+      }
     }
 
     cleanupSession(sessionId, 'stopped');
