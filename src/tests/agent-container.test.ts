@@ -811,6 +811,42 @@ describe('flushLineBuffer', () => {
     expect(result.textContent).toBe('');
     expect(result.protocolMessages).toEqual([]);
   });
+
+  it('should extract usage from a buffered result event', () => {
+    const result = flushLineBuffer('{"type":"result","cost_usd":0.05,"usage":{"input_tokens":100,"output_tokens":50}}');
+
+    expect(result.usage).toEqual({
+      inputTokens: 100,
+      outputTokens: 50,
+      costUsd: 0.05,
+    });
+  });
+
+  it('should return undefined usage when buffer has no usage data', () => {
+    const result = flushLineBuffer('{"type":"assistant","message":{"content":[{"type":"text","text":"hello"}]}}');
+
+    expect(result.usage).toBeUndefined();
+  });
+
+  it('should handle result event with usage but no cost_usd', () => {
+    const result = flushLineBuffer('{"type":"result","usage":{"input_tokens":10,"output_tokens":20}}');
+
+    expect(result.usage).toEqual({
+      inputTokens: 10,
+      outputTokens: 20,
+      costUsd: 0,
+    });
+  });
+
+  it('should handle result event with cost_usd but no usage object', () => {
+    const result = flushLineBuffer('{"type":"result","cost_usd":0.03}');
+
+    expect(result.usage).toEqual({
+      inputTokens: 0,
+      outputTokens: 0,
+      costUsd: 0.03,
+    });
+  });
 });
 
 describe('buildAgentEnv specialist credentials', () => {
