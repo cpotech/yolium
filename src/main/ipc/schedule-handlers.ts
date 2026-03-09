@@ -13,6 +13,7 @@ import {
 } from '@main/stores/schedule-store';
 import { getRecentRuns, getRunStats } from '@main/stores/run-history-store';
 import { scaffoldSpecialist, getDefaultTemplate } from '@main/services/specialist-scaffold';
+import { loadSpecialistRaw } from '@main/services/specialist-loader';
 import {
   loadRedactedCredentials,
   saveCredentials,
@@ -93,6 +94,11 @@ export function registerScheduleHandlers(ipcMain: IpcMain): void {
     const filePath = scaffoldSpecialist(name, options);
     scheduler.reload();
     return { filePath };
+  });
+
+  // Get raw markdown content of an existing specialist (for cloning)
+  ipcMain.handle('schedule:get-raw-definition', (_event, name: string) => {
+    return loadSpecialistRaw(name);
   });
 
   // Get redacted credentials for a specialist (has-secret flags, never raw values)

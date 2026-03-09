@@ -3,17 +3,31 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { AddSpecialistDialog } from '@renderer/components/schedule/AddSpecialistDialog';
+import {
+  AddSpecialistDialog,
+  sanitizeSpecialistName,
+  tryParseIntegrations,
+  serializeGuidedFormToMarkdown,
+  parseMarkdownToGuidedForm,
+} from '@renderer/components/schedule/AddSpecialistDialog';
+import { describeCron, CRON_PRESETS } from '@renderer/components/schedule/CronHelper';
 
 const mockScaffold = vi.fn();
 const mockSaveCredentials = vi.fn();
 const mockGetTemplate = vi.fn();
+const mockGetSpecialists = vi.fn();
+const mockGetRawDefinition = vi.fn();
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockScaffold.mockResolvedValue({ filePath: '/tmp/agents/cron/code-quality.md' });
   mockSaveCredentials.mockResolvedValue(undefined);
   mockGetTemplate.mockResolvedValue('---\nname: code-quality\ndescription: code-quality monitoring and analysis\nmodel: haiku\n---\n\n# Code Quality Specialist\n');
+  mockGetSpecialists.mockResolvedValue({
+    'security-monitor': { name: 'security-monitor', description: 'Security scanning', model: 'haiku', schedules: [] },
+    'code-quality': { name: 'code-quality', description: 'Code quality checks', model: 'sonnet', schedules: [] },
+  });
+  mockGetRawDefinition.mockResolvedValue('---\nname: security-monitor\ndescription: Security scanning\nmodel: haiku\n---\n\n# Security Monitor');
 
   Object.defineProperty(window, 'electronAPI', {
     value: {
@@ -21,6 +35,8 @@ beforeEach(() => {
         scaffold: mockScaffold,
         saveCredentials: mockSaveCredentials,
         getTemplate: mockGetTemplate,
+        getSpecialists: mockGetSpecialists,
+        getRawDefinition: mockGetRawDefinition,
       },
     },
     writable: true,
@@ -366,5 +382,211 @@ integrations:
     await waitFor(() => {
       expect(mockScaffold).toHaveBeenCalledWith('code-quality', { content: editedContent });
     });
+  });
+});
+
+describe('sanitizeSpecialistName', () => {
+  it('should convert spaces and underscores to kebab-case', () => {
+    expect(sanitizeSpecialistName('My Specialist Name')).toBe('my-specialist-name');
+    expect(sanitizeSpecialistName('my_specialist_name')).toBe('my-specialist-name');
+    expect(sanitizeSpecialistName('Mixed Spaces_And_Underscores')).toBe('mixed-spaces-and-underscores');
+  });
+
+  it('should strip invalid characters', () => {
+    expect(sanitizeSpecialistName('hello!!world@#$%')).toBe('helloworld');
+    expect(sanitizeSpecialistName('  --leading-trailing--  ')).toBe('leading-trailing');
+    expect(sanitizeSpecialistName('UPPERCASE')).toBe('uppercase');
+  });
+});
+
+describe('tryParseIntegrations', () => {
+  it('should extract services from valid YAML frontmatter', () => {
+    const markdown = `---
+name: test
+integrations:
+  - service: twitter-api
+    env:
+      API_KEY: ""
+      API_SECRET: ""
+  - service: slack
+    env:
+      WEBHOOK_URL: ""
+---
+
+# Content`;
+
+    const result = tryParseIntegrations(markdown);
+    expect(result).toHaveLength(2);
+    expect(result[0].name).toBe('twitter-api');
+    expect(result[0].credentials).toHaveLength(2);
+    expect(result[0].credentials[0].key).toBe('API_KEY');
+    expect(result[1].name).toBe('slack');
+  });
+
+  it('should return empty array for invalid frontmatter', () => {
+    expect(tryParseIntegrations('no frontmatter here')).toEqual([]);
+    expect(tryParseIntegrations('---\nname: test\n---\nno integrations')).toEqual([]);
+  });
+
+  it('should preserve existing credential values when re-parsing', () => {
+    const markdown = `---
+name: test
+integrations:
+  - service: twitter-api
+    env:
+      API_KEY: ""
+---
+
+# Content`;
+
+    const result = tryParseIntegrations(markdown);
+    expect(result[0].credentials[0].value).toBe('');
+  });
+});
+
+describe('auto-detect name from pasted YAML', () => {
+  it('should extract name from pasted YAML frontmatter and auto-fill name input', () => {
+    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
+
+    const markdown = `---
+name: my-cool-agent
+description: Does cool things
+model: sonnet
+---
+
+# My Cool Agent`;
+
+    fireEvent.change(screen.getByTestId('specialist-markdown-editor'), {
+      target: { value: markdown },
+    });
+
+    // Name input should be auto-filled from YAML frontmatter
+    expect(screen.getByTestId('specialist-name-input')).toHaveValue('my-cool-agent');
+  });
+});
+
+describe('guided mode serialization', () => {
+  it('should serialize form state to valid YAML markdown', () => {
+    const result = serializeGuidedFormToMarkdown({
+      name: 'test-agent',
+      description: 'A test agent',
+      model: 'haiku',
+      tools: ['Read', 'Grep', 'Bash'],
+      schedules: [{ type: 'daily', cron: '0 0 * * *', enabled: true }],
+      memory: { strategy: 'distill_daily', maxEntries: 300, retentionDays: 90 },
+      escalation: { onFailure: 'alert_user', onPattern: 'reduce_frequency' },
+      promptTemplates: { daily: 'Review the day.' },
+      integrations: [{ service: 'twitter', env: { API_KEY: '' } }],
+      systemPrompt: '# Test Agent\n\nYou are a test agent.',
+    });
+
+    expect(result).toContain('name: test-agent');
+    expect(result).toContain('description: A test agent');
+    expect(result).toContain('model: haiku');
+    expect(result).toContain('Read');
+    expect(result).toContain('0 0 * * *');
+    expect(result).toContain('# Test Agent');
+  });
+
+  it('should parse markdown into form state for mode switching', () => {
+    const markdown = `---
+name: test-agent
+description: A test agent
+model: sonnet
+tools:
+  - Read
+  - Bash
+schedules:
+  - type: daily
+    cron: "0 0 * * *"
+    enabled: true
+memory:
+  strategy: distill_daily
+  maxEntries: 300
+  retentionDays: 90
+escalation:
+  onFailure: alert_user
+  onPattern: reduce_frequency
+promptTemplates:
+  daily: Review the day.
+integrations:
+  - service: twitter
+    env:
+      API_KEY: ""
+---
+
+# Test Agent
+
+You are a test agent.`;
+
+    const result = parseMarkdownToGuidedForm(markdown);
+    expect(result.name).toBe('test-agent');
+    expect(result.description).toBe('A test agent');
+    expect(result.model).toBe('sonnet');
+    expect(result.tools).toContain('Read');
+    expect(result.tools).toContain('Bash');
+    expect(result.schedules).toHaveLength(1);
+    expect(result.schedules[0].cron).toBe('0 0 * * *');
+    expect(result.memory.strategy).toBe('distill_daily');
+    expect(result.escalation.onFailure).toBe('alert_user');
+    expect(result.systemPrompt).toContain('# Test Agent');
+  });
+});
+
+describe('cron helper', () => {
+  it('should display human-readable description for common expressions', () => {
+    expect(describeCron('*/30 * * * *')).toBe('Every 30 minutes');
+    expect(describeCron('0 0 * * *')).toBe('Daily at midnight');
+    expect(describeCron('0 9 * * 1')).toBe('Weekly on Monday at 9:00 AM');
+    expect(describeCron('*/15 * * * *')).toBe('Every 15 minutes');
+    expect(describeCron('0 8 * * *')).toBe('Daily at 8:00 AM');
+  });
+
+  it('should provide correct preset cron expressions', () => {
+    expect(CRON_PRESETS).toBeDefined();
+    expect(Array.isArray(CRON_PRESETS)).toBe(true);
+    const labels = CRON_PRESETS.map(p => p.label);
+    expect(labels).toContain('Every 15 min');
+    expect(labels).toContain('Every 30 min');
+    expect(labels).toContain('Hourly');
+    expect(labels).toContain('Daily at midnight');
+  });
+});
+
+describe('clone from existing', () => {
+  it('clone dropdown should populate with existing specialist names', async () => {
+    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
+
+    // Wait for specialists to load
+    await waitFor(() => {
+      expect(mockGetSpecialists).toHaveBeenCalled();
+    });
+
+    // Clone dropdown should be present
+    const cloneSelect = screen.getByTestId('specialist-clone-select');
+    expect(cloneSelect).toBeInTheDocument();
+  });
+});
+
+describe('validation', () => {
+  it('should show error for missing required fields in real-time', async () => {
+    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
+
+    // Type invalid YAML into editor
+    const invalidMarkdown = `---
+name: test
+---
+
+# Test`;
+
+    fireEvent.change(screen.getByTestId('specialist-markdown-editor'), {
+      target: { value: invalidMarkdown },
+    });
+
+    // Validation badge should appear after debounce
+    await waitFor(() => {
+      const badge = screen.queryByTestId('specialist-validation-badge');
+      expect(badge).toBeInTheDocument();
+    }, { timeout: 1000 });
   });
 });

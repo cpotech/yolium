@@ -30,6 +30,7 @@ import {
   parseSpecialistDefinition,
   listSpecialists,
   validateSchedules,
+  loadSpecialistRaw,
 } from '@main/services/specialist-loader';
 
 describe('specialist-loader', () => {
@@ -347,6 +348,26 @@ Content`;
       // Should not throw, just return empty integrations
       const result = parseSpecialistDefinition(markdown);
       expect(result.integrations).toEqual([]);
+    });
+  });
+
+  describe('loadSpecialistRaw', () => {
+    it('should return raw markdown content for an existing specialist', async () => {
+      const fs = await import('node:fs');
+      const rawContent = `---\nname: test-agent\ndescription: Test\nmodel: haiku\n---\n\n# Test Agent`;
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(rawContent);
+
+      const result = loadSpecialistRaw('test-agent');
+      expect(result).toBe(rawContent);
+      expect(fs.readFileSync).toHaveBeenCalled();
+    });
+
+    it('should throw when specialist file does not exist', async () => {
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
+      expect(() => loadSpecialistRaw('nonexistent')).toThrow();
     });
   });
 });

@@ -162,3 +162,16 @@ export function loadSpecialist(name: string): SpecialistDefinition {
   const content = fs.readFileSync(filePath, 'utf-8');
   return parseSpecialistDefinition(content);
 }
+
+/**
+ * Load raw markdown content of a specialist definition by name.
+ * Returns the unprocessed file contents for cloning/editing.
+ */
+export function loadSpecialistRaw(name: string): string {
+  const dir = getSpecialistsDir();
+  const filePath = path.join(dir, `${name}.md`);
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Specialist "${name}" not found at ${filePath}`);
+  }
+  return fs.readFileSync(filePath, 'utf-8');
+}

@@ -400,6 +400,8 @@ const schedule = {
     ipcRenderer.invoke('schedule:get-template', name, description),
   scaffold: (name: string, options?: { description?: string; content?: string }) =>
     ipcRenderer.invoke('schedule:scaffold', name, options),
+  getRawDefinition: (name: string) =>
+    ipcRenderer.invoke('schedule:get-raw-definition', name),
   getCredentials: (specialistId: string) =>
     ipcRenderer.invoke('schedule:get-credentials', specialistId),
   saveCredentials: (specialistId: string, serviceId: string, credentials: Record<string, string>) =>
@@ -762,6 +764,7 @@ declare global {
         }>>;
         getTemplate: (name: string, description?: string) => Promise<string>;
         scaffold: (name: string, options?: { description?: string; content?: string }) => Promise<{ filePath: string }>;
+        getRawDefinition: (name: string) => Promise<string>;
         getCredentials: (specialistId: string) => Promise<Record<string, Record<string, boolean>>>;
         saveCredentials: (specialistId: string, serviceId: string, credentials: Record<string, string>) => Promise<void>;
         deleteCredentials: (specialistId: string) => Promise<void>;
