@@ -2,22 +2,25 @@
  * @vitest-environment jsdom
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AddSpecialistDialog } from '@renderer/components/schedule/AddSpecialistDialog';
 
 const mockScaffold = vi.fn();
 const mockSaveCredentials = vi.fn();
+const mockGetTemplate = vi.fn();
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockScaffold.mockResolvedValue({ filePath: '/tmp/agents/cron/code-quality.md' });
   mockSaveCredentials.mockResolvedValue(undefined);
+  mockGetTemplate.mockResolvedValue('---\nname: code-quality\ndescription: code-quality monitoring and analysis\nmodel: haiku\n---\n\n# Code Quality Specialist\n');
 
   Object.defineProperty(window, 'electronAPI', {
     value: {
       schedule: {
         scaffold: mockScaffold,
         saveCredentials: mockSaveCredentials,
+        getTemplate: mockGetTemplate,
       },
     },
     writable: true,
@@ -258,5 +261,110 @@ integrations:
     onClose.mockClear();
     fireEvent.click(screen.getByTestId('add-specialist-dialog'));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('should populate markdown editor with default template after entering a name and blurring', async () => {
+    const templateContent = '---\nname: code-quality\nmodel: haiku\n---\n\n# Code Quality Specialist\n';
+    mockGetTemplate.mockResolvedValue(templateContent);
+
+    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
+
+    const nameInput = screen.getByTestId('specialist-name-input');
+
+    await act(async () => {
+      fireEvent.change(nameInput, { target: { value: 'code-quality' } });
+    });
+
+    await act(async () => {
+      fireEvent.blur(nameInput);
+    });
+
+    // Allow effects + microtasks to flush
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mockGetTemplate).toHaveBeenCalledWith('code-quality');
+    const editor = screen.getByTestId('specialist-markdown-editor') as HTMLTextAreaElement;
+    expect(editor.value).toContain('code-quality');
+  });
+
+  it('should allow editing the pre-populated template content', async () => {
+    const templateContent = '---\nname: code-quality\nmodel: haiku\n---\n\n# Code Quality Specialist\n';
+    mockGetTemplate.mockResolvedValue(templateContent);
+
+    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
+
+    const nameInput = screen.getByTestId('specialist-name-input');
+    await act(async () => { fireEvent.change(nameInput, { target: { value: 'code-quality' } }); });
+    await act(async () => { fireEvent.blur(nameInput); });
+    await act(async () => { await Promise.resolve(); });
+    await act(async () => { await Promise.resolve(); });
+
+    const editor = screen.getByTestId('specialist-markdown-editor') as HTMLTextAreaElement;
+    expect(editor.value).toContain('code-quality');
+
+    // User edits the content
+    fireEvent.change(screen.getByTestId('specialist-markdown-editor'), {
+      target: { value: 'user edited content' },
+    });
+
+    expect(screen.getByTestId('specialist-markdown-editor')).toHaveValue('user edited content');
+  });
+
+  it('should not overwrite user-edited markdown when name changes', async () => {
+    const templateContent = '---\nname: some-name\nmodel: haiku\n---\n';
+    mockGetTemplate.mockResolvedValue(templateContent);
+
+    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
+
+    // User types in the textarea first
+    fireEvent.change(screen.getByTestId('specialist-markdown-editor'), {
+      target: { value: 'my custom definition' },
+    });
+
+    // Then enters and blurs name
+    const nameInput = screen.getByTestId('specialist-name-input');
+    await act(async () => { fireEvent.change(nameInput, { target: { value: 'some-name' } }); });
+    await act(async () => { fireEvent.blur(nameInput); });
+    await act(async () => { await Promise.resolve(); });
+    await act(async () => { await Promise.resolve(); });
+
+    expect(screen.getByTestId('specialist-markdown-editor')).toHaveValue('my custom definition');
+    // getTemplate should not have been called since user already edited
+    expect(mockGetTemplate).not.toHaveBeenCalled();
+  });
+
+  it('should send edited template content to scaffold on create', async () => {
+    const templateContent = '---\nname: code-quality\nmodel: haiku\n---\n\n# Code Quality Specialist\n';
+    mockGetTemplate.mockResolvedValue(templateContent);
+
+    const onCreated = vi.fn();
+    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={onCreated} />);
+
+    // Enter name and blur to trigger template population
+    const nameInput = screen.getByTestId('specialist-name-input');
+    await act(async () => { fireEvent.change(nameInput, { target: { value: 'code-quality' } }); });
+    await act(async () => { fireEvent.blur(nameInput); });
+    await act(async () => { await Promise.resolve(); });
+    await act(async () => { await Promise.resolve(); });
+
+    const editor = screen.getByTestId('specialist-markdown-editor') as HTMLTextAreaElement;
+    expect(editor.value).toContain('code-quality');
+
+    // User edits the pre-populated content
+    const editedContent = '---\nname: code-quality\ndescription: edited\nmodel: sonnet\n---\n\n# Edited';
+    fireEvent.change(screen.getByTestId('specialist-markdown-editor'), {
+      target: { value: editedContent },
+    });
+
+    fireEvent.click(screen.getByTestId('specialist-create-btn'));
+
+    await waitFor(() => {
+      expect(mockScaffold).toHaveBeenCalledWith('code-quality', { content: editedContent });
+    });
   });
 });

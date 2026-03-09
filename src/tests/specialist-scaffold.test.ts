@@ -15,7 +15,32 @@ vi.mock('@main/services/specialist-loader', async (importOriginal) => {
   };
 });
 
-import { scaffoldSpecialist } from '@main/services/specialist-scaffold';
+import { scaffoldSpecialist, getDefaultTemplate } from '@main/services/specialist-scaffold';
+
+describe('getDefaultTemplate', () => {
+  it('should return template with name and description substituted', () => {
+    const result = getDefaultTemplate('code-quality', 'Code quality monitoring');
+    expect(result).toContain('name: code-quality');
+    expect(result).toContain('description: Code quality monitoring');
+    expect(result).toContain('# Code Quality Specialist');
+    expect(result).toContain('You are a specialist agent for Code quality monitoring.');
+  });
+
+  it('should use default description when none provided', () => {
+    const result = getDefaultTemplate('security-monitor');
+    expect(result).toContain('description: security-monitor monitoring and analysis');
+    expect(result).toContain('You are a specialist agent for security-monitor monitoring and analysis.');
+  });
+
+  it('should return template containing valid YAML frontmatter', () => {
+    const result = getDefaultTemplate('test-agent', 'Test description');
+    expect(result).toMatch(/^---\n/);
+    expect(result).toContain('name: test-agent');
+    expect(result).toContain('model: haiku');
+    expect(result).toContain('tools:');
+    expect(result).toContain('schedules:');
+  });
+});
 
 describe('specialist-scaffold', () => {
   let tempRoot: string;

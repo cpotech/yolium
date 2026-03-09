@@ -396,6 +396,8 @@ const schedule = {
     ipcRenderer.invoke('schedule:get-stats', id),
   reload: () => ipcRenderer.invoke('schedule:reload'),
   getSpecialists: () => ipcRenderer.invoke('schedule:get-specialists'),
+  getTemplate: (name: string, description?: string) =>
+    ipcRenderer.invoke('schedule:get-template', name, description),
   scaffold: (name: string, options?: { description?: string; content?: string }) =>
     ipcRenderer.invoke('schedule:scaffold', name, options),
   getCredentials: (specialistId: string) =>
@@ -758,6 +760,7 @@ declare global {
           memory: { strategy: string; maxEntries: number; retentionDays: number };
           escalation: { onFailure?: string; onPattern?: string };
         }>>;
+        getTemplate: (name: string, description?: string) => Promise<string>;
         scaffold: (name: string, options?: { description?: string; content?: string }) => Promise<{ filePath: string }>;
         getCredentials: (specialistId: string) => Promise<Record<string, Record<string, boolean>>>;
         saveCredentials: (specialistId: string, serviceId: string, credentials: Record<string, string>) => Promise<void>;
