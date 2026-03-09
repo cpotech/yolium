@@ -1,6 +1,6 @@
-> **⚠️ Yolium is under rapid development.** Expect breaking changes, incomplete features, and frequent updates. We recommend keeping your app up to date. Issues and feedback are welcome — see [Feedback and Participation](#feedback-and-participation).
+> **⚠️ Yolium is under development.** We recommend keeping your app up to date. Issues and feedback are welcome — see [Feedback and Participation](#feedback-and-participation).
 
-<video src="https://github.com/user-attachments/assets/dcf55f73-33af-4c08-bb18-8c531fb96fc0" width="320" height="240" controls></video>
+<video src="https://github.com/user-attachments/assets/592ea317-ce1c-4e2a-a9e3-7853f30c1939" width="320" height="240" controls></video>
 
 ## Architecture
 
