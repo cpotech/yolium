@@ -108,6 +108,23 @@ function tabReducer(state: TabState, action: TabAction): TabState {
       };
     }
 
+    case 'ADD_SCHEDULE_TAB': {
+      const existingSchedule = state.tabs.find(t => t.type === 'schedule');
+      if (existingSchedule) {
+        return { ...state, activeTabId: existingSchedule.id };
+      }
+      const scheduleTab: Tab = {
+        id: generateTabId(),
+        type: 'schedule',
+        cwd: '',
+        label: 'Scheduled Agents',
+      };
+      return {
+        tabs: [...state.tabs, scheduleTab],
+        activeTabId: scheduleTab.id,
+      };
+    }
+
     case 'CLOSE_KANBAN_FOR_PROJECT': {
       const projectPath = action.payload;
       const kanbanTab = state.tabs.find(
@@ -205,6 +222,10 @@ export function useTabState(initialKanbanPaths?: string[]) {
     dispatch({ type: 'CLOSE_KANBAN_FOR_PROJECT', payload: projectPath });
   }, []);
 
+  const addScheduleTab = useCallback(() => {
+    dispatch({ type: 'ADD_SCHEDULE_TAB' });
+  }, []);
+
   // Helper to get active tab
   const activeTab = state.tabs.find(t => t.id === state.activeTabId) || null;
 
@@ -224,5 +245,6 @@ export function useTabState(initialKanbanPaths?: string[]) {
     closeOtherTabs,
     addKanbanTab,
     closeKanbanForProject,
+    addScheduleTab,
   };
 }

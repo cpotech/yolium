@@ -2,7 +2,7 @@
 export type ContainerState = 'starting' | 'running' | 'stopped' | 'crashed';
 
 // Tab type discriminator
-export type TabType = 'terminal' | 'kanban';
+export type TabType = 'terminal' | 'kanban' | 'schedule';
 
 // Tab represents a single tab (terminal or kanban)
 export interface Tab {
@@ -37,4 +37,5 @@ export type TabAction =
   | { type: 'RESTORE_SESSION'; payload: TabState }
   | { type: 'CLOSE_ALL_TABS' }
   | { type: 'CLOSE_OTHER_TABS'; payload: string }
-  | { type: 'CLOSE_KANBAN_FOR_PROJECT'; payload: string };
+  | { type: 'CLOSE_KANBAN_FOR_PROJECT'; payload: string }
+  | { type: 'ADD_SCHEDULE_TAB' };

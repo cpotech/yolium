@@ -32,6 +32,7 @@ import {
   type SidebarProject,
 } from '@renderer/stores/sidebar-store';
 import { KanbanView } from '@renderer/components/kanban/KanbanView';
+import { SchedulePanel } from '@renderer/components/schedule/SchedulePanel';
 
 function App(): React.ReactElement {
   // Restore kanban tabs that were open in the previous session
@@ -49,6 +50,7 @@ function App(): React.ReactElement {
     closeOtherTabs,
     addKanbanTab,
     closeKanbanForProject,
+    addScheduleTab,
   } = useTabState(savedKanbanPaths);
 
   // Whisper speech-to-text
@@ -349,6 +351,7 @@ function App(): React.ReactElement {
     onOpenGitConfig: dialogs.openGitConfigDialog,
     onAddProject: handleAddProject,
     onToggleRecording: stableToggleRecording,
+    onOpenSchedule: addScheduleTab,
   });
 
   // Listen for container exit events to update state
@@ -531,6 +534,7 @@ function App(): React.ReactElement {
           onProjectRemove={handleProjectRemove}
           onAddProject={handleAddProject}
           onAnswerAndResume={handleAnswerAndResume}
+          onOpenSchedule={addScheduleTab}
         />
 
         {/* Content area */}
@@ -630,6 +634,18 @@ function App(): React.ReactElement {
                         onOpenModelDialog={whisper.openModelDialog}
                         claudeUsage={claudeUsage}
                       />
+                    </div>
+                  );
+                }
+
+                if (tab.type === 'schedule') {
+                  // Schedule tab
+                  return (
+                    <div
+                      key={tab.id}
+                      className={`absolute inset-0 flex flex-col ${isActive ? '' : 'hidden'}`}
+                    >
+                      <SchedulePanel />
                     </div>
                   );
                 }

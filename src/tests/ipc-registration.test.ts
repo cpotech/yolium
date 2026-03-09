@@ -15,6 +15,7 @@ const registerWhisperHandlers = vi.fn()
 const registerOnboardingHandlers = vi.fn()
 const registerProjectConfigHandlers = vi.fn()
 const registerReportHandlers = vi.fn()
+const registerScheduleHandlers = vi.fn()
 const performCleanup = vi.fn()
 const isCleanupDone = vi.fn(() => true)
 
@@ -62,6 +63,7 @@ vi.mock('@main/ipc/whisper-handlers', () => ({ registerWhisperHandlers }))
 vi.mock('@main/ipc/onboarding-handlers', () => ({ registerOnboardingHandlers }))
 vi.mock('@main/ipc/project-config-handlers', () => ({ registerProjectConfigHandlers }))
 vi.mock('@main/ipc/report-handlers', () => ({ registerReportHandlers }))
+vi.mock('@main/ipc/schedule-handlers', () => ({ registerScheduleHandlers }))
 
 async function loadIpcModule() {
   vi.resetModules()
@@ -84,6 +86,7 @@ const registrars = [
   registerOnboardingHandlers,
   registerProjectConfigHandlers,
   registerReportHandlers,
+  registerScheduleHandlers,
 ]
 
 describe('registerAllHandlers', () => {

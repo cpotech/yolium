@@ -7,6 +7,7 @@ import { app, BrowserWindow, IpcMain, Shell } from 'electron';
 import { createLogger } from '@main/lib/logger';
 import { closeAllPty } from '@main/services/pty-manager';
 import { closeAllContainers } from '@main/docker';
+import { scheduler } from '@main/services/scheduler';
 
 const logger = createLogger('app-handlers');
 
@@ -22,6 +23,7 @@ export async function performCleanup(): Promise<void> {
   cleanupDone = true;
 
   logger.info('Starting cleanup...');
+  scheduler.stop();
   closeAllPty();
   await closeAllContainers();
   logger.info('Cleanup complete');
