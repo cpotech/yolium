@@ -12,7 +12,7 @@ import {
   toggleGlobal,
 } from '@main/stores/schedule-store';
 import { getRecentRuns, getRunStats } from '@main/stores/run-history-store';
-import { scaffoldSpecialist } from '@main/services/specialist-scaffold';
+import { scaffoldSpecialist, getDefaultTemplate } from '@main/services/specialist-scaffold';
 import {
   loadRedactedCredentials,
   saveCredentials,
@@ -81,6 +81,11 @@ export function registerScheduleHandlers(ipcMain: IpcMain): void {
       };
     }
     return result;
+  });
+
+  // Get rendered default template for a specialist name
+  ipcMain.handle('schedule:get-template', (_event, name: string, description?: string) => {
+    return getDefaultTemplate(name, description);
   });
 
   // Scaffold a new specialist definition

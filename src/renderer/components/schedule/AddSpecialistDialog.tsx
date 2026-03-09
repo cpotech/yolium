@@ -78,7 +78,9 @@ export function AddSpecialistDialog({
   const [services, setServices] = useState<ServiceBlock[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [templateName, setTemplateName] = useState<string | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const userHasEdited = useRef(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -87,8 +89,22 @@ export function AddSpecialistDialog({
     setServices([]);
     setError(null);
     setIsSubmitting(false);
+    setTemplateName(null);
+    userHasEdited.current = false;
     setTimeout(() => nameInputRef.current?.focus(), 0);
   }, [isOpen]);
+
+  // Fetch and populate template when templateName changes
+  useEffect(() => {
+    if (!templateName) return;
+    let cancelled = false;
+    window.electronAPI.schedule.getTemplate(templateName).then((template) => {
+      if (!cancelled && !userHasEdited.current) {
+        setMarkdownContent(template);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [templateName]);
 
   const canCreate = useMemo(() => name.trim().length > 0 && !isSubmitting, [name, isSubmitting]);
 
@@ -96,6 +112,7 @@ export function AddSpecialistDialog({
     const value = e.target.value;
     setMarkdownContent(value);
     setError(null);
+    userHasEdited.current = true;
 
     const parsed = tryParseIntegrations(value);
     if (parsed.length > 0) {
@@ -153,8 +170,13 @@ export function AddSpecialistDialog({
   }, [markdownContent, name, onCreated, services]);
 
   const handleNameBlur = useCallback(() => {
-    setName((previous) => sanitizeSpecialistName(previous));
-  }, []);
+    const sanitized = sanitizeSpecialistName(name);
+    setName(sanitized);
+
+    if (sanitized && !userHasEdited.current) {
+      setTemplateName(sanitized);
+    }
+  }, [name]);
 
   const handleBackdropClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
@@ -273,12 +295,12 @@ export function AddSpecialistDialog({
               data-testid="specialist-markdown-editor"
               value={markdownContent}
               onChange={handleMarkdownChange}
-              placeholder={'---\nname: my-specialist\ndescription: What this specialist does\nmodel: haiku\ntools:\n  - Read\n  - Grep\n  - Bash\nschedules:\n  - type: daily\n    cron: "0 0 * * *"\n    enabled: true\nintegrations:\n  - service: twitter\n    env:\n      TWITTER_API_KEY: ""\n      TWITTER_API_SECRET: ""\n---\n\n# My Specialist\n\nYour system prompt here...'}
+              placeholder="Enter a name above to auto-populate with the default template"
               className="w-full rounded border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] px-3 py-2.5 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)] resize-y"
               style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace", minHeight: '200px', lineHeight: '1.5' }}
             />
             <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">
-              Paste a full specialist definition with YAML frontmatter. Leave empty to use the default template.
+              Edit the template below or replace with your own definition.
             </p>
           </div>
         </div>

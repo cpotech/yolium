@@ -62,6 +62,19 @@ You are a specialist agent for {{description}}.
 `;
 
 /**
+ * Render the default template with name/description/displayName substitutions.
+ */
+export function getDefaultTemplate(name: string, description?: string): string {
+  const desc = description || `${name} monitoring and analysis`;
+  const displayName = name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+  return TEMPLATE
+    .replace(/\{\{name\}\}/g, name)
+    .replace(/\{\{description\}\}/g, desc)
+    .replace(/\{\{displayName\}\}/g, displayName);
+}
+
+/**
  * Scaffold a new specialist definition file.
  * When `options.content` is provided, validates it and writes directly (replacing the name in frontmatter).
  * When `options.content` is absent/empty, uses the default template.
@@ -91,14 +104,7 @@ export function scaffoldSpecialist(
 
     fs.writeFileSync(filePath, finalContent, 'utf-8');
   } else {
-    const description = options.description || `${name} monitoring and analysis`;
-    const displayName = name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-
-    const content = TEMPLATE
-      .replace(/\{\{name\}\}/g, name)
-      .replace(/\{\{description\}\}/g, description)
-      .replace(/\{\{displayName\}\}/g, displayName);
-
+    const content = getDefaultTemplate(name, options.description);
     fs.writeFileSync(filePath, content, 'utf-8');
   }
 
