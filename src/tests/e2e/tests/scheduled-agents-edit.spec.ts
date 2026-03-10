@@ -1,21 +1,11 @@
 import { test, expect } from '@playwright/test';
-import fs from 'fs';
-import path from 'path';
 import { AppContext, launchApp } from '../helpers/app';
 import { selectors } from '../helpers/selectors';
 
 test.describe('Scheduled Agents Edit Flow', () => {
   let ctx: AppContext;
 
-  test.beforeEach(() => {
-    const builtCronDir = path.join(process.cwd(), 'agents', 'cron');
-    fs.rmSync(builtCronDir, { recursive: true, force: true });
-    fs.mkdirSync(path.dirname(builtCronDir), { recursive: true });
-    fs.cpSync(path.join(process.cwd(), 'src', 'agents', 'cron'), builtCronDir, { recursive: true });
-  });
-
   test.afterEach(async () => {
-    fs.rmSync(path.join(process.cwd(), 'agents'), { recursive: true, force: true });
     if (ctx) {
       const electronProcess = ctx.app.process();
       if (electronProcess && !electronProcess.killed) {
