@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react'
-import { X, GitBranch, Clock, FolderOpen, GitMerge, GitPullRequest, Check, AlertTriangle, ExternalLink, Trash2, ArrowLeftRight, ShieldCheck, ArrowDownToLine } from 'lucide-react'
+import { X, GitBranch, Clock, FolderOpen, GitMerge, GitPullRequest, Check, AlertTriangle, ExternalLink, Trash2, ArrowLeftRight, ShieldCheck, ArrowDownToLine, Copy, ClipboardCheck } from 'lucide-react'
 import type { KanbanItem, KanbanColumn } from '@shared/types/kanban'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
@@ -55,6 +55,25 @@ function formatTimestamp(isoString: string): string {
   if (diffHours < 24) return `${diffHours}h ago`
   if (diffDays < 7) return `${diffDays}d ago`
   return date.toLocaleDateString()
+}
+
+function CopyPathButton({ path }: { path: string }): React.ReactElement {
+  const [copied, setCopied] = useState(false)
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    navigator.clipboard.writeText(path).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex-shrink-0 p-0.5 rounded text-[var(--color-text-disabled)] hover:text-[var(--color-text-secondary)] transition-colors"
+    >
+      {copied ? <ClipboardCheck size={12} /> : <Copy size={12} />}
+    </button>
+  )
 }
 
 /**
@@ -947,6 +966,7 @@ export function ItemDetailDialog({
                   >
                     <FolderOpen size={12} className="flex-shrink-0" />
                     <span className="font-mono truncate">{item.worktreePath}</span>
+                    <CopyPathButton path={item.worktreePath} />
                   </div>
                 </div>
               )}

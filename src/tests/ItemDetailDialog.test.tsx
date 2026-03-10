@@ -506,6 +506,61 @@ describe('ItemDetailDialog', () => {
     expect(onUpdated).toHaveBeenCalled()
   })
 
+  it('should render copy button next to worktree path', async () => {
+    const item = createMockItem({
+      worktreePath: '/tmp/worktrees/feature-branch',
+      branch: 'feature/test',
+    })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    const worktreeDisplay = screen.getByTestId('worktree-path-display')
+    expect(worktreeDisplay).toBeInTheDocument()
+    expect(worktreeDisplay).toHaveTextContent('/tmp/worktrees/feature-branch')
+  })
+
+  it('should copy worktree path to clipboard when copy button is clicked', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      writable: true,
+    })
+
+    const item = createMockItem({
+      worktreePath: '/tmp/worktrees/feature-branch',
+      branch: 'feature/test',
+    })
+
+    render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={item}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    )
+
+    const worktreeDisplay = screen.getByTestId('worktree-path-display')
+    const copyButton = worktreeDisplay.querySelector('button')
+    expect(copyButton).toBeInTheDocument()
+
+    if (copyButton) {
+      fireEvent.click(copyButton)
+      await waitFor(() => {
+        expect(writeText).toHaveBeenCalledWith('/tmp/worktrees/feature-branch')
+      })
+    }
+  })
+
   it('should delete item immediately without confirmation', async () => {
     mockKanbanDeleteItem.mockResolvedValueOnce(true)
     const onUpdated = vi.fn()
