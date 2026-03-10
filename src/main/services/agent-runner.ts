@@ -1100,6 +1100,35 @@ export interface ScheduledAgentResult {
 }
 
 /**
+ * Build the full prompt for a scheduled agent run.
+ * Uses the prompt template if available, otherwise generates a fallback
+ * directive from the specialist's description and schedule type.
+ */
+export function buildScheduledPrompt(params: {
+  systemPrompt: string;
+  scheduleType: ScheduleType;
+  promptTemplate: string | undefined;
+  description: string;
+  memoryContext: string;
+}): string {
+  const { systemPrompt, scheduleType, promptTemplate, description, memoryContext } = params;
+  let prompt = systemPrompt;
+
+  const template = promptTemplate?.trim();
+  if (template) {
+    prompt += `\n\n## Schedule: ${scheduleType}\n\n${template}`;
+  } else {
+    prompt += `\n\n## Schedule: ${scheduleType}\n\nExecute your ${scheduleType} task: ${description}. Review recent run history to avoid repeating work, then report findings and actions taken.`;
+  }
+
+  if (memoryContext) {
+    prompt += `\n\n${memoryContext}`;
+  }
+
+  return prompt;
+}
+
+/**
  * Start a scheduled agent run (headless — no renderer window required).
  * Builds prompt from specialist definition + memory context, creates a Docker container,
  * parses output for protocol messages, and resolves with the run result.
@@ -1122,14 +1151,13 @@ export function startScheduledAgent(params: ScheduledAgentParams): Promise<Sched
   const startTime = Date.now();
 
   // Build prompt from specialist definition
-  const promptTemplate = specialist.promptTemplates[scheduleType] || '';
-  let prompt = specialist.systemPrompt;
-  if (promptTemplate) {
-    prompt += `\n\n## Schedule: ${scheduleType}\n\n${promptTemplate}`;
-  }
-  if (memoryContext) {
-    prompt += `\n\n${memoryContext}`;
-  }
+  const prompt = buildScheduledPrompt({
+    systemPrompt: specialist.systemPrompt,
+    scheduleType,
+    promptTemplate: specialist.promptTemplates[scheduleType],
+    description: specialist.description,
+    memoryContext,
+  });
 
   // Resolve model
   const model = resolveModel(undefined, undefined, specialist.model);
