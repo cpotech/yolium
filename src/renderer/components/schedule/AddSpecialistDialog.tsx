@@ -39,6 +39,10 @@ const MODELS = ['haiku', 'sonnet', 'opus'];
 const MEMORY_STRATEGIES: MemoryStrategy[] = ['distill_daily', 'distill_weekly', 'raw'];
 const ESCALATION_ACTIONS: EscalationAction[] = ['alert_user', 'reduce_frequency', 'pause', 'notify_slack'];
 
+function normalizeMarkdownNewlines(markdown: string): string {
+  return markdown.replace(/\r\n?/g, '\n');
+}
+
 export function sanitizeSpecialistName(value: string): string {
   return value
     .trim()
@@ -51,7 +55,8 @@ export function sanitizeSpecialistName(value: string): string {
 
 export function tryParseIntegrations(markdown: string): ServiceBlock[] {
   try {
-    const match = markdown.match(/^---\n([\s\S]*?)\n---/);
+    const normalizedMarkdown = normalizeMarkdownNewlines(markdown);
+    const match = normalizedMarkdown.match(/^---\n([\s\S]*?)\n---/);
     if (!match) return [];
 
     const frontmatter = match[1];
@@ -92,12 +97,12 @@ export function tryParseIntegrations(markdown: string): ServiceBlock[] {
 }
 
 function extractNameFromMarkdown(markdown: string): string | null {
-  const match = markdown.match(/^---\n[\s\S]*?name:\s*(.+)/m);
+  const match = normalizeMarkdownNewlines(markdown).match(/^---\n[\s\S]*?name:\s*(.+)/m);
   return match ? match[1].trim() : null;
 }
 
 function validateFrontmatter(markdown: string): { valid: boolean; error?: string } {
-  const fmMatch = markdown.match(/^---\n([\s\S]*?)\n---/);
+  const fmMatch = normalizeMarkdownNewlines(markdown).match(/^---\n([\s\S]*?)\n---/);
   if (!fmMatch) return { valid: false, error: 'Missing frontmatter (---...---)' };
 
   const fm = fmMatch[1];
@@ -204,10 +209,11 @@ export function serializeGuidedFormToMarkdown(form: GuidedFormState): string {
 export function parseMarkdownToGuidedForm(markdown: string): GuidedFormState {
   const form: GuidedFormState = { ...DEFAULT_GUIDED_STATE, tools: [...DEFAULT_GUIDED_STATE.tools], schedules: [], integrations: [] };
 
-  const fmMatch = markdown.match(/^---\n([\s\S]*?)\n---/);
+  const normalizedMarkdown = normalizeMarkdownNewlines(markdown);
+  const fmMatch = normalizedMarkdown.match(/^---\n([\s\S]*?)\n---/);
   if (!fmMatch) return form;
 
-  const body = markdown.slice(fmMatch[0].length).trim();
+  const body = normalizedMarkdown.slice(fmMatch[0].length).trim();
   form.systemPrompt = body;
 
   // Simple YAML parsing using regex (sufficient for our structured frontmatter)
