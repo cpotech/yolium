@@ -427,6 +427,7 @@ export function AddSpecialistDialog({
       const options = content ? { content } : undefined;
       await window.electronAPI.schedule.scaffold(sanitizedName, options);
 
+      // Save credentials from the bottom Service Credentials section
       for (const service of services) {
         if (!service.name.trim()) continue;
         const creds: Record<string, string> = {};
@@ -439,6 +440,24 @@ export function AddSpecialistDialog({
         }
         if (hasValues) {
           await window.electronAPI.schedule.saveCredentials(sanitizedName, service.name.trim(), creds);
+        }
+      }
+
+      // Also save credentials from guided mode integrations (these are separate from services)
+      if (mode === 'guided') {
+        for (const integration of guidedForm.integrations) {
+          if (!integration.service.trim()) continue;
+          const creds: Record<string, string> = {};
+          let hasValues = false;
+          for (const [key, value] of Object.entries(integration.env)) {
+            if (key.trim() && value) {
+              creds[key.trim()] = value;
+              hasValues = true;
+            }
+          }
+          if (hasValues) {
+            await window.electronAPI.schedule.saveCredentials(sanitizedName, integration.service.trim(), creds);
+          }
         }
       }
 
@@ -896,13 +915,13 @@ export function AddSpecialistDialog({
 
               {/* Prompt Templates */}
               <Section title="Prompt Templates">
-                {guidedForm.schedules.map((sched) => (
-                  <div key={sched.type}>
-                    <label className={labelClass}>{sched.type}</label>
+                {Array.from(new Set(guidedForm.schedules.map(s => s.type))).map((type) => (
+                  <div key={type}>
+                    <label className={labelClass}>{type}</label>
                     <textarea
-                      value={guidedForm.promptTemplates[sched.type] || ''}
-                      onChange={(e) => updateGuided('promptTemplates', { ...guidedForm.promptTemplates, [sched.type]: e.target.value })}
-                      placeholder={`Prompt template for ${sched.type} runs...`}
+                      value={guidedForm.promptTemplates[type] || ''}
+                      onChange={(e) => updateGuided('promptTemplates', { ...guidedForm.promptTemplates, [type]: e.target.value })}
+                      placeholder={`Prompt template for ${type} runs...`}
                       className={`${inputClass} text-xs resize-y`}
                       style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace", minHeight: '80px', lineHeight: '1.5' }}
                     />
@@ -934,12 +953,27 @@ export function AddSpecialistDialog({
                         &times;
                       </button>
                     </div>
-                    {Object.entries(int.env).map(([key]) => (
+                    {Object.entries(int.env).map(([key, val]) => (
                       <div key={key} className="flex gap-2 items-center mb-1">
-                        <span className="text-[11px] text-[var(--color-text-muted)] w-[120px]">{key}</span>
+                        <input
+                          type="text"
+                          value={key}
+                          onChange={(e) => {
+                            const newKey = e.target.value;
+                            const updated = [...guidedForm.integrations];
+                            const oldEnv = { ...updated[ii].env };
+                            const newEnv: Record<string, string> = {};
+                            for (const [k, v] of Object.entries(oldEnv)) {
+                              newEnv[k === key ? newKey : k] = v;
+                            }
+                            updated[ii] = { ...updated[ii], env: newEnv };
+                            updateGuided('integrations', updated);
+                          }}
+                          className="text-[11px] text-[var(--color-text-muted)] w-[120px] bg-transparent border-b border-[var(--color-border-secondary)] outline-none focus:border-[var(--color-accent-primary)] font-mono"
+                        />
                         <input
                           type="password"
-                          value={int.env[key]}
+                          value={val}
                           onChange={(e) => {
                             const updated = [...guidedForm.integrations];
                             updated[ii] = { ...updated[ii], env: { ...updated[ii].env, [key]: e.target.value } };
@@ -948,6 +982,19 @@ export function AddSpecialistDialog({
                           placeholder="Value"
                           className={`flex-1 ${inputClass} text-xs`}
                         />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = [...guidedForm.integrations];
+                            const { [key]: _, ...rest } = updated[ii].env;
+                            updated[ii] = { ...updated[ii], env: rest };
+                            updateGuided('integrations', updated);
+                          }}
+                          className="text-[var(--color-text-muted)] hover:text-[var(--color-status-error)] text-sm px-1"
+                          title="Remove env key"
+                        >
+                          &times;
+                        </button>
                       </div>
                     ))}
                     <button

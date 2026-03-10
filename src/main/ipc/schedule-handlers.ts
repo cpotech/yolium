@@ -79,6 +79,7 @@ export function registerScheduleHandlers(ipcMain: IpcMain): void {
         schedules: def.schedules,
         memory: def.memory,
         escalation: def.escalation,
+        integrations: def.integrations || [],
       };
     }
     return result;

@@ -54,7 +54,7 @@ export function RunHistoryTable({ specialistId }: RunHistoryTableProps): React.R
         window.electronAPI.schedule.getHistory(specialistId, 100),
         window.electronAPI.schedule.getStats(specialistId),
       ]);
-      setRuns(history.reverse()); // newest first
+      setRuns([...history].reverse()); // newest first
       setStats(runStats);
     } catch (err) {
       console.error('Failed to load run history:', err);
