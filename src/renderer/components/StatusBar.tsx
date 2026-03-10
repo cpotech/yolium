@@ -7,7 +7,8 @@ import { useTheme } from '@renderer/theme';
 import { SpeechToTextButton } from './SpeechToTextButton';
 
 interface StatusBarProps {
-  folderPath: string;
+  folderPath?: string;
+  contextLabel?: string;
   containerState?: ContainerState;
   onStop?: () => void;
   onShowShortcuts: () => void;
@@ -83,6 +84,7 @@ function UsageBar({
 
 export function StatusBar({
   folderPath,
+  contextLabel,
   containerState,
   onStop,
   onShowShortcuts,
@@ -105,33 +107,45 @@ export function StatusBar({
 
   const containerInfo = containerState ? stateDisplay[containerState] : null;
   const { theme, toggleTheme } = useTheme();
+  const primaryLabel = folderPath || contextLabel;
+  const hasBranchMetadata = Boolean(worktreeName || gitBranch);
+  const hasContextMetadata = Boolean(primaryLabel || hasBranchMetadata || containerInfo);
   return (
     <div data-testid="status-bar" className="flex items-center justify-between h-7 px-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)] text-xs shrink-0">
-      {/* Left: folder path + git branch + state */}
+      {/* Left: context label/path + git branch + state */}
       <div className="flex items-center gap-2 text-[var(--color-text-secondary)] truncate overflow-hidden min-w-0">
-        <span data-testid="status-path" className="truncate max-w-[300px]">
-          {folderPath}
-        </span>
-        {(worktreeName || gitBranch) && (
+        {folderPath && (
+          <span data-testid="status-path" className="truncate max-w-[300px]">
+            {folderPath}
+          </span>
+        )}
+        {!folderPath && contextLabel && (
+          <span data-testid="status-label" className="truncate max-w-[300px]">
+            {contextLabel}
+          </span>
+        )}
+        {hasBranchMetadata && (
           <>
-            <span className="text-[var(--color-text-muted)]">|</span>
-            {worktreeName && (
-              <span className="flex items-center gap-1 text-[var(--color-special-worktree)]">
-                <TreeDeciduous size={12} />
-                <span className="truncate max-w-[150px]">{worktreeName}</span>
-              </span>
-            )}
-            {gitBranch && gitBranch !== worktreeName && (
-              <span className="flex items-center gap-1 text-[var(--color-special-branch)]">
-                <GitBranch size={12} />
-                <span className="truncate max-w-[150px]">{gitBranch}</span>
-              </span>
-            )}
+            {primaryLabel && <span className="text-[var(--color-text-muted)]">|</span>}
+            <span data-testid="status-branch" className="flex items-center gap-2 min-w-0">
+              {worktreeName && (
+                <span className="flex items-center gap-1 text-[var(--color-special-worktree)]">
+                  <TreeDeciduous size={12} />
+                  <span className="truncate max-w-[150px]">{worktreeName}</span>
+                </span>
+              )}
+              {gitBranch && gitBranch !== worktreeName && (
+                <span className="flex items-center gap-1 text-[var(--color-special-branch)]">
+                  <GitBranch size={12} />
+                  <span className="truncate max-w-[150px]">{gitBranch}</span>
+                </span>
+              )}
+            </span>
           </>
         )}
         {containerInfo && (
           <>
-            <span className="text-[var(--color-text-muted)]">|</span>
+            {(primaryLabel || hasBranchMetadata) && <span className="text-[var(--color-text-muted)]">|</span>}
             <span data-testid="status-container-state" className={containerInfo.className}>
               {containerState === 'starting' && (
                 <Loader2 size={12} className="inline mr-1 animate-spin" />
@@ -142,7 +156,7 @@ export function StatusBar({
         )}
         {claudeUsage && (
           <>
-            <span className="text-[var(--color-text-muted)]">|</span>
+            {hasContextMetadata && <span className="text-[var(--color-text-muted)]">|</span>}
             <UsageBar
               label="5h"
               utilization={claudeUsage.fiveHour.utilization}

@@ -645,7 +645,19 @@ function App(): React.ReactElement {
                       key={tab.id}
                       className={`absolute inset-0 flex flex-col ${isActive ? '' : 'hidden'}`}
                     >
-                      <SchedulePanel />
+                      <div className="flex-1 min-h-0 relative">
+                        <SchedulePanel />
+                      </div>
+                      <StatusBar
+                        contextLabel="Scheduled Agents"
+                        onShowShortcuts={dialogs.openShortcutsDialog}
+                        onOpenSettings={dialogs.openGitConfigDialog}
+                        whisperRecordingState={whisper.state.recordingState}
+                        whisperSelectedModel={whisper.state.selectedModel}
+                        onToggleRecording={whisper.toggleRecording}
+                        onOpenModelDialog={whisper.openModelDialog}
+                        claudeUsage={claudeUsage}
+                      />
                     </div>
                   );
                 }
