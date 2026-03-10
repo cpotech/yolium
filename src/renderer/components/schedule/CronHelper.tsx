@@ -89,7 +89,7 @@ export function CronHelper({ value, onChange }: CronHelperProps): React.ReactEle
         </p>
       )}
       <div className="flex flex-wrap gap-1">
-        {CRON_PRESETS.slice(0, 6).map((preset) => (
+        {CRON_PRESETS.map((preset) => (
           <button
             key={preset.cron}
             type="button"

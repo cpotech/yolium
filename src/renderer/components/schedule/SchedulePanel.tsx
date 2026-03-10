@@ -225,14 +225,14 @@ export function SchedulePanel(): React.ReactElement {
                     </div>
                     <button
                       data-testid={`toggle-${id}`}
-                      onClick={() => handleToggleSpecialist(id, !status?.enabled)}
+                      onClick={() => handleToggleSpecialist(id, !(status?.enabled ?? true))}
                       className={`px-2 py-0.5 rounded text-xs transition-colors ${
-                        status?.enabled
+                        (status?.enabled ?? true)
                           ? 'bg-green-500/20 text-green-400'
                           : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]'
                       }`}
                     >
-                      {status?.enabled ? 'On' : 'Off'}
+                      {(status?.enabled ?? true) ? 'On' : 'Off'}
                     </button>
                   </div>
 
