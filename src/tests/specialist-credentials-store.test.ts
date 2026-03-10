@@ -50,13 +50,29 @@ describe('specialist-credentials-store', () => {
     });
   });
 
-  it('should overwrite existing credentials on save', () => {
-    saveCredentials('twitter-growth', 'twitter-api', { API_KEY: 'old-key' });
+  it('should merge partial credential updates with existing values for the same service', () => {
+    saveCredentials('twitter-growth', 'twitter-api', {
+      API_KEY: 'old-key',
+      API_SECRET: 'secret-1',
+    });
     saveCredentials('twitter-growth', 'twitter-api', { API_KEY: 'new-key' });
 
     const result = loadCredentials('twitter-growth');
     expect(result).toEqual({
-      'twitter-api': { API_KEY: 'new-key' },
+      'twitter-api': { API_KEY: 'new-key', API_SECRET: 'secret-1' },
+    });
+  });
+
+  it('should keep other services for the same specialist untouched when merging credential updates', () => {
+    saveCredentials('twitter-growth', 'twitter-api', { API_KEY: 'old-key' });
+    saveCredentials('twitter-growth', 'slack', { WEBHOOK_URL: 'https://example.test/hook' });
+
+    saveCredentials('twitter-growth', 'twitter-api', { API_SECRET: 'secret-2' });
+
+    const result = loadCredentials('twitter-growth');
+    expect(result).toEqual({
+      'twitter-api': { API_KEY: 'old-key', API_SECRET: 'secret-2' },
+      slack: { WEBHOOK_URL: 'https://example.test/hook' },
     });
   });
 

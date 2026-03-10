@@ -13,6 +13,7 @@ import {
 import { describeCron, CRON_PRESETS } from '@renderer/components/schedule/CronHelper';
 
 const mockScaffold = vi.fn();
+const mockUpdateDefinition = vi.fn();
 const mockSaveCredentials = vi.fn();
 const mockGetTemplate = vi.fn();
 const mockGetSpecialists = vi.fn();
@@ -21,18 +22,43 @@ const mockGetRawDefinition = vi.fn();
 beforeEach(() => {
   vi.clearAllMocks();
   mockScaffold.mockResolvedValue({ filePath: '/tmp/agents/cron/code-quality.md' });
+  mockUpdateDefinition.mockResolvedValue({ filePath: '/tmp/agents/cron/security-monitor.md' });
   mockSaveCredentials.mockResolvedValue(undefined);
   mockGetTemplate.mockResolvedValue('---\nname: code-quality\ndescription: code-quality monitoring and analysis\nmodel: haiku\n---\n\n# Code Quality Specialist\n');
   mockGetSpecialists.mockResolvedValue({
     'security-monitor': { name: 'security-monitor', description: 'Security scanning', model: 'haiku', schedules: [] },
     'code-quality': { name: 'code-quality', description: 'Code quality checks', model: 'sonnet', schedules: [] },
   });
-  mockGetRawDefinition.mockResolvedValue('---\nname: security-monitor\ndescription: Security scanning\nmodel: haiku\n---\n\n# Security Monitor');
+  mockGetRawDefinition.mockResolvedValue(`---
+name: security-monitor
+description: Security scanning
+model: haiku
+tools:
+  - Read
+schedules:
+  - type: daily
+    cron: "0 0 * * *"
+    enabled: true
+memory:
+  strategy: distill_daily
+  maxEntries: 300
+  retentionDays: 90
+escalation:
+  onFailure: alert_user
+integrations:
+  - service: slack
+    env:
+      SLACK_WEBHOOK: ""
+      SLACK_CHANNEL: ""
+---
+
+# Security Monitor`);
 
   Object.defineProperty(window, 'electronAPI', {
     value: {
       schedule: {
         scaffold: mockScaffold,
+        updateDefinition: mockUpdateDefinition,
         saveCredentials: mockSaveCredentials,
         getTemplate: mockGetTemplate,
         getSpecialists: mockGetSpecialists,
@@ -382,6 +408,96 @@ integrations:
     await waitFor(() => {
       expect(mockScaffold).toHaveBeenCalledWith('code-quality', { content: editedContent });
     });
+  });
+
+  it('should preload the current markdown definition and integration-derived service rows when opened in edit mode', async () => {
+    render(
+      <AddSpecialistDialog
+        isOpen={true}
+        editingSpecialistId="security-monitor"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(mockGetRawDefinition).toHaveBeenCalledWith('security-monitor');
+    });
+
+    expect(screen.getByTestId('specialist-name-input')).toHaveValue('security-monitor');
+    expect((screen.getByTestId('specialist-markdown-editor') as HTMLTextAreaElement).value).toContain(
+      'description: Security scanning'
+    );
+    expect(screen.getByTestId('specialist-service-name-0')).toHaveValue('slack');
+    expect(screen.getByTestId('specialist-credential-key-0-0')).toHaveValue('SLACK_WEBHOOK');
+    expect(screen.getByTestId('specialist-credential-key-0-1')).toHaveValue('SLACK_CHANNEL');
+  });
+
+  it('should lock the specialist name and hide create-only clone/template affordances in edit mode', async () => {
+    render(
+      <AddSpecialistDialog
+        isOpen={true}
+        editingSpecialistId="security-monitor"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(mockGetRawDefinition).toHaveBeenCalledWith('security-monitor');
+    });
+
+    expect(screen.getByTestId('specialist-name-input')).toBeDisabled();
+    expect(screen.queryByTestId('specialist-clone-select')).not.toBeInTheDocument();
+    expect(screen.queryByText(/auto-populate with the default template/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId('specialist-create-btn')).toHaveTextContent('Save');
+  });
+
+  it('should call schedule.updateDefinition instead of schedule.scaffold when saving an edited specialist', async () => {
+    const onCreated = vi.fn();
+
+    render(
+      <AddSpecialistDialog
+        isOpen={true}
+        editingSpecialistId="security-monitor"
+        onClose={vi.fn()}
+        onCreated={onCreated}
+      />
+    );
+
+    await waitFor(() => {
+      expect(mockGetRawDefinition).toHaveBeenCalledWith('security-monitor');
+    });
+
+    fireEvent.change(screen.getByTestId('specialist-markdown-editor'), {
+      target: { value: '---\nname: security-monitor\ndescription: Updated\nmodel: haiku\nschedules:\n  - type: daily\n    cron: "0 0 * * *"\n    enabled: true\ntools:\n  - Read\n---\n\n# Updated' },
+    });
+    fireEvent.click(screen.getByTestId('specialist-create-btn'));
+
+    await waitFor(() => {
+      expect(mockUpdateDefinition).toHaveBeenCalledWith(
+        'security-monitor',
+        '---\nname: security-monitor\ndescription: Updated\nmodel: haiku\nschedules:\n  - type: daily\n    cron: "0 0 * * *"\n    enabled: true\ntools:\n  - Read\n---\n\n# Updated'
+      );
+    });
+
+    expect(mockScaffold).not.toHaveBeenCalled();
+    expect(onCreated).toHaveBeenCalledTimes(1);
+  });
+
+  it('should continue to use schedule.scaffold when no editing specialist id is provided', async () => {
+    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
+
+    fireEvent.change(screen.getByTestId('specialist-name-input'), {
+      target: { value: 'create-me' },
+    });
+    fireEvent.click(screen.getByTestId('specialist-create-btn'));
+
+    await waitFor(() => {
+      expect(mockScaffold).toHaveBeenCalledWith('create-me', undefined);
+    });
+
+    expect(mockUpdateDefinition).not.toHaveBeenCalled();
   });
 });
 

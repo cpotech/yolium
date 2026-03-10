@@ -12,7 +12,11 @@ import {
   toggleGlobal,
 } from '@main/stores/schedule-store';
 import { getRecentRuns, getRunStats } from '@main/stores/run-history-store';
-import { scaffoldSpecialist, getDefaultTemplate } from '@main/services/specialist-scaffold';
+import {
+  scaffoldSpecialist,
+  getDefaultTemplate,
+  updateSpecialistDefinition,
+} from '@main/services/specialist-scaffold';
 import { loadSpecialistRaw } from '@main/services/specialist-loader';
 import {
   loadRedactedCredentials,
@@ -93,6 +97,12 @@ export function registerScheduleHandlers(ipcMain: IpcMain): void {
   // Scaffold a new specialist definition
   ipcMain.handle('schedule:scaffold', (_event, name: string, options?: { description?: string; content?: string }) => {
     const filePath = scaffoldSpecialist(name, options);
+    scheduler.reload();
+    return { filePath };
+  });
+
+  ipcMain.handle('schedule:update-definition', (_event, name: string, content: string) => {
+    const filePath = updateSpecialistDefinition(name, content);
     scheduler.reload();
     return { filePath };
   });

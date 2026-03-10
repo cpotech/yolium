@@ -74,6 +74,56 @@ export function getDefaultTemplate(name: string, description?: string): string {
     .replace(/\{\{displayName\}\}/g, displayName);
 }
 
+function ensureSpecialistsDir(): string {
+  const dir = getSpecialistsDir();
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
+function getSpecialistFilePath(name: string): string {
+  return path.join(ensureSpecialistsDir(), `${name}.md`);
+}
+
+function normalizeSpecialistContent(name: string, content: string): string {
+  parseSpecialistDefinition(content);
+
+  const parsed = matter(content);
+  parsed.data.name = name;
+  return matter.stringify(parsed.content, parsed.data);
+}
+
+function writeSpecialistDefinition(
+  name: string,
+  options: { description?: string; content?: string },
+  mode: 'create' | 'update'
+): string {
+  const filePath = getSpecialistFilePath(name);
+  const exists = fs.existsSync(filePath);
+
+  if (mode === 'create' && exists) {
+    throw new Error(`Specialist "${name}" already exists at ${filePath}`);
+  }
+
+  if (mode === 'update' && !exists) {
+    throw new Error(`Specialist "${name}" does not exist at ${filePath}`);
+  }
+
+  const finalContent = options.content && options.content.trim()
+    ? normalizeSpecialistContent(name, options.content)
+    : mode === 'create'
+      ? getDefaultTemplate(name, options.description)
+      : null;
+
+  if (!finalContent) {
+    throw new Error(`Updated specialist "${name}" requires markdown content.`);
+  }
+
+  fs.writeFileSync(filePath, finalContent, 'utf-8');
+  return filePath;
+}
+
 /**
  * Scaffold a new specialist definition file.
  * When `options.content` is provided, validates it and writes directly (replacing the name in frontmatter).
@@ -83,30 +133,9 @@ export function scaffoldSpecialist(
   name: string,
   options: { description?: string; content?: string } = {}
 ): string {
-  const dir = getSpecialistsDir();
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
+  return writeSpecialistDefinition(name, options, 'create');
+}
 
-  const filePath = path.join(dir, `${name}.md`);
-  if (fs.existsSync(filePath)) {
-    throw new Error(`Specialist "${name}" already exists at ${filePath}`);
-  }
-
-  if (options.content && options.content.trim()) {
-    // Validate raw markdown through parseSpecialistDefinition
-    parseSpecialistDefinition(options.content);
-
-    // Replace the name field in frontmatter with the provided name
-    const parsed = matter(options.content);
-    parsed.data.name = name;
-    const finalContent = matter.stringify(parsed.content, parsed.data);
-
-    fs.writeFileSync(filePath, finalContent, 'utf-8');
-  } else {
-    const content = getDefaultTemplate(name, options.description);
-    fs.writeFileSync(filePath, content, 'utf-8');
-  }
-
-  return filePath;
+export function updateSpecialistDefinition(name: string, content: string): string {
+  return writeSpecialistDefinition(name, { content }, 'update');
 }

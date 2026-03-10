@@ -41,11 +41,24 @@ export function saveCredentials(
   serviceId: string,
   credentials: Record<string, string>
 ): void {
+  if (Object.keys(credentials).length === 0) {
+    return;
+  }
+
   const store = readStore();
   if (!store[specialistId]) {
     store[specialistId] = {};
   }
-  store[specialistId][serviceId] = credentials;
+  const existingServiceCredentials = store[specialistId][serviceId] || {};
+  const mergedCredentials = { ...existingServiceCredentials };
+
+  for (const [key, value] of Object.entries(credentials)) {
+    if (value.length > 0 || !(key in existingServiceCredentials)) {
+      mergedCredentials[key] = value;
+    }
+  }
+
+  store[specialistId][serviceId] = mergedCredentials;
   writeStore(store);
 }
 
