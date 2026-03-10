@@ -61,6 +61,10 @@ You are a specialist agent for {{description}}.
 - Escalate critical findings immediately
 `;
 
+function normalizeLineEndings(value: string): string {
+  return value.replace(/\r\n?/g, '\n');
+}
+
 /**
  * Render the default template with name/description/displayName substitutions.
  */
@@ -68,10 +72,10 @@ export function getDefaultTemplate(name: string, description?: string): string {
   const desc = description || `${name} monitoring and analysis`;
   const displayName = name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-  return TEMPLATE
+  return normalizeLineEndings(TEMPLATE
     .replace(/\{\{name\}\}/g, name)
     .replace(/\{\{description\}\}/g, desc)
-    .replace(/\{\{displayName\}\}/g, displayName);
+    .replace(/\{\{displayName\}\}/g, displayName));
 }
 
 function ensureSpecialistsDir(): string {
@@ -87,11 +91,12 @@ function getSpecialistFilePath(name: string): string {
 }
 
 function normalizeSpecialistContent(name: string, content: string): string {
-  parseSpecialistDefinition(content);
+  const normalizedContent = normalizeLineEndings(content);
+  parseSpecialistDefinition(normalizedContent);
 
-  const parsed = matter(content);
+  const parsed = matter(normalizedContent);
   parsed.data.name = name;
-  return matter.stringify(parsed.content, parsed.data);
+  return normalizeLineEndings(matter.stringify(parsed.content, parsed.data));
 }
 
 function writeSpecialistDefinition(

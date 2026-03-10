@@ -95,6 +95,44 @@ describe('parseMarkdownToGuidedForm', () => {
     expect(parsed.integrations[0].service).toBe('slack');
     expect(parsed.systemPrompt).toContain('Round Trip');
   });
+
+  it('should parse CRLF markdown from Windows checkouts', () => {
+    const markdown = [
+      '---',
+      'name: windows-agent',
+      'description: Handles CRLF markdown',
+      'model: sonnet',
+      'tools:',
+      '  - Read',
+      '  - Bash',
+      'schedules:',
+      '  - type: daily',
+      '    cron: "0 8 * * *"',
+      '    enabled: true',
+      'memory:',
+      '  strategy: distill_daily',
+      '  maxEntries: 42',
+      '  retentionDays: 7',
+      'escalation:',
+      '  onFailure: alert_user',
+      'integrations:',
+      '  - service: slack',
+      '    env:',
+      '      SLACK_TOKEN: ""',
+      '---',
+      '',
+      '# Windows Agent',
+    ].join('\r\n');
+
+    const parsed = parseMarkdownToGuidedForm(markdown);
+
+    expect(parsed.name).toBe('windows-agent');
+    expect(parsed.description).toBe('Handles CRLF markdown');
+    expect(parsed.tools).toEqual(['Read', 'Bash']);
+    expect(parsed.schedules).toEqual([{ type: 'daily', cron: '0 8 * * *', enabled: true }]);
+    expect(parsed.integrations).toEqual([{ service: 'slack', env: { SLACK_TOKEN: '' } }]);
+    expect(parsed.systemPrompt).toContain('Windows Agent');
+  });
 });
 
 describe('tryParseIntegrations', () => {
@@ -149,5 +187,40 @@ schedules:
 
     const result = tryParseIntegrations(markdown);
     expect(result).toEqual([]);
+  });
+
+  it('should parse integrations from CRLF frontmatter', () => {
+    const markdown = [
+      '---',
+      'name: test',
+      'description: test',
+      'model: sonnet',
+      'tools:',
+      '  - Read',
+      'schedules:',
+      '  - type: daily',
+      '    cron: "0 0 * * *"',
+      '    enabled: true',
+      'integrations:',
+      '  - service: github',
+      '    env:',
+      '      GITHUB_TOKEN: ""',
+      '      GITHUB_ORG: ""',
+      '---',
+      '',
+      '# Test',
+    ].join('\r\n');
+
+    const result = tryParseIntegrations(markdown);
+
+    expect(result).toEqual([
+      {
+        name: 'github',
+        credentials: [
+          { key: 'GITHUB_TOKEN', value: '' },
+          { key: 'GITHUB_ORG', value: '' },
+        ],
+      },
+    ]);
   });
 });

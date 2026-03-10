@@ -44,6 +44,12 @@ describe('getDefaultTemplate', () => {
     expect(result).toContain('tools:');
     expect(result).toContain('schedules:');
   });
+
+  it('should normalize template output to LF line endings', () => {
+    const result = getDefaultTemplate('line-ending-agent', 'Line ending coverage');
+
+    expect(result).not.toContain('\r\n');
+  });
 });
 
 describe('specialist-scaffold', () => {
