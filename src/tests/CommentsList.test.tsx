@@ -510,6 +510,27 @@ describe('CommentsList', () => {
     expect(screen.queryByTestId('report-preview-button')).not.toBeInTheDocument()
   })
 
+  it('should render inline SVG that was pre-converted to base64 data URI format', () => {
+    // Simulate what normalizeSvgToDataUri produces from raw <svg> input
+    const rawSvg = '<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="red"/></svg>'
+    const b64 = Buffer.from(rawSvg).toString('base64')
+    const dataUri = `data:image/svg+xml;base64,${b64}`
+    const comments: KanbanComment[] = [
+      {
+        id: 'c1',
+        source: 'agent',
+        text: `Here is a diagram:\n\n![SVG](${dataUri})`,
+        timestamp: new Date().toISOString(),
+      },
+    ]
+
+    render(<CommentsList comments={comments} />)
+
+    const img = screen.getByTestId('svg-image')
+    expect(img).toBeInTheDocument()
+    expect(img).toHaveAttribute('src', dataUri)
+  })
+
   it('should not render report button for mock links', () => {
     const comments: KanbanComment[] = [
       {

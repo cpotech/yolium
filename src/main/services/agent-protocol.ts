@@ -8,6 +8,7 @@ import type {
   ErrorMessage,
   ProgressMessage,
 } from '@shared/types/agent';
+import { normalizeSvgToDataUri } from '@main/docker/svg-normalize';
 
 const PROTOCOL_PREFIX = '@@YOLIUM:';
 const VALID_TYPES = ['ask_question', 'create_item', 'update_description', 'add_comment', 'comment', 'set_test_specs', 'complete', 'error', 'progress'] as const;
@@ -91,7 +92,7 @@ export function parseProtocolMessage(json: string): AnyProtocolMessage | null {
         if (typeof parsed.description !== 'string') return null;
         return {
           type: 'update_description',
-          description: parsed.description,
+          description: normalizeSvgToDataUri(parsed.description),
         };
 
       case 'add_comment':
@@ -99,7 +100,7 @@ export function parseProtocolMessage(json: string): AnyProtocolMessage | null {
         if (typeof parsed.text !== 'string') return null;
         return {
           type: 'add_comment',
-          text: parsed.text,
+          text: normalizeSvgToDataUri(parsed.text),
         };
 
       case 'set_test_specs': {

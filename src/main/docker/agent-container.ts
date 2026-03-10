@@ -19,6 +19,7 @@ import { docker, agentSessions, DEFAULT_IMAGE, type AgentContainerSession } from
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
 import { getGitCredentialsBind, getClaudeOAuthBind, getCodexOAuthBind } from './project-registry';
 import { getValidatedSharedDirs } from '@main/services/project-config';
+import { normalizeSvgToDataUri } from './svg-normalize';
 
 const logger = createLogger('agent-container');
 
@@ -514,7 +515,7 @@ function dispatchOutput(
         session.protocolMessageCount += 1;
       }
 
-      const syntheticMessage = { type: 'add_comment' as const, text };
+      const syntheticMessage = { type: 'add_comment' as const, text: normalizeSvgToDataUri(text) };
       ctx.onProtocolMessage?.(syntheticMessage);
       if (webContents && !webContents.isDestroyed()) {
         webContents.send('agent:protocol-message', ctx.sessionId, syntheticMessage);
