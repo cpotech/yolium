@@ -25,13 +25,29 @@ const VALID_MEMORY_STRATEGIES: MemoryStrategy[] = ['distill_daily', 'distill_wee
  * In prod: resources/agents/cron/
  */
 export function getSpecialistsDir(): string {
-  // Check for bundled resources first (production)
-  const resourcePath = path.join(process.resourcesPath || '', 'agents', 'cron');
-  if (fs.existsSync(resourcePath)) {
-    return resourcePath;
+  // Try Electron app path first (development)
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { app } = require('electron');
+    const appPath = app.getAppPath();
+    const devPath = path.join(appPath, 'src', 'agents', 'cron');
+    if (fs.existsSync(devPath)) {
+      return devPath;
+    }
+  } catch {
+    // Electron not available (test environment)
   }
-  // Development: relative to project root
-  return path.join(__dirname, '..', '..', 'agents', 'cron');
+
+  // Try production path (process.resourcesPath)
+  if (process.resourcesPath) {
+    const prodPath = path.join(process.resourcesPath, 'agents', 'cron');
+    if (fs.existsSync(prodPath)) {
+      return prodPath;
+    }
+  }
+
+  // Fallback for test environment
+  return path.join(__dirname, '..', 'agents', 'cron');
 }
 
 /**

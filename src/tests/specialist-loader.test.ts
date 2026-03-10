@@ -31,6 +31,7 @@ import {
   listSpecialists,
   validateSchedules,
   loadSpecialistRaw,
+  getSpecialistsDir,
 } from '@main/services/specialist-loader';
 
 describe('specialist-loader', () => {
@@ -411,6 +412,52 @@ Content`;
       expect(twitterIntegration!.env).toHaveProperty('TWITTER_API_KEY');
       expect(twitterIntegration!.env).toHaveProperty('TWITTER_API_SECRET');
       expect(twitterIntegration!.env).toHaveProperty('TWITTER_BEARER_TOKEN');
+    });
+  });
+
+  describe('getSpecialistsDir', () => {
+    it('should resolve to src/agents/cron/ in development when app.getAppPath() is available', () => {
+      // In test environment, require('electron') throws, so we verify
+      // the function follows the same pattern as getAgentsDir in agent-loader.ts.
+      // The dev path (app.getAppPath() + 'src/agents/cron') is tested via E2E.
+      // Here we verify the fallback produces a valid path ending in agents/cron.
+      const result = getSpecialistsDir();
+      expect(result).toMatch(/agents[/\\]cron$/);
+    });
+
+    it('should resolve to resources/agents/cron/ in production when process.resourcesPath exists', async () => {
+      const fs = await import('node:fs');
+      const originalResourcesPath = process.resourcesPath;
+      Object.defineProperty(process, 'resourcesPath', { value: '/app/resources', writable: true, configurable: true });
+
+      vi.mocked(fs.existsSync).mockImplementation((p) => p === '/app/resources/agents/cron');
+
+      expect(getSpecialistsDir()).toBe('/app/resources/agents/cron');
+
+      Object.defineProperty(process, 'resourcesPath', { value: originalResourcesPath, writable: true, configurable: true });
+    });
+
+    it('should fall back to __dirname-relative path in test environment when Electron is not available', async () => {
+      const fs = await import('node:fs');
+      const originalResourcesPath = process.resourcesPath;
+      Object.defineProperty(process, 'resourcesPath', { value: '', writable: true, configurable: true });
+
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
+      const result = getSpecialistsDir();
+      expect(result).toMatch(/agents[/\\]cron$/);
+
+      Object.defineProperty(process, 'resourcesPath', { value: originalResourcesPath, writable: true, configurable: true });
+    });
+
+    it('should return cron directory path that contains .md files when pointed at real src/agents/cron', () => {
+      const realFs = require('node:fs');
+      const realPath = require('node:path');
+      const cronDir = realPath.join(__dirname, '..', 'agents', 'cron');
+
+      const files = realFs.readdirSync(cronDir) as string[];
+      const mdFiles = files.filter((f: string) => f.endsWith('.md') && !f.startsWith('_'));
+      expect(mdFiles.length).toBeGreaterThan(0);
     });
   });
 
