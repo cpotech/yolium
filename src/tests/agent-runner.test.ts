@@ -40,7 +40,7 @@ vi.mock('node:path', async () => {
   };
 });
 
-import { buildAgentPrompt, resolveModel, getDisplayModel, getCompletionColumn, stopAllAgentsForProject, clearSessions } from '@main/services/agent-runner';
+import { buildAgentPrompt, buildScheduledPrompt, resolveModel, getDisplayModel, getCompletionColumn, stopAllAgentsForProject, clearSessions } from '@main/services/agent-runner';
 import { createBoard, addItem, updateItem, addComment } from '@main/stores/kanban-store';
 
 describe('agent-runner', () => {
@@ -826,6 +826,96 @@ describe('agent-runner', () => {
     it('should resolve without error when no sessions match the project', async () => {
       // No sessions added, so nothing should match
       await expect(stopAllAgentsForProject('/nonexistent/project')).resolves.toBeUndefined();
+    });
+  });
+
+  describe('buildScheduledPrompt', () => {
+    const baseParams = {
+      systemPrompt: 'You are the Twitter Growth specialist.',
+      scheduleType: 'daily' as const,
+      promptTemplate: undefined as string | undefined,
+      description: 'Monitor Twitter engagement and post updates',
+      memoryContext: '',
+    };
+
+    it('should include schedule-specific prompt template when promptTemplates[scheduleType] is populated', () => {
+      const result = buildScheduledPrompt({
+        ...baseParams,
+        promptTemplate: 'Check Twitter mentions and respond to engagement.',
+      });
+
+      expect(result).toContain('## Schedule: daily');
+      expect(result).toContain('Check Twitter mentions and respond to engagement.');
+    });
+
+    it('should generate a fallback prompt when promptTemplates[scheduleType] is empty string', () => {
+      const result = buildScheduledPrompt({
+        ...baseParams,
+        promptTemplate: '',
+      });
+
+      expect(result).toContain('## Schedule: daily');
+      expect(result).not.toContain('Check Twitter');
+      expect(result).toContain('Execute your daily task');
+    });
+
+    it('should generate a fallback prompt when promptTemplates[scheduleType] is undefined (missing key)', () => {
+      const result = buildScheduledPrompt({
+        ...baseParams,
+        promptTemplate: undefined,
+      });
+
+      expect(result).toContain('## Schedule: daily');
+      expect(result).toContain('Execute your daily task');
+    });
+
+    it('should include specialist description and scheduleType in the fallback prompt', () => {
+      const result = buildScheduledPrompt({
+        ...baseParams,
+        promptTemplate: undefined,
+      });
+
+      expect(result).toContain('daily');
+      expect(result).toContain('Monitor Twitter engagement and post updates');
+    });
+
+    it('should append memoryContext after the schedule section when provided', () => {
+      const result = buildScheduledPrompt({
+        ...baseParams,
+        promptTemplate: 'Do the daily task.',
+        memoryContext: '## Run History\n\nLast run: 2026-03-09 — posted 3 tweets.',
+      });
+
+      expect(result).toContain('## Run History');
+      expect(result).toContain('Last run: 2026-03-09');
+      // memoryContext should come after the schedule section
+      const scheduleIdx = result.indexOf('## Schedule: daily');
+      const memoryIdx = result.indexOf('## Run History');
+      expect(memoryIdx).toBeGreaterThan(scheduleIdx);
+    });
+
+    it('should not append memoryContext section when memoryContext is empty', () => {
+      const result = buildScheduledPrompt({
+        ...baseParams,
+        promptTemplate: 'Do the daily task.',
+        memoryContext: '',
+      });
+
+      expect(result).toContain('Do the daily task.');
+      // Should end with the schedule section content, no trailing sections
+      expect(result).not.toContain('## Run History');
+      // The prompt should be: systemPrompt + schedule section only
+      const afterSchedule = result.split('Do the daily task.')[1];
+      expect(afterSchedule.trim()).toBe('');
+    });
+
+    it('should always include the specialist systemPrompt as the base of the prompt', () => {
+      const result = buildScheduledPrompt({
+        ...baseParams,
+        promptTemplate: 'Some template.',
+      });
+
+      expect(result.startsWith('You are the Twitter Growth specialist.')).toBe(true);
     });
   });
 
