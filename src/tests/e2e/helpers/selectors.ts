@@ -93,6 +93,7 @@ export const selectors = {
   // Sidebar
   sidebar: '[data-testid="sidebar"]',
   sidebarCollapseToggle: '[data-testid="collapse-toggle"]',
+  sidebarSchedule: '[data-testid="sidebar-schedule"]',
   addProjectButton: '[data-testid="add-project-button"]',
   projectItem: (path: string) => `[data-testid="project-item-${path}"]`,
   removeProjectButton: (path: string) => `[data-testid="remove-project-${path}"]`,
