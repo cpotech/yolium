@@ -351,6 +351,69 @@ Content`;
     });
   });
 
+  describe('twitter-growth specialist', () => {
+    // These tests validate the actual twitter-growth.md content by parsing its frontmatter
+    // We read the file content as a string constant and parse it with parseSpecialistDefinition
+
+    const twitterGrowthMarkdown = (() => {
+      // Use real fs to read the actual file (not the mocked version)
+      const realFs = require('node:fs');
+      const realPath = require('node:path');
+      const filePath = realPath.join(__dirname, '..', 'agents', 'cron', 'twitter-growth.md');
+      return realFs.readFileSync(filePath, 'utf-8');
+    })();
+
+    it('should parse twitter-growth.md frontmatter with all required fields (name, description, model, tools, schedules, memory, escalation, integrations, promptTemplates)', () => {
+      const result = parseSpecialistDefinition(twitterGrowthMarkdown);
+
+      expect(result.name).toBe('twitter-growth');
+      expect(result.description).toBeTruthy();
+      expect(result.model).toBe('sonnet');
+      expect(result.tools).toContain('WebSearch');
+      expect(result.tools).toContain('WebFetch');
+      expect(result.schedules).toHaveLength(3);
+      expect(result.schedules.map(s => s.type)).toEqual(['heartbeat', 'daily', 'weekly']);
+      expect(result.memory.strategy).toBe('distill_daily');
+      expect(result.memory.maxEntries).toBe(500);
+      expect(result.memory.retentionDays).toBe(90);
+      expect(result.escalation.onFailure).toBe('notify_slack');
+      expect(result.escalation.onPattern).toBe('reduce_frequency');
+      expect(result.integrations).toBeDefined();
+      expect(result.integrations!.length).toBeGreaterThanOrEqual(1);
+      expect(result.promptTemplates).toBeDefined();
+      expect(Object.keys(result.promptTemplates!)).toContain('heartbeat');
+      expect(Object.keys(result.promptTemplates!)).toContain('daily');
+      expect(Object.keys(result.promptTemplates!)).toContain('weekly');
+    });
+
+    it('should contain heartbeat, daily, and weekly prompt templates with specific strategy content', () => {
+      const result = parseSpecialistDefinition(twitterGrowthMarkdown);
+      const templates = result.promptTemplates!;
+
+      // Heartbeat should reference tweet mix, response time targets, crisis detection
+      expect(templates.heartbeat).toMatch(/tweet mix|engagement/i);
+      expect(templates.heartbeat).toMatch(/crisis|reputation/i);
+
+      // Daily should reference thread strategy, performance targets, engagement rate
+      expect(templates.daily).toMatch(/thread/i);
+      expect(templates.daily).toMatch(/engagement rate|2\.5%/i);
+
+      // Weekly should reference Twitter Spaces, follower growth, KPI
+      expect(templates.weekly).toMatch(/Twitter Spaces|Spaces/i);
+      expect(templates.weekly).toMatch(/follower growth|10%/i);
+    });
+
+    it('should include twitter-api integration with TWITTER_API_KEY, TWITTER_API_SECRET, and TWITTER_BEARER_TOKEN env vars', () => {
+      const result = parseSpecialistDefinition(twitterGrowthMarkdown);
+      const twitterIntegration = result.integrations!.find(i => i.service === 'twitter-api');
+
+      expect(twitterIntegration).toBeDefined();
+      expect(twitterIntegration!.env).toHaveProperty('TWITTER_API_KEY');
+      expect(twitterIntegration!.env).toHaveProperty('TWITTER_API_SECRET');
+      expect(twitterIntegration!.env).toHaveProperty('TWITTER_BEARER_TOKEN');
+    });
+  });
+
   describe('loadSpecialistRaw', () => {
     it('should return raw markdown content for an existing specialist', async () => {
       const fs = await import('node:fs');
