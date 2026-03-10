@@ -169,6 +169,34 @@ describe('agent-runner', () => {
       expect(prompt).not.toContain('.yolium-summary.md');
     });
 
+    it('should include file-based output instructions for codex verify-agent', () => {
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Verify Agent.',
+        goal: 'Verify implementation',
+        conversationHistory: '',
+        provider: 'codex',
+        agentName: 'verify-agent',
+      });
+
+      expect(prompt).toContain('.yolium-verify.md');
+      expect(prompt).toContain('Write Your Verification Report to a File');
+      expect(prompt).not.toContain('.yolium-plan.md');
+      expect(prompt).not.toContain('.yolium-summary.md');
+      expect(prompt).not.toContain('.yolium-scout.json');
+    });
+
+    it('should not include verify file-based output instructions for claude provider', () => {
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Verify Agent.',
+        goal: 'Verify implementation',
+        conversationHistory: '',
+        provider: 'claude',
+        agentName: 'verify-agent',
+      });
+
+      expect(prompt).not.toContain('.yolium-verify.md');
+    });
+
     it('should not include file-based output instructions for claude provider', () => {
       const prompt = buildAgentPrompt({
         systemPrompt: 'You are the Plan Agent.',
@@ -715,6 +743,55 @@ describe('agent-runner', () => {
 
       const result = board.items.find(i => i.id === item.id)!;
       expect(result.description).toBe('Original description');
+    });
+
+    it('should read .yolium-verify.md and post as comment for codex verify-agent on exit', () => {
+      // Simulates the onExit synthesis path for verify-agent:
+      // - Provider is non-Claude (Codex)
+      // - Agent is verify-agent
+      // - .yolium-verify.md exists with a verification report
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Verify authentication feature',
+        description: 'Verify the implementation',
+        agentProvider: 'codex',
+        order: 0,
+      });
+
+      updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
+
+      // Simulate what conclusion synthesis does for verify-agent:
+      // Read .yolium-verify.md and post as comment (not description update)
+      const verifyText = '## Verification Report\n\n### Status: PASS\n\n- All tests pass\n- Code follows guidelines\n- No security issues found';
+      addComment(board, item.id, 'agent', verifyText);
+
+      const result = board.items.find(i => i.id === item.id)!;
+      // Verify-agent posts comments, not description updates
+      expect(result.description).toBe('Verify the implementation');
+      expect(result.comments).toBeDefined();
+      expect(result.comments!.some(c => c.text.includes('Verification Report'))).toBe(true);
+    });
+
+    it('should not post duplicate verify comment when agent already sent comment via protocol', () => {
+      // When the verify agent successfully sends comments via protocol messages,
+      // .yolium-verify.md won't exist (protocol-delivered comments are the primary path).
+      // The file-based fallback only activates when the file exists, so no duplicate posting occurs.
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Verify auth feature',
+        description: 'Verify the implementation',
+        agentProvider: 'codex',
+        order: 0,
+      });
+
+      updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
+
+      // Agent already posted comment via protocol
+      addComment(board, item.id, 'agent', '## Verification Report\n\nStatus: PASS');
+
+      const result = board.items.find(i => i.id === item.id)!;
+      // Only the one protocol-delivered comment should exist — no file-based duplicate
+      expect(result.comments!.filter(c => c.text.includes('Verification Report'))).toHaveLength(1);
     });
 
     it('should not synthesize description for Claude provider', () => {

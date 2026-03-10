@@ -180,6 +180,25 @@ The file must be a valid JSON array of lead dossier objects, each containing:
 
 This file is MANDATORY — the system reads it to capture your dossier. If you do not write this file, your research will be lost.`;
 
+/**
+ * File-based output instructions for non-Claude verify agents.
+ * Ensures the verification report is written to a known path for capture.
+ */
+const FILE_OUTPUT_VERIFY = `## CRITICAL: Write Your Verification Report to a File
+
+After completing your verification, you MUST write your final verification report to a file named \`.yolium-verify.md\` in the project root directory.
+
+The file must include:
+- Verification status (PASS / FAIL / PARTIAL)
+- Task completion assessment
+- Issues found (if any)
+- Code quality observations
+- Guideline compliance
+- Test results
+- Recommendation (approve, request changes, or needs re-work)
+
+This file is MANDATORY — the system reads it to capture your verification report. If you do not write this file, your report will be lost.`;
+
 export function buildAgentPrompt(params: BuildPromptParams): string {
   const { systemPrompt, goal, conversationHistory, provider, agentName } = params;
 
@@ -197,6 +216,8 @@ export function buildAgentPrompt(params: BuildPromptParams): string {
       prompt += `\n\n${FILE_OUTPUT_CODE}`;
     } else if (agentName === 'scout-agent') {
       prompt += `\n\n${FILE_OUTPUT_SCOUT}`;
+    } else if (agentName === 'verify-agent') {
+      prompt += `\n\n${FILE_OUTPUT_VERIFY}`;
     }
 
     if (conversationHistory.trim()) {
@@ -638,6 +659,21 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
                   }
                 } catch (err) {
                   logger.warn('Failed to read .yolium-scout.json', { itemId, error: err instanceof Error ? err.message : String(err) });
+                }
+              }
+
+              if (agentName === 'verify-agent') {
+                const verifyFile = path.join(outputDir, '.yolium-verify.md');
+                try {
+                  if (fs.existsSync(verifyFile)) {
+                    const verifyText = fs.readFileSync(verifyFile, 'utf-8').trim();
+                    if (verifyText.length > 0) {
+                      addComment(exitBoard, itemId, 'agent', verifyText);
+                      logger.info('Read verification report from .yolium-verify.md', { itemId, reportLength: verifyText.length });
+                    }
+                  }
+                } catch (err) {
+                  logger.warn('Failed to read .yolium-verify.md', { itemId, error: err instanceof Error ? err.message : String(err) });
                 }
               }
 
