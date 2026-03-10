@@ -106,6 +106,38 @@ export function getRunStats(specialistId: string): RunStats {
   };
 }
 
+// ─── Per-Run Log Files ──────────────────────────────────────────────────────
+
+function getRunLogDir(specialistId: string): string {
+  return path.join(getHistoryDir(specialistId), 'runs');
+}
+
+function getRunLogPath(specialistId: string, runId: string): string {
+  return path.join(getRunLogDir(specialistId), `${runId}.log`);
+}
+
+/**
+ * Append display output to a per-run log file.
+ * Each line is prefixed with a timestamp.
+ */
+export function appendRunLog(specialistId: string, runId: string, data: string): void {
+  const dir = getRunLogDir(specialistId);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const timestamp = new Date().toISOString();
+  fs.appendFileSync(getRunLogPath(specialistId, runId), `[${timestamp}] ${data}\n`, 'utf-8');
+}
+
+/**
+ * Read the full log for a run. Returns empty string if not found.
+ */
+export function getRunLog(specialistId: string, runId: string): string {
+  const logPath = getRunLogPath(specialistId, runId);
+  if (!fs.existsSync(logPath)) return '';
+  return fs.readFileSync(logPath, 'utf-8');
+}
+
 /**
  * Trim history to keep only the most recent maxEntries.
  */

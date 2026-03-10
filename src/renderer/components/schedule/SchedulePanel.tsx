@@ -39,15 +39,18 @@ export function SchedulePanel(): React.ReactElement {
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [runTypeMenu, setRunTypeMenu] = useState<string | null>(null);
+  const [runningIds, setRunningIds] = useState<string[]>([]);
 
   const loadState = useCallback(async () => {
     try {
-      const [scheduleState, specialistDefs] = await Promise.all([
+      const [scheduleState, specialistDefs, running] = await Promise.all([
         window.electronAPI.schedule.getState(),
         window.electronAPI.schedule.getSpecialists(),
+        window.electronAPI.schedule.getRunning(),
       ]);
       setState(scheduleState);
       setSpecialists(specialistDefs);
+      setRunningIds(running);
     } catch (err) {
       console.error('Failed to load schedule state:', err);
     } finally {
@@ -232,17 +235,34 @@ export function SchedulePanel(): React.ReactElement {
             {Object.entries(specialists).map(([id, spec]) => {
               const status = state?.specialists[id];
               const enabledSchedules = spec.schedules.filter(s => s.enabled);
+              const isRunning = runningIds.includes(id);
               return (
                 <div
                   key={id}
                   data-testid={`specialist-card-${id}`}
-                  className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-3"
+                  className={`rounded-lg border bg-[var(--color-bg-secondary)] p-3 ${
+                    isRunning
+                      ? 'border-green-500/40'
+                      : 'border-[var(--color-border-primary)]'
+                  }`}
                 >
                   {/* Card header */}
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <h3 className="text-sm font-medium text-[var(--color-text-primary)]">{spec.name}</h3>
-                      <p className="text-xs text-[var(--color-text-muted)] mt-0.5 line-clamp-2">{spec.description}</p>
+                      <h3 className="text-sm font-medium text-[var(--color-text-primary)] flex items-center gap-1.5">
+                        {isRunning && (
+                          <span
+                            data-testid={`running-indicator-${id}`}
+                            className="inline-block w-2 h-2 rounded-full bg-green-400 animate-pulse"
+                          />
+                        )}
+                        {spec.name}
+                      </h3>
+                      {isRunning ? (
+                        <p className="text-xs text-green-400 mt-0.5">Running...</p>
+                      ) : (
+                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5 line-clamp-2">{spec.description}</p>
+                      )}
                     </div>
                     <button
                       data-testid={`toggle-${id}`}
@@ -319,10 +339,15 @@ export function SchedulePanel(): React.ReactElement {
                         <button
                           data-testid={`run-now-${id}`}
                           onClick={() => handleTriggerRun(id, enabledSchedules[0]?.type || 'daily')}
-                          className="flex items-center gap-1 px-2 py-1 text-xs rounded-l bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-border-primary)] transition-colors"
+                          disabled={isRunning}
+                          className={`flex items-center gap-1 px-2 py-1 text-xs rounded-l transition-colors ${
+                            isRunning
+                              ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] cursor-not-allowed opacity-50'
+                              : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-border-primary)]'
+                          }`}
                         >
                           <Play size={10} />
-                          Run
+                          {isRunning ? 'Running' : 'Run'}
                         </button>
                         {enabledSchedules.length > 1 && (
                           <button
