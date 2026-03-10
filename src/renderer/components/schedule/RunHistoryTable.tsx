@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { RefreshCw } from 'lucide-react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { RefreshCw, ArrowLeft } from 'lucide-react';
 
 interface RunRecord {
   id: string;
@@ -30,6 +30,14 @@ const OUTCOME_COLORS: Record<string, string> = {
   timeout: 'text-[var(--color-status-warning)]',
 };
 
+const OUTCOME_BADGE: Record<string, string> = {
+  completed: 'bg-green-500/20 text-green-400',
+  no_action: 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]',
+  failed: 'bg-[var(--color-status-error)]/20 text-[var(--color-status-error)]',
+  skipped: 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]',
+  timeout: 'bg-[var(--color-status-warning)]/20 text-[var(--color-status-warning)]',
+};
+
 const TYPE_COLORS: Record<string, string> = {
   heartbeat: 'bg-blue-500/20 text-blue-400',
   daily: 'bg-green-500/20 text-green-400',
@@ -41,12 +49,131 @@ interface RunHistoryTableProps {
   specialistId: string;
 }
 
+function formatDuration(startedAt: string, completedAt: string): string {
+  const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+  if (ms < 1000) return `${ms}ms`;
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainSec = seconds % 60;
+  return `${minutes}m ${remainSec}s`;
+}
+
+function RunDetailView({
+  run,
+  specialistId,
+  onBack,
+}: {
+  run: RunRecord;
+  specialistId: string;
+  onBack: () => void;
+}): React.ReactElement {
+  const [logContent, setLogContent] = useState<string>('');
+  const [isLoadingLog, setIsLoadingLog] = useState(true);
+  const logRef = useRef<HTMLPreElement>(null);
+
+  useEffect(() => {
+    setIsLoadingLog(true);
+    window.electronAPI.schedule.getRunLog(specialistId, run.id)
+      .then((log) => {
+        setLogContent(log);
+      })
+      .catch((err) => {
+        console.error('Failed to fetch run log:', err);
+        setLogContent('');
+      })
+      .finally(() => {
+        setIsLoadingLog(false);
+      });
+  }, [specialistId, run.id]);
+
+  useEffect(() => {
+    if (logRef.current) {
+      logRef.current.scrollTop = logRef.current.scrollHeight;
+    }
+  }, [logContent]);
+
+  return (
+    <div className="flex flex-col h-full" data-testid="run-detail-view">
+      {/* Header */}
+      <div className="flex items-center gap-2 p-3 border-b border-[var(--color-border-primary)]">
+        <button
+          data-testid="run-detail-back"
+          onClick={onBack}
+          className="flex items-center gap-1 px-2 py-1 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] rounded transition-colors"
+        >
+          <ArrowLeft size={14} />
+          Back
+        </button>
+        <span className="text-sm font-medium text-[var(--color-text-primary)]">
+          {new Date(run.startedAt).toLocaleString(undefined, {
+            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit',
+          })}
+        </span>
+        <span className={`px-1.5 py-0.5 rounded text-[10px] ${OUTCOME_BADGE[run.outcome] || 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]'}`}>
+          {run.outcome}
+        </span>
+        <span className={`px-1.5 py-0.5 rounded text-[10px] ${TYPE_COLORS[run.scheduleType] || TYPE_COLORS.custom}`}>
+          {run.scheduleType}
+        </span>
+      </div>
+
+      {/* Stats bar */}
+      <div className="flex gap-5 px-3 py-2 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border-primary)]">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] text-[var(--color-text-muted)]">Tokens</span>
+          <span className="text-xs text-[var(--color-text-primary)]">{run.tokensUsed.toLocaleString()}</span>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] text-[var(--color-text-muted)]">Cost</span>
+          <span className="text-xs text-[var(--color-text-primary)]">${run.costUsd.toFixed(4)}</span>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] text-[var(--color-text-muted)]">Duration</span>
+          <span className="text-xs text-[var(--color-text-primary)]">{formatDuration(run.startedAt, run.completedAt)}</span>
+        </div>
+      </div>
+
+      {/* Summary */}
+      <div className="px-3 py-2 border-b border-[var(--color-border-primary)]">
+        <span className="text-[10px] text-[var(--color-text-muted)]">Summary</span>
+        <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">{run.summary}</p>
+      </div>
+
+      {/* Log panel */}
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        <div className="px-3 py-1.5 text-[10px] text-[var(--color-text-muted)] border-b border-[var(--color-border-primary)]">
+          Agent Log
+        </div>
+        {isLoadingLog ? (
+          <div className="flex-1 flex items-center justify-center" data-testid="run-detail-log-loading">
+            <RefreshCw className="w-4 h-4 text-[var(--color-text-muted)] animate-spin" />
+          </div>
+        ) : logContent ? (
+          <pre
+            ref={logRef}
+            className="flex-1 min-h-0 overflow-auto p-3 text-xs font-mono leading-relaxed text-[var(--color-text-secondary)] whitespace-pre-wrap break-words"
+            data-testid="run-detail-log"
+          >
+            {logContent}
+          </pre>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-xs text-[var(--color-text-muted)]" data-testid="run-detail-log-empty">
+            No log data available for this run
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function RunHistoryTable({ specialistId }: RunHistoryTableProps): React.ReactElement {
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [stats, setStats] = useState<RunStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [filterType, setFilterType] = useState<string>('all');
   const [filterOutcome, setFilterOutcome] = useState<string>('all');
+  const [selectedRun, setSelectedRun] = useState<RunRecord | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -72,6 +199,16 @@ export function RunHistoryTable({ specialistId }: RunHistoryTableProps): React.R
     if (filterOutcome !== 'all' && run.outcome !== filterOutcome) return false;
     return true;
   });
+
+  if (selectedRun) {
+    return (
+      <RunDetailView
+        run={selectedRun}
+        specialistId={specialistId}
+        onBack={() => setSelectedRun(null)}
+      />
+    );
+  }
 
   if (isLoading) {
     return (
@@ -157,7 +294,9 @@ export function RunHistoryTable({ specialistId }: RunHistoryTableProps): React.R
             {filteredRuns.map(run => (
               <tr
                 key={run.id}
-                className="border-b border-[var(--color-border-primary)]/50 hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                data-testid={`run-row-${run.id}`}
+                onClick={() => setSelectedRun(run)}
+                className="border-b border-[var(--color-border-primary)]/50 hover:bg-[var(--color-bg-tertiary)] hover:border-l-2 hover:border-l-[var(--color-accent-primary)] transition-colors cursor-pointer"
               >
                 <td className="py-1.5 px-2 text-[var(--color-text-secondary)] whitespace-nowrap">
                   {new Date(run.startedAt).toLocaleString(undefined, {

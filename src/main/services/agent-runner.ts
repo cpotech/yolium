@@ -28,6 +28,7 @@ import {
   appendLog,
   appendSessionHeader,
 } from '@main/stores/workitem-log-store';
+import { appendRunLog } from '@main/stores/run-history-store';
 import {
   createAgentContainer,
   stopAgentContainer,
@@ -1051,6 +1052,7 @@ export interface ScheduledAgentParams {
   specialist: SpecialistDefinition;
   scheduleType: ScheduleType;
   memoryContext: string;
+  runId: string;
 }
 
 export interface ScheduledAgentResult {
@@ -1067,7 +1069,7 @@ export interface ScheduledAgentResult {
  * parses output for protocol messages, and resolves with the run result.
  */
 export function startScheduledAgent(params: ScheduledAgentParams): Promise<ScheduledAgentResult> {
-  const { specialist, scheduleType, memoryContext } = params;
+  const { specialist, scheduleType, memoryContext, runId } = params;
 
   // Check auth (scheduled agents use the default Claude provider)
   const auth = checkAgentAuth('claude');
@@ -1134,6 +1136,10 @@ export function startScheduledAgent(params: ScheduledAgentParams): Promise<Sched
               summary = (msg as ErrorMessage).message;
             }
           }
+        },
+        onDisplayOutput: (data: string) => {
+          // Persist display output to per-run log file
+          appendRunLog(specialist.name, runId, data);
         },
         onExit: (code: number) => {
           const durationMs = Date.now() - startTime;

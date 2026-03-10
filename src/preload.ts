@@ -410,6 +410,10 @@ const schedule = {
     ipcRenderer.invoke('schedule:save-credentials', specialistId, serviceId, credentials),
   deleteCredentials: (specialistId: string) =>
     ipcRenderer.invoke('schedule:delete-credentials', specialistId),
+  getRunLog: (specialistId: string, runId: string) =>
+    ipcRenderer.invoke('schedule:get-run-log', specialistId, runId),
+  getRunning: () =>
+    ipcRenderer.invoke('schedule:get-running'),
   onAlert: (callback: (specialistId: string, message: string) => void): CleanupFn => {
     const handler = (_event: Electron.IpcRendererEvent, specialistId: string, message: string) =>
       callback(specialistId, message);
@@ -772,6 +776,8 @@ declare global {
         getCredentials: (specialistId: string) => Promise<Record<string, Record<string, boolean>>>;
         saveCredentials: (specialistId: string, serviceId: string, credentials: Record<string, string>) => Promise<void>;
         deleteCredentials: (specialistId: string) => Promise<void>;
+        getRunLog: (specialistId: string, runId: string) => Promise<string>;
+        getRunning: () => Promise<string[]>;
         onAlert: (callback: (specialistId: string, message: string) => void) => CleanupFunction;
         onStateChanged: (callback: (state: unknown) => void) => CleanupFunction;
       };

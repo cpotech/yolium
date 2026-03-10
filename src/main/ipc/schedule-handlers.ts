@@ -11,7 +11,7 @@ import {
   toggleSpecialist,
   toggleGlobal,
 } from '@main/stores/schedule-store';
-import { getRecentRuns, getRunStats } from '@main/stores/run-history-store';
+import { getRecentRuns, getRunStats, getRunLog } from '@main/stores/run-history-store';
 import {
   scaffoldSpecialist,
   getDefaultTemplate,
@@ -125,5 +125,15 @@ export function registerScheduleHandlers(ipcMain: IpcMain): void {
   // Delete all credentials for a specialist
   ipcMain.handle('schedule:delete-credentials', (_event, specialistId: string) => {
     deleteCredentials(specialistId);
+  });
+
+  // Get full log for a specific run
+  ipcMain.handle('schedule:get-run-log', (_event, specialistId: string, runId: string) => {
+    return getRunLog(specialistId, runId);
+  });
+
+  // Get list of currently running specialist IDs
+  ipcMain.handle('schedule:get-running', () => {
+    return scheduler.getRunningSpecialists();
   });
 }

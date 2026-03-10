@@ -210,6 +210,13 @@ export class CronScheduler {
   }
 
   /**
+   * Get IDs of currently running specialists.
+   */
+  getRunningSpecialists(): string[] {
+    return Array.from(this.running);
+  }
+
+  /**
    * Get loaded specialist definitions.
    */
   getSpecialists(): Map<string, SpecialistDefinition> {
@@ -314,14 +321,17 @@ export class CronScheduler {
     // Build memory context from recent run history
     const memoryContext = this.buildMemoryContext(specialistId);
 
+    // Generate runId before starting so log file and run record share the same ID
+    const runId = generateRunId();
+
     // Start the agent container (headless — no renderer window)
-    startScheduledAgent({ specialist, scheduleType, memoryContext })
+    startScheduledAgent({ specialist, scheduleType, memoryContext, runId })
       .then((result) => {
         const completedAt = new Date().toISOString();
 
         // Record the run
         const run: ScheduledRun = {
-          id: generateRunId(),
+          id: runId,
           specialistId,
           scheduleType,
           startedAt,
@@ -348,7 +358,7 @@ export class CronScheduler {
         const errorMessage = err instanceof Error ? err.message : String(err);
 
         const run: ScheduledRun = {
-          id: generateRunId(),
+          id: runId,
           specialistId,
           scheduleType,
           startedAt,
