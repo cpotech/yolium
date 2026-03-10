@@ -21,12 +21,39 @@ interface SpecialistConfigDialogProps {
   isOpen: boolean;
   specialistId: string | null;
   onClose: () => void;
+  onEdit?: () => void;
+}
+
+function mergeCredentialState(
+  credentials: Record<string, Record<string, boolean>>,
+  integrations?: Array<{ service: string; env: Record<string, string> }>
+): Record<string, Record<string, boolean>> {
+  const merged: Record<string, Record<string, boolean>> = { ...credentials };
+
+  if (!integrations) {
+    return merged;
+  }
+
+  for (const integration of integrations) {
+    if (!integration.service) continue;
+    if (!merged[integration.service]) {
+      merged[integration.service] = {};
+    }
+    for (const key of Object.keys(integration.env)) {
+      if (!(key in merged[integration.service])) {
+        merged[integration.service][key] = false;
+      }
+    }
+  }
+
+  return merged;
 }
 
 export function SpecialistConfigDialog({
   isOpen,
   specialistId,
   onClose,
+  onEdit,
 }: SpecialistConfigDialogProps): React.ReactElement | null {
   const [config, setConfig] = useState<SpecialistConfig | null>(null);
   const [stats, setStats] = useState<{
@@ -41,6 +68,35 @@ export function SpecialistConfigDialog({
   const [savingCreds, setSavingCreds] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
 
+  const buildEditingState = useCallback((mergedCredentials: Record<string, Record<string, boolean>>) => {
+    const editing: Record<string, Record<string, string>> = {};
+    for (const [serviceId, keys] of Object.entries(mergedCredentials)) {
+      editing[serviceId] = {};
+      for (const key of Object.keys(keys)) {
+        editing[serviceId][key] = '';
+      }
+    }
+    return editing;
+  }, []);
+
+  const refreshConfig = useCallback(async (currentSpecialistId: string) => {
+    const [specialists, creds, runStats] = await Promise.all([
+      window.electronAPI.schedule.getSpecialists(),
+      window.electronAPI.schedule.getCredentials(currentSpecialistId),
+      window.electronAPI.schedule.getStats(currentSpecialistId),
+    ]);
+
+    const spec = specialists[currentSpecialistId] as SpecialistConfig | undefined;
+    if (spec) {
+      setConfig(spec);
+    }
+    setStats(runStats);
+
+    const merged = mergeCredentialState(creds, spec?.integrations);
+    setCredentials(merged);
+    setEditingCreds(buildEditingState(merged));
+  }, [buildEditingState]);
+
   useEffect(() => {
     if (!isOpen || !specialistId) return;
 
@@ -50,45 +106,8 @@ export function SpecialistConfigDialog({
     setCredentials({});
     setEditingCreds({});
 
-    // Load specialist config and credentials together so we can merge integrations
-    Promise.all([
-      window.electronAPI.schedule.getSpecialists(),
-      window.electronAPI.schedule.getCredentials(specialistId),
-      window.electronAPI.schedule.getStats(specialistId),
-    ]).then(([specialists, creds, runStats]) => {
-      const spec = specialists[specialistId] as SpecialistConfig | undefined;
-      if (spec) setConfig(spec);
-      setStats(runStats);
-
-      // Merge saved credentials with declared integrations so unconfigured services appear too
-      const merged: Record<string, Record<string, boolean>> = { ...creds };
-      if (spec?.integrations) {
-        for (const int of spec.integrations) {
-          if (!int.service) continue;
-          if (!merged[int.service]) {
-            merged[int.service] = {};
-          }
-          // Add any declared env keys that don't have saved credentials yet
-          for (const key of Object.keys(int.env)) {
-            if (!(key in merged[int.service])) {
-              merged[int.service][key] = false;
-            }
-          }
-        }
-      }
-      setCredentials(merged);
-
-      // Initialize editing state with empty values
-      const editing: Record<string, Record<string, string>> = {};
-      for (const [serviceId, keys] of Object.entries(merged)) {
-        editing[serviceId] = {};
-        for (const key of Object.keys(keys)) {
-          editing[serviceId][key] = '';
-        }
-      }
-      setEditingCreds(editing);
-    }).catch(() => {});
-  }, [isOpen, specialistId]);
+    refreshConfig(specialistId).catch(() => {});
+  }, [isOpen, refreshConfig, specialistId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -131,9 +150,21 @@ export function SpecialistConfigDialog({
         data-testid="specialist-config-dialog"
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-            {config?.name || specialistId}
-          </h2>
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+              {config?.name || specialistId}
+            </h2>
+            {onEdit && (
+              <button
+                type="button"
+                data-testid="specialist-config-edit"
+                onClick={onEdit}
+                className="mt-1 text-xs text-[var(--color-accent-primary)] hover:underline"
+              >
+                Edit definition
+              </button>
+            )}
+          </div>
           <button
             onClick={onClose}
             data-testid="specialist-config-close"
@@ -245,21 +276,7 @@ export function SpecialistConfigDialog({
                         try {
                           await window.electronAPI.schedule.saveCredentials(specialistId, serviceId, filledCreds);
                           const updated = await window.electronAPI.schedule.getCredentials(specialistId);
-                          // Re-merge integrations so unconfigured services stay visible
-                          const merged: Record<string, Record<string, boolean>> = { ...updated };
-                          if (config?.integrations) {
-                            for (const int of config.integrations) {
-                              if (!int.service) continue;
-                              if (!merged[int.service]) {
-                                merged[int.service] = {};
-                              }
-                              for (const key of Object.keys(int.env)) {
-                                if (!(key in merged[int.service])) {
-                                  merged[int.service][key] = false;
-                                }
-                              }
-                            }
-                          }
+                          const merged = mergeCredentialState(updated, config?.integrations);
                           setCredentials(merged);
                           setEditingCreds(prev => ({
                             ...prev,

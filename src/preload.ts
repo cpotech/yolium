@@ -400,6 +400,8 @@ const schedule = {
     ipcRenderer.invoke('schedule:get-template', name, description),
   scaffold: (name: string, options?: { description?: string; content?: string }) =>
     ipcRenderer.invoke('schedule:scaffold', name, options),
+  updateDefinition: (name: string, content: string) =>
+    ipcRenderer.invoke('schedule:update-definition', name, content),
   getRawDefinition: (name: string) =>
     ipcRenderer.invoke('schedule:get-raw-definition', name),
   getCredentials: (specialistId: string) =>
@@ -761,9 +763,11 @@ declare global {
           schedules: Array<{ type: string; cron: string; enabled: boolean }>;
           memory: { strategy: string; maxEntries: number; retentionDays: number };
           escalation: { onFailure?: string; onPattern?: string };
+          integrations?: Array<{ service: string; env: Record<string, string> }>;
         }>>;
         getTemplate: (name: string, description?: string) => Promise<string>;
         scaffold: (name: string, options?: { description?: string; content?: string }) => Promise<{ filePath: string }>;
+        updateDefinition: (name: string, content: string) => Promise<{ filePath: string }>;
         getRawDefinition: (name: string) => Promise<string>;
         getCredentials: (specialistId: string) => Promise<Record<string, Record<string, boolean>>>;
         saveCredentials: (specialistId: string, serviceId: string, credentials: Record<string, string>) => Promise<void>;

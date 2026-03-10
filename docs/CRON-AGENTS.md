@@ -90,6 +90,16 @@ Click "Reload" in the Schedule Panel, or restart Yolium. The scheduler automatic
 
 Toggle the specialist's enable switch in the Schedule Panel.
 
+## Editing an Existing Specialist
+
+Existing scheduled agents can be edited directly in the app:
+
+1. Open the Schedule Panel and click `Configure` on the specialist card.
+2. In the config dialog, click `Edit definition`.
+3. Update the markdown or switch to Guided mode, then click `Save`.
+
+Edits are written back to the same `src/agents/cron/<specialist-id>.md` file in place. The specialist id stays locked during editing so scheduler state, run history, and stored credentials remain attached to the same agent.
+
 ## Specialist Definition Format
 
 ### YAML Frontmatter Fields
@@ -133,7 +143,7 @@ The actual credential values are stored separately in `~/.yolium/specialist-cred
 Credentials can be configured in two ways:
 
 1. **Add Specialist Dialog** — When creating a specialist with a markdown definition that includes `integrations`, the credential fields auto-populate. Enter values before creating.
-2. **Specialist Config Dialog** — Click on an existing specialist to view its configuration. The "Service Credentials" section shows configured services and allows editing credential values.
+2. **Specialist Config Dialog** — Click on an existing specialist to view its configuration. The `Edit definition` action opens the same editor for in-place updates, and the `Service Credentials` section allows partial credential saves without clearing untouched keys for that service.
 
 ### Schedule Types
 

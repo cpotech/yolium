@@ -6,6 +6,7 @@ interface AddSpecialistDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated: () => void;
+  editingSpecialistId?: string | null;
 }
 
 interface CredentialRow {
@@ -121,6 +122,34 @@ const DEFAULT_GUIDED_STATE: GuidedFormState = {
   integrations: [],
   systemPrompt: '',
 };
+
+const DEFAULT_GUIDED_SCHEDULE = { type: 'daily', cron: '0 0 * * *', enabled: true };
+
+function createInitialGuidedState(): GuidedFormState {
+  return {
+    ...DEFAULT_GUIDED_STATE,
+    tools: [...DEFAULT_GUIDED_STATE.tools],
+    schedules: [{ ...DEFAULT_GUIDED_SCHEDULE }],
+    integrations: [],
+  };
+}
+
+function mergeServiceBlocks(previous: ServiceBlock[], next: ServiceBlock[]): ServiceBlock[] {
+  return next.map((newService) => {
+    const existing = previous.find((service) => service.name === newService.name);
+    if (!existing) {
+      return newService;
+    }
+
+    return {
+      name: newService.name,
+      credentials: newService.credentials.map((credential) => {
+        const existingCredential = existing.credentials.find((item) => item.key === credential.key);
+        return existingCredential ? existingCredential : credential;
+      }),
+    };
+  });
+}
 
 export function serializeGuidedFormToMarkdown(form: GuidedFormState): string {
   const lines: string[] = ['---'];
@@ -310,7 +339,9 @@ export function AddSpecialistDialog({
   isOpen,
   onClose,
   onCreated,
+  editingSpecialistId = null,
 }: AddSpecialistDialogProps): React.ReactElement | null {
+  const isEditMode = Boolean(editingSpecialistId);
   const [mode, setMode] = useState<DialogMode>('paste');
   const [name, setName] = useState('');
   const [markdownContent, setMarkdownContent] = useState('');
@@ -320,37 +351,88 @@ export function AddSpecialistDialog({
   const [templateName, setTemplateName] = useState<string | null>(null);
   const [existingSpecialists, setExistingSpecialists] = useState<string[]>([]);
   const [validation, setValidation] = useState<{ valid: boolean; error?: string } | null>(null);
-  const [guidedForm, setGuidedForm] = useState<GuidedFormState>({ ...DEFAULT_GUIDED_STATE, tools: [...DEFAULT_GUIDED_STATE.tools], schedules: [{ type: 'daily', cron: '0 0 * * *', enabled: true }], integrations: [] });
+  const [guidedForm, setGuidedForm] = useState<GuidedFormState>(createInitialGuidedState());
   const nameInputRef = useRef<HTMLInputElement>(null);
   const userHasEdited = useRef(false);
   const validationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load existing specialists for clone dropdown
-  useEffect(() => {
-    if (!isOpen) return;
-    window.electronAPI.schedule.getSpecialists().then((specs) => {
-      setExistingSpecialists(Object.keys(specs));
-    });
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
+  const resetDialogState = useCallback((lockedSpecialistId: string | null) => {
     setMode('paste');
-    setName('');
+    setName(lockedSpecialistId || '');
     setMarkdownContent('');
     setServices([]);
     setError(null);
     setIsSubmitting(false);
     setTemplateName(null);
     setValidation(null);
-    setGuidedForm({ ...DEFAULT_GUIDED_STATE, tools: [...DEFAULT_GUIDED_STATE.tools], schedules: [{ type: 'daily', cron: '0 0 * * *', enabled: true }], integrations: [] });
+    setGuidedForm(createInitialGuidedState());
     userHasEdited.current = false;
-    setTimeout(() => nameInputRef.current?.focus(), 0);
-  }, [isOpen]);
+  }, []);
+
+  const applyMarkdownState = useCallback((
+    content: string,
+    options: { specialistId?: string; preserveEdited?: boolean } = {}
+  ) => {
+    const specialistId = options.specialistId ?? extractNameFromMarkdown(content) ?? '';
+    setMarkdownContent(content);
+    setName(specialistId);
+    setGuidedForm({
+      ...parseMarkdownToGuidedForm(content),
+      name: specialistId,
+    });
+    setServices((prev) => mergeServiceBlocks(prev, tryParseIntegrations(content)));
+    setValidation(validateFrontmatter(content));
+
+    if (options.preserveEdited) {
+      userHasEdited.current = true;
+    }
+  }, []);
+
+  // Load existing specialists for clone dropdown
+  useEffect(() => {
+    if (!isOpen || isEditMode) {
+      if (isEditMode) {
+        setExistingSpecialists([]);
+      }
+      return;
+    }
+    window.electronAPI.schedule.getSpecialists().then((specs) => {
+      setExistingSpecialists(Object.keys(specs));
+    });
+  }, [isEditMode, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    resetDialogState(editingSpecialistId);
+    if (!editingSpecialistId) {
+      setTimeout(() => nameInputRef.current?.focus(), 0);
+    }
+  }, [editingSpecialistId, isOpen, resetDialogState]);
+
+  useEffect(() => {
+    if (!isOpen || !editingSpecialistId) return;
+
+    let cancelled = false;
+    window.electronAPI.schedule.getRawDefinition(editingSpecialistId)
+      .then((raw) => {
+        if (!cancelled) {
+          applyMarkdownState(raw, { specialistId: editingSpecialistId });
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load specialist.');
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applyMarkdownState, editingSpecialistId, isOpen]);
 
   // Fetch and populate template when templateName changes
   useEffect(() => {
-    if (!templateName) return;
+    if (!templateName || isEditMode) return;
     let cancelled = false;
     window.electronAPI.schedule.getTemplate(templateName).then((template) => {
       if (!cancelled && !userHasEdited.current) {
@@ -358,9 +440,12 @@ export function AddSpecialistDialog({
       }
     });
     return () => { cancelled = true; };
-  }, [templateName]);
+  }, [isEditMode, templateName]);
 
-  const canCreate = useMemo(() => name.trim().length > 0 && !isSubmitting, [name, isSubmitting]);
+  const canCreate = useMemo(
+    () => name.trim().length > 0 && !isSubmitting && (!isEditMode || markdownContent.trim().length > 0),
+    [isEditMode, isSubmitting, markdownContent, name]
+  );
 
   // Live validation (debounced)
   const runValidation = useCallback((content: string) => {
@@ -382,50 +467,44 @@ export function AddSpecialistDialog({
 
     // Auto-detect name from pasted YAML
     const detectedName = extractNameFromMarkdown(value);
-    if (detectedName && !name) {
+    if (!isEditMode && detectedName && !name) {
       setName(detectedName);
     }
 
     // Parse integrations for credential fields
     const parsed = tryParseIntegrations(value);
     if (parsed.length > 0) {
-      setServices(prev => {
-        return parsed.map(newService => {
-          const existing = prev.find(s => s.name === newService.name);
-          if (!existing) return newService;
-          return {
-            name: newService.name,
-            credentials: newService.credentials.map(cred => {
-              const existingCred = existing.credentials.find(c => c.key === cred.key);
-              return existingCred ? existingCred : cred;
-            }),
-          };
-        });
-      });
+      setServices(prev => mergeServiceBlocks(prev, parsed));
     }
 
     runValidation(value);
-  }, [name, runValidation]);
+  }, [isEditMode, name, runValidation]);
 
   const handleSubmit = useCallback(async () => {
-    const sanitizedName = sanitizeSpecialistName(name);
-    if (!sanitizedName) return;
+    const targetSpecialistId = isEditMode
+      ? editingSpecialistId
+      : sanitizeSpecialistName(name);
+    if (!targetSpecialistId) return;
 
-    setName(sanitizedName);
+    setName(targetSpecialistId);
     setError(null);
     setIsSubmitting(true);
 
     try {
       let content: string | undefined;
       if (mode === 'guided') {
-        const formWithName = { ...guidedForm, name: sanitizedName };
+        const formWithName = { ...guidedForm, name: targetSpecialistId };
         content = serializeGuidedFormToMarkdown(formWithName);
       } else {
         content = markdownContent.trim() ? markdownContent : undefined;
       }
 
-      const options = content ? { content } : undefined;
-      await window.electronAPI.schedule.scaffold(sanitizedName, options);
+      if (isEditMode) {
+        await window.electronAPI.schedule.updateDefinition(targetSpecialistId, content || '');
+      } else {
+        const options = content ? { content } : undefined;
+        await window.electronAPI.schedule.scaffold(targetSpecialistId, options);
+      }
 
       // Save credentials from the bottom Service Credentials section
       for (const service of services) {
@@ -439,7 +518,7 @@ export function AddSpecialistDialog({
           }
         }
         if (hasValues) {
-          await window.electronAPI.schedule.saveCredentials(sanitizedName, service.name.trim(), creds);
+          await window.electronAPI.schedule.saveCredentials(targetSpecialistId, service.name.trim(), creds);
         }
       }
 
@@ -456,27 +535,34 @@ export function AddSpecialistDialog({
             }
           }
           if (hasValues) {
-            await window.electronAPI.schedule.saveCredentials(sanitizedName, integration.service.trim(), creds);
+            await window.electronAPI.schedule.saveCredentials(targetSpecialistId, integration.service.trim(), creds);
           }
         }
       }
 
       onCreated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create specialist.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : isEditMode
+            ? 'Failed to save specialist.'
+            : 'Failed to create specialist.'
+      );
     } finally {
       setIsSubmitting(false);
     }
-  }, [markdownContent, name, onCreated, services, mode, guidedForm]);
+  }, [editingSpecialistId, guidedForm, isEditMode, markdownContent, mode, name, onCreated, services]);
 
   const handleNameBlur = useCallback(() => {
+    if (isEditMode) return;
     const sanitized = sanitizeSpecialistName(name);
     setName(sanitized);
 
     if (sanitized && !userHasEdited.current) {
       setTemplateName(sanitized);
     }
-  }, [name]);
+  }, [isEditMode, name]);
 
   const handleBackdropClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
@@ -572,20 +658,13 @@ export function AddSpecialistDialog({
     if (!specialistName) return;
     try {
       const raw = await window.electronAPI.schedule.getRawDefinition(specialistName);
-      setMarkdownContent(raw);
-      userHasEdited.current = true;
-      setName('');
       setMode('paste');
+      applyMarkdownState(raw, { specialistId: '', preserveEdited: true });
       runValidation(raw);
-
-      const parsed = tryParseIntegrations(raw);
-      if (parsed.length > 0) {
-        setServices(parsed);
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load specialist.');
     }
-  }, [runValidation]);
+  }, [applyMarkdownState, runValidation]);
 
   // Guided form update helpers
   const updateGuided = useCallback(<K extends keyof GuidedFormState>(key: K, value: GuidedFormState[K]) => {
@@ -652,25 +731,30 @@ export function AddSpecialistDialog({
     >
       <div className="w-full max-w-3xl mx-4 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-5 shadow-xl max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Add Specialist</h2>
-          {/* Clone from dropdown */}
-          <select
-            data-testid="specialist-clone-select"
-            className={selectClass}
-            defaultValue=""
-            onChange={(e) => {
-              if (e.target.value) handleClone(e.target.value);
-              e.target.value = '';
-            }}
-          >
-            <option value="" disabled>Clone from...</option>
-            {existingSpecialists.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
+            {isEditMode ? 'Edit Specialist' : 'Add Specialist'}
+          </h2>
+          {!isEditMode && (
+            <select
+              data-testid="specialist-clone-select"
+              className={selectClass}
+              defaultValue=""
+              onChange={(e) => {
+                if (e.target.value) handleClone(e.target.value);
+                e.target.value = '';
+              }}
+            >
+              <option value="" disabled>Clone from...</option>
+              {existingSpecialists.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          )}
         </div>
         <p className="text-xs text-[var(--color-text-muted)] mb-4">
-          Create a new scheduled specialist definition in <code>src/agents/cron/</code>.
+          {isEditMode
+            ? <>Update the existing scheduled specialist definition in <code>src/agents/cron/{editingSpecialistId}.md</code>.</>
+            : <>Create a new scheduled specialist definition in <code>src/agents/cron/</code>.</>}
         </p>
 
         {/* Mode Toggle */}
@@ -711,6 +795,7 @@ export function AddSpecialistDialog({
               }}
               onBlur={handleNameBlur}
               placeholder="e.g. code-quality"
+              disabled={isEditMode}
               className={inputClass}
             />
           </div>
@@ -746,9 +831,11 @@ export function AddSpecialistDialog({
                 } bg-[var(--color-bg-primary)] px-3 py-2.5 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)] resize-y`}
                 style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace", minHeight: '400px', lineHeight: '1.5' }}
               />
-              <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">
-                Paste a complete definition or enter a name above to auto-populate with the default template.
-              </p>
+              {!isEditMode && (
+                <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">
+                  Paste a complete definition or enter a name above to auto-populate with the default template.
+                </p>
+              )}
             </div>
           ) : (
             /* ====== GUIDED MODE ====== */
@@ -1142,7 +1229,7 @@ export function AddSpecialistDialog({
             disabled={!canCreate}
             className="rounded bg-[var(--color-accent-primary)] px-3 py-1.5 text-xs font-medium text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isSubmitting ? 'Creating...' : 'Create'}
+            {isSubmitting ? (isEditMode ? 'Saving...' : 'Creating...') : (isEditMode ? 'Save' : 'Create')}
           </button>
         </div>
       </div>

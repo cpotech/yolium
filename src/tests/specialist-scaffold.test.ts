@@ -15,7 +15,11 @@ vi.mock('@main/services/specialist-loader', async (importOriginal) => {
   };
 });
 
-import { scaffoldSpecialist, getDefaultTemplate } from '@main/services/specialist-scaffold';
+import {
+  scaffoldSpecialist,
+  getDefaultTemplate,
+  updateSpecialistDefinition,
+} from '@main/services/specialist-scaffold';
 
 describe('getDefaultTemplate', () => {
   it('should return template with name and description substituted', () => {
@@ -182,5 +186,127 @@ escalation:
     expect(written).toContain('name: default-template');
     expect(written).toContain('# Default Template Specialist');
     expect(written).toContain('model: haiku');
+  });
+
+  it('should overwrite an existing specialist file when saving edited markdown for the same specialist id', () => {
+    const filePath = scaffoldSpecialist('twitter-growth', {
+      content: `---
+name: twitter-growth
+description: Original description
+model: haiku
+tools:
+  - Read
+schedules:
+  - type: daily
+    cron: "0 0 * * *"
+    enabled: true
+memory:
+  strategy: raw
+  maxEntries: 100
+  retentionDays: 30
+escalation:
+  onFailure: alert_user
+---
+
+# Original Specialist`,
+    });
+
+    const updatedFilePath = updateSpecialistDefinition('twitter-growth', `---
+name: renamed-in-markdown
+description: Updated description
+model: sonnet
+tools:
+  - Read
+  - Bash
+schedules:
+  - type: weekly
+    cron: "0 2 * * 0"
+    enabled: true
+memory:
+  strategy: raw
+  maxEntries: 200
+  retentionDays: 45
+escalation:
+  onFailure: reduce_frequency
+---
+
+# Updated Specialist`);
+
+    expect(updatedFilePath).toBe(filePath);
+    expect(fs.readFileSync(filePath, 'utf-8')).toContain('description: Updated description');
+    expect(fs.readFileSync(filePath, 'utf-8')).toContain('# Updated Specialist');
+    expect(fs.readFileSync(filePath, 'utf-8')).not.toContain('Original description');
+  });
+
+  it('should keep the saved frontmatter name aligned with the original specialist id during edits', () => {
+    const filePath = scaffoldSpecialist('security-monitor', {
+      content: `---
+name: security-monitor
+description: Security scanning
+model: haiku
+tools:
+  - Read
+schedules:
+  - type: daily
+    cron: "0 0 * * *"
+    enabled: true
+memory:
+  strategy: raw
+  maxEntries: 100
+  retentionDays: 30
+escalation:
+  onFailure: alert_user
+---
+
+# Security Monitor`,
+    });
+
+    updateSpecialistDefinition('security-monitor', `---
+name: accidental-rename
+description: Updated security scanning
+model: haiku
+tools:
+  - Read
+schedules:
+  - type: daily
+    cron: "0 0 * * *"
+    enabled: true
+memory:
+  strategy: raw
+  maxEntries: 100
+  retentionDays: 30
+escalation:
+  onFailure: alert_user
+---
+
+# Security Monitor`);
+
+    const written = fs.readFileSync(filePath, 'utf-8');
+    expect(written).toContain('name: security-monitor');
+    expect(written).not.toContain('name: accidental-rename');
+  });
+
+  it('should throw a descriptive error when updating a specialist that does not exist', () => {
+    expect(() =>
+      updateSpecialistDefinition('missing-specialist', `---
+name: missing-specialist
+description: Missing specialist
+model: haiku
+tools:
+  - Read
+schedules:
+  - type: daily
+    cron: "0 0 * * *"
+    enabled: true
+memory:
+  strategy: raw
+  maxEntries: 100
+  retentionDays: 30
+escalation:
+  onFailure: alert_user
+---
+
+# Missing Specialist`)
+    ).toThrow(/does not exist/i);
   });
 });

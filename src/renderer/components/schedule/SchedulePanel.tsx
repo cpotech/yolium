@@ -35,6 +35,7 @@ export function SchedulePanel(): React.ReactElement {
   const [selectedSpecialist, setSelectedSpecialist] = useState<string | null>(null);
   const [configSpecialist, setConfigSpecialist] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [editingSpecialistId, setEditingSpecialistId] = useState<string | null>(null);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [runTypeMenu, setRunTypeMenu] = useState<string | null>(null);
@@ -107,7 +108,21 @@ export function SchedulePanel(): React.ReactElement {
   const handleSpecialistCreated = useCallback(() => {
     loadState();
     setShowAddDialog(false);
+    setEditingSpecialistId(null);
+    setConfigSpecialist(null);
   }, [loadState]);
+
+  const handleCloseEditor = useCallback(() => {
+    setShowAddDialog(false);
+    setEditingSpecialistId(null);
+  }, []);
+
+  const handleEditSpecialist = useCallback(() => {
+    if (!configSpecialist) return;
+    setEditingSpecialistId(configSpecialist);
+    setShowAddDialog(false);
+    setConfigSpecialist(null);
+  }, [configSpecialist]);
 
   if (isLoading) {
     return (
@@ -152,7 +167,10 @@ export function SchedulePanel(): React.ReactElement {
         <div className="flex items-center gap-2">
           <button
             data-testid="add-specialist-btn"
-            onClick={() => setShowAddDialog(true)}
+            onClick={() => {
+              setEditingSpecialistId(null);
+              setShowAddDialog(true);
+            }}
             className="flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]"
           >
             <Plus size={12} />
@@ -200,7 +218,10 @@ export function SchedulePanel(): React.ReactElement {
             <p className="text-sm">No specialists found</p>
             <button
               type="button"
-              onClick={() => setShowAddDialog(true)}
+              onClick={() => {
+                setEditingSpecialistId(null);
+                setShowAddDialog(true);
+              }}
               className="mt-3 rounded bg-[var(--color-accent-primary)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
             >
               Add Specialist
@@ -357,10 +378,12 @@ export function SchedulePanel(): React.ReactElement {
         isOpen={configSpecialist !== null}
         specialistId={configSpecialist}
         onClose={() => setConfigSpecialist(null)}
+        onEdit={handleEditSpecialist}
       />
       <AddSpecialistDialog
-        isOpen={showAddDialog}
-        onClose={() => setShowAddDialog(false)}
+        isOpen={showAddDialog || editingSpecialistId !== null}
+        editingSpecialistId={editingSpecialistId}
+        onClose={handleCloseEditor}
         onCreated={handleSpecialistCreated}
       />
     </div>
