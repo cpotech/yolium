@@ -965,7 +965,7 @@ export function ItemDetailDialog({
                     className="flex items-center gap-1 text-xs text-[var(--color-text-tertiary)]"
                   >
                     <FolderOpen size={12} className="flex-shrink-0" />
-                    <span className="font-mono truncate">{item.worktreePath}</span>
+                    <span className="font-mono break-all" title={item.worktreePath}>{item.worktreePath}</span>
                     <CopyPathButton path={item.worktreePath} />
                   </div>
                 </div>
