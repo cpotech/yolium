@@ -17,6 +17,9 @@ coverage
 # Dependencies
 node_modules/
 
+# CRON agents
+src/agents/cron
+
 # TypeScript
 *.tsbuildinfo
 dist/

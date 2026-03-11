@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState, useMemo } from 'react';
-import { Loader2, Settings } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useTabState } from '@renderer/hooks/useTabState';
 import { useWhisper } from '@renderer/hooks/useWhisper';
 import { useDockerState } from '@renderer/hooks/useDockerState';
@@ -19,7 +19,6 @@ import { DockerSetupDialog } from '@renderer/components/docker/DockerSetupDialog
 import { GitConfigDialog } from '@renderer/components/settings/GitConfigDialog';
 import { ProjectConfigDialog } from '@renderer/components/settings/ProjectConfigDialog';
 import { WhisperModelDialog } from '@renderer/components/settings/WhisperModelDialog';
-import { SpeechToTextButton } from '@renderer/components/SpeechToTextButton';
 import type { WhisperModelSize } from '@shared/types/whisper';
 import { Sidebar } from '@renderer/components/navigation/Sidebar';
 import type { SidebarWorkItem } from '@renderer/components/navigation/ProjectList';
@@ -545,56 +544,15 @@ function App(): React.ReactElement {
                 <EmptyState onNewTab={handleNewYolium} onCreateProject={handleAddProject} projects={sidebarProjects} onProjectClick={handleProjectClick} />
               </div>
               {/* Minimal status bar for empty state */}
-              <div className="flex items-center justify-end h-7 px-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)] text-xs shrink-0 gap-2">
-                {claudeUsage && (
-                  <>
-                    <span className="flex items-center gap-1" title={`Resets in ${Math.ceil((new Date(claudeUsage.fiveHour.resetsAt).getTime() - Date.now()) / (60 * 1000))}m`}>
-                      <span style={{ color: 'var(--color-accent-primary)' }}>5h</span>
-                      <span className="inline-block w-12 h-1.5 bg-[var(--color-bg-tertiary)] rounded-sm overflow-hidden">
-                        <span className="block h-full rounded-sm" style={{ width: `${Math.round(claudeUsage.fiveHour.utilization)}%`, backgroundColor: claudeUsage.fiveHour.utilization > 95 ? 'var(--color-status-error)' : claudeUsage.fiveHour.utilization > 80 ? 'var(--color-status-warning)' : 'var(--color-accent-primary)' }} />
-                      </span>
-                      <span className="text-[var(--color-text-muted)]">{Math.round(claudeUsage.fiveHour.utilization)}%</span>
-                    </span>
-                    <span className="text-[var(--color-text-muted)]">|</span>
-                    <span className="flex items-center gap-1" title={`Resets in ${Math.ceil((new Date(claudeUsage.sevenDay.resetsAt).getTime() - Date.now()) / (60 * 1000))}m`}>
-                      <span style={{ color: 'var(--color-accent-primary)' }}>7d</span>
-                      <span className="inline-block w-12 h-1.5 bg-[var(--color-bg-tertiary)] rounded-sm overflow-hidden">
-                        <span className="block h-full rounded-sm" style={{ width: `${Math.round(claudeUsage.sevenDay.utilization)}%`, backgroundColor: claudeUsage.sevenDay.utilization > 95 ? 'var(--color-status-error)' : claudeUsage.sevenDay.utilization > 80 ? 'var(--color-status-warning)' : 'var(--color-accent-primary)' }} />
-                      </span>
-                      <span className="text-[var(--color-text-muted)]">{Math.round(claudeUsage.sevenDay.utilization)}%</span>
-                    </span>
-                    <span className="text-[var(--color-text-disabled)]">|</span>
-                  </>
-                )}
-                {/* Speech-to-text button */}
-                <SpeechToTextButton
-                  recordingState={whisper.state.recordingState}
-                  selectedModel={whisper.state.selectedModel}
-                  onToggleRecording={whisper.toggleRecording}
-                  onOpenModelDialog={whisper.openModelDialog}
-                />
-                <span className="text-[var(--color-text-disabled)]">|</span>
-
-                {/* Settings button */}
-                <button
-                  onClick={dialogs.openGitConfigDialog}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                >
-                  <Settings size={12} />
-                </button>
-
-                <button
-                  data-testid="shortcuts-button"
-                  onClick={dialogs.openShortcutsDialog}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="4" width="20" height="16" rx="2" />
-                    <path d="M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M7 16h10" />
-                  </svg>
-                  <span>Ctrl+?</span>
-                </button>
-              </div>
+              <StatusBar
+                onShowShortcuts={dialogs.openShortcutsDialog}
+                onOpenSettings={dialogs.openGitConfigDialog}
+                whisperRecordingState={whisper.state.recordingState}
+                whisperSelectedModel={whisper.state.selectedModel}
+                onToggleRecording={whisper.toggleRecording}
+                onOpenModelDialog={whisper.openModelDialog}
+                claudeUsage={claudeUsage}
+              />
             </>
           ) : (
             <>
