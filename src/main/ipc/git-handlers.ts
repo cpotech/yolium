@@ -537,9 +537,11 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     return { isRepo: false, nestedRepos };
   });
 
-  // Get Claude OAuth usage data
+  // Get Claude OAuth usage state (auth status + usage data)
   registerGitChannel(ipcMain, GIT_CHANNELS.getClaudeUsage, async () => {
-    return fetchClaudeUsage();
+    const hasOAuth = hasHostClaudeOAuth();
+    const usage = hasOAuth ? await fetchClaudeUsage() : null;
+    return { hasOAuth, usage };
   });
 
   logger.info('Git IPC handlers registered', {

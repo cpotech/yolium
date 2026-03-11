@@ -1,23 +1,26 @@
 import { useEffect, useState, useCallback } from 'react';
-import type { ClaudeUsageData } from '@shared/types/agent';
+import type { ClaudeUsageState } from '@shared/types/agent';
 
 const POLL_INTERVAL_MS = 60 * 1000; // 60 seconds
 
+const DEFAULT_STATE: ClaudeUsageState = { hasOAuth: false, usage: null };
+
 /**
  * Hook to fetch and poll Claude OAuth usage data.
- * Returns usage data or null if not available (no OAuth, API error, etc.)
+ * Returns { hasOAuth, usage } - always meaningful state:
+ * either "no OAuth" or "has OAuth with/without usage data".
  * Polls every 60 seconds and on window focus.
  */
-export function useClaudeUsage(): ClaudeUsageData | null {
-  const [usageData, setUsageData] = useState<ClaudeUsageData | null>(null);
+export function useClaudeUsage(): ClaudeUsageState {
+  const [state, setState] = useState<ClaudeUsageState>(DEFAULT_STATE);
 
   const fetchUsage = useCallback(async () => {
     try {
       const data = await window.electronAPI.usage.getClaude();
-      setUsageData(data);
+      setState(data);
     } catch {
-      // Silent fail - hide usage indicator on error
-      setUsageData(null);
+      // Silent fail - reset to default on error
+      setState(DEFAULT_STATE);
     }
   }, []);
 
@@ -42,5 +45,5 @@ export function useClaudeUsage(): ClaudeUsageData | null {
     };
   }, [fetchUsage]);
 
-  return usageData;
+  return state;
 }

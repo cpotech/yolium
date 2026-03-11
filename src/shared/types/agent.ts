@@ -93,3 +93,9 @@ export interface ClaudeUsageData {
   fiveHour: { utilization: number; resetsAt: string };
   sevenDay: { utilization: number; resetsAt: string };
 }
+
+// Claude OAuth state: combines authentication status with usage data
+export interface ClaudeUsageState {
+  hasOAuth: boolean;
+  usage: ClaudeUsageData | null;
+}

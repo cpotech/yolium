@@ -2,7 +2,7 @@ import React from 'react';
 import { Square, Loader2, Keyboard, GitBranch, TreeDeciduous, Sun, Moon, Settings, FileJson } from 'lucide-react';
 import type { ContainerState } from '@shared/types/tabs';
 import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper';
-import type { ClaudeUsageData } from '@shared/types/agent';
+import type { ClaudeUsageState } from '@shared/types/agent';
 import { useTheme } from '@renderer/theme';
 import { SpeechToTextButton } from './SpeechToTextButton';
 
@@ -21,8 +21,8 @@ interface StatusBarProps {
   whisperSelectedModel?: WhisperModelSize;
   onToggleRecording?: () => void;
   onOpenModelDialog?: () => void;
-  // Claude OAuth usage data
-  claudeUsage?: ClaudeUsageData | null;
+  // Claude OAuth usage state (auth status + usage data)
+  claudeUsage?: ClaudeUsageState;
 }
 
 function formatResetTime(resetsAt: string): string {
@@ -157,17 +157,34 @@ export function StatusBar({
         {claudeUsage && (
           <>
             {hasContextMetadata && <span className="text-[var(--color-text-muted)]">|</span>}
-            <UsageBar
-              label="5h"
-              utilization={claudeUsage.fiveHour.utilization}
-              resetsAt={claudeUsage.fiveHour.resetsAt}
-            />
-            <span className="text-[var(--color-text-muted)]">|</span>
-            <UsageBar
-              label="7d"
-              utilization={claudeUsage.sevenDay.utilization}
-              resetsAt={claudeUsage.sevenDay.resetsAt}
-            />
+            {!claudeUsage.hasOAuth ? (
+              <span
+                role="button"
+                className="flex items-center gap-1 cursor-pointer text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
+                onClick={onOpenSettings}
+              >
+                <span className="text-[var(--color-text-secondary)]">Claude</span>
+                <span>&middot;</span>
+                <span>log in</span>
+              </span>
+            ) : claudeUsage.usage ? (
+              <>
+                <span className="text-[var(--color-text-secondary)]">Claude</span>
+                <UsageBar
+                  label="5h"
+                  utilization={claudeUsage.usage.fiveHour.utilization}
+                  resetsAt={claudeUsage.usage.fiveHour.resetsAt}
+                />
+                <span className="text-[var(--color-text-muted)]">|</span>
+                <UsageBar
+                  label="7d"
+                  utilization={claudeUsage.usage.sevenDay.utilization}
+                  resetsAt={claudeUsage.usage.sevenDay.resetsAt}
+                />
+              </>
+            ) : (
+              <span className="text-[var(--color-text-secondary)]">Claude</span>
+            )}
           </>
         )}
       </div>

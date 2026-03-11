@@ -5,7 +5,7 @@
 
 import { contextBridge, ipcRenderer } from 'electron';
 import type { PreFlightResult, ProjectType } from '@shared/types/onboarding';
-import type { ClaudeUsageData } from '@shared/types/agent';
+import type { ClaudeUsageState } from '@shared/types/agent';
 
 type CleanupFn = () => void;
 
@@ -720,7 +720,7 @@ declare global {
         openFile: (filePath: string) => Promise<{ success: boolean; error?: string }>;
       };
       usage: {
-        getClaude: () => Promise<ClaudeUsageData | null>;
+        getClaude: () => Promise<ClaudeUsageState>;
       };
       schedule: {
         getState: () => Promise<{
