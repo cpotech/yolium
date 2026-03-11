@@ -23,6 +23,15 @@ test.describe('Scheduled Agents Edit Flow', () => {
     await window.click(selectors.sidebarSchedule);
 
     await expect(window.locator('[data-testid="schedule-panel"]')).toBeVisible();
+    if (await window.locator('[data-testid="configure-security-monitor"]').count() === 0) {
+      await window.evaluate(async () => {
+        // @ts-expect-error - electronAPI is exposed via preload
+        await window.electronAPI.schedule.scaffold('security-monitor');
+      });
+      await window.click('[data-testid="schedule-reload-btn"]');
+    }
+
+    await expect(window.locator('[data-testid="configure-security-monitor"]')).toBeVisible();
     await window.click('[data-testid="configure-security-monitor"]');
 
     await expect(window.locator('[data-testid="specialist-config-dialog"]')).toBeVisible();

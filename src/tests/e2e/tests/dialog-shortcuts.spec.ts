@@ -235,7 +235,7 @@ test.describe('Dialog Shortcuts', () => {
       await expect(window.locator(selectors.gitConfigDialog)).toBeVisible();
 
       // Press Escape
-      await window.keyboard.press('Escape');
+      await window.locator(selectors.gitConfigDialog).press('Escape');
 
       // Dialog should close
       await expect(window.locator(selectors.gitConfigDialog)).not.toBeVisible();
