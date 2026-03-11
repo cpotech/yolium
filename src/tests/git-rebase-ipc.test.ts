@@ -68,12 +68,12 @@ describe('git:rebase-onto-default handler', () => {
     vi.clearAllMocks();
   });
 
-  it('registers the rebase-onto-default channel', () => {
+  it('registerGitHandlers should continue to register git:rebase-onto-default', () => {
     const handlers = registerHandlersForTest();
     expect(handlers.has('git:rebase-onto-default')).toBe(true);
   });
 
-  it('calls rebaseBranchOntoDefault with correct arguments and returns success', async () => {
+  it('git:rebase-onto-default should return the success payload from rebaseBranchOntoDefault', async () => {
     mockRebaseBranchOntoDefault.mockReturnValue({ success: true });
 
     const handlers = registerHandlersForTest();
@@ -92,7 +92,7 @@ describe('git:rebase-onto-default handler', () => {
     expect(result).toEqual({ success: true });
   });
 
-  it('returns conflict result with conflicting files', async () => {
+  it('git:rebase-onto-default should return conflict metadata unchanged', async () => {
     mockRebaseBranchOntoDefault.mockReturnValue({
       success: false,
       conflict: true,
@@ -117,7 +117,7 @@ describe('git:rebase-onto-default handler', () => {
     });
   });
 
-  it('returns generic error for non-conflict failures', async () => {
+  it('git:rebase-onto-default should return non-conflict failures unchanged', async () => {
     mockRebaseBranchOntoDefault.mockReturnValue({
       success: false,
       error: 'Rebase failed: network error',
