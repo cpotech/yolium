@@ -131,13 +131,13 @@ export function StatusBar({
               {worktreeName && (
                 <span className="flex items-center gap-1 text-[var(--color-special-worktree)]">
                   <TreeDeciduous size={12} />
-                  <span className="truncate max-w-[150px]">{worktreeName}</span>
+                  <span className="truncate max-w-[250px]" title={worktreeName}>{worktreeName}</span>
                 </span>
               )}
               {gitBranch && gitBranch !== worktreeName && (
                 <span className="flex items-center gap-1 text-[var(--color-special-branch)]">
                   <GitBranch size={12} />
-                  <span className="truncate max-w-[150px]">{gitBranch}</span>
+                  <span className="truncate max-w-[250px]" title={gitBranch}>{gitBranch}</span>
                 </span>
               )}
             </span>
