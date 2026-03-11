@@ -2,6 +2,7 @@
 import { ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { createLogger } from '@main/lib/logger';
 import { loadAgentDefinition, ParsedAgent } from './agent-loader';
@@ -1133,19 +1134,19 @@ export function buildScheduledPrompt(params: {
  * Builds prompt from specialist definition + memory context, creates a Docker container,
  * parses output for protocol messages, and resolves with the run result.
  */
-export function startScheduledAgent(params: ScheduledAgentParams): Promise<ScheduledAgentResult> {
+export async function startScheduledAgent(params: ScheduledAgentParams): Promise<ScheduledAgentResult> {
   const { specialist, scheduleType, memoryContext, runId } = params;
 
   // Check auth (scheduled agents use the default Claude provider)
   const auth = checkAgentAuth('claude');
   if (!auth.authenticated) {
-    return Promise.resolve({
+    return {
       outcome: 'failed',
       summary: 'Claude is not authenticated. Add your Anthropic API Key in Settings.',
       tokensUsed: 0,
       costUsd: 0,
       durationMs: 0,
-    });
+    };
   }
 
   const startTime = Date.now();
@@ -1162,20 +1163,33 @@ export function startScheduledAgent(params: ScheduledAgentParams): Promise<Sched
   // Resolve model
   const model = resolveModel(undefined, undefined, specialist.model);
 
-  return new Promise<ScheduledAgentResult>((resolve) => {
-    let outcome: RunOutcome = 'completed';
-    let summary = 'Run completed';
-    let lastRunResult: RunResultMessage | undefined;
-    let capturedSessionId: string | undefined;
+  // Create dedicated workspace for CRON agents (not process.cwd())
+  const workspaceDir = path.join(
+    os.homedir(), '.yolium', 'schedules', specialist.name, 'workspace'
+  );
+  if (!fs.existsSync(workspaceDir)) {
+    fs.mkdirSync(workspaceDir, { recursive: true });
+  }
 
-    // Load specialist credentials for injection
-    const specialistCreds = loadCredentials(specialist.name);
-    const hasCredentials = Object.keys(specialistCreds).length > 0;
+  let outcome: RunOutcome = 'completed';
+  let summary = 'Run completed';
+  let lastRunResult: RunResultMessage | undefined;
 
-    createAgentContainer(
+  // Load specialist credentials for injection
+  const specialistCreds = loadCredentials(specialist.name);
+  const hasCredentials = Object.keys(specialistCreds).length > 0;
+
+  // Deferred promise for exit result
+  let resolveExit: (value: { code: number; durationMs: number }) => void;
+  const exitPromise = new Promise<{ code: number; durationMs: number }>((resolve) => {
+    resolveExit = resolve;
+  });
+
+  try {
+    const capturedSessionId = await createAgentContainer(
       {
         webContentsId: HEADLESS_WEB_CONTENTS_ID,
-        projectPath: process.cwd(),
+        projectPath: workspaceDir,
         agentName: `cron-${specialist.name}`,
         prompt,
         model,
@@ -1206,46 +1220,45 @@ export function startScheduledAgent(params: ScheduledAgentParams): Promise<Sched
           appendRunLog(specialist.name, runId, data);
         },
         onExit: (code: number) => {
-          const durationMs = Date.now() - startTime;
-          const session = capturedSessionId ? getAgentSession(capturedSessionId) : undefined;
-          const costUsd = session?.cumulativeUsage?.costUsd ?? 0;
-          const tokensUsed = session?.cumulativeUsage
-            ? session.cumulativeUsage.inputTokens + session.cumulativeUsage.outputTokens
-            : 0;
-
-          // Use run_result protocol message if agent sent one
-          if (lastRunResult) {
-            resolve({
-              outcome: lastRunResult.outcome as RunOutcome,
-              summary: lastRunResult.summary,
-              tokensUsed: lastRunResult.tokensUsed ?? tokensUsed,
-              costUsd,
-              durationMs,
-            });
-            return;
-          }
-
-          if (code === 124) {
-            outcome = 'timeout';
-            summary = 'Agent timed out';
-          } else if (code !== 0 && outcome !== 'failed') {
-            outcome = 'failed';
-            summary = `Agent exited with code ${code}`;
-          }
-
-          resolve({ outcome, summary, tokensUsed, costUsd, durationMs });
+          resolveExit({ code, durationMs: Date.now() - startTime });
         },
       }
-    ).then((sessionId) => {
-      capturedSessionId = sessionId;
-    }).catch((err) => {
-      resolve({
-        outcome: 'failed',
-        summary: err instanceof Error ? err.message : String(err),
-        tokensUsed: 0,
-        costUsd: 0,
-        durationMs: Date.now() - startTime,
-      });
-    });
-  });
+    );
+
+    const { code, durationMs } = await exitPromise;
+    const session = capturedSessionId ? getAgentSession(capturedSessionId) : undefined;
+    const costUsd = session?.cumulativeUsage?.costUsd ?? 0;
+    const tokensUsed = session?.cumulativeUsage
+      ? session.cumulativeUsage.inputTokens + session.cumulativeUsage.outputTokens
+      : 0;
+
+    // Use run_result protocol message if agent sent one
+    if (lastRunResult) {
+      return {
+        outcome: lastRunResult.outcome as RunOutcome,
+        summary: lastRunResult.summary,
+        tokensUsed: lastRunResult.tokensUsed ?? tokensUsed,
+        costUsd,
+        durationMs,
+      };
+    }
+
+    if (code === 124) {
+      outcome = 'timeout';
+      summary = 'Agent timed out';
+    } else if (code !== 0 && outcome !== 'failed') {
+      outcome = 'failed';
+      summary = `Agent exited with code ${code}`;
+    }
+
+    return { outcome, summary, tokensUsed, costUsd, durationMs };
+  } catch (err) {
+    return {
+      outcome: 'failed',
+      summary: err instanceof Error ? err.message : String(err),
+      tokensUsed: 0,
+      costUsd: 0,
+      durationMs: Date.now() - startTime,
+    };
+  }
 }
