@@ -32,6 +32,56 @@ vi.mock('@main/git/git-config', () => ({
   loadGitConfig: (...args: unknown[]) => mockLoadGitConfig(...args),
 }));
 
+// Mock Docker module for startScheduledAgent tests
+const mockCreateAgentContainer = vi.fn();
+const mockCheckAgentAuth = vi.fn();
+const mockGetAgentSession = vi.fn();
+const mockStopAgentContainer = vi.fn();
+vi.mock('@main/docker', () => ({
+  createAgentContainer: (...args: unknown[]) => mockCreateAgentContainer(...args),
+  checkAgentAuth: (...args: unknown[]) => mockCheckAgentAuth(...args),
+  getAgentSession: (...args: unknown[]) => mockGetAgentSession(...args),
+  stopAgentContainer: (...args: unknown[]) => mockStopAgentContainer(...args),
+}));
+
+// Mock specialist credentials store
+vi.mock('@main/stores/specialist-credentials-store', () => ({
+  loadCredentials: vi.fn(() => ({})),
+}));
+
+// Mock run-history-store
+vi.mock('@main/stores/run-history-store', () => ({
+  appendRunLog: vi.fn(),
+}));
+
+// Mock agent-protocol
+const mockExtractProtocolMessages = vi.fn(() => []);
+vi.mock('@main/services/agent-protocol', () => ({
+  extractProtocolMessages: (...args: unknown[]) => mockExtractProtocolMessages(...args),
+}));
+
+// Mock agent-loader
+vi.mock('@main/services/agent-loader', () => ({
+  loadAgentDefinition: vi.fn(),
+}));
+
+// Mock git-worktree
+vi.mock('@main/git/git-worktree', () => ({
+  createWorktree: vi.fn(),
+  deleteWorktree: vi.fn(),
+  generateBranchName: vi.fn(),
+  getWorktreePath: vi.fn(),
+  hasCommits: vi.fn(),
+  isGitRepo: vi.fn(),
+  sanitizeBranchName: vi.fn(),
+}));
+
+// Mock workitem-log-store
+vi.mock('@main/stores/workitem-log-store', () => ({
+  appendLog: vi.fn(),
+  appendSessionHeader: vi.fn(),
+}));
+
 vi.mock('node:path', async () => {
   const actual = await vi.importActual<typeof import('node:path')>('node:path');
   return {
@@ -40,8 +90,11 @@ vi.mock('node:path', async () => {
   };
 });
 
-import { buildAgentPrompt, buildScheduledPrompt, resolveModel, getDisplayModel, getCompletionColumn, stopAllAgentsForProject, clearSessions } from '@main/services/agent-runner';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import { buildAgentPrompt, buildScheduledPrompt, resolveModel, getDisplayModel, getCompletionColumn, stopAllAgentsForProject, clearSessions, startScheduledAgent } from '@main/services/agent-runner';
 import { createBoard, addItem, updateItem, addComment } from '@main/stores/kanban-store';
+import type { SpecialistDefinition } from '@shared/types/schedule';
 
 describe('agent-runner', () => {
   describe('buildAgentPrompt', () => {
@@ -1118,6 +1171,135 @@ describe('agent-runner', () => {
       const result = board.items.find(i => i.id === item.id)!;
       expect(result.column).toBe('in-progress');
       expect(result.agentStatus).toBe('failed');
+    });
+  });
+
+  describe('startScheduledAgent workspace', () => {
+    const makeSpecialist = (name = 'twitter-privacybooks'): SpecialistDefinition => ({
+      name,
+      description: 'Monitor Twitter engagement',
+      model: 'sonnet',
+      tools: ['Read', 'Write'],
+      timeout: 30,
+      systemPrompt: 'You are a Twitter specialist.',
+      schedules: [],
+      memory: { enabled: false, maxRuns: 10 },
+      escalation: { enabled: false },
+      promptTemplates: { heartbeat: 'Check Twitter mentions.' },
+    });
+
+    beforeEach(() => {
+      mockCheckAgentAuth.mockReturnValue({ authenticated: true });
+      mockCreateAgentContainer.mockReset();
+      mockGetAgentSession.mockReset();
+      mockExtractProtocolMessages.mockReturnValue([]);
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+      vi.mocked(fs.mkdirSync).mockClear();
+    });
+
+    it('should pass workspace directory as projectPath instead of process.cwd()', async () => {
+      let capturedConfig: Record<string, unknown> | undefined;
+      mockCreateAgentContainer.mockImplementation((config: Record<string, unknown>, callbacks: { onExit: (code: number) => void }) => {
+        capturedConfig = config;
+        // Simulate immediate exit
+        setTimeout(() => callbacks.onExit(0), 0);
+        return Promise.resolve('session-123');
+      });
+      mockGetAgentSession.mockReturnValue(undefined);
+
+      await startScheduledAgent({
+        specialist: makeSpecialist(),
+        scheduleType: 'heartbeat',
+        memoryContext: '',
+        runId: 'run-1',
+      });
+
+      expect(capturedConfig).toBeDefined();
+      expect(capturedConfig!.projectPath).toBe('/home/test/.yolium/schedules/twitter-privacybooks/workspace');
+      expect(capturedConfig!.projectPath).not.toBe(process.cwd());
+    });
+
+    it('should create workspace directory if it does not exist', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+      mockCreateAgentContainer.mockImplementation((_config: unknown, callbacks: { onExit: (code: number) => void }) => {
+        setTimeout(() => callbacks.onExit(0), 0);
+        return Promise.resolve('session-123');
+      });
+      mockGetAgentSession.mockReturnValue(undefined);
+
+      await startScheduledAgent({
+        specialist: makeSpecialist(),
+        scheduleType: 'heartbeat',
+        memoryContext: '',
+        runId: 'run-1',
+      });
+
+      expect(fs.mkdirSync).toHaveBeenCalledWith(
+        '/home/test/.yolium/schedules/twitter-privacybooks/workspace',
+        { recursive: true }
+      );
+    });
+
+    it('should reuse existing workspace directory without error', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      mockCreateAgentContainer.mockImplementation((_config: unknown, callbacks: { onExit: (code: number) => void }) => {
+        setTimeout(() => callbacks.onExit(0), 0);
+        return Promise.resolve('session-123');
+      });
+      mockGetAgentSession.mockReturnValue(undefined);
+
+      await startScheduledAgent({
+        specialist: makeSpecialist(),
+        scheduleType: 'heartbeat',
+        memoryContext: '',
+        runId: 'run-1',
+      });
+
+      expect(fs.mkdirSync).not.toHaveBeenCalled();
+    });
+
+    it('should capture session usage even when container exits quickly', async () => {
+      mockCreateAgentContainer.mockImplementation((_config: unknown, callbacks: { onExit: (code: number) => void }) => {
+        // Container exits immediately after promise resolves
+        setTimeout(() => callbacks.onExit(0), 0);
+        return Promise.resolve('session-fast');
+      });
+      mockGetAgentSession.mockReturnValue({
+        cumulativeUsage: {
+          inputTokens: 1500,
+          outputTokens: 500,
+          costUsd: 0.05,
+        },
+      });
+
+      const result = await startScheduledAgent({
+        specialist: makeSpecialist(),
+        scheduleType: 'heartbeat',
+        memoryContext: '',
+        runId: 'run-1',
+      });
+
+      expect(result.tokensUsed).toBe(2000);
+      expect(result.costUsd).toBe(0.05);
+      expect(result.outcome).toBe('completed');
+    });
+
+    it('should report outcome failed with exit code when agent exits non-zero', async () => {
+      mockCreateAgentContainer.mockImplementation((_config: unknown, callbacks: { onExit: (code: number) => void }) => {
+        setTimeout(() => callbacks.onExit(1), 0);
+        return Promise.resolve('session-fail');
+      });
+      mockGetAgentSession.mockReturnValue(undefined);
+
+      const result = await startScheduledAgent({
+        specialist: makeSpecialist(),
+        scheduleType: 'heartbeat',
+        memoryContext: '',
+        runId: 'run-1',
+      });
+
+      expect(result.outcome).toBe('failed');
+      expect(result.summary).toBe('Agent exited with code 1');
     });
   });
 });
