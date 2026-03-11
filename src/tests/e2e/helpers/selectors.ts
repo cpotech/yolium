@@ -131,7 +131,6 @@ export const selectors = {
   detailDescription: '[data-testid="item-detail-dialog"] [data-testid="description-input"]',
   detailColumnSelect: '[data-testid="item-detail-dialog"] [data-testid="column-select"]',
   detailStatusBadge: '[data-testid="item-detail-dialog"] [data-testid="status-badge"]',
-  detailSaveButton: '[data-testid="item-detail-dialog"] [data-testid="save-button"]',
   detailDeleteButton: '[data-testid="item-detail-dialog"] [data-testid="delete-button"]',
   detailCloseButton: '[data-testid="item-detail-dialog"] [data-testid="close-button"]',
   detailBranchDisplay: '[data-testid="item-detail-dialog"] [data-testid="branch-display"]',

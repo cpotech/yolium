@@ -9,6 +9,7 @@ const mockConfigDialog = vi.fn();
 const mockAddDialog = vi.fn();
 const mockGetState = vi.fn();
 const mockGetSpecialists = vi.fn();
+const mockGetRunning = vi.fn();
 
 vi.mock('@renderer/components/schedule/SpecialistConfigDialog', () => ({
   SpecialistConfigDialog: (props: {
@@ -84,12 +85,14 @@ beforeEach(() => {
       escalation: { onFailure: 'alert_user' },
     },
   });
+  mockGetRunning.mockResolvedValue([]);
 
   Object.defineProperty(window, 'electronAPI', {
     value: {
       schedule: {
         getState: mockGetState,
         getSpecialists: mockGetSpecialists,
+        getRunning: mockGetRunning,
         onAlert: vi.fn(() => vi.fn()),
         onStateChanged: vi.fn(() => vi.fn()),
         toggleGlobal: vi.fn(),

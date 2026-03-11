@@ -12,25 +12,16 @@ export interface AgentSessionState {
   agentOutputLines: string[]
   showAgentLog: boolean
   currentSessionId: string | null
-  sessionIdRef: React.MutableRefObject<string | null>
-  currentStep: string | null
   currentDetail: string | null
-  liveStatus: LiveAgentStatus
-  liveStatusMessage: string | null
   tokenUsage: AgentTokenUsage | null
 }
 
 export interface AgentSessionActions {
-  setAgentOutputLines: React.Dispatch<React.SetStateAction<string[]>>
-  setShowAgentLog: React.Dispatch<React.SetStateAction<boolean>>
-  setCurrentSessionId: React.Dispatch<React.SetStateAction<string | null>>
-  setCurrentStep: React.Dispatch<React.SetStateAction<string | null>>
-  setCurrentDetail: React.Dispatch<React.SetStateAction<string | null>>
-  setLiveStatus: React.Dispatch<React.SetStateAction<LiveAgentStatus>>
-  setLiveStatusMessage: React.Dispatch<React.SetStateAction<string | null>>
   clearAgentOutput: () => void
-  /** Set the session ID and flush any output that arrived before it was known. */
   associateSession: (sessionId: string) => void
+  prepareForRun: () => void
+  appendOutputLine: (line: string) => void
+  setRunStatus: (status: LiveAgentStatus, message?: string | null) => void
 }
 
 export interface UseAgentSessionOptions {
@@ -93,11 +84,6 @@ export function useAgentSession({
     })
   }, [itemId, projectPath])
 
-  /**
-   * Associate a session ID and flush any output that arrived before it was known.
-   * Solves the race between IPC send events (output) arriving before the
-   * invoke response (which carries the session ID).
-   */
   const associateSession = useCallback((sessionId: string) => {
     sessionIdRef.current = sessionId
     setCurrentSessionId(sessionId)
@@ -111,6 +97,32 @@ export function useAgentSession({
       setShowAgentLog(true)
     }
   }, [])
+
+  const appendOutputLine = useCallback((line: string) => {
+    setAgentOutputLines(prev => [...prev, line])
+    setShowAgentLog(true)
+  }, [])
+
+  const setRunStatus = useCallback((status: LiveAgentStatus, message?: string | null) => {
+    setLiveStatus(status)
+    setLiveStatusMessage(message ?? null)
+    if (status === 'starting') {
+      setCurrentStep(null)
+      setCurrentDetail(null)
+      setShowAgentLog(true)
+    }
+  }, [])
+
+  const prepareForRun = useCallback(() => {
+    setAgentOutputLines([])
+    setCurrentStep(null)
+    setCurrentDetail(null)
+    setLiveStatusMessage(null)
+    setShowAgentLog(true)
+    if (itemId) {
+      window.electronAPI.agent.clearLog(projectPath, itemId).catch(() => {})
+    }
+  }, [itemId, projectPath])
 
   // Reconnect to active agent session when dialog reopens for a running item
   useEffect(() => {
@@ -259,20 +271,12 @@ export function useAgentSession({
     agentOutputLines,
     showAgentLog,
     currentSessionId,
-    sessionIdRef,
-    currentStep,
     currentDetail,
-    liveStatus,
-    liveStatusMessage,
     tokenUsage,
-    setAgentOutputLines,
-    setShowAgentLog,
-    setCurrentSessionId,
-    setCurrentStep,
-    setCurrentDetail,
-    setLiveStatus,
-    setLiveStatusMessage,
     clearAgentOutput,
     associateSession,
+    prepareForRun,
+    appendOutputLine,
+    setRunStatus,
   }
 }

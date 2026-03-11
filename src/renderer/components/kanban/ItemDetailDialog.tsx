@@ -3,16 +3,18 @@
  * Dialog for viewing and editing kanban item details with agent controls.
  */
 
-import React, { useState, useCallback, useEffect, useRef } from 'react'
-import { X, GitBranch, Clock, FolderOpen, GitMerge, GitPullRequest, Check, AlertTriangle, ExternalLink, Trash2, ArrowLeftRight, ShieldCheck, ArrowDownToLine, Copy, ClipboardCheck } from 'lucide-react'
-import type { KanbanItem, KanbanColumn } from '@shared/types/kanban'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { X } from 'lucide-react'
+import type { KanbanItem } from '@shared/types/kanban'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
-import { formatTokenCount, formatUsdCost } from '@renderer/utils/formatTokens'
-import { CommentsList } from './CommentsList'
 import { AgentLogPanel } from '../agent/AgentLogPanel'
-import { AgentControls } from '../agent/AgentControls'
 import { GitDiffDialog } from '../code-review/GitDiffDialog'
+import { ItemDetailEditorPane } from './item-detail/ItemDetailEditorPane'
+import { ItemDetailSidebar } from './item-detail/ItemDetailSidebar'
+import { useItemDetailDraft } from './item-detail/useItemDetailDraft'
+import { useItemDetailAgentLifecycle } from './item-detail/useItemDetailAgentLifecycle'
+import { useItemDetailPrWorkflow } from './item-detail/useItemDetailPrWorkflow'
 
 interface ItemDetailDialogProps {
   isOpen: boolean
@@ -22,64 +24,6 @@ interface ItemDetailDialogProps {
   onUpdated: () => void
 }
 
-const columnOptions: { id: KanbanColumn; label: string }[] = [
-  { id: 'backlog', label: 'Backlog' },
-  { id: 'ready', label: 'Ready' },
-  { id: 'in-progress', label: 'In Progress' },
-  { id: 'verify', label: 'Verify' },
-  { id: 'done', label: 'Done' },
-]
-
-const agentProviderLabels: Record<KanbanItem['agentProvider'], string> = {
-  claude: 'Claude',
-  codex: 'Codex',
-  opencode: 'OpenCode',
-}
-
-/**
- * Format a timestamp as a relative time string.
- * @param isoString - ISO 8601 timestamp string
- * @returns Human-readable relative time
- */
-function formatTimestamp(isoString: string): string {
-  const date = new Date(isoString)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffSec = Math.floor(diffMs / 1000)
-  const diffMin = Math.floor(diffSec / 60)
-  const diffHours = Math.floor(diffMin / 60)
-  const diffDays = Math.floor(diffHours / 24)
-
-  if (diffSec < 60) return 'just now'
-  if (diffMin < 60) return `${diffMin}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays < 7) return `${diffDays}d ago`
-  return date.toLocaleDateString()
-}
-
-function CopyPathButton({ path }: { path: string }): React.ReactElement {
-  const [copied, setCopied] = useState(false)
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    navigator.clipboard.writeText(path).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    })
-  }
-  return (
-    <button
-      onClick={handleCopy}
-      className="flex-shrink-0 p-0.5 rounded text-[var(--color-text-disabled)] hover:text-[var(--color-text-secondary)] transition-colors"
-    >
-      {copied ? <ClipboardCheck size={12} /> : <Copy size={12} />}
-    </button>
-  )
-}
-
-/**
- * Dialog for viewing and editing kanban item details.
- * @param props - Component props
- */
 export function ItemDetailDialog({
   isOpen,
   item,
@@ -87,44 +31,12 @@ export function ItemDetailDialog({
   onClose,
   onUpdated,
 }: ItemDetailDialogProps): React.ReactElement | null {
-  // Form state
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [column, setColumn] = useState<KanbanColumn>('backlog')
-  const [agentType, setAgentType] = useState('')
-  const [agentProvider, setAgentProvider] = useState<KanbanItem['agentProvider']>('claude')
-  const [model, setModel] = useState('')
-  const [verified, setVerified] = useState(false)
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [isStartingAgent, setIsStartingAgent] = useState(false)
-  const [answerText, setAnswerText] = useState('')
-  const [commentText, setCommentText] = useState('')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [isAnswering, setIsAnswering] = useState(false)
-  const [isAddingComment, setIsAddingComment] = useState(false)
-  const [isMerging, setIsMerging] = useState(false)
-  const [isCheckingConflicts, setIsCheckingConflicts] = useState(false)
-  const [conflictCheck, setConflictCheck] = useState<{ clean: boolean; conflictingFiles: string[] } | null>(null)
-  const [prUrl, setPrUrl] = useState<string | null>(null)
-  const [isApprovingPr, setIsApprovingPr] = useState(false)
-  const [isMergingPr, setIsMergingPr] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [showDiffViewer, setShowDiffViewer] = useState(false)
-  const [isRebasing, setIsRebasing] = useState(false)
-  const [rebaseResult, setRebaseResult] = useState<{ success: boolean; error?: string; conflict?: boolean; conflictingFiles?: string[] } | null>(null)
-  const [providerModels, setProviderModels] = useState<Record<string, string[]>>({})
-
-  // Refs
   const answerInputRef = useRef<HTMLTextAreaElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
-  // Track previous item ID to prevent form resets on same item updates
-  const prevItemIdRef = useRef<string | null>(null)
-  // Auto-save debounce timer
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // "Saved" indicator fade timer
-  const savedFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Agent session hook
   const agentSession = useAgentSession({
     itemId: item?.id,
     itemAgentStatus: item?.agentStatus,
@@ -132,183 +44,46 @@ export function ItemDetailDialog({
     onUpdated,
   })
 
-  // Track baseline values to detect unsaved changes
-  const [baseTitle, setBaseTitle] = useState('')
-  const [baseDescription, setBaseDescription] = useState('')
-  const [baseColumn, setBaseColumn] = useState<KanbanColumn>('backlog')
-  const [baseAgentType, setBaseAgentType] = useState('')
-  const [baseAgentProvider, setBaseAgentProvider] = useState<KanbanItem['agentProvider']>('claude')
-  const [baseModel, setBaseModel] = useState('')
-  const [baseVerified, setBaseVerified] = useState(false)
+  const draft = useItemDetailDraft({
+    item,
+    isOpen,
+    projectPath,
+    onUpdated,
+    setErrorMessage,
+  })
 
-  const hasUnsavedChanges = title !== baseTitle || description !== baseDescription || column !== baseColumn || agentType !== baseAgentType || agentProvider !== baseAgentProvider || model !== baseModel || verified !== baseVerified
+  const lifecycle = useItemDetailAgentLifecycle({
+    item,
+    projectPath,
+    onUpdated,
+    setErrorMessage,
+    draft: {
+      agentProvider: draft.agentProvider,
+      hasUnsavedChanges: draft.hasUnsavedChanges,
+      flushDraft: draft.flushDraft,
+    },
+    agentSession: {
+      currentSessionId: agentSession.currentSessionId,
+      currentDetail: agentSession.currentDetail,
+      prepareForRun: agentSession.prepareForRun,
+      associateSession: agentSession.associateSession,
+      appendOutputLine: agentSession.appendOutputLine,
+      setRunStatus: agentSession.setRunStatus,
+    },
+  })
 
-  // Fetch provider models on mount and when dialog opens
-  useEffect(() => {
-    if (isOpen) {
-      window.electronAPI.git.loadConfig().then(config => {
-        if (config?.providerModels) {
-          setProviderModels(config.providerModels)
-        }
-      }).catch(() => {})
-    }
-  }, [isOpen])
+  const prWorkflow = useItemDetailPrWorkflow({
+    item,
+    projectPath,
+    onUpdated,
+    setErrorMessage,
+  })
 
-  // Reset model when agent provider changes if current model isn't in new provider's list
-  // Only reset when providerModels is populated (skip before settings are loaded)
-  useEffect(() => {
-    if (model && Object.keys(providerModels).length > 0) {
-      const models = providerModels[agentProvider] || []
-      if (!models.includes(model)) {
-        setModel('')
-      }
-    }
-  }, [agentProvider, providerModels, model])
-
-  // Sync editable fields when item data changes
-  useEffect(() => {
-    if (item) {
-      // Only reset form fields when the item ID changes (new item selected)
-      // This prevents overwriting user input when the same item updates
-      if (item.id !== prevItemIdRef.current) {
-        setTitle(item.title)
-        setDescription(item.description)
-        setColumn(item.column)
-        setAgentType(item.agentType || '')
-        setAgentProvider(item.agentProvider)
-        setModel(item.model || '')
-        setVerified(item.verified ?? false)
-        setBaseTitle(item.title)
-        setBaseDescription(item.description)
-        setBaseColumn(item.column)
-        setBaseAgentType(item.agentType || '')
-        setBaseAgentProvider(item.agentProvider)
-        setBaseModel(item.model || '')
-        setBaseVerified(item.verified ?? false)
-        setPrUrl(item.prUrl || null)
-        setConflictCheck(null)
-        setRebaseResult(null)
-        setCommentText('')
-        prevItemIdRef.current = item.id
-      }
-    }
-  }, [item])
-
-  // Auto-focus answer textarea when agent enters waiting state
   useEffect(() => {
     if (item?.agentStatus === 'waiting' && item.agentQuestion && answerInputRef.current) {
       answerInputRef.current.focus()
     }
-  }, [item?.agentStatus, item?.agentQuestion])
-
-  const handleSave = useCallback(async () => {
-    if (!item || saveStatus === 'saving') return
-
-    setSaveStatus('saving')
-    try {
-      const trimmedTitle = title.trim()
-      const trimmedDescription = description.trim()
-      await window.electronAPI.kanban.updateItem(projectPath, item.id, {
-        title: trimmedTitle,
-        description: trimmedDescription,
-        column,
-        agentType: agentType || undefined,
-        agentProvider,
-        model: model || undefined,
-        verified,
-      })
-      setBaseTitle(trimmedTitle)
-      setBaseDescription(trimmedDescription)
-      setBaseColumn(column)
-      setBaseAgentType(agentType)
-      setBaseAgentProvider(agentProvider)
-      setBaseModel(model)
-      setBaseVerified(verified)
-      setErrorMessage(null)
-      setSaveStatus('saved')
-      if (savedFadeTimerRef.current) clearTimeout(savedFadeTimerRef.current)
-      savedFadeTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000)
-      onUpdated()
-    } catch (error) {
-      console.error('Failed to update item:', error)
-      setErrorMessage('Failed to save changes. Please try again.')
-      setSaveStatus('error')
-    }
-  }, [item, saveStatus, projectPath, title, description, column, agentType, agentProvider, model, verified, onUpdated])
-
-  // Auto-save for persistence only (no onUpdated callback to avoid focus theft)
-  const handleAutoSave = useCallback(async () => {
-    if (!item || saveStatus === 'saving') return
-
-    setSaveStatus('saving')
-    try {
-      const trimmedTitle = title.trim()
-      const trimmedDescription = description.trim()
-      await window.electronAPI.kanban.updateItem(projectPath, item.id, {
-        title: trimmedTitle,
-        description: trimmedDescription,
-        column,
-        agentType: agentType || undefined,
-        agentProvider,
-        model: model || undefined,
-        verified,
-      })
-      setBaseTitle(trimmedTitle)
-      setBaseDescription(trimmedDescription)
-      setBaseColumn(column)
-      setBaseAgentType(agentType)
-      setBaseAgentProvider(agentProvider)
-      setBaseModel(model)
-      setBaseVerified(verified)
-      setErrorMessage(null)
-      setSaveStatus('saved')
-      if (savedFadeTimerRef.current) clearTimeout(savedFadeTimerRef.current)
-      savedFadeTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000)
-      // NOTE: No onUpdated() call — auto-save should not trigger board refresh
-    } catch (error) {
-      console.error('Failed to update item:', error)
-      setErrorMessage('Failed to save changes. Please try again.')
-      setSaveStatus('error')
-    }
-  }, [item, saveStatus, projectPath, title, description, column, agentType, agentProvider, model, verified])
-
-  // Keep a ref to handleSave so the debounce effect always calls the latest version
-  const handleSaveRef = useRef(handleSave)
-  handleSaveRef.current = handleSave
-
-  // Keep a ref to handleAutoSave for auto-save debounce
-  const handleAutoSaveRef = useRef(handleAutoSave)
-  handleAutoSaveRef.current = handleAutoSave
-
-  // Debounced auto-save: fires 800ms after any field change
-  useEffect(() => {
-    if (!hasUnsavedChanges || !title.trim()) {
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current)
-        autoSaveTimerRef.current = null
-      }
-      return
-    }
-
-    autoSaveTimerRef.current = setTimeout(() => {
-      handleAutoSaveRef.current()
-    }, 800)
-
-    return () => {
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current)
-        autoSaveTimerRef.current = null
-      }
-    }
-  }, [hasUnsavedChanges, title, description, column, agentType, agentProvider, model, verified])
-
-  // Clean up timers on unmount
-  useEffect(() => {
-    return () => {
-      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
-      if (savedFadeTimerRef.current) clearTimeout(savedFadeTimerRef.current)
-    }
-  }, [])
+  }, [item?.agentQuestion, item?.agentStatus])
 
   const handleDelete = useCallback(async () => {
     if (!item || isDeleting) return
@@ -324,350 +99,37 @@ export function ItemDetailDialog({
     } finally {
       setIsDeleting(false)
     }
-  }, [item, isDeleting, projectPath, onUpdated, onClose])
-
-  const handleStartAgent = useCallback(async (agentName: string) => {
-    if (!item || isStartingAgent) return
-
-    // Auto-save unsaved changes (e.g. agent provider) before starting
-    if (hasUnsavedChanges) {
-      await handleSave()
-    }
-
-    setIsStartingAgent(true)
-    agentSession.clearAgentOutput()
-    agentSession.setCurrentStep(null)
-    agentSession.setCurrentDetail(null)
-    agentSession.setLiveStatus('starting')
-    agentSession.setLiveStatusMessage(null)
-    agentSession.setShowAgentLog(true)
-    try {
-      const result = await window.electronAPI.agent.start({
-        agentName,
-        projectPath,
-        itemId: item.id,
-        goal: item.description,
-        agentProvider,
-      })
-
-      if (result.error) {
-        console.error('Failed to start agent:', result.error)
-        agentSession.setAgentOutputLines(prev => [...prev, `[Error] ${result.error}`])
-        agentSession.setLiveStatus('failed')
-        agentSession.setLiveStatusMessage(result.error)
-      } else if (result.sessionId) {
-        agentSession.associateSession(result.sessionId)
-        agentSession.setLiveStatus('running')
-      }
-      onUpdated()
-    } catch (error) {
-      console.error('Failed to start agent:', error)
-      agentSession.setAgentOutputLines(prev => [...prev, `[Error] ${error}`])
-      agentSession.setLiveStatus('failed')
-      agentSession.setLiveStatusMessage(String(error))
-    } finally {
-      setIsStartingAgent(false)
-    }
-  }, [item, isStartingAgent, projectPath, onUpdated, agentSession, agentProvider, hasUnsavedChanges, handleSave])
-
-  const handleAddComment = useCallback(async () => {
-    if (!item || isAddingComment || !commentText.trim()) return
-
-    setIsAddingComment(true)
-    try {
-      const trimmedComment = commentText.trim()
-      await window.electronAPI.kanban.addComment(projectPath, item.id, 'user', trimmedComment)
-      setCommentText('')
-      setErrorMessage(null)
-      onUpdated()
-    } catch (error) {
-      console.error('Failed to add comment:', error)
-      setErrorMessage('Failed to add comment. Please try again.')
-    } finally {
-      setIsAddingComment(false)
-    }
-  }, [item, isAddingComment, commentText, projectPath, onUpdated])
-
-  const handleAnswerQuestion = useCallback(async () => {
-    if (!item || isAnswering || !answerText.trim()) return
-
-    setIsAnswering(true)
-    try {
-      await window.electronAPI.agent.answer(projectPath, item.id, answerText.trim())
-      setAnswerText('')
-      setErrorMessage(null)
-      onUpdated()
-    } catch (error) {
-      console.error('Failed to answer question:', error)
-      setErrorMessage('Failed to submit answer. Please try again.')
-    } finally {
-      setIsAnswering(false)
-    }
-  }, [item, isAnswering, answerText, projectPath, onUpdated])
-
-  const handleResumeAgent = useCallback(async (agentName: string) => {
-    if (!item || isStartingAgent) return
-
-    // Auto-save unsaved changes (e.g. agent provider) before resuming
-    if (hasUnsavedChanges) {
-      await handleSave()
-    }
-
-    setIsStartingAgent(true)
-    agentSession.setCurrentStep(null)
-    agentSession.setCurrentDetail(null)
-    agentSession.setLiveStatus('starting')
-    agentSession.setLiveStatusMessage(null)
-    agentSession.setShowAgentLog(true)
-    try {
-      const result = await window.electronAPI.agent.resume({
-        agentName,
-        projectPath,
-        itemId: item.id,
-        goal: item.description,
-        agentProvider,
-      })
-
-      if (result.error) {
-        console.error('Failed to resume agent:', result.error)
-        agentSession.setAgentOutputLines(prev => [...prev, `[Error] ${result.error}`])
-        agentSession.setLiveStatus('failed')
-        agentSession.setLiveStatusMessage(result.error)
-      } else if (result.sessionId) {
-        agentSession.associateSession(result.sessionId)
-        agentSession.setLiveStatus('running')
-      }
-      onUpdated()
-    } catch (error) {
-      console.error('Failed to resume agent:', error)
-      agentSession.setAgentOutputLines(prev => [...prev, `[Error] ${error}`])
-      agentSession.setLiveStatus('failed')
-      agentSession.setLiveStatusMessage(String(error))
-    } finally {
-      setIsStartingAgent(false)
-    }
-  }, [item, isStartingAgent, projectPath, onUpdated, agentSession, agentProvider, hasUnsavedChanges, handleSave])
-
-  const handleStopAgent = useCallback(async () => {
-    if (agentSession.currentSessionId) {
-      await window.electronAPI.agent.stop(agentSession.currentSessionId)
-      onUpdated()
-    }
-  }, [agentSession.currentSessionId, onUpdated])
-
-  const handleCheckConflicts = useCallback(async () => {
-    if (!item || !item.branch || isCheckingConflicts) return
-
-    setIsCheckingConflicts(true)
-    setConflictCheck(null)
-    try {
-      const result = await window.electronAPI.git.checkMergeConflicts(projectPath, item.branch)
-      setConflictCheck(result)
-    } catch (error) {
-      console.error('Failed to check merge conflicts:', error)
-      setConflictCheck({ clean: false, conflictingFiles: ['(check failed)'] })
-    } finally {
-      setIsCheckingConflicts(false)
-    }
-  }, [item, isCheckingConflicts, projectPath])
-
-  const handleRebase = useCallback(async () => {
-    if (!item || !item.branch || !item.worktreePath || isRebasing) return
-    setIsRebasing(true)
-    setRebaseResult(null)
-    try {
-      const result = await window.electronAPI.git.rebaseOntoDefault(
-        item.worktreePath, projectPath
-      )
-      setRebaseResult(result)
-      if (result.success) {
-        setConflictCheck(null)
-      }
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Unknown error'
-      setRebaseResult({ success: false, error: msg })
-    } finally {
-      setIsRebasing(false)
-    }
-  }, [item, isRebasing, projectPath])
-
-  const handleMerge = useCallback(async () => {
-    if (!item || !item.branch || !item.worktreePath || isMerging) return
-
-    setIsMerging(true)
-    try {
-      // Get diff stats for confirmation
-      const stats = await window.electronAPI.git.worktreeDiffStats(projectPath, item.branch)
-      const statsMsg = stats.filesChanged > 0
-        ? `${stats.filesChanged} file${stats.filesChanged !== 1 ? 's' : ''} changed, +${stats.insertions} -${stats.deletions}`
-        : 'No changes detected'
-
-      const confirmed = await window.electronAPI.dialog.confirmOkCancel(
-        'Squash, Merge & Create PR',
-        `Squash merge branch "${item.branch}" and push a PR?\n\n${statsMsg}`
-      )
-      if (!confirmed) {
-        setIsMerging(false)
-        return
-      }
-
-      // Squash merge, push, and create PR
-      const result = await window.electronAPI.git.mergeAndPushPR(
-        projectPath,
-        item.branch,
-        item.worktreePath,
-        item.title,
-        item.description,
-      )
-
-      if (result.success && !result.error) {
-        // Full success: merged, pushed, PR created, worktree cleaned up
-        await window.electronAPI.kanban.updateItem(projectPath, item.id, {
-          mergeStatus: 'merged',
-          branch: result.prBranch ?? item.branch,
-          worktreePath: undefined,
-          prUrl: result.prUrl,
-        })
-        if (result.prUrl) {
-          setPrUrl(result.prUrl)
-          await window.electronAPI.kanban.addComment(
-            projectPath, item.id, 'system',
-            `PR created: ${result.prUrl}`
-          )
-        }
-        setConflictCheck(null)
-        onUpdated()
-      } else if (result.success && result.error) {
-        // Partial success: branch pushed but PR creation failed
-        await window.electronAPI.kanban.updateItem(projectPath, item.id, {
-          mergeStatus: 'merged',
-          branch: result.prBranch ?? item.branch,
-          worktreePath: undefined,
-        })
-        setErrorMessage(result.error)
-        setConflictCheck(null)
-        onUpdated()
-      } else if (result.conflict) {
-        await window.electronAPI.kanban.updateItem(projectPath, item.id, {
-          mergeStatus: 'conflict',
-        })
-        const fileList = result.conflictingFiles?.length
-          ? `\nConflicting files:\n${result.conflictingFiles.map(f => `  - ${f}`).join('\n')}`
-          : ''
-        setErrorMessage(`Merge conflict detected. Please resolve manually.${fileList}`)
-        setConflictCheck({ clean: false, conflictingFiles: result.conflictingFiles || [] })
-        onUpdated()
-      } else {
-        setErrorMessage(result.error || 'Merge failed')
-      }
-    } catch (error) {
-      console.error('Failed to merge and push PR:', error)
-      const msg = error instanceof Error ? error.message : 'Unknown error'
-      setErrorMessage(`Failed to merge and push PR: ${msg}`)
-    } finally {
-      setIsMerging(false)
-    }
-  }, [item, isMerging, projectPath, onUpdated])
-
-  const handleApprovePr = useCallback(async () => {
-    if (!item || !prUrl || isApprovingPr) return
-    setIsApprovingPr(true)
-    try {
-      const result = await window.electronAPI.git.approvePR(projectPath, prUrl)
-      if (result.success) {
-        await window.electronAPI.kanban.addComment(
-          projectPath, item.id, 'system',
-          `PR approved on GitHub: ${prUrl}`
-        )
-        setErrorMessage(null)
-        onUpdated()
-      } else {
-        setErrorMessage(result.error || 'Failed to approve PR')
-      }
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Unknown error'
-      setErrorMessage(`Failed to approve PR: ${msg}`)
-    } finally {
-      setIsApprovingPr(false)
-    }
-  }, [item, prUrl, isApprovingPr, projectPath, onUpdated])
-
-  const handleMergePr = useCallback(async () => {
-    if (!item || !prUrl || isMergingPr) return
-    const confirmed = await window.electronAPI.dialog.confirmOkCancel(
-      'Merge PR',
-      `Squash merge and delete the remote branch for this PR?\n\n${prUrl}`
-    )
-    if (!confirmed) return
-    setIsMergingPr(true)
-    try {
-      const result = await window.electronAPI.git.mergePR(projectPath, prUrl)
-      if (result.success) {
-        await window.electronAPI.kanban.addComment(
-          projectPath, item.id, 'system',
-          `PR merged on GitHub: ${prUrl}`
-        )
-        await window.electronAPI.kanban.updateItem(projectPath, item.id, {
-          column: 'done',
-        })
-        setErrorMessage(null)
-        onUpdated()
-      } else {
-        setErrorMessage(result.error || 'Failed to merge PR')
-      }
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Unknown error'
-      setErrorMessage(`Failed to merge PR: ${msg}`)
-    } finally {
-      setIsMergingPr(false)
-    }
-  }, [item, prUrl, isMergingPr, projectPath, onUpdated])
+  }, [isDeleting, item, onClose, onUpdated, projectPath])
 
   const handleClose = useCallback(() => {
-    // Flush pending auto-save before closing
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current)
-      autoSaveTimerRef.current = null
-    }
-    if (hasUnsavedChanges && title.trim()) {
-      handleSave()
+    if (draft.hasUnsavedChanges && draft.title.trim()) {
+      void draft.flushDraft('close')
     }
     onClose()
-  }, [onClose, hasUnsavedChanges, title, handleSave])
+  }, [draft, onClose])
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        handleClose()
-      }
-      if (e.key === 'Enter' && e.ctrlKey && saveStatus !== 'saving' && title.trim().length > 0) {
-        e.preventDefault()
-        // Flush: clear debounce timer and save immediately
-        if (autoSaveTimerRef.current) {
-          clearTimeout(autoSaveTimerRef.current)
-          autoSaveTimerRef.current = null
-        }
-        handleSave()
-      }
-      if (e.key === 'Delete' && e.ctrlKey && !isDeleting) {
-        e.preventDefault()
-        handleDelete()
-      }
-      if (dialogRef.current) {
-        trapFocus(e, dialogRef.current)
-      }
-    },
-    [handleClose, saveStatus, handleSave, isDeleting, handleDelete, title]
-  )
+  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      handleClose()
+    }
+    if (event.key === 'Enter' && event.ctrlKey && draft.saveStatus !== 'saving' && draft.title.trim().length > 0) {
+      event.preventDefault()
+      void draft.flushDraft('manual')
+    }
+    if (event.key === 'Delete' && event.ctrlKey && !isDeleting) {
+      event.preventDefault()
+      void handleDelete()
+    }
+    if (dialogRef.current) {
+      trapFocus(event, dialogRef.current)
+    }
+  }, [draft, handleClose, handleDelete, isDeleting])
 
   if (!isOpen || !item) return null
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col bg-[var(--color-bg-secondary)]"
-      onKeyDown={handleKeyDown}
-    >
+    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--color-bg-secondary)]" onKeyDown={handleKeyDown}>
       <div
         ref={dialogRef}
         data-testid="item-detail-dialog"
@@ -676,9 +138,10 @@ export function ItemDetailDialog({
         aria-label={`Item details: ${item.title}`}
         className="flex flex-col h-full"
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
-          <h2 className="text-base font-semibold text-[var(--color-text-primary)] truncate min-w-0">{item.title || 'Untitled Item'}</h2>
+          <h2 className="text-base font-semibold text-[var(--color-text-primary)] truncate min-w-0">
+            {item.title || 'Untitled Item'}
+          </h2>
           <button
             data-testid="close-button"
             onClick={handleClose}
@@ -688,7 +151,6 @@ export function ItemDetailDialog({
           </button>
         </div>
 
-        {/* Error banner */}
         {errorMessage && (
           <div className="flex items-center justify-between px-6 py-2 bg-red-900/30 border-b border-red-700/50 text-red-300 text-sm">
             <span>{errorMessage}</span>
@@ -701,503 +163,69 @@ export function ItemDetailDialog({
           </div>
         )}
 
-        {/* Content - Two pane layout */}
         <div className="flex flex-1 overflow-hidden">
-          {/* Left pane - Title, Description, Comments, Agent Output */}
-          <div className="flex-1 overflow-y-auto p-6">
-            <div>
-              {/* Title */}
-              <div className="mb-5">
-                <label
-                  htmlFor="detail-title"
-                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
-                >
-                  Title <span className="text-red-400">*</span>
-                </label>
-                <input
-                  id="detail-title"
-                  data-testid="title-input"
-                  type="text"
-                  value={title}
-                  onChange={e => setTitle(e.target.value)}
-                  autoFocus
-                  className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
-                />
-              </div>
+          <ItemDetailEditorPane
+            title={draft.title}
+            description={draft.description}
+            comments={item.comments}
+            commentText={lifecycle.commentText}
+            isAddingComment={lifecycle.isAddingComment}
+            onTitleChange={draft.setTitle}
+            onDescriptionChange={draft.setDescription}
+            onCommentTextChange={lifecycle.setCommentText}
+            onAddComment={() => void lifecycle.addComment()}
+            onSelectCommentOption={lifecycle.setAnswerText}
+          />
 
-              {/* Description */}
-              <div className="mb-5">
-                <label
-                  htmlFor="detail-description"
-                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
-                >
-                  Description
-                </label>
-                <textarea
-                  id="detail-description"
-                  data-testid="description-input"
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
-                  rows={10}
-                  className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
-                />
-              </div>
-
-              {/* Comments */}
-              <CommentsList comments={item.comments} onSelectOption={setAnswerText} />
-
-              {/* Add comment */}
-              <div className="mt-4">
-                <label
-                  htmlFor="comment-input"
-                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
-                >
-                  Add Comment
-                </label>
-                <textarea
-                  id="comment-input"
-                  data-testid="comment-input"
-                  value={commentText}
-                  onChange={e => setCommentText(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                      e.preventDefault()
-                      handleAddComment()
-                    }
-                  }}
-                  rows={3}
-                  placeholder="Write a comment..."
-                  className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
-                />
-                <div className="flex justify-end mt-2">
-                  <button
-                    data-testid="comment-submit"
-                    onClick={handleAddComment}
-                    disabled={isAddingComment || !commentText.trim()}
-                    className="px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {isAddingComment ? 'Posting...' : 'Post Comment'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right pane - Sidebar */}
-          <div className="w-72 overflow-y-auto border-l border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
-            {/* Agent Controls */}
-            <div className="p-4 border-b border-[var(--color-border-primary)]">
-              <AgentControls
-                item={item}
-                isStartingAgent={isStartingAgent}
-                isAnswering={isAnswering}
-                answerText={answerText}
-                currentSessionId={agentSession.currentSessionId}
-                currentDetail={agentSession.currentDetail}
-                answerInputRef={answerInputRef}
-                onStartAgent={handleStartAgent}
-                onResumeAgent={handleResumeAgent}
-                onStopAgent={handleStopAgent}
-                onAnswerQuestion={handleAnswerQuestion}
-                onSetAnswerText={setAnswerText}
-                onUpdated={onUpdated}
-              />
-            </div>
-
-            {agentSession.tokenUsage && (
-              <div
-                data-testid="token-usage"
-                className="p-4 border-b border-[var(--color-border-primary)]"
-              >
-                <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
-                  Token Usage
-                </label>
-                <div className="text-sm text-[var(--color-text-primary)]">
-                  {formatTokenCount(agentSession.tokenUsage.inputTokens)} in / {formatTokenCount(agentSession.tokenUsage.outputTokens)} out
-                </div>
-                <div className="text-xs text-[var(--color-text-secondary)] mt-0.5">
-                  {formatUsdCost(agentSession.tokenUsage.costUsd)}
-                </div>
-              </div>
-            )}
-
-            {/* Properties */}
-            <div className="p-4 space-y-4">
-              {/* Agent Provider */}
-              <div>
-                <label
-                  htmlFor="detail-agent-provider"
-                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
-                >
-                  Agent Provider
-                </label>
-                {item.agentStatus !== 'running' && item.agentStatus !== 'waiting' ? (
-                  <select
-                    id="detail-agent-provider"
-                    data-testid="agent-provider-select"
-                    value={agentProvider}
-                    onChange={e => setAgentProvider(e.target.value as KanbanItem['agentProvider'])}
-                    className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
-                  >
-                    <option value="claude">Claude</option>
-                    <option value="opencode">OpenCode</option>
-                    <option value="codex">Codex</option>
-                  </select>
-                ) : (
-                  <span
-                    data-testid="agent-provider-display"
-                    className="text-sm text-[var(--color-text-primary)]"
-                  >
-                    {agentProviderLabels[item.agentProvider]}
-                  </span>
-                )}
-              </div>
-
-              {/* Model */}
-              <div>
-                <label
-                  htmlFor="detail-model"
-                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
-                >
-                  Model
-                </label>
-                <select
-                  id="detail-model"
-                  data-testid="model-select"
-                  value={model}
-                  onChange={e => setModel(e.target.value)}
-                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
-                >
-                  <option value="">Provider default</option>
-                  {(providerModels[agentProvider] || []).map(m => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
-                  Leave empty to use provider default
-                </p>
-              </div>
-
-              {/* Column Selector */}
-              <div>
-                <label
-                  htmlFor="detail-column"
-                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
-                >
-                  Column
-                </label>
-                <select
-                  id="detail-column"
-                  data-testid="column-select"
-                  value={column}
-                  onChange={e => setColumn(e.target.value as KanbanColumn)}
-                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
-                >
-                  {columnOptions
-                    .filter(option => {
-                      if (option.id === 'in-progress') {
-                        return column === 'in-progress'
-                      }
-                      if (option.id === 'verify') {
-                        return column === 'verify'
-                      }
-                      return true
-                    })
-                    .map(option => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                </select>
-                {(column === 'in-progress' || column === 'verify') && (
-                  <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
-                    Items are moved to {column === 'in-progress' ? 'In Progress' : 'Verify'} by agents
-                  </p>
-                )}
-              </div>
-
-              {/* Verified */}
-              <div>
-                <label
-                  htmlFor="detail-verified"
-                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
-                >
-                  Verified
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    id="detail-verified"
-                    data-testid="verified-checkbox"
-                    type="checkbox"
-                    checked={verified}
-                    onChange={e => setVerified(e.target.checked)}
-                    className="rounded border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-green-500 focus:ring-green-500"
-                  />
-                  <span className={`flex items-center gap-1 text-sm ${verified ? 'text-green-400' : 'text-[var(--color-text-secondary)]'}`}>
-                    <ShieldCheck size={14} />
-                    {verified ? 'Verified' : 'Not verified'}
-                  </span>
-                </label>
-              </div>
-
-              {/* Branch */}
-              <div>
-                <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
-                  Branch
-                </label>
-                <div
-                  data-testid="branch-display"
-                  className="flex items-center gap-1.5 text-sm text-[var(--color-text-primary)]"
-                >
-                  <GitBranch size={14} className="text-[var(--color-text-secondary)] flex-shrink-0" />
-                  <span className="truncate">{item.branch || 'N/A'}</span>
-                </div>
-              </div>
-
-              {/* Worktree Path */}
-              {item.worktreePath && (
-                <div>
-                  <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
-                    Worktree
-                  </label>
-                  <div
-                    data-testid="worktree-path-display"
-                    className="flex items-center gap-1 text-xs text-[var(--color-text-tertiary)]"
-                  >
-                    <FolderOpen size={12} className="flex-shrink-0" />
-                    <span className="font-mono break-all" title={item.worktreePath}>{item.worktreePath}</span>
-                    <CopyPathButton path={item.worktreePath} />
-                  </div>
-                </div>
-              )}
-
-              {/* Merge Status & Actions */}
-              {item.mergeStatus && item.branch && (
-                <div>
-                  <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
-                    Merge Status
-                  </label>
-                  {/* Compare Changes button — available in all merge states */}
-                  <button
-                    data-testid="compare-changes-button"
-                    onClick={() => setShowDiffViewer(true)}
-                    disabled={isMerging}
-                    className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 text-blue-400 rounded-md hover:bg-blue-600/10 border border-blue-600/30 transition-colors mb-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ArrowLeftRight size={12} />
-                    Compare Changes
-                  </button>
-                  {item.mergeStatus === 'merged' && (
-                    <div data-testid="merge-status-merged">
-                      <div className="flex items-center gap-1 text-sm text-green-400">
-                        <Check size={14} />
-                        <span>Merged</span>
-                      </div>
-                      {prUrl && (
-                        <div className="space-y-2 mt-1.5">
-                          <button
-                            data-testid="pr-link"
-                            onClick={() => window.electronAPI.app.openExternal(prUrl)}
-                            className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 text-blue-400 rounded-md hover:bg-blue-600/10 border border-blue-600/30 transition-colors"
-                          >
-                            <GitPullRequest size={12} />
-                            <span>View PR</span>
-                            <ExternalLink size={10} />
-                          </button>
-                          <button
-                            data-testid="approve-pr-button"
-                            onClick={handleApprovePr}
-                            disabled={isApprovingPr || isMergingPr}
-                            className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            <Check size={12} />
-                            {isApprovingPr ? 'Approving...' : 'Approve PR'}
-                          </button>
-                          <button
-                            data-testid="merge-pr-button"
-                            onClick={handleMergePr}
-                            disabled={isMergingPr || isApprovingPr}
-                            className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            <GitMerge size={12} />
-                            {isMergingPr ? 'Merging...' : 'Merge PR'}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {item.mergeStatus === 'conflict' && (
-                    <div data-testid="merge-status-conflict">
-                      <div className="flex items-center gap-1 text-sm text-red-400 mb-2">
-                        <AlertTriangle size={14} />
-                        <span>Merge Conflict</span>
-                      </div>
-                      <button
-                        data-testid="retry-merge-button"
-                        onClick={handleMerge}
-                        disabled={isMerging}
-                        className="w-full px-3 py-1.5 text-xs bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {isMerging ? 'Retrying...' : 'Retry Squash Merge & PR'}
-                      </button>
-                    </div>
-                  )}
-                  {item.mergeStatus === 'unmerged' && (
-                    <div data-testid="merge-status-unmerged">
-                      {/* Pull Latest (rebase onto default) */}
-                      {item.worktreePath && (
-                        <>
-                          <button
-                            data-testid="pull-latest-button"
-                            onClick={handleRebase}
-                            disabled={isRebasing || isMerging}
-                            className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 text-purple-400 rounded-md hover:bg-purple-600/10 border border-purple-600/30 transition-colors mb-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <ArrowDownToLine size={12} />
-                            {isRebasing ? 'Pulling...' : 'Pull Latest (Rebase)'}
-                          </button>
-                          {rebaseResult && (
-                            <div data-testid="rebase-result" className="mb-2">
-                              {rebaseResult.success ? (
-                                <div className="flex items-center gap-1 text-xs text-green-400">
-                                  <Check size={12} />
-                                  <span>Rebased onto latest default</span>
-                                </div>
-                              ) : (
-                                <div className="text-xs text-red-400">
-                                  <div className="flex items-center gap-1 mb-1">
-                                    <AlertTriangle size={12} />
-                                    <span>{rebaseResult.conflict ? 'Rebase conflicts — aborted' : rebaseResult.error}</span>
-                                  </div>
-                                  {rebaseResult.conflictingFiles && rebaseResult.conflictingFiles.length > 0 && (
-                                    <ul className="ml-4 space-y-0.5">
-                                      {rebaseResult.conflictingFiles.map((file, i) => (
-                                        <li key={i} className="font-mono text-[10px] truncate">{file}</li>
-                                      ))}
-                                    </ul>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </>
-                      )}
-                      {/* Conflict pre-check */}
-                      <button
-                        data-testid="check-conflicts-button"
-                        onClick={handleCheckConflicts}
-                        disabled={isCheckingConflicts || isMerging}
-                        className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 text-[var(--color-text-secondary)] rounded-md hover:bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors mb-2"
-                      >
-                        <AlertTriangle size={12} />
-                        {isCheckingConflicts ? 'Checking...' : 'Check Conflicts'}
-                      </button>
-                      {conflictCheck && (
-                        <div data-testid="conflict-check-result" className="mb-2">
-                          {conflictCheck.clean ? (
-                            <div className="flex items-center gap-1 text-xs text-green-400">
-                              <Check size={12} />
-                              <span>Clean — no conflicts</span>
-                            </div>
-                          ) : (
-                            <div className="text-xs text-red-400">
-                              <div className="flex items-center gap-1 mb-1">
-                                <AlertTriangle size={12} />
-                                <span>Conflicts detected</span>
-                              </div>
-                              {conflictCheck.conflictingFiles.length > 0 && (
-                                <ul className="ml-4 space-y-0.5">
-                                  {conflictCheck.conflictingFiles.map((file, i) => (
-                                    <li key={i} className="font-mono text-[10px] truncate">{file}</li>
-                                  ))}
-                                </ul>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {/* Merge button */}
-                      <button
-                        data-testid="merge-button"
-                        onClick={handleMerge}
-                        disabled={isMerging || (item.agentStatus !== 'completed' && item.column !== 'done' && item.column !== 'verify')}
-                        className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <GitMerge size={12} />
-                        {isMerging ? 'Squashing & Merging...' : 'Squash, Merge & Push PR'}
-                      </button>
-                      {item.agentStatus !== 'completed' && item.column !== 'done' && item.column !== 'verify' && (
-                        <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
-                          Available when agent completes or item is in Done
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div className="p-4 border-t border-[var(--color-border-primary)]">
-              {/* Save status indicator */}
-              {saveStatus === 'saving' && (
-                <div
-                  data-testid="save-status"
-                  className="text-center text-xs text-blue-400 font-medium mb-2"
-                >
-                  Saving...
-                </div>
-              )}
-              {saveStatus === 'saved' && (
-                <div
-                  data-testid="save-status"
-                  className="text-center text-xs text-green-400 font-medium mb-2"
-                >
-                  Saved
-                </div>
-              )}
-              {saveStatus === 'error' && (
-                <div
-                  data-testid="save-status"
-                  className="text-center text-xs text-red-400 font-medium mb-2"
-                >
-                  Save failed
-                </div>
-              )}
-              <div className="space-y-2">
-                <button
-                  data-testid="delete-button"
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-red-400 rounded-md hover:bg-red-600/10 border border-red-600/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Trash2 size={14} />
-                  {isDeleting ? 'Deleting...' : 'Delete'}
-                  <span className="text-xs opacity-60 ml-1">(Ctrl+Del)</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Timestamps - pinned to bottom of sidebar */}
-            <div className="mt-auto p-4 border-t border-[var(--color-border-primary)]">
-              <div className="flex items-center justify-between text-xs text-[var(--color-text-tertiary)]">
-                <div className="flex items-center gap-1" data-testid="created-at">
-                  <Clock size={11} />
-                  <span>Created {formatTimestamp(item.createdAt)}</span>
-                </div>
-                <div className="flex items-center gap-1" data-testid="updated-at">
-                  <Clock size={11} />
-                  <span>Updated {formatTimestamp(item.updatedAt)}</span>
-                </div>
-              </div>
-              <p className="text-center text-[10px] text-[var(--color-text-tertiary)] mt-2">
-                Esc to close
-              </p>
-            </div>
-          </div>
+          <ItemDetailSidebar
+            item={item}
+            agentProvider={draft.agentProvider}
+            model={draft.model}
+            column={draft.column}
+            verified={draft.verified}
+            providerModels={draft.providerModels}
+            saveStatus={draft.saveStatus}
+            isDeleting={isDeleting}
+            answerText={lifecycle.answerText}
+            isStartingAgent={lifecycle.isStartingAgent}
+            isAnswering={lifecycle.isAnswering}
+            currentSessionId={agentSession.currentSessionId}
+            currentDetail={agentSession.currentDetail}
+            tokenUsage={agentSession.tokenUsage}
+            answerInputRef={answerInputRef}
+            prUrl={prWorkflow.prUrl}
+            conflictCheck={prWorkflow.conflictCheck}
+            rebaseResult={prWorkflow.rebaseResult}
+            isMerging={prWorkflow.isMerging}
+            isCheckingConflicts={prWorkflow.isCheckingConflicts}
+            isRebasing={prWorkflow.isRebasing}
+            isApprovingPr={prWorkflow.isApprovingPr}
+            isMergingPr={prWorkflow.isMergingPr}
+            onSetAgentProvider={draft.setAgentProvider}
+            onSetModel={draft.setModel}
+            onSetColumn={draft.setColumn}
+            onSetVerified={draft.setVerified}
+            onDelete={() => void handleDelete()}
+            onStartAgent={agentName => void lifecycle.startAgent(agentName)}
+            onResumeAgent={agentName => void lifecycle.resumeAgent(agentName)}
+            onStopAgent={() => void lifecycle.stopAgent()}
+            onAnswerQuestion={() => void lifecycle.answerQuestion()}
+            onSetAnswerText={lifecycle.setAnswerText}
+            onCompareChanges={() => setShowDiffViewer(true)}
+            onOpenPr={() => {
+              if (prWorkflow.prUrl) {
+                window.electronAPI.app.openExternal(prWorkflow.prUrl)
+              }
+            }}
+            onApprovePr={() => void prWorkflow.approvePr()}
+            onMergePr={() => void prWorkflow.mergePr()}
+            onCheckConflicts={() => void prWorkflow.checkConflicts()}
+            onRebase={() => void prWorkflow.rebaseOntoDefault()}
+            onMerge={() => void prWorkflow.mergeAndPushPr()}
+            onUpdated={onUpdated}
+          />
         </div>
 
-        {/* Agent Log - bottom panel */}
         {(agentSession.showAgentLog || agentSession.agentOutputLines.length > 0) && (
           <div className="border-t border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
             <AgentLogPanel
@@ -1208,7 +236,6 @@ export function ItemDetailDialog({
         )}
       </div>
 
-      {/* Git Diff Viewer */}
       {item.branch && (
         <GitDiffDialog
           isOpen={showDiffViewer}
