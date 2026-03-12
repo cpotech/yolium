@@ -74,7 +74,8 @@ Fields: specs (array, required — each element: file (string), description (str
 2. Output progress messages at each major step of your work
 3. Post comment messages with your findings and results
 4. Your LAST protocol message MUST be either a complete or error message
-5. Output these as plain text lines — they will be parsed from your stdout`;
+5. Output these as plain text lines — they will be parsed from your stdout
+6. **No commit trailers** — Never add Co-Authored-By, Signed-off-by, or any other trailers to commit messages. Commits must contain only the commit message itself.`;
 
 /**
  * File-based output instructions for non-Claude plan agents.

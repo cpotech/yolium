@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { buildAgentPrompt, buildScheduledPrompt } from '@main/services/agent-prompts';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+import { buildAgentPrompt, buildScheduledPrompt, INLINE_PROTOCOL } from '@main/services/agent-prompts';
 
 describe('agent-prompts', () => {
   describe('buildAgentPrompt', () => {
@@ -135,6 +137,27 @@ describe('agent-prompts', () => {
       });
       expect(prompt).toContain('@@YOLIUM: Protocol (MANDATORY)');
       expect(prompt).toContain('REMINDER: You MUST output @@YOLIUM:');
+    });
+  });
+
+  describe('no-co-authored-by rules', () => {
+    const projectRoot = resolve(__dirname, '..', '..');
+
+    it('should include no-co-authored-by instruction in CLAUDE.md content', () => {
+      const claudeMd = readFileSync(resolve(projectRoot, 'CLAUDE.md'), 'utf-8');
+      expect(claudeMd).toContain('Co-Authored-By');
+      expect(claudeMd).toMatch(/never.*co-authored-by/i);
+    });
+
+    it('should include no-co-authored-by rule in code-agent commit step', () => {
+      const codeAgent = readFileSync(resolve(projectRoot, 'src/agents/code-agent.md'), 'utf-8');
+      expect(codeAgent).toMatch(/co-authored-by/i);
+      expect(codeAgent).toMatch(/no.*trailer/i);
+    });
+
+    it('should include no-co-authored-by rule in inline protocol for non-Claude providers', () => {
+      expect(INLINE_PROTOCOL).toMatch(/co-authored-by/i);
+      expect(INLINE_PROTOCOL).toMatch(/no.*trailer/i);
     });
   });
 

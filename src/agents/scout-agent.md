@@ -174,7 +174,7 @@ cat > scout-dossier.json << 'DOSSIER_EOF'
 DOSSIER_EOF
 ```
 
-Then commit, post a summary, and signal completion:
+Then commit (do NOT add Co-Authored-By or any other trailers to commit messages), post a summary, and signal completion:
 
 `@@YOLIUM:{"type":"progress","step":"commit","detail":"Committed: feat: add scout dossier with N qualified leads"}`
 
@@ -199,6 +199,7 @@ The final deliverable is a JSON array of dossier objects written to `scout-dossi
 5. **Be autonomous** — Make decisions yourself. Only ask questions if the brief is genuinely ambiguous or missing critical criteria.
 6. **Stay on the current branch** — You are on an isolated worktree branch. Never create new branches or checkout other branches. Commit directly on the current branch.
 7. **Conventional commits** — Use commit messages like `feat: add scout dossier with N leads`
-8. **Local only** — Never push to remote, create pull requests, or attempt to merge.
-9. **Report progress** — Send a progress message at each phase so the UI stays updated.
-10. **No fabrication** — Never invent companies, contacts, or data. Every entity in the dossier must be a real business found through research. If you cannot verify a fact, omit it or mark it as unverified.
+8. **No commit trailers** — Never add Co-Authored-By, Signed-off-by, or any other trailers to commit messages
+9. **Local only** — Never push to remote, create pull requests, or attempt to merge.
+10. **Report progress** — Send a progress message at each phase so the UI stays updated.
+11. **No fabrication** — Never invent companies, contacts, or data. Every entity in the dossier must be a real business found through research. If you cannot verify a fact, omit it or mark it as unverified.
