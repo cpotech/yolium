@@ -85,6 +85,42 @@ describe('StatusBar Claude usage', () => {
     expect(screen.queryByText(/log in/)).not.toBeInTheDocument();
   });
 
+  it('should show loading spinner when hasOAuth is true and usage is null', () => {
+    const { container } = renderStatusBar({ claudeUsage: { hasOAuth: true, usage: null } });
+
+    // Loader2 renders an SVG with the animate-spin class
+    const spinner = container.querySelector('.animate-spin');
+    expect(spinner).toBeInTheDocument();
+  });
+
+  it('should make Claude label clickable when hasOAuth is true but usage is null', () => {
+    renderStatusBar({ claudeUsage: { hasOAuth: true, usage: null } });
+
+    const button = screen.getByRole('button', { name: /claude/i });
+    expect(button).toBeInTheDocument();
+  });
+
+  it('should call onOpenSettings when Claude fallback label is clicked', () => {
+    const onOpenSettings = vi.fn();
+    renderStatusBar({
+      claudeUsage: { hasOAuth: true, usage: null },
+      onOpenSettings,
+    });
+
+    const button = screen.getByRole('button', { name: /claude/i });
+    fireEvent.click(button);
+
+    expect(onOpenSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('should show tooltip on fallback state indicating usage unavailable', () => {
+    renderStatusBar({ claudeUsage: { hasOAuth: true, usage: null } });
+
+    const button = screen.getByRole('button', { name: /claude/i });
+    expect(button).toHaveAttribute('title');
+    expect(button.getAttribute('title')).toBeTruthy();
+  });
+
   it('should render usage bars with correct utilization percentages', () => {
     renderStatusBar({ claudeUsage: sampleUsage });
 

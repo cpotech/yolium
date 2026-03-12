@@ -183,7 +183,15 @@ export function StatusBar({
                 />
               </>
             ) : (
-              <span className="text-[var(--color-text-secondary)]">Claude</span>
+              <span
+                role="button"
+                className="flex items-center gap-1 cursor-pointer text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
+                onClick={onOpenSettings}
+                title="Loading usage data…"
+              >
+                <span className="text-[var(--color-text-secondary)]">Claude</span>
+                <Loader2 size={10} className="animate-spin" />
+              </span>
             )}
           </>
         )}
