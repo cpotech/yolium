@@ -1,4 +1,5 @@
 import { PassThrough } from 'node:stream';
+import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
@@ -245,6 +246,8 @@ describe('agent-container orchestration', () => {
     getContainerMock.mockReturnValue(container);
 
     const onExit = vi.fn();
+    const projectPath = '/tmp/project';
+    const resolvedProjectPath = path.resolve(projectPath);
 
     const sessionId = await createAgentContainer({
       webContentsId: 11,
@@ -265,7 +268,7 @@ describe('agent-container orchestration', () => {
       outputTokens: 50,
       costUsd: 0.05,
     });
-    expect(sendMock).toHaveBeenCalledWith('agent:cost-update', sessionId, '/tmp/project', 'item-3', {
+    expect(sendMock).toHaveBeenCalledWith('agent:cost-update', sessionId, resolvedProjectPath, 'item-3', {
       inputTokens: 100,
       outputTokens: 50,
       costUsd: 0.05,
@@ -280,7 +283,7 @@ describe('agent-container orchestration', () => {
       outputTokens: 55,
       costUsd: 0.07,
     });
-    expect(sendMock).toHaveBeenCalledWith('agent:cost-update', sessionId, '/tmp/project', 'item-3', {
+    expect(sendMock).toHaveBeenCalledWith('agent:cost-update', sessionId, resolvedProjectPath, 'item-3', {
       inputTokens: 10,
       outputTokens: 5,
       costUsd: 0.02,
