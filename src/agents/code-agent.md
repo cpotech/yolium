@@ -3,6 +3,7 @@ name: code-agent
 description: Autonomously implements code changes, writes tests, and commits locally
 model: opus
 timeout: 60
+order: 2
 tools:
   - Read
   - Glob

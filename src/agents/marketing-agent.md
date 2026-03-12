@@ -3,6 +3,7 @@ name: marketing-agent
 description: Executes marketing tasks by routing to specialized skills — CRO, copywriting, SEO, analytics, ads, growth engineering, and strategy
 model: opus
 timeout: 60
+order: 5
 tools:
   - Read
   - Glob

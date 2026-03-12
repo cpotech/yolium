@@ -204,6 +204,15 @@ export function registerAgentHandlers(ipcMain: IpcMain): void {
         logger.error('Failed to load agent definition', { name, error: String(err) });
       }
     }
+    // Sort by order field (SDLC order), agents without order go to the end
+    definitions.sort((a, b) => {
+      if (a.order != null && b.order != null) {
+        return a.order - b.order;
+      }
+      if (a.order != null) return -1;
+      if (b.order != null) return 1;
+      return a.name.localeCompare(b.name);
+    });
     return definitions;
   });
 
