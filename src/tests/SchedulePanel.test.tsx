@@ -12,6 +12,20 @@ const mockGetSpecialists = vi.fn();
 const mockGetActionStats = vi.fn();
 const mockGetRunning = vi.fn();
 
+vi.mock('@renderer/components/schedule/ActionsView', () => ({
+  ActionsView: (props: {
+    specialistIds: string[];
+    specialistNames: Record<string, string>;
+    initialSpecialist?: string | null;
+  }) => {
+    return (
+      <div data-testid="mock-actions-view">
+        <div data-testid="mock-actions-initial-specialist">{props.initialSpecialist ?? 'all'}</div>
+      </div>
+    );
+  },
+}));
+
 vi.mock('@renderer/components/schedule/SpecialistConfigDialog', () => ({
   SpecialistConfigDialog: (props: {
     isOpen: boolean;
@@ -127,7 +141,8 @@ describe('SchedulePanel', () => {
       expect(screen.getByTestId('specialist-card-security-monitor')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Actions')).toBeInTheDocument();
+    const card = screen.getByTestId('specialist-card-security-monitor');
+    expect(card).toHaveTextContent('Actions');
     expect(screen.getByTestId('specialist-actions-security-monitor')).toHaveTextContent('7');
   });
 
@@ -178,5 +193,70 @@ describe('SchedulePanel', () => {
 
     expect(mockGetState).toHaveBeenCalledTimes(2);
     expect(mockGetSpecialists).toHaveBeenCalledTimes(2);
+  });
+
+  it('should render view toggle buttons for Specialists and Actions views', async () => {
+    render(<SchedulePanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-security-monitor')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('view-toggle-specialists')).toBeInTheDocument();
+    expect(screen.getByTestId('view-toggle-actions')).toBeInTheDocument();
+  });
+
+  it('should show ActionsView when Actions toggle is clicked', async () => {
+    render(<SchedulePanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('view-toggle-actions')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('view-toggle-actions'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-actions-view')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('specialist-card-security-monitor')).not.toBeInTheDocument();
+  });
+
+  it('should switch back to specialist cards when Specialists toggle is clicked', async () => {
+    render(<SchedulePanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('view-toggle-actions')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('view-toggle-actions'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-actions-view')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('view-toggle-specialists'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-security-monitor')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('mock-actions-view')).not.toBeInTheDocument();
+  });
+
+  it('should navigate to ActionsView filtered by specialist when action count is clicked', async () => {
+    render(<SchedulePanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-actions-security-monitor')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('specialist-actions-security-monitor'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-actions-view')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('mock-actions-initial-specialist')).toHaveTextContent('security-monitor');
   });
 });

@@ -12,7 +12,7 @@ import {
   toggleGlobal,
 } from '@main/stores/schedule-store';
 import { getRecentRuns, getRunStats, getRunLog } from '@main/stores/run-history-store';
-import { getRecentActions, getActionsByRun, getActionStats } from '@main/stores/action-log-store';
+import { getRecentActions, getAllRecentActions, getActionsByRun, getActionStats } from '@main/stores/action-log-store';
 import {
   scaffoldSpecialist,
   getDefaultTemplate,
@@ -131,6 +131,10 @@ export function registerScheduleHandlers(ipcMain: IpcMain): void {
   // Get full log for a specific run
   ipcMain.handle('schedule:get-run-log', (_event, specialistId: string, runId: string) => {
     return getRunLog(specialistId, runId);
+  });
+
+  ipcMain.handle('schedule:get-all-actions', (_event, specialistIds: string[], limit: number) => {
+    return getAllRecentActions(specialistIds, limit || 200);
   });
 
   ipcMain.handle('schedule:get-actions', (_event, specialistId: string, limit: number) => {

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { RefreshCw, ArrowLeft } from 'lucide-react';
 import type { ActionLogEntry } from '@shared/types/schedule';
+import { formatActionTimestamp, getActionSummary, getExtraFields } from './action-helpers';
 
 interface RunRecord {
   id: string;
@@ -58,41 +59,6 @@ function formatDuration(startedAt: string, completedAt: string): string {
   const minutes = Math.floor(seconds / 60);
   const remainSec = seconds % 60;
   return `${minutes}m ${remainSec}s`;
-}
-
-function formatActionTimestamp(timestamp: string): string {
-  return new Date(timestamp).toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-const STANDARD_ACTION_FIELDS = new Set([
-  'summary', 'externalId', 'dryRun', 'text', 'tweetText', 'tweetId', 'count',
-]);
-
-function getActionSummary(data: Record<string, unknown>): string | null {
-  if (typeof data.summary === 'string') return data.summary;
-  if (typeof data.text === 'string') return data.text;
-  if (typeof data.tweetText === 'string') return data.tweetText;
-
-  if (typeof data.count === 'number') {
-    return `${data.count} items`;
-  }
-
-  return null;
-}
-
-function getExtraFields(data: Record<string, unknown>): Record<string, unknown> {
-  const extra: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(data)) {
-    if (!STANDARD_ACTION_FIELDS.has(key)) {
-      extra[key] = value;
-    }
-  }
-  return extra;
 }
 
 function RunDetailView({

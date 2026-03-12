@@ -260,6 +260,7 @@ const schedule: ElectronAPI['schedule'] = {
     'schedule:delete-credentials',
   ) as ElectronAPI['schedule']['deleteCredentials'],
   getRunLog: invoke('schedule:get-run-log') as ElectronAPI['schedule']['getRunLog'],
+  getAllActions: invoke('schedule:get-all-actions') as ElectronAPI['schedule']['getAllActions'],
   getActions: invoke('schedule:get-actions') as ElectronAPI['schedule']['getActions'],
   getRunActions: invoke(
     'schedule:get-run-actions',
