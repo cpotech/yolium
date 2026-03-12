@@ -82,6 +82,70 @@ function UsageBar({
   );
 }
 
+function renderClaudeUsage(
+  claudeUsage: ClaudeUsageState,
+  onOpenSettings: () => void,
+): React.ReactNode {
+  switch (claudeUsage.status) {
+    case 'no-oauth':
+      return (
+        <span
+          role="button"
+          aria-label="Claude log in"
+          className="flex items-center gap-1 cursor-pointer text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
+          onClick={onOpenSettings}
+        >
+          <span className="text-[var(--color-text-secondary)]">Claude</span>
+          <span>&middot;</span>
+          <span>log in</span>
+        </span>
+      );
+    case 'ready':
+      return (
+        <>
+          <span className="text-[var(--color-text-secondary)]">Claude</span>
+          <UsageBar
+            label="5h"
+            utilization={claudeUsage.usage.fiveHour.utilization}
+            resetsAt={claudeUsage.usage.fiveHour.resetsAt}
+          />
+          <span className="text-[var(--color-text-muted)]">|</span>
+          <UsageBar
+            label="7d"
+            utilization={claudeUsage.usage.sevenDay.utilization}
+            resetsAt={claudeUsage.usage.sevenDay.resetsAt}
+          />
+        </>
+      );
+    case 'unavailable':
+      return (
+        <span
+          role="button"
+          aria-label="Claude unavailable"
+          className="flex items-center gap-1 cursor-pointer text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
+          onClick={onOpenSettings}
+          title="Usage unavailable. Open Settings."
+        >
+          <span className="text-[var(--color-text-secondary)]">Claude</span>
+          <span>&middot;</span>
+          <span>unavailable</span>
+        </span>
+      );
+    case 'loading':
+      return (
+        <span
+          role="status"
+          aria-label="Claude loading"
+          className="flex items-center gap-1 text-[var(--color-text-muted)]"
+          title="Loading Claude usage..."
+        >
+          <span className="text-[var(--color-text-secondary)]">Claude</span>
+          <Loader2 size={10} className="animate-spin" />
+        </span>
+      );
+  }
+}
+
 export function StatusBar({
   folderPath,
   contextLabel,
@@ -157,42 +221,7 @@ export function StatusBar({
         {claudeUsage && (
           <>
             {hasContextMetadata && <span className="text-[var(--color-text-muted)]">|</span>}
-            {!claudeUsage.hasOAuth ? (
-              <span
-                role="button"
-                className="flex items-center gap-1 cursor-pointer text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
-                onClick={onOpenSettings}
-              >
-                <span className="text-[var(--color-text-secondary)]">Claude</span>
-                <span>&middot;</span>
-                <span>log in</span>
-              </span>
-            ) : claudeUsage.usage ? (
-              <>
-                <span className="text-[var(--color-text-secondary)]">Claude</span>
-                <UsageBar
-                  label="5h"
-                  utilization={claudeUsage.usage.fiveHour.utilization}
-                  resetsAt={claudeUsage.usage.fiveHour.resetsAt}
-                />
-                <span className="text-[var(--color-text-muted)]">|</span>
-                <UsageBar
-                  label="7d"
-                  utilization={claudeUsage.usage.sevenDay.utilization}
-                  resetsAt={claudeUsage.usage.sevenDay.resetsAt}
-                />
-              </>
-            ) : (
-              <span
-                role="button"
-                className="flex items-center gap-1 cursor-pointer text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
-                onClick={onOpenSettings}
-                title="Loading usage data…"
-              >
-                <span className="text-[var(--color-text-secondary)]">Claude</span>
-                <Loader2 size={10} className="animate-spin" />
-              </span>
-            )}
+            {renderClaudeUsage(claudeUsage, onOpenSettings)}
           </>
         )}
       </div>

@@ -101,8 +101,31 @@ export interface ClaudeUsageData {
   sevenDay: { utilization: number; resetsAt: string };
 }
 
-// Claude OAuth state: combines authentication status with usage data
-export interface ClaudeUsageState {
+export interface ClaudeUsageSnapshot {
   hasOAuth: boolean;
   usage: ClaudeUsageData | null;
 }
+
+export type ClaudeUsageStatus = 'loading' | 'ready' | 'unavailable' | 'no-oauth';
+
+export type ClaudeUsageState =
+  | {
+    status: 'loading';
+    hasOAuth: true;
+    usage: null;
+  }
+  | {
+    status: 'ready';
+    hasOAuth: true;
+    usage: ClaudeUsageData;
+  }
+  | {
+    status: 'unavailable';
+    hasOAuth: true;
+    usage: null;
+  }
+  | {
+    status: 'no-oauth';
+    hasOAuth: false;
+    usage: null;
+  };
