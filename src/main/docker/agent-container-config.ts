@@ -7,6 +7,8 @@ import { detectPackageManager, detectProjectTypes } from '@main/services/project
 import { getValidatedSharedDirs } from '@main/services/project-config';
 import { getContainerProjectPath, toContainerHomePath, toDockerPath } from './path-utils';
 import { getClaudeOAuthBind, getCodexOAuthBind, getGitCredentialsBind } from './project-registry';
+import { resolveToolDir } from '@main/services/tools-resolver';
+import type { ServiceIntegration } from '@shared/types/schedule';
 
 export const PROTECTED_ENV_VARS = new Set([
   'PROJECT_DIR',
@@ -40,6 +42,7 @@ export function buildBindMounts(params: {
   gitCredentialsBind: string | null;
   claudeOAuthBind: string | null;
   codexOAuthBind: string | null;
+  toolBinds?: string[];
 }): string[] {
   const {
     mountPath,
@@ -49,6 +52,7 @@ export function buildBindMounts(params: {
     gitCredentialsBind,
     claudeOAuthBind,
     codexOAuthBind,
+    toolBinds,
   } = params;
 
   const binds = [`${toDockerPath(mountPath)}:${containerProjectPath}:rw`];
@@ -71,6 +75,12 @@ export function buildBindMounts(params: {
   if (gitCredentialsBind) binds.push(gitCredentialsBind);
   if (claudeOAuthBind) binds.push(claudeOAuthBind);
   if (codexOAuthBind) binds.push(codexOAuthBind);
+
+  if (toolBinds) {
+    for (const bind of toolBinds) {
+      binds.push(bind);
+    }
+  }
 
   return binds;
 }
@@ -174,6 +184,7 @@ export async function prepareAgentContainerConfig(params: {
   worktreePath?: string;
   originalPath?: string;
   specialistCredentials?: Record<string, Record<string, string>>;
+  integrations?: ServiceIntegration[];
 }): Promise<PreparedAgentContainerConfig> {
   const {
     projectPath,
@@ -187,6 +198,7 @@ export async function prepareAgentContainerConfig(params: {
     worktreePath,
     originalPath,
     specialistCredentials,
+    integrations,
   } = params;
 
   const resolvedProjectPath = path.resolve(projectPath);
@@ -202,6 +214,21 @@ export async function prepareAgentContainerConfig(params: {
   }
   const codexOAuthBind = getCodexOAuthBind();
 
+  // Resolve tool bind mounts from integrations
+  const toolBinds: string[] = [];
+  if (integrations) {
+    for (const integration of integrations) {
+      if (integration.tools) {
+        for (const toolName of integration.tools) {
+          const hostDir = resolveToolDir(toolName);
+          if (hostDir) {
+            toolBinds.push(`${toDockerPath(hostDir)}:/opt/tools/${toolName}:ro`);
+          }
+        }
+      }
+    }
+  }
+
   const binds = buildBindMounts({
     mountPath,
     containerProjectPath,
@@ -210,6 +237,7 @@ export async function prepareAgentContainerConfig(params: {
     gitCredentialsBind,
     claudeOAuthBind,
     codexOAuthBind,
+    toolBinds,
   });
 
   const promptBase64 = Buffer.from(prompt).toString('base64');

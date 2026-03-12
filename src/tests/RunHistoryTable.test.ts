@@ -116,4 +116,153 @@ describe('RunHistoryTable', () => {
     expect(screen.getByText(/123456789/)).toBeInTheDocument();
     expect(screen.getAllByText(/Mar/).length).toBeGreaterThan(0);
   });
+
+  it('should render action with summary field instead of text/tweetText', async () => {
+    mockGetRunActions.mockResolvedValue([
+      {
+        id: 'action-summary-1',
+        runId: 'run-1',
+        specialistId: 'twitter-growth',
+        action: 'tweet_posted',
+        data: {
+          summary: 'Posted educational thread about TypeScript',
+          externalId: 'ext-999',
+        },
+        timestamp: '2026-03-10T10:02:00.000Z',
+      },
+    ]);
+
+    render(React.createElement(RunHistoryTable, { specialistId: 'twitter-growth' }));
+    await waitFor(() => { expect(screen.getByText('Completed analysis of repo')).toBeInTheDocument(); });
+    fireEvent.click(screen.getByText('Completed analysis of repo'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Posted educational thread about TypeScript')).toBeInTheDocument();
+    });
+  });
+
+  it('should render externalId instead of tweetId', async () => {
+    mockGetRunActions.mockResolvedValue([
+      {
+        id: 'action-ext-1',
+        runId: 'run-1',
+        specialistId: 'twitter-growth',
+        action: 'tweet_posted',
+        data: {
+          summary: 'A tweet',
+          externalId: 'external-abc-123',
+        },
+        timestamp: '2026-03-10T10:02:00.000Z',
+      },
+    ]);
+
+    render(React.createElement(RunHistoryTable, { specialistId: 'twitter-growth' }));
+    await waitFor(() => { expect(screen.getByText('Completed analysis of repo')).toBeInTheDocument(); });
+    fireEvent.click(screen.getByText('Completed analysis of repo'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/external-abc-123/)).toBeInTheDocument();
+    });
+  });
+
+  it('should fall back to tweetText for legacy action logs', async () => {
+    mockGetRunActions.mockResolvedValue([
+      {
+        id: 'action-legacy-text',
+        runId: 'run-1',
+        specialistId: 'twitter-growth',
+        action: 'tweet_posted',
+        data: {
+          tweetText: 'Legacy tweet text here',
+          tweetId: 'legacy-tweet-id',
+        },
+        timestamp: '2026-03-10T10:02:00.000Z',
+      },
+    ]);
+
+    render(React.createElement(RunHistoryTable, { specialistId: 'twitter-growth' }));
+    await waitFor(() => { expect(screen.getByText('Completed analysis of repo')).toBeInTheDocument(); });
+    fireEvent.click(screen.getByText('Completed analysis of repo'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Legacy tweet text here')).toBeInTheDocument();
+    });
+  });
+
+  it('should fall back to tweetId for legacy action logs', async () => {
+    mockGetRunActions.mockResolvedValue([
+      {
+        id: 'action-legacy-id',
+        runId: 'run-1',
+        specialistId: 'twitter-growth',
+        action: 'tweet_posted',
+        data: {
+          tweetId: 'legacy-id-456',
+          text: 'Some tweet',
+        },
+        timestamp: '2026-03-10T10:02:00.000Z',
+      },
+    ]);
+
+    render(React.createElement(RunHistoryTable, { specialistId: 'twitter-growth' }));
+    await waitFor(() => { expect(screen.getByText('Completed analysis of repo')).toBeInTheDocument(); });
+    fireEvent.click(screen.getByText('Completed analysis of repo'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/legacy-id-456/)).toBeInTheDocument();
+    });
+  });
+
+  it('should render collapsible extra fields for provider-specific data', async () => {
+    mockGetRunActions.mockResolvedValue([
+      {
+        id: 'action-extra-1',
+        runId: 'run-1',
+        specialistId: 'twitter-growth',
+        action: 'tweet_posted',
+        data: {
+          summary: 'A tweet',
+          externalId: 'ext-1',
+          customField: 'custom-value',
+          anotherField: 42,
+        },
+        timestamp: '2026-03-10T10:02:00.000Z',
+      },
+    ]);
+
+    render(React.createElement(RunHistoryTable, { specialistId: 'twitter-growth' }));
+    await waitFor(() => { expect(screen.getByText('Completed analysis of repo')).toBeInTheDocument(); });
+    fireEvent.click(screen.getByText('Completed analysis of repo'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Extra fields')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/customField/)).toBeInTheDocument();
+    expect(screen.getByText(/custom-value/)).toBeInTheDocument();
+  });
+
+  it('should render action with no extra fields without collapsible section', async () => {
+    mockGetRunActions.mockResolvedValue([
+      {
+        id: 'action-no-extra',
+        runId: 'run-1',
+        specialistId: 'twitter-growth',
+        action: 'mentions_checked',
+        data: {
+          summary: 'Checked mentions',
+          count: 5,
+        },
+        timestamp: '2026-03-10T10:02:00.000Z',
+      },
+    ]);
+
+    render(React.createElement(RunHistoryTable, { specialistId: 'twitter-growth' }));
+    await waitFor(() => { expect(screen.getByText('Completed analysis of repo')).toBeInTheDocument(); });
+    fireEvent.click(screen.getByText('Completed analysis of repo'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Checked mentions')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Extra fields')).not.toBeInTheDocument();
+  });
 });

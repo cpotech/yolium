@@ -100,6 +100,30 @@ Attaches concrete test specifications to the current work item. Used by plan age
 | specs[].description | string | yes | What the test file covers |
 | specs[].specs | string[] | yes | Individual test case descriptions |
 
+### action
+
+Emits a tracked action during a scheduled run. Used by CRON specialists to log actions they perform.
+
+```json
+{"type":"action","action":"tweet_posted","data":{"summary":"Posted thread about TypeScript","externalId":"12345","dryRun":false},"timestamp":"2026-03-10T10:02:00.000Z"}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| action | string | yes | Action identifier (e.g., tweet_posted, mentions_checked) |
+| data | object | yes | Action payload with standard and provider-specific fields |
+| timestamp | string | no | ISO 8601 timestamp (defaults to current time if omitted) |
+
+**Standard data fields** (advisory, not enforced):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| summary | string | Human-readable description of the action |
+| externalId | string | Provider-specific identifier (e.g. tweet ID, post ID) |
+| dryRun | boolean | Whether the action was simulated |
+
+Additional provider-specific fields (e.g., `text`, `count`, `conversationId`) may be included in `data`.
+
 ### complete
 
 Signals successful completion.

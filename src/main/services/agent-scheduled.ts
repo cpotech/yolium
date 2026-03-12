@@ -103,6 +103,7 @@ export function startScheduledAgent(params: ScheduledAgentParams): Promise<Sched
         agentProvider: 'claude',
         timeoutMs: (specialist.timeout || 30) * 60 * 1000,
         ...(hasCredentials && { specialistCredentials: specialistCreds }),
+        ...(specialist.integrations?.length && { integrations: specialist.integrations }),
       },
       {
         onOutput: (data: string) => {

@@ -8,6 +8,7 @@ import { createLogger } from '@main/lib/logger';
 import { docker, agentSessions, DEFAULT_IMAGE, type AgentContainerSession } from './shared';
 import { cleanupSession, wireAgentContainerRuntime } from './agent-container-runtime';
 import { prepareAgentContainerConfig } from './agent-container-config';
+import type { ServiceIntegration } from '@shared/types/schedule';
 
 const logger = createLogger('agent-container');
 
@@ -48,6 +49,7 @@ export interface AgentContainerParams {
   branchName?: string;
   timeoutMs?: number;
   specialistCredentials?: Record<string, Record<string, string>>;
+  integrations?: ServiceIntegration[];
 }
 
 /**
@@ -86,6 +88,7 @@ export async function createAgentContainer(
     branchName,
     timeoutMs,
     specialistCredentials,
+    integrations,
   } = params;
 
   const sessionId = `agent-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -114,6 +117,7 @@ export async function createAgentContainer(
     worktreePath,
     originalPath,
     specialistCredentials,
+    integrations,
   });
   logger.info('Agent config prepared', {
     sessionId,
