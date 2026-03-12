@@ -17,29 +17,28 @@ test.describe('Scheduled Agents Edit Flow', () => {
 
   test('should open the edit definition dialog from the configure flow for an existing scheduled agent', async () => {
     ctx = await launchApp({ skipDockerWait: true });
-    const { window } = ctx;
+    const page = ctx.window;
 
-    await expect(window.locator(selectors.sidebar)).toBeVisible({ timeout: 30000 });
-    await window.click(selectors.sidebarSchedule);
+    await expect(page.locator(selectors.sidebar)).toBeVisible({ timeout: 30000 });
+    await page.click(selectors.sidebarSchedule);
 
-    await expect(window.locator('[data-testid="schedule-panel"]')).toBeVisible();
-    if (await window.locator('[data-testid="configure-security-monitor"]').count() === 0) {
-      await window.evaluate(async () => {
-        // @ts-expect-error - electronAPI is exposed via preload
+    await expect(page.locator('[data-testid="schedule-panel"]')).toBeVisible();
+    if (await page.locator('[data-testid="configure-security-monitor"]').count() === 0) {
+      await page.evaluate(async () => {
         await window.electronAPI.schedule.scaffold('security-monitor');
       });
-      await window.click('[data-testid="schedule-reload-btn"]');
+      await page.click('[data-testid="schedule-reload-btn"]');
     }
 
-    await expect(window.locator('[data-testid="configure-security-monitor"]')).toBeVisible();
-    await window.click('[data-testid="configure-security-monitor"]');
+    await expect(page.locator('[data-testid="configure-security-monitor"]')).toBeVisible();
+    await page.click('[data-testid="configure-security-monitor"]');
 
-    await expect(window.locator('[data-testid="specialist-config-dialog"]')).toBeVisible();
-    await window.click('[data-testid="specialist-config-edit"]');
+    await expect(page.locator('[data-testid="specialist-config-dialog"]')).toBeVisible();
+    await page.click('[data-testid="specialist-config-edit"]');
 
-    await expect(window.locator('[data-testid="add-specialist-dialog"]')).toBeVisible();
-    await expect(window.locator('[data-testid="specialist-name-input"]')).toHaveValue('security-monitor');
-    await expect(window.locator('[data-testid="specialist-name-input"]')).toBeDisabled();
-    await expect(window.locator('[data-testid="specialist-create-btn"]')).toHaveText('Save');
+    await expect(page.locator('[data-testid="add-specialist-dialog"]')).toBeVisible();
+    await expect(page.locator('[data-testid="specialist-name-input"]')).toHaveValue('security-monitor');
+    await expect(page.locator('[data-testid="specialist-name-input"]')).toBeDisabled();
+    await expect(page.locator('[data-testid="specialist-create-btn"]')).toHaveText('Save');
   });
 });

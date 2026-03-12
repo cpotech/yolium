@@ -589,6 +589,10 @@ describe('codex mount gating by agent type', () => {
 })
 
 describe('cleanup behavior patterns', () => {
+  type StopContainerMock = ReturnType<typeof vi.fn<(containerId: string) => Promise<void>>>
+  type RemoveContainerMock = ReturnType<typeof vi.fn<(containerId: string) => Promise<void>>>
+  type DeleteWorktreeMock = ReturnType<typeof vi.fn<(originalPath: string, worktreePath: string) => void>>
+
   // Simulate the session storage pattern used in docker-manager
   interface MockSession {
     id: string
@@ -637,15 +641,15 @@ describe('cleanup behavior patterns', () => {
 
   describe('closeAllContainers logic', () => {
     let sessions: Map<string, MockSession>
-    let stopContainerMock: ReturnType<typeof vi.fn>
-    let removeContainerMock: ReturnType<typeof vi.fn>
-    let deleteWorktreeMock: ReturnType<typeof vi.fn>
+    let stopContainerMock: StopContainerMock
+    let removeContainerMock: RemoveContainerMock
+    let deleteWorktreeMock: DeleteWorktreeMock
 
     beforeEach(() => {
       sessions = new Map()
-      stopContainerMock = vi.fn().mockResolvedValue(undefined)
-      removeContainerMock = vi.fn().mockResolvedValue(undefined)
-      deleteWorktreeMock = vi.fn()
+      stopContainerMock = vi.fn<(containerId: string) => Promise<void>>().mockResolvedValue(undefined)
+      removeContainerMock = vi.fn<(containerId: string) => Promise<void>>().mockResolvedValue(undefined)
+      deleteWorktreeMock = vi.fn<(originalPath: string, worktreePath: string) => void>()
     })
 
     afterEach(() => {

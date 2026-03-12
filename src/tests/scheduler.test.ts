@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock node-cron and agent-runner - use vi.hoisted to make functions available outside the factory
 const { mockCronSchedule, mockCronValidate, mockStartScheduledAgent } = vi.hoisted(() => ({
-  mockCronSchedule: vi.fn(() => ({ stop: vi.fn() })),
+  mockCronSchedule: vi.fn<(expression: string, task: () => void) => { stop: () => void }>(() => ({ stop: vi.fn() })),
   mockCronValidate: vi.fn(() => true),
   mockStartScheduledAgent: vi.fn(() => Promise.resolve({
     outcome: 'completed' as const,
@@ -187,7 +187,7 @@ describe('scheduler', () => {
 
     // Should only have the distillation job, not specialist jobs
     const specialistCalls = mockCronSchedule.mock.calls.filter(
-      call => call[0] !== '59 23 * * *'
+      ([expression]) => expression !== '59 23 * * *'
     );
     expect(specialistCalls.length).toBe(0);
     localScheduler.stop();

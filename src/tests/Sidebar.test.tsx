@@ -18,8 +18,8 @@ const defaultProps = {
 
 describe('Sidebar', () => {
   const mockProjects: SidebarProject[] = [
-    { path: '/home/user/project1', addedAt: Date.now() },
-    { path: '/home/user/project2', addedAt: Date.now() },
+    { path: '/home/user/project1', addedAt: new Date().toISOString() },
+    { path: '/home/user/project2', addedAt: new Date().toISOString() },
   ]
 
   it('should render project list when expanded', () => {

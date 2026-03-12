@@ -114,7 +114,7 @@ export function ProjectList({
             const projectItems = sidebarItems.filter(w => w.projectPath === project.path);
             // Sort items: running -> waiting -> failed
             const sortedItems = [...projectItems].sort((a, b) => {
-              const order = { running: 0, waiting: 1, failed: 2 };
+              const order: Partial<Record<AgentStatus, number>> = { running: 0, waiting: 1, failed: 2 };
               return (order[a.agentStatus] ?? 3) - (order[b.agentStatus] ?? 3);
             });
             return (

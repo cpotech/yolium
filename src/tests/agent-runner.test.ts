@@ -27,15 +27,27 @@ vi.mock('node:os', () => ({
 }));
 
 // Mock Docker module for startScheduledAgent tests
-const mockCreateAgentContainer = vi.fn();
-const mockCheckAgentAuth = vi.fn();
-const mockGetAgentSession = vi.fn();
-const mockStopAgentContainer = vi.fn();
+const {
+  mockCreateAgentContainer,
+  mockCheckAgentAuth,
+  mockGetAgentSession,
+  mockStopAgentContainer,
+  mockAppendAction,
+  mockExtractProtocolMessages,
+} = vi.hoisted(() => ({
+  mockCreateAgentContainer: vi.fn(),
+  mockCheckAgentAuth: vi.fn(),
+  mockGetAgentSession: vi.fn(),
+  mockStopAgentContainer: vi.fn(),
+  mockAppendAction: vi.fn(),
+  mockExtractProtocolMessages: vi.fn<() => any[]>(() => []),
+}));
+
 vi.mock('@main/docker', () => ({
-  createAgentContainer: (...args: unknown[]) => mockCreateAgentContainer(...args),
-  checkAgentAuth: (...args: unknown[]) => mockCheckAgentAuth(...args),
-  getAgentSession: (...args: unknown[]) => mockGetAgentSession(...args),
-  stopAgentContainer: (...args: unknown[]) => mockStopAgentContainer(...args),
+  createAgentContainer: mockCreateAgentContainer,
+  checkAgentAuth: mockCheckAgentAuth,
+  getAgentSession: mockGetAgentSession,
+  stopAgentContainer: mockStopAgentContainer,
 }));
 
 // Mock specialist credentials store
@@ -48,15 +60,13 @@ vi.mock('@main/stores/run-history-store', () => ({
   appendRunLog: vi.fn(),
 }));
 
-const mockAppendAction = vi.fn();
 vi.mock('@main/stores/action-log-store', () => ({
-  appendAction: (...args: unknown[]) => mockAppendAction(...args),
+  appendAction: mockAppendAction,
 }));
 
 // Mock agent-protocol
-const mockExtractProtocolMessages = vi.fn(() => []);
 vi.mock('@main/services/agent-protocol', () => ({
-  extractProtocolMessages: (...args: unknown[]) => mockExtractProtocolMessages(...args),
+  extractProtocolMessages: mockExtractProtocolMessages,
 }));
 
 // Mock agent-loader
@@ -321,8 +331,8 @@ describe('agent-runner', () => {
         agentProvider: 'codex',
         order: 0,
       });
-      const agentName = 'code-agent';
-      if (agentName === 'plan-agent') {
+      const completionColumn = getCompletionColumn('code-agent');
+      if (completionColumn === 'ready') {
         updateItem(board, item.id, { description: 'Should not be set' });
       }
       const result = board.items.find(i => i.id === item.id)!;
@@ -417,8 +427,7 @@ describe('agent-runner', () => {
         order: 0,
       });
       updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
-      const agentName = 'code-agent';
-      const completionColumn = agentName === 'plan-agent' ? 'ready' : 'verify';
+      const completionColumn = getCompletionColumn('code-agent');
       updateItem(board, item.id, { agentStatus: 'completed', activeAgentName: undefined, column: completionColumn });
       const result = board.items.find(i => i.id === item.id)!;
       expect(result.column).toBe('verify');
@@ -514,8 +523,8 @@ describe('agent-runner', () => {
       timeout: 30,
       systemPrompt: 'You are a Twitter specialist.',
       schedules: [],
-      memory: { enabled: false, maxRuns: 10 },
-      escalation: { enabled: false },
+      memory: { strategy: 'raw', maxEntries: 10, retentionDays: 30 },
+      escalation: {},
       promptTemplates: { heartbeat: 'Check Twitter mentions.' },
     });
 

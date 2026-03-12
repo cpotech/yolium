@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-const getValidatedSharedDirsMock = vi.fn(() => []);
+const getValidatedSharedDirsMock = vi.hoisted(() => vi.fn<() => string[]>(() => []));
 
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(() => false),
@@ -13,8 +13,7 @@ vi.mock('@main/docker/path-utils', () => ({
 }));
 
 vi.mock('@main/services/project-config', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getValidatedSharedDirs: (...args: any[]) => getValidatedSharedDirsMock(...args),
+  getValidatedSharedDirs: getValidatedSharedDirsMock,
 }));
 
 vi.mock('@main/docker/project-registry', () => ({

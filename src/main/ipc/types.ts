@@ -3,14 +3,14 @@
  * Shared types and dependencies for IPC handlers.
  */
 
-import type { IpcMain, Dialog, Shell, BrowserWindow } from 'electron';
+import type { BrowserWindow, Dialog, IpcMain, Shell } from 'electron';
 
 /**
  * Dependencies injected into IPC handler registration functions.
  */
 export interface IpcDeps {
   ipcMain: IpcMain;
-  dialog: typeof Dialog;
-  shell: typeof Shell;
+  dialog: Dialog;
+  shell: Shell;
   getMainWindow: () => BrowserWindow | null;
 }

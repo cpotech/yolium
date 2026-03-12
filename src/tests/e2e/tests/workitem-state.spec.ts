@@ -29,7 +29,7 @@ test.describe('Work Item State Updates', () => {
    */
   async function setupProjectWithItem(): Promise<{ id: string }> {
     ctx = await launchApp();
-    const { window } = ctx;
+    const page = ctx.window;
 
     // Keep lifecycle assertions deterministic in E2E by disabling stale-agent
     // recovery for this test file.
@@ -40,25 +40,25 @@ test.describe('Work Item State Updates', () => {
 
     // Clear stale sidebar projects and kanban tabs from previous test runs
     // to prevent duplicate kanban-view elements accumulating across launches
-    await window.evaluate(() => {
+    await page.evaluate(() => {
       localStorage.removeItem('yolium-sidebar-projects');
       localStorage.removeItem('yolium-open-kanban-tabs');
     });
-    await window.reload();
-    await window.waitForLoadState('domcontentloaded');
-    await window.waitForSelector(
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForSelector(
       '[data-testid="empty-state"], [data-testid="docker-setup-dialog"], [data-testid="tab-bar"]',
       { timeout: 30000 }
     );
 
     // Add project via sidebar
-    await window.click(selectors.addProjectButton);
-    await window.fill(selectors.pathInput, testRepoPath);
-    await window.click(selectors.pathNextButton);
-    await expect(window.locator(selectors.kanbanView)).toBeVisible({ timeout: 10000 });
+    await page.click(selectors.addProjectButton);
+    await page.fill(selectors.pathInput, testRepoPath);
+    await page.click(selectors.pathNextButton);
+    await expect(page.locator(selectors.kanbanView)).toBeVisible({ timeout: 10000 });
 
     // Create a work item directly via IPC
-    const item = await window.evaluate(async (repoPath: string) => {
+    const item = await page.evaluate(async (repoPath: string) => {
       return window.electronAPI.kanban.addItem(repoPath, {
         title: 'Test work item',
         description: 'E2E test item for state updates',
@@ -68,9 +68,9 @@ test.describe('Work Item State Updates', () => {
     }, testRepoPath) as { id: string };
 
     // Refresh the board so the new item renders
-    await window.click(selectors.kanbanRefreshButton);
+    await page.click(selectors.kanbanRefreshButton);
     await expect(
-      window.locator(selectors.kanbanColumn('backlog')).locator('[data-testid="kanban-card"]')
+      page.locator(selectors.kanbanColumn('backlog')).locator('[data-testid="kanban-card"]')
     ).toBeVisible({ timeout: 5000 });
 
     return item;
@@ -81,9 +81,9 @@ test.describe('Work Item State Updates', () => {
    * from the main process so the renderer refreshes.
    */
   async function updateItemState(itemId: string, updates: Record<string, unknown>) {
-    const { window } = ctx;
+    const page = ctx.window;
 
-    await window.evaluate(
+    await page.evaluate(
       async (params: { path: string; id: string; updates: Record<string, unknown> }) => {
         await window.electronAPI.kanban.updateItem(params.path, params.id, params.updates);
       },

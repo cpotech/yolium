@@ -1,5 +1,5 @@
-// src/tests/agent-output.test.ts
 import { describe, it, expect, vi } from 'vitest';
+import { EventEmitter } from 'node:events';
 import { formatLogTimestamp } from '@main/stores/workitem-log-store';
 
 describe('agent output deduplication', () => {
@@ -218,8 +218,7 @@ describe('direct callback output buffering (main.ts pattern)', () => {
 
 describe('session cleanup pattern', () => {
   it('EventEmitter listeners are cleaned up properly', () => {
-    const { EventEmitter } = require('node:events');
-    const sessions = new Map<string, { events: EventEmitter }>();
+    const sessions = new Map<string, { events: InstanceType<typeof EventEmitter> }>();
 
     // Add some sessions with listeners
     const events1 = new EventEmitter();

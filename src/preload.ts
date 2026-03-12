@@ -4,442 +4,275 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import type { PreFlightResult, ProjectType } from '@shared/types/onboarding';
-import type { ClaudeUsageSnapshot } from '@shared/types/agent';
+import type { CleanupFunction, ElectronAPI } from '@shared/types';
 
-type CleanupFn = () => void;
+function invoke(channel: string) {
+  return (...args: unknown[]) => ipcRenderer.invoke(channel, ...args);
+}
 
-// App namespace
-const app = {
-  getVersion: () => ipcRenderer.invoke('app:get-version'),
-  getHomeDir: () => ipcRenderer.invoke('app:get-home-dir'),
-  openExternal: (url: string) => ipcRenderer.invoke('app:open-external', url),
-  forceQuit: () => ipcRenderer.invoke('app:force-quit'),
-  onQuitRequest: (callback: () => void): CleanupFn => {
-    const handler = () => callback();
-    ipcRenderer.on('app:quit-request', handler);
-    return () => ipcRenderer.removeListener('app:quit-request', handler);
-  },
+function send(channel: string) {
+  return (...args: unknown[]) => {
+    ipcRenderer.send(channel, ...args);
+  };
+}
+
+function listen<Args extends unknown[]>(
+  channel: string,
+  callback: (...args: Args) => void,
+): CleanupFunction {
+  const handler = (_event: Electron.IpcRendererEvent, ...args: Args) => callback(...args);
+  ipcRenderer.on(channel, handler);
+  return () => ipcRenderer.removeListener(channel, handler);
+}
+
+const app: ElectronAPI['app'] = {
+  getVersion: invoke('app:get-version') as ElectronAPI['app']['getVersion'],
+  getHomeDir: invoke('app:get-home-dir') as ElectronAPI['app']['getHomeDir'],
+  openExternal: invoke('app:open-external') as ElectronAPI['app']['openExternal'],
+  forceQuit: invoke('app:force-quit') as ElectronAPI['app']['forceQuit'],
+  onQuitRequest: (callback) => listen('app:quit-request', callback),
 };
 
-// Terminal namespace
-const terminal = {
-  create: (cwd?: string) => ipcRenderer.invoke('terminal:create', cwd),
-  write: (sessionId: string, data: string) =>
-    ipcRenderer.send('terminal:write', sessionId, data),
-  resize: (sessionId: string, cols: number, rows: number) =>
-    ipcRenderer.send('terminal:resize', sessionId, cols, rows),
-  close: (sessionId: string) => ipcRenderer.invoke('terminal:close', sessionId),
-  hasRunningChildren: (sessionId: string) =>
-    ipcRenderer.invoke('terminal:has-running-children', sessionId),
-  onData: (callback: (sessionId: string, data: string) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, data: string) =>
-      callback(sessionId, data);
-    ipcRenderer.on('terminal:data', handler);
-    return () => ipcRenderer.removeListener('terminal:data', handler);
-  },
-  onExit: (callback: (sessionId: string, exitCode: number) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, exitCode: number) =>
-      callback(sessionId, exitCode);
-    ipcRenderer.on('terminal:exit', handler);
-    return () => ipcRenderer.removeListener('terminal:exit', handler);
-  },
+const terminal: ElectronAPI['terminal'] = {
+  create: invoke('terminal:create') as ElectronAPI['terminal']['create'],
+  write: send('terminal:write') as ElectronAPI['terminal']['write'],
+  resize: send('terminal:resize') as ElectronAPI['terminal']['resize'],
+  close: invoke('terminal:close') as ElectronAPI['terminal']['close'],
+  hasRunningChildren: invoke(
+    'terminal:has-running-children',
+  ) as ElectronAPI['terminal']['hasRunningChildren'],
+  onData: (callback) => listen('terminal:data', callback),
+  onExit: (callback) => listen('terminal:exit', callback),
 };
 
-// Tabs namespace
-const tabs = {
-  showContextMenu: (tabId: string, x: number, y: number) =>
-    ipcRenderer.invoke('tab:context-menu', tabId, x, y),
-  onNew: (callback: () => void): CleanupFn => {
-    const handler = () => callback();
-    ipcRenderer.on('tab:new', handler);
-    return () => ipcRenderer.removeListener('tab:new', handler);
-  },
-  onClose: (callback: () => void): CleanupFn => {
-    const handler = () => callback();
-    ipcRenderer.on('tab:close', handler);
-    return () => ipcRenderer.removeListener('tab:close', handler);
-  },
-  onNext: (callback: () => void): CleanupFn => {
-    const handler = () => callback();
-    ipcRenderer.on('tab:next', handler);
-    return () => ipcRenderer.removeListener('tab:next', handler);
-  },
-  onPrev: (callback: () => void): CleanupFn => {
-    const handler = () => callback();
-    ipcRenderer.on('tab:prev', handler);
-    return () => ipcRenderer.removeListener('tab:prev', handler);
-  },
-  onCloseSpecific: (callback: (tabId: string) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, tabId: string) => callback(tabId);
-    ipcRenderer.on('tab:close-specific', handler);
-    return () => ipcRenderer.removeListener('tab:close-specific', handler);
-  },
-  onCloseOthers: (callback: (keepTabId: string) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, tabId: string) => callback(tabId);
-    ipcRenderer.on('tab:close-others', handler);
-    return () => ipcRenderer.removeListener('tab:close-others', handler);
-  },
-  onCloseAll: (callback: () => void): CleanupFn => {
-    const handler = () => callback();
-    ipcRenderer.on('tab:close-all', handler);
-    return () => ipcRenderer.removeListener('tab:close-all', handler);
-  },
+const tabs: ElectronAPI['tabs'] = {
+  showContextMenu: invoke('tab:context-menu') as ElectronAPI['tabs']['showContextMenu'],
+  onNew: (callback) => listen('tab:new', callback),
+  onClose: (callback) => listen('tab:close', callback),
+  onNext: (callback) => listen('tab:next', callback),
+  onPrev: (callback) => listen('tab:prev', callback),
+  onCloseSpecific: (callback) => listen('tab:close-specific', callback),
+  onCloseOthers: (callback) => listen('tab:close-others', callback),
+  onCloseAll: (callback) => listen('tab:close-all', callback),
 };
 
-// Events namespace (menu-triggered events)
-const events = {
-  onShortcutsShow: (callback: () => void): CleanupFn => {
-    const handler = () => callback();
-    ipcRenderer.on('shortcuts:show', handler);
-    return () => ipcRenderer.removeListener('shortcuts:show', handler);
-  },
-  onGitSettingsShow: (callback: () => void): CleanupFn => {
-    const handler = () => callback();
-    ipcRenderer.on('git-settings:show', handler);
-    return () => ipcRenderer.removeListener('git-settings:show', handler);
-  },
-  onProjectNew: (callback: () => void): CleanupFn => {
-    const handler = () => callback();
-    ipcRenderer.on('project:new', handler);
-    return () => ipcRenderer.removeListener('project:new', handler);
-  },
-  onRecordingToggle: (callback: () => void): CleanupFn => {
-    const handler = () => callback();
-    ipcRenderer.on('recording:toggle', handler);
-    return () => ipcRenderer.removeListener('recording:toggle', handler);
-  },
-  onScheduleShow: (callback: () => void): CleanupFn => {
-    const handler = () => callback();
-    ipcRenderer.on('schedule:show', handler);
-    return () => ipcRenderer.removeListener('schedule:show', handler);
-  },
+const events: ElectronAPI['events'] = {
+  onShortcutsShow: (callback) => listen('shortcuts:show', callback),
+  onGitSettingsShow: (callback) => listen('git-settings:show', callback),
+  onProjectNew: (callback) => listen('project:new', callback),
+  onRecordingToggle: (callback) => listen('recording:toggle', callback),
+  onScheduleShow: (callback) => listen('schedule:show', callback),
 };
 
-// Dialog namespace
-const dialog = {
-  confirmClose: (message: string) =>
-    ipcRenderer.invoke('dialog:confirm-close', message),
-  confirmOkCancel: (title: string, message: string) =>
-    ipcRenderer.invoke('dialog:confirm-ok-cancel', title, message),
-  confirmCloseMultiple: (count: number) =>
-    ipcRenderer.invoke('dialog:confirm-close-multiple', count),
-  worktreeCleanup: (branchName: string, hasUncommittedChanges: boolean) =>
-    ipcRenderer.invoke('dialog:worktree-cleanup', branchName, hasUncommittedChanges),
-  selectFolder: () => ipcRenderer.invoke('dialog:select-folder'),
+const dialog: ElectronAPI['dialog'] = {
+  confirmClose: invoke('dialog:confirm-close') as ElectronAPI['dialog']['confirmClose'],
+  confirmOkCancel: invoke(
+    'dialog:confirm-ok-cancel',
+  ) as ElectronAPI['dialog']['confirmOkCancel'],
+  confirmCloseMultiple: invoke(
+    'dialog:confirm-close-multiple',
+  ) as ElectronAPI['dialog']['confirmCloseMultiple'],
+  worktreeCleanup: invoke(
+    'dialog:worktree-cleanup',
+  ) as ElectronAPI['dialog']['worktreeCleanup'],
+  selectFolder: invoke('dialog:select-folder') as ElectronAPI['dialog']['selectFolder'],
 };
 
-// Filesystem namespace
-const fs = {
-  listDirectory: (path: string) => ipcRenderer.invoke('fs:list-directory', path),
-  createDirectory: (parentPath: string, folderName: string) =>
-    ipcRenderer.invoke('fs:create-directory', parentPath, folderName),
-  readFile: (filePath: string) => ipcRenderer.invoke('fs:read-file', filePath),
+const fs: ElectronAPI['fs'] = {
+  listDirectory: invoke('fs:list-directory') as ElectronAPI['fs']['listDirectory'],
+  createDirectory: invoke('fs:create-directory') as ElectronAPI['fs']['createDirectory'],
+  readFile: invoke('fs:read-file') as ElectronAPI['fs']['readFile'],
 };
 
-// Git namespace
-const git = {
-  loadConfig: () => ipcRenderer.invoke('git-config:load'),
-  saveConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]> }) =>
-    ipcRenderer.invoke('git-config:save', config),
-  isRepo: (folderPath: string) => ipcRenderer.invoke('git:is-repo', folderPath),
-  getBranch: (folderPath: string) => ipcRenderer.invoke('git:get-branch', folderPath),
-  init: (folderPath: string, projectTypes?: ProjectType[]) => ipcRenderer.invoke('git:init', folderPath, projectTypes),
-  clone: (url: string, targetDir: string) => ipcRenderer.invoke('git:clone', url, targetDir),
-  validateBranch: (branchName: string) => ipcRenderer.invoke('git:validate-branch', branchName),
-  mergeBranch: (projectPath: string, branchName: string) =>
-    ipcRenderer.invoke('git:merge-branch', projectPath, branchName),
-  worktreeDiffStats: (projectPath: string, branchName: string) =>
-    ipcRenderer.invoke('git:worktree-diff-stats', projectPath, branchName),
-  cleanupWorktree: (projectPath: string, worktreePath: string, branchName: string) =>
-    ipcRenderer.invoke('git:cleanup-worktree', projectPath, worktreePath, branchName),
-  checkMergeConflicts: (projectPath: string, branchName: string) =>
-    ipcRenderer.invoke('git:check-merge-conflicts', projectPath, branchName),
-  mergeAndPushPR: (projectPath: string, branchName: string, worktreePath: string, itemTitle: string, itemDescription: string) =>
-    ipcRenderer.invoke('git:merge-and-push-pr', projectPath, branchName, worktreePath, itemTitle, itemDescription),
-  approvePR: (projectPath: string, prUrl: string) =>
-    ipcRenderer.invoke('git:approve-pr', projectPath, prUrl),
-  mergePR: (projectPath: string, prUrl: string) =>
-    ipcRenderer.invoke('git:merge-pr', projectPath, prUrl),
-  worktreeChangedFiles: (projectPath: string, branchName: string) =>
-    ipcRenderer.invoke('git:worktree-changed-files', projectPath, branchName),
-  worktreeFileDiff: (projectPath: string, branchName: string, filePath: string) =>
-    ipcRenderer.invoke('git:worktree-file-diff', projectPath, branchName, filePath),
-  detectNestedRepos: (folderPath: string) =>
-    ipcRenderer.invoke('git:detect-nested-repos', folderPath),
-  rebaseOntoDefault: (worktreePath: string, projectPath: string) =>
-    ipcRenderer.invoke('git:rebase-onto-default', worktreePath, projectPath),
+const git: ElectronAPI['git'] = {
+  loadConfig: invoke('git-config:load') as ElectronAPI['git']['loadConfig'],
+  saveConfig: invoke('git-config:save') as ElectronAPI['git']['saveConfig'],
+  isRepo: invoke('git:is-repo') as ElectronAPI['git']['isRepo'],
+  getBranch: invoke('git:get-branch') as ElectronAPI['git']['getBranch'],
+  init: invoke('git:init') as ElectronAPI['git']['init'],
+  clone: invoke('git:clone') as ElectronAPI['git']['clone'],
+  validateBranch: invoke('git:validate-branch') as ElectronAPI['git']['validateBranch'],
+  mergeBranch: invoke('git:merge-branch') as ElectronAPI['git']['mergeBranch'],
+  worktreeDiffStats: invoke(
+    'git:worktree-diff-stats',
+  ) as ElectronAPI['git']['worktreeDiffStats'],
+  cleanupWorktree: invoke('git:cleanup-worktree') as ElectronAPI['git']['cleanupWorktree'],
+  checkMergeConflicts: invoke(
+    'git:check-merge-conflicts',
+  ) as ElectronAPI['git']['checkMergeConflicts'],
+  mergeAndPushPR: invoke('git:merge-and-push-pr') as ElectronAPI['git']['mergeAndPushPR'],
+  approvePR: invoke('git:approve-pr') as ElectronAPI['git']['approvePR'],
+  mergePR: invoke('git:merge-pr') as ElectronAPI['git']['mergePR'],
+  worktreeChangedFiles: invoke(
+    'git:worktree-changed-files',
+  ) as ElectronAPI['git']['worktreeChangedFiles'],
+  worktreeFileDiff: invoke('git:worktree-file-diff') as ElectronAPI['git']['worktreeFileDiff'],
+  detectNestedRepos: invoke(
+    'git:detect-nested-repos',
+  ) as ElectronAPI['git']['detectNestedRepos'],
+  rebaseOntoDefault: invoke(
+    'git:rebase-onto-default',
+  ) as ElectronAPI['git']['rebaseOntoDefault'],
 };
 
-// Onboarding namespace
-const onboarding = {
-  validate: (folderPath: string): Promise<PreFlightResult> =>
-    ipcRenderer.invoke('onboarding:validate', folderPath),
-  detectProject: (folderPath: string): Promise<ProjectType[]> =>
-    ipcRenderer.invoke('onboarding:detect-project', folderPath),
+const onboarding: ElectronAPI['onboarding'] = {
+  validate: invoke('onboarding:validate') as ElectronAPI['onboarding']['validate'],
+  detectProject: invoke(
+    'onboarding:detect-project',
+  ) as ElectronAPI['onboarding']['detectProject'],
 };
 
-// Docker namespace
-const docker = {
-  isAvailable: () => ipcRenderer.invoke('docker:available'),
-  ensureImage: (imageName?: string) => ipcRenderer.invoke('docker:ensure-image', imageName),
-  detectState: () => ipcRenderer.invoke('docker:detect-state'),
-  startDesktop: () => ipcRenderer.invoke('docker:start-desktop'),
-  startEngine: () => ipcRenderer.invoke('docker:start-engine'),
-  removeAllContainers: () => ipcRenderer.invoke('docker:remove-all-containers'),
-  removeImage: () => ipcRenderer.invoke('docker:remove-image'),
-  getImageInfo: () => ipcRenderer.invoke('docker:get-image-info'),
-  onBuildProgress: (callback: (message: string) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, message: string) =>
-      callback(message);
-    ipcRenderer.on('docker:build-progress', handler);
-    return () => ipcRenderer.removeListener('docker:build-progress', handler);
-  },
+const docker: ElectronAPI['docker'] = {
+  isAvailable: invoke('docker:available') as ElectronAPI['docker']['isAvailable'],
+  ensureImage: invoke('docker:ensure-image') as ElectronAPI['docker']['ensureImage'],
+  detectState: invoke('docker:detect-state') as ElectronAPI['docker']['detectState'],
+  startDesktop: invoke('docker:start-desktop') as ElectronAPI['docker']['startDesktop'],
+  startEngine: invoke('docker:start-engine') as ElectronAPI['docker']['startEngine'],
+  removeAllContainers: invoke(
+    'docker:remove-all-containers',
+  ) as ElectronAPI['docker']['removeAllContainers'],
+  removeImage: invoke('docker:remove-image') as ElectronAPI['docker']['removeImage'],
+  getImageInfo: invoke('docker:get-image-info') as ElectronAPI['docker']['getImageInfo'],
+  onBuildProgress: (callback) => listen('docker:build-progress', callback),
 };
 
-// Container namespace (Yolium containers)
-const container = {
-  create: (folderPath: string, agent: string = 'claude', gsdEnabled: boolean = true, gitConfig?: { name: string; email: string }, worktreeEnabled: boolean = false, branchName?: string) =>
-    ipcRenderer.invoke('yolium:create', folderPath, agent, gsdEnabled, gitConfig, worktreeEnabled, branchName),
-  write: (sessionId: string, data: string) =>
-    ipcRenderer.send('yolium:write', sessionId, data),
-  resize: (sessionId: string, cols: number, rows: number) =>
-    ipcRenderer.send('yolium:resize', sessionId, cols, rows),
-  stop: (sessionId: string, deleteWorktree?: boolean) => ipcRenderer.invoke('yolium:stop', sessionId, deleteWorktree),
-  getWorktreeInfo: (sessionId: string) => ipcRenderer.invoke('yolium:get-worktree-info', sessionId),
-  onData: (callback: (sessionId: string, data: string) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, data: string) =>
-      callback(sessionId, data);
-    ipcRenderer.on('container:data', handler);
-    return () => ipcRenderer.removeListener('container:data', handler);
-  },
-  onExit: (callback: (sessionId: string, exitCode: number) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, exitCode: number) =>
-      callback(sessionId, exitCode);
-    ipcRenderer.on('container:exit', handler);
-    return () => ipcRenderer.removeListener('container:exit', handler);
-  },
+const container: ElectronAPI['container'] = {
+  create: invoke('yolium:create') as ElectronAPI['container']['create'],
+  write: send('yolium:write') as ElectronAPI['container']['write'],
+  resize: send('yolium:resize') as ElectronAPI['container']['resize'],
+  stop: invoke('yolium:stop') as ElectronAPI['container']['stop'],
+  getWorktreeInfo: invoke(
+    'yolium:get-worktree-info',
+  ) as ElectronAPI['container']['getWorktreeInfo'],
+  onData: (callback) => listen('container:data', callback),
+  onExit: (callback) => listen('container:exit', callback),
 };
 
-// Kanban namespace
-const kanban = {
-  getBoard: (projectPath: string) =>
-    ipcRenderer.invoke('kanban:get-board', projectPath),
-  addItem: (projectPath: string, params: {
-    title: string;
-    description: string;
-    branch?: string;
-    agentProvider: 'claude' | 'codex' | 'opencode';
-    agentType?: string;
-    order: number;
-    model?: string;
-  }) => ipcRenderer.invoke('kanban:add-item', projectPath, params),
-  updateItem: (projectPath: string, itemId: string, updates: object) =>
-    ipcRenderer.invoke('kanban:update-item', projectPath, itemId, updates),
-  addComment: (projectPath: string, itemId: string, source: string, text: string) =>
-    ipcRenderer.invoke('kanban:add-comment', projectPath, itemId, source, text),
-  deleteItem: (projectPath: string, itemId: string) =>
-    ipcRenderer.invoke('kanban:delete-item', projectPath, itemId),
-  deleteItems: (projectPath: string, itemIds: string[]) =>
-    ipcRenderer.invoke('kanban:delete-items', projectPath, itemIds),
-  deleteBoard: (projectPath: string) =>
-    ipcRenderer.invoke('kanban:delete-board', projectPath),
-  onBoardUpdated: (callback: (projectPath: string) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, projectPath: string) =>
-      callback(projectPath);
-    ipcRenderer.on('kanban:board-updated', handler);
-    return () => ipcRenderer.removeListener('kanban:board-updated', handler);
-  },
+const kanban: ElectronAPI['kanban'] = {
+  getBoard: invoke('kanban:get-board') as ElectronAPI['kanban']['getBoard'],
+  addItem: invoke('kanban:add-item') as ElectronAPI['kanban']['addItem'],
+  updateItem: invoke('kanban:update-item') as ElectronAPI['kanban']['updateItem'],
+  addComment: invoke('kanban:add-comment') as ElectronAPI['kanban']['addComment'],
+  deleteItem: invoke('kanban:delete-item') as ElectronAPI['kanban']['deleteItem'],
+  deleteItems: invoke('kanban:delete-items') as ElectronAPI['kanban']['deleteItems'],
+  deleteBoard: invoke('kanban:delete-board') as ElectronAPI['kanban']['deleteBoard'],
+  onBoardUpdated: (callback) => listen('kanban:board-updated', callback),
 };
 
-// Agent namespace
-const agent = {
-  start: (params: {
-    agentName: string;
-    projectPath: string;
-    itemId: string;
-    goal: string;
-    agentProvider: string;
-  }) => ipcRenderer.invoke('agent:start', params),
-  resume: (params: {
-    agentName: string;
-    projectPath: string;
-    itemId: string;
-    goal: string;
-    agentProvider: string;
-  }) => ipcRenderer.invoke('agent:resume', params),
-  answer: (projectPath: string, itemId: string, answer: string) =>
-    ipcRenderer.invoke('agent:answer', projectPath, itemId, answer),
-  stop: (sessionId: string) =>
-    ipcRenderer.invoke('agent:stop', sessionId),
-  getActiveSession: (projectPath: string, itemId: string) =>
-    ipcRenderer.invoke('agent:get-active-session', projectPath, itemId),
-  recover: (projectPath: string) =>
-    ipcRenderer.invoke('agent:recover', projectPath),
-  listDefinitions: () =>
-    ipcRenderer.invoke('agent:list-definitions'),
-  readLog: (projectPath: string, itemId: string) =>
-    ipcRenderer.invoke('agent:read-log', projectPath, itemId),
-  clearLog: (projectPath: string, itemId: string) =>
-    ipcRenderer.invoke('agent:clear-log', projectPath, itemId),
-  onOutput: (callback: (sessionId: string, data: string) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, data: string) =>
-      callback(sessionId, data);
-    ipcRenderer.on('agent:output', handler);
-    return () => ipcRenderer.removeListener('agent:output', handler);
-  },
-  onQuestion: (callback: (sessionId: string, question: { text: string; options?: string[] }) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, question: { text: string; options?: string[] }) =>
-      callback(sessionId, question);
-    ipcRenderer.on('agent:question', handler);
-    return () => ipcRenderer.removeListener('agent:question', handler);
-  },
-  onItemCreated: (callback: (sessionId: string, item: object) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, item: object) =>
-      callback(sessionId, item);
-    ipcRenderer.on('agent:item-created', handler);
-    return () => ipcRenderer.removeListener('agent:item-created', handler);
-  },
-  onComplete: (callback: (sessionId: string, summary: string) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, summary: string) =>
-      callback(sessionId, summary);
-    ipcRenderer.on('agent:complete', handler);
-    return () => ipcRenderer.removeListener('agent:complete', handler);
-  },
-  onError: (callback: (sessionId: string, message: string) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, message: string) =>
-      callback(sessionId, message);
-    ipcRenderer.on('agent:error', handler);
-    return () => ipcRenderer.removeListener('agent:error', handler);
-  },
-  onProgress: (callback: (sessionId: string, progress: { step: string; detail: string; attempt?: number; maxAttempts?: number }) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, progress: { step: string; detail: string; attempt?: number; maxAttempts?: number }) =>
-      callback(sessionId, progress);
-    ipcRenderer.on('agent:progress', handler);
-    return () => ipcRenderer.removeListener('agent:progress', handler);
-  },
-  onExit: (callback: (sessionId: string, exitCode: number) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, exitCode: number) =>
-      callback(sessionId, exitCode);
-    ipcRenderer.on('agent:exit', handler);
-    return () => ipcRenderer.removeListener('agent:exit', handler);
-  },
-  onCostUpdate: (callback: (sessionId: string, projectPath: string, itemId: string, usage: { inputTokens: number; outputTokens: number; costUsd: number }) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, sessionId: string, projectPath: string, itemId: string, usage: { inputTokens: number; outputTokens: number; costUsd: number }) =>
-      callback(sessionId, projectPath, itemId, usage);
-    ipcRenderer.on('agent:cost-update', handler);
-    return () => ipcRenderer.removeListener('agent:cost-update', handler);
-  },
+const agent: ElectronAPI['agent'] = {
+  start: invoke('agent:start') as ElectronAPI['agent']['start'],
+  resume: invoke('agent:resume') as ElectronAPI['agent']['resume'],
+  answer: invoke('agent:answer') as ElectronAPI['agent']['answer'],
+  stop: invoke('agent:stop') as ElectronAPI['agent']['stop'],
+  getActiveSession: invoke(
+    'agent:get-active-session',
+  ) as ElectronAPI['agent']['getActiveSession'],
+  recover: invoke('agent:recover') as ElectronAPI['agent']['recover'],
+  listDefinitions: invoke(
+    'agent:list-definitions',
+  ) as ElectronAPI['agent']['listDefinitions'],
+  readLog: invoke('agent:read-log') as ElectronAPI['agent']['readLog'],
+  clearLog: invoke('agent:clear-log') as ElectronAPI['agent']['clearLog'],
+  onOutput: (callback) => listen('agent:output', callback),
+  onQuestion: (callback) => listen('agent:question', callback),
+  onItemCreated: (callback) => listen('agent:item-created', callback),
+  onComplete: (callback) => listen('agent:complete', callback),
+  onError: (callback) => listen('agent:error', callback),
+  onProgress: (callback) => listen('agent:progress', callback),
+  onExit: (callback) => listen('agent:exit', callback),
+  onCostUpdate: (callback) => listen('agent:cost-update', callback),
 };
 
-// Cache namespace
-const cache = {
-  list: () => ipcRenderer.invoke('cache:list'),
-  stats: () => ipcRenderer.invoke('cache:stats'),
-  delete: (dirName: string) => ipcRenderer.invoke('cache:delete', dirName),
-  cleanupOrphaned: () => ipcRenderer.invoke('cache:cleanup-orphaned'),
-  cleanupStale: (maxAgeDays?: number) => ipcRenderer.invoke('cache:cleanup-stale', maxAgeDays),
+const cache: ElectronAPI['cache'] = {
+  list: invoke('cache:list') as ElectronAPI['cache']['list'],
+  stats: invoke('cache:stats') as ElectronAPI['cache']['stats'],
+  delete: invoke('cache:delete') as ElectronAPI['cache']['delete'],
+  cleanupOrphaned: invoke(
+    'cache:cleanup-orphaned',
+  ) as ElectronAPI['cache']['cleanupOrphaned'],
+  cleanupStale: invoke('cache:cleanup-stale') as ElectronAPI['cache']['cleanupStale'],
 };
 
-// Whisper namespace
-const whisper = {
-  listModels: () => ipcRenderer.invoke('whisper:list-models'),
-  isModelDownloaded: (modelSize: string) => ipcRenderer.invoke('whisper:is-model-downloaded', modelSize),
-  downloadModel: (modelSize: string) => ipcRenderer.invoke('whisper:download-model', modelSize),
-  deleteModel: (modelSize: string) => ipcRenderer.invoke('whisper:delete-model', modelSize),
-  isBinaryAvailable: () => ipcRenderer.invoke('whisper:is-binary-available'),
-  installBinary: () => ipcRenderer.invoke('whisper:install-binary'),
-  onInstallProgress: (callback: (message: string) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, message: string) =>
-      callback(message);
-    ipcRenderer.on('whisper:install-progress', handler);
-    return () => ipcRenderer.removeListener('whisper:install-progress', handler);
-  },
-  transcribe: (audioData: number[], modelSize: string) =>
-    ipcRenderer.invoke('whisper:transcribe', audioData, modelSize),
-  getSelectedModel: () => ipcRenderer.invoke('whisper:get-selected-model'),
-  saveSelectedModel: (modelSize: string) => ipcRenderer.invoke('whisper:save-selected-model', modelSize),
-  onDownloadProgress: (callback: (progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) =>
-      callback(progress);
-    ipcRenderer.on('whisper:download-progress', handler);
-    return () => ipcRenderer.removeListener('whisper:download-progress', handler);
-  },
+const whisper: ElectronAPI['whisper'] = {
+  listModels: invoke('whisper:list-models') as ElectronAPI['whisper']['listModels'],
+  isModelDownloaded: invoke(
+    'whisper:is-model-downloaded',
+  ) as ElectronAPI['whisper']['isModelDownloaded'],
+  downloadModel: invoke('whisper:download-model') as ElectronAPI['whisper']['downloadModel'],
+  deleteModel: invoke('whisper:delete-model') as ElectronAPI['whisper']['deleteModel'],
+  isBinaryAvailable: invoke(
+    'whisper:is-binary-available',
+  ) as ElectronAPI['whisper']['isBinaryAvailable'],
+  installBinary: invoke('whisper:install-binary') as ElectronAPI['whisper']['installBinary'],
+  onInstallProgress: (callback) => listen('whisper:install-progress', callback),
+  transcribe: invoke('whisper:transcribe') as ElectronAPI['whisper']['transcribe'],
+  getSelectedModel: invoke(
+    'whisper:get-selected-model',
+  ) as ElectronAPI['whisper']['getSelectedModel'],
+  saveSelectedModel: invoke(
+    'whisper:save-selected-model',
+  ) as ElectronAPI['whisper']['saveSelectedModel'],
+  onDownloadProgress: (callback) => listen('whisper:download-progress', callback),
 };
 
-// Project config namespace
-const projectConfig = {
-  load: (projectPath: string) => ipcRenderer.invoke('project-config:load', projectPath),
-  save: (projectPath: string, config: { sharedDirs?: string[] }) =>
-    ipcRenderer.invoke('project-config:save', projectPath, config),
-  checkDirs: (projectPath: string, dirs: string[]) =>
-    ipcRenderer.invoke('project-config:check-dirs', projectPath, dirs),
+const projectConfig: ElectronAPI['projectConfig'] = {
+  load: invoke('project-config:load') as ElectronAPI['projectConfig']['load'],
+  save: invoke('project-config:save') as ElectronAPI['projectConfig']['save'],
+  checkDirs: invoke('project-config:check-dirs') as ElectronAPI['projectConfig']['checkDirs'],
 };
 
-// Report namespace (open HTML test reports in new window)
-const report = {
-  openFile: (filePath: string) => ipcRenderer.invoke('report:open-file', filePath),
+const report: ElectronAPI['report'] = {
+  openFile: invoke('report:open-file') as ElectronAPI['report']['openFile'],
 };
 
-// Schedule namespace (CRON agent scheduling)
-const schedule = {
-  getState: () => ipcRenderer.invoke('schedule:get-state'),
-  toggleSpecialist: (id: string, enabled: boolean) =>
-    ipcRenderer.invoke('schedule:toggle-specialist', id, enabled),
-  toggleGlobal: (enabled: boolean) =>
-    ipcRenderer.invoke('schedule:toggle-global', enabled),
-  triggerRun: (id: string, type: string) =>
-    ipcRenderer.invoke('schedule:trigger-run', id, type),
-  getHistory: (id: string, limit?: number) =>
-    ipcRenderer.invoke('schedule:get-history', id, limit),
-  getStats: (id: string) =>
-    ipcRenderer.invoke('schedule:get-stats', id),
-  reload: () => ipcRenderer.invoke('schedule:reload'),
-  getSpecialists: () => ipcRenderer.invoke('schedule:get-specialists'),
-  getTemplate: (name: string, description?: string) =>
-    ipcRenderer.invoke('schedule:get-template', name, description),
-  scaffold: (name: string, options?: { description?: string; content?: string }) =>
-    ipcRenderer.invoke('schedule:scaffold', name, options),
-  updateDefinition: (name: string, content: string) =>
-    ipcRenderer.invoke('schedule:update-definition', name, content),
-  getRawDefinition: (name: string) =>
-    ipcRenderer.invoke('schedule:get-raw-definition', name),
-  getCredentials: (specialistId: string) =>
-    ipcRenderer.invoke('schedule:get-credentials', specialistId),
-  saveCredentials: (specialistId: string, serviceId: string, credentials: Record<string, string>) =>
-    ipcRenderer.invoke('schedule:save-credentials', specialistId, serviceId, credentials),
-  deleteCredentials: (specialistId: string) =>
-    ipcRenderer.invoke('schedule:delete-credentials', specialistId),
-  getRunLog: (specialistId: string, runId: string) =>
-    ipcRenderer.invoke('schedule:get-run-log', specialistId, runId),
-  getActions: (specialistId: string, limit?: number) =>
-    ipcRenderer.invoke('schedule:get-actions', specialistId, limit),
-  getRunActions: (specialistId: string, runId: string) =>
-    ipcRenderer.invoke('schedule:get-run-actions', specialistId, runId),
-  getActionStats: (specialistId: string) =>
-    ipcRenderer.invoke('schedule:get-action-stats', specialistId),
-  getRunning: () =>
-    ipcRenderer.invoke('schedule:get-running'),
-  onAlert: (callback: (specialistId: string, message: string) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, specialistId: string, message: string) =>
-      callback(specialistId, message);
-    ipcRenderer.on('schedule:alert', handler);
-    return () => ipcRenderer.removeListener('schedule:alert', handler);
-  },
-  onStateChanged: (callback: (state: unknown) => void): CleanupFn => {
-    const handler = (_event: Electron.IpcRendererEvent, state: unknown) => callback(state);
-    ipcRenderer.on('schedule:state-changed', handler);
-    return () => ipcRenderer.removeListener('schedule:state-changed', handler);
-  },
+const usage: ElectronAPI['usage'] = {
+  getClaude: invoke('usage:get-claude') as ElectronAPI['usage']['getClaude'],
 };
 
-// Usage namespace (Claude OAuth usage data)
-const usage = {
-  getClaude: () => ipcRenderer.invoke('usage:get-claude'),
+const schedule: ElectronAPI['schedule'] = {
+  getState: invoke('schedule:get-state') as ElectronAPI['schedule']['getState'],
+  toggleSpecialist: invoke(
+    'schedule:toggle-specialist',
+  ) as ElectronAPI['schedule']['toggleSpecialist'],
+  toggleGlobal: invoke('schedule:toggle-global') as ElectronAPI['schedule']['toggleGlobal'],
+  triggerRun: invoke('schedule:trigger-run') as ElectronAPI['schedule']['triggerRun'],
+  getHistory: invoke('schedule:get-history') as ElectronAPI['schedule']['getHistory'],
+  getStats: invoke('schedule:get-stats') as ElectronAPI['schedule']['getStats'],
+  reload: invoke('schedule:reload') as ElectronAPI['schedule']['reload'],
+  getSpecialists: invoke(
+    'schedule:get-specialists',
+  ) as ElectronAPI['schedule']['getSpecialists'],
+  getTemplate: invoke('schedule:get-template') as ElectronAPI['schedule']['getTemplate'],
+  scaffold: invoke('schedule:scaffold') as ElectronAPI['schedule']['scaffold'],
+  updateDefinition: invoke(
+    'schedule:update-definition',
+  ) as ElectronAPI['schedule']['updateDefinition'],
+  getRawDefinition: invoke(
+    'schedule:get-raw-definition',
+  ) as ElectronAPI['schedule']['getRawDefinition'],
+  getCredentials: invoke(
+    'schedule:get-credentials',
+  ) as ElectronAPI['schedule']['getCredentials'],
+  saveCredentials: invoke(
+    'schedule:save-credentials',
+  ) as ElectronAPI['schedule']['saveCredentials'],
+  deleteCredentials: invoke(
+    'schedule:delete-credentials',
+  ) as ElectronAPI['schedule']['deleteCredentials'],
+  getRunLog: invoke('schedule:get-run-log') as ElectronAPI['schedule']['getRunLog'],
+  getActions: invoke('schedule:get-actions') as ElectronAPI['schedule']['getActions'],
+  getRunActions: invoke(
+    'schedule:get-run-actions',
+  ) as ElectronAPI['schedule']['getRunActions'],
+  getActionStats: invoke(
+    'schedule:get-action-stats',
+  ) as ElectronAPI['schedule']['getActionStats'],
+  getRunning: invoke('schedule:get-running') as ElectronAPI['schedule']['getRunning'],
+  onAlert: (callback) => listen('schedule:alert', callback),
+  onStateChanged: (callback) => listen('schedule:state-changed', callback),
 };
 
-// Expose all namespaces to renderer
-contextBridge.exposeInMainWorld('electronAPI', {
+const electronAPI: ElectronAPI = {
   app,
   terminal,
   tabs,
@@ -458,355 +291,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   report,
   usage,
   schedule,
-});
+};
 
-// Type declarations for TypeScript
-type CleanupFunction = () => void;
-
-declare global {
-  interface Window {
-    electronAPI: {
-      app: {
-        getVersion: () => Promise<string>;
-        getHomeDir: () => Promise<string>;
-        openExternal: (url: string) => Promise<void>;
-        forceQuit: () => Promise<void>;
-        onQuitRequest: (callback: () => void) => CleanupFunction;
-      };
-      terminal: {
-        create: (cwd?: string) => Promise<string>;
-        write: (sessionId: string, data: string) => void;
-        resize: (sessionId: string, cols: number, rows: number) => void;
-        close: (sessionId: string) => Promise<void>;
-        hasRunningChildren: (sessionId: string) => Promise<boolean>;
-        onData: (callback: (sessionId: string, data: string) => void) => CleanupFunction;
-        onExit: (callback: (sessionId: string, exitCode: number) => void) => CleanupFunction;
-      };
-      tabs: {
-        showContextMenu: (tabId: string, x: number, y: number) => Promise<void>;
-        onNew: (callback: () => void) => CleanupFunction;
-        onClose: (callback: () => void) => CleanupFunction;
-        onNext: (callback: () => void) => CleanupFunction;
-        onPrev: (callback: () => void) => CleanupFunction;
-        onCloseSpecific: (callback: (tabId: string) => void) => CleanupFunction;
-        onCloseOthers: (callback: (keepTabId: string) => void) => CleanupFunction;
-        onCloseAll: (callback: () => void) => CleanupFunction;
-      };
-      events: {
-        onShortcutsShow: (callback: () => void) => CleanupFunction;
-        onGitSettingsShow: (callback: () => void) => CleanupFunction;
-        onProjectNew: (callback: () => void) => CleanupFunction;
-        onRecordingToggle: (callback: () => void) => CleanupFunction;
-        onScheduleShow: (callback: () => void) => CleanupFunction;
-      };
-      dialog: {
-        confirmClose: (message: string) => Promise<boolean>;
-        confirmOkCancel: (title: string, message: string) => Promise<boolean>;
-        confirmCloseMultiple: (count: number) => Promise<boolean>;
-        worktreeCleanup: (branchName: string, hasUncommittedChanges: boolean) => Promise<{ response: number }>;
-        selectFolder: () => Promise<string | null>;
-      };
-      fs: {
-        listDirectory: (path: string) => Promise<{
-          success: boolean;
-          basePath: string;
-          entries: Array<{ name: string; path: string; isHidden: boolean }>;
-          error: string | null;
-        }>;
-        createDirectory: (parentPath: string, folderName: string) => Promise<{
-          success: boolean;
-          path: string | null;
-          error: string | null;
-        }>;
-        readFile: (filePath: string) => Promise<{
-          success: boolean;
-          content: string | null;
-          error: string | null;
-        }>;
-      };
-      git: {
-        loadConfig: () => Promise<{ name: string; email: string; hasPat?: boolean; hasOpenaiKey?: boolean; hasAnthropicKey?: boolean; hasClaudeOAuth?: boolean; useClaudeOAuth?: boolean; hasCodexOAuth?: boolean; useCodexOAuth?: boolean; githubLogin?: string; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]> } | null>;
-        saveConfig: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]> }) => Promise<void>;
-        isRepo: (folderPath: string) => Promise<{ isRepo: boolean; hasCommits: boolean }>;
-        getBranch: (folderPath: string) => Promise<string | null>;
-        init: (folderPath: string, projectTypes?: ProjectType[]) => Promise<{ success: boolean; initialized?: boolean; hasCommits?: boolean; error?: string }>;
-        clone: (url: string, targetDir: string) => Promise<{ success: boolean; clonedPath: string | null; error: string | null }>;
-        validateBranch: (branchName: string) => Promise<{ valid: boolean; error: string | null }>;
-        mergeBranch: (projectPath: string, branchName: string) => Promise<{ success: boolean; error?: string; conflict?: boolean }>;
-        worktreeDiffStats: (projectPath: string, branchName: string) => Promise<{ filesChanged: number; insertions: number; deletions: number }>;
-        cleanupWorktree: (projectPath: string, worktreePath: string, branchName: string) => Promise<void>;
-        checkMergeConflicts: (projectPath: string, branchName: string) => Promise<{ clean: boolean; conflictingFiles: string[] }>;
-        mergeAndPushPR: (projectPath: string, branchName: string, worktreePath: string, itemTitle: string, itemDescription: string) => Promise<{ success: boolean; prUrl?: string; prBranch?: string; error?: string; conflict?: boolean; conflictingFiles?: string[] }>;
-        approvePR: (projectPath: string, prUrl: string) => Promise<{ success: boolean; error?: string }>;
-        mergePR: (projectPath: string, prUrl: string) => Promise<{ success: boolean; error?: string }>;
-        worktreeChangedFiles: (projectPath: string, branchName: string) => Promise<{
-          files: Array<{ path: string; status: 'M' | 'A' | 'D' | 'R' }>;
-          error?: string;
-        }>;
-        worktreeFileDiff: (projectPath: string, branchName: string, filePath: string) => Promise<{
-          diff: string;
-          error?: string;
-        }>;
-        detectNestedRepos: (folderPath: string) => Promise<{
-          isRepo: boolean;
-          nestedRepos: Array<{ name: string; path: string }>;
-        }>;
-        rebaseOntoDefault: (worktreePath: string, projectPath: string) => Promise<{
-          success: boolean;
-          error?: string;
-          conflict?: boolean;
-          conflictingFiles?: string[];
-        }>;
-      };
-      onboarding: {
-        validate: (folderPath: string) => Promise<PreFlightResult>;
-        detectProject: (folderPath: string) => Promise<ProjectType[]>;
-      };
-      docker: {
-        isAvailable: () => Promise<boolean>;
-        ensureImage: (imageName?: string) => Promise<void>;
-        detectState: () => Promise<{ installed: boolean; running: boolean; desktopPath: string | null }>;
-        startDesktop: () => Promise<boolean>;
-        startEngine: () => Promise<boolean>;
-        removeAllContainers: () => Promise<number>;
-        removeImage: () => Promise<void>;
-        getImageInfo: () => Promise<{ name: string; size: number; created: string; stale: boolean } | null>;
-        onBuildProgress: (callback: (message: string) => void) => CleanupFunction;
-      };
-      container: {
-        create: (folderPath: string, agent?: string, gsdEnabled?: boolean, gitConfig?: { name: string; email: string }, worktreeEnabled?: boolean, branchName?: string) => Promise<string>;
-        write: (sessionId: string, data: string) => void;
-        resize: (sessionId: string, cols: number, rows: number) => void;
-        stop: (sessionId: string, deleteWorktree?: boolean) => Promise<void>;
-        getWorktreeInfo: (sessionId: string) => Promise<{
-          worktreePath: string;
-          originalPath: string;
-          branchName: string;
-          hasUncommittedChanges: boolean;
-        } | null>;
-        onData: (callback: (sessionId: string, data: string) => void) => CleanupFunction;
-        onExit: (callback: (sessionId: string, exitCode: number) => void) => CleanupFunction;
-      };
-      kanban: {
-        getBoard: (projectPath: string) => Promise<{
-          id: string;
-          projectPath: string;
-          items: Array<{
-            id: string;
-            title: string;
-            description: string;
-            column: 'backlog' | 'ready' | 'in-progress' | 'verify' | 'done';
-            branch?: string;
-            agentProvider: 'claude' | 'codex' | 'opencode';
-            agentType?: string;
-            order: number;
-            model?: string;
-            agentStatus: 'idle' | 'running' | 'waiting' | 'interrupted' | 'completed' | 'failed';
-            activeAgentName?: string;
-            lastAgentName?: string;
-            agentQuestion?: string;
-            agentQuestionOptions?: string[];
-            worktreePath?: string;
-            mergeStatus?: 'unmerged' | 'merged' | 'conflict';
-            verified?: boolean;
-            comments: Array<{ id: string; source: 'user' | 'agent' | 'system'; text: string; timestamp: string; options?: string[] }>;
-            createdAt: string;
-            updatedAt: string;
-          }>;
-          lastAgentName?: string;
-          createdAt: string;
-          updatedAt: string;
-        }>;
-        addItem: (projectPath: string, params: {
-          title: string;
-          description: string;
-          branch?: string;
-          agentProvider: 'claude' | 'codex' | 'opencode';
-          agentType?: string;
-          order: number;
-          model?: string;
-        }) => Promise<object>;
-        updateItem: (projectPath: string, itemId: string, updates: object) => Promise<object | null>;
-        addComment: (projectPath: string, itemId: string, source: string, text: string) => Promise<object | null>;
-        deleteItem: (projectPath: string, itemId: string) => Promise<boolean>;
-        deleteItems: (projectPath: string, itemIds: string[]) => Promise<string[]>;
-        deleteBoard: (projectPath: string) => Promise<{ deleted: boolean }>;
-        onBoardUpdated: (callback: (projectPath: string) => void) => CleanupFunction;
-      };
-      agent: {
-        start: (params: {
-          agentName: string;
-          projectPath: string;
-          itemId: string;
-          goal: string;
-          agentProvider: string;
-        }) => Promise<{ sessionId: string; error?: string }>;
-        resume: (params: {
-          agentName: string;
-          projectPath: string;
-          itemId: string;
-          goal: string;
-          agentProvider: string;
-        }) => Promise<{ sessionId: string; error?: string }>;
-        answer: (projectPath: string, itemId: string, answer: string) => Promise<void>;
-        stop: (sessionId: string) => Promise<void>;
-        getActiveSession: (projectPath: string, itemId: string) => Promise<{
-          sessionId: string;
-          cumulativeUsage: { inputTokens: number; outputTokens: number; costUsd: number };
-        } | null>;
-        recover: (projectPath: string) => Promise<Array<object>>;
-        listDefinitions: () => Promise<Array<{
-          name: string;
-          description: string;
-          model: 'opus' | 'sonnet' | 'haiku';
-          tools: string[];
-          timeout?: number;
-        }>>;
-        readLog: (projectPath: string, itemId: string) => Promise<string>;
-        clearLog: (projectPath: string, itemId: string) => Promise<boolean>;
-        onOutput: (callback: (sessionId: string, data: string) => void) => CleanupFunction;
-        onQuestion: (callback: (sessionId: string, question: { text: string; options?: string[] }) => void) => CleanupFunction;
-        onItemCreated: (callback: (sessionId: string, item: object) => void) => CleanupFunction;
-        onComplete: (callback: (sessionId: string, summary: string) => void) => CleanupFunction;
-        onError: (callback: (sessionId: string, message: string) => void) => CleanupFunction;
-        onProgress: (callback: (sessionId: string, progress: { step: string; detail: string; attempt?: number; maxAttempts?: number }) => void) => CleanupFunction;
-        onExit: (callback: (sessionId: string, exitCode: number) => void) => CleanupFunction;
-        onCostUpdate: (callback: (sessionId: string, projectPath: string, itemId: string, usage: { inputTokens: number; outputTokens: number; costUsd: number }) => void) => CleanupFunction;
-      };
-      cache: {
-        list: () => Promise<Array<{
-          dirName: string;
-          path: string;
-          folderName: string;
-          lastAccessed: string;
-          createdAt: string;
-          exists: boolean;
-          cacheSizeBytes: number;
-          historySizeBytes: number;
-        }>>;
-        stats: () => Promise<{
-          totalProjects: number;
-          existingProjects: number;
-          orphanedProjects: number;
-          totalCacheSizeBytes: number;
-          totalHistorySizeBytes: number;
-          oldestAccess: string | null;
-          newestAccess: string | null;
-        }>;
-        delete: (dirName: string) => Promise<{ deleted: boolean; error?: string }>;
-        cleanupOrphaned: () => Promise<{ deletedCount: number; freedBytes: number; errors: string[] }>;
-        cleanupStale: (maxAgeDays?: number) => Promise<{ deletedCount: number; freedBytes: number; errors: string[] }>;
-      };
-      whisper: {
-        listModels: () => Promise<Array<{
-          size: string;
-          name: string;
-          fileName: string;
-          sizeBytes: number;
-          downloaded: boolean;
-          path?: string;
-        }>>;
-        isModelDownloaded: (modelSize: string) => Promise<boolean>;
-        downloadModel: (modelSize: string) => Promise<string>;
-        deleteModel: (modelSize: string) => Promise<boolean>;
-        isBinaryAvailable: () => Promise<boolean>;
-        installBinary: () => Promise<string>;
-        onInstallProgress: (callback: (message: string) => void) => CleanupFunction;
-        transcribe: (audioData: number[], modelSize: string) => Promise<{ text: string; durationSeconds: number }>;
-        getSelectedModel: () => Promise<string>;
-        saveSelectedModel: (modelSize: string) => Promise<void>;
-        onDownloadProgress: (callback: (progress: { modelSize: string; downloadedBytes: number; totalBytes: number; percent: number }) => void) => CleanupFunction;
-      };
-      projectConfig: {
-        load: (projectPath: string) => Promise<{ sharedDirs?: string[] } | null>;
-        save: (projectPath: string, config: { sharedDirs?: string[] }) => Promise<void>;
-        checkDirs: (projectPath: string, dirs: string[]) => Promise<Record<string, boolean>>;
-      };
-      report: {
-        openFile: (filePath: string) => Promise<{ success: boolean; error?: string }>;
-      };
-      usage: {
-        getClaude: () => Promise<ClaudeUsageSnapshot>;
-      };
-      schedule: {
-        getState: () => Promise<{
-          specialists: Record<string, {
-            id: string;
-            enabled: boolean;
-            lastRun?: object;
-            nextRun?: string;
-            consecutiveNoAction: number;
-            consecutiveFailures: number;
-            totalRuns: number;
-            successRate: number;
-            weeklyCost: number;
-          }>;
-          globalEnabled: boolean;
-        }>;
-        toggleSpecialist: (id: string, enabled: boolean) => Promise<object>;
-        toggleGlobal: (enabled: boolean) => Promise<object>;
-        triggerRun: (id: string, type: string) => Promise<{ skipped?: boolean; reason?: string }>;
-        getHistory: (id: string, limit?: number) => Promise<Array<{
-          id: string;
-          specialistId: string;
-          scheduleType: string;
-          startedAt: string;
-          completedAt: string;
-          status: string;
-          tokensUsed: number;
-          costUsd: number;
-          summary: string;
-          outcome: string;
-        }>>;
-        getStats: (id: string) => Promise<{
-          totalRuns: number;
-          successRate: number;
-          weeklyCost: number;
-          averageTokensPerRun: number;
-          averageDurationMs: number;
-        }>;
-        reload: () => Promise<object>;
-        getSpecialists: () => Promise<Record<string, {
-          name: string;
-          description: string;
-          model: string;
-          schedules: Array<{ type: string; cron: string; enabled: boolean }>;
-          memory: { strategy: string; maxEntries: number; retentionDays: number };
-          escalation: { onFailure?: string; onPattern?: string };
-          integrations?: Array<{ service: string; env: Record<string, string> }>;
-        }>>;
-        getTemplate: (name: string, description?: string) => Promise<string>;
-        scaffold: (name: string, options?: { description?: string; content?: string }) => Promise<{ filePath: string }>;
-        updateDefinition: (name: string, content: string) => Promise<{ filePath: string }>;
-        getRawDefinition: (name: string) => Promise<string>;
-        getCredentials: (specialistId: string) => Promise<Record<string, Record<string, boolean>>>;
-        saveCredentials: (specialistId: string, serviceId: string, credentials: Record<string, string>) => Promise<void>;
-        deleteCredentials: (specialistId: string) => Promise<void>;
-        getRunLog: (specialistId: string, runId: string) => Promise<string>;
-        getActions: (specialistId: string, limit?: number) => Promise<Array<{
-          id: string;
-          runId: string;
-          specialistId: string;
-          action: string;
-          data: Record<string, unknown>;
-          timestamp: string;
-        }>>;
-        getRunActions: (specialistId: string, runId: string) => Promise<Array<{
-          id: string;
-          runId: string;
-          specialistId: string;
-          action: string;
-          data: Record<string, unknown>;
-          timestamp: string;
-        }>>;
-        getActionStats: (specialistId: string) => Promise<{
-          totalActions: number;
-          actionCounts: Record<string, number>;
-        }>;
-        getRunning: () => Promise<string[]>;
-        onAlert: (callback: (specialistId: string, message: string) => void) => CleanupFunction;
-        onStateChanged: (callback: (state: unknown) => void) => CleanupFunction;
-      };
-    };
-  }
-}
+contextBridge.exposeInMainWorld('electronAPI', electronAPI);

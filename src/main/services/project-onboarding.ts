@@ -180,7 +180,7 @@ export function validatePreFlight(projectPath: string): PreFlightResult {
 
 interface PreFlightAdapters {
   accessSync: (path: fs.PathLike, mode?: number) => void;
-  statfsSync: (path: fs.PathLike) => fs.StatFs;
+  statfsSync: (path: fs.PathLike) => ReturnType<typeof fs.statfsSync>;
 }
 
 export function validatePreFlightWithAdapters(projectPath: string, adapters: PreFlightAdapters): PreFlightResult {

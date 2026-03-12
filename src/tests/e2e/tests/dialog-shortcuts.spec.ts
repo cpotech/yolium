@@ -127,8 +127,8 @@ test.describe('Dialog Shortcuts', () => {
       await expect(window.locator(selectors.gitConfigFooter)).toBeVisible();
 
       const viewport = await window.evaluate(() => ({
-        width: window.innerWidth,
-        height: window.innerHeight,
+        width: document.documentElement.clientWidth,
+        height: document.documentElement.clientHeight,
       }));
 
       const dialogBox = await dialog.boundingBox();
@@ -157,7 +157,7 @@ test.describe('Dialog Shortcuts', () => {
       const footerBoxBefore = await footer.boundingBox();
       expect(footerBoxBefore).not.toBeNull();
 
-      const overflowY = await body.evaluate((el) => window.getComputedStyle(el).overflowY);
+      const overflowY = await body.evaluate((el) => getComputedStyle(el).overflowY);
       expect(['auto', 'scroll']).toContain(overflowY);
 
       await body.evaluate((el) => {

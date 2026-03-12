@@ -8,6 +8,22 @@ test.describe('Tab Lifecycle', () => {
   let ctx: AppContext;
   let testRepoPath: string;
 
+  async function launchCleanApp(): Promise<void> {
+    ctx = await launchApp();
+    const { window } = ctx;
+    await window.evaluate(() => {
+      localStorage.removeItem('yolium-session');
+      localStorage.removeItem('yolium-sidebar-projects');
+      localStorage.removeItem('yolium-open-kanban-tabs');
+    });
+    await window.reload();
+    await window.waitForLoadState('domcontentloaded');
+    await window.waitForSelector(
+      `${selectors.emptyState}, [data-testid="docker-setup-dialog"], ${selectors.tabBar}`,
+      { timeout: 30000 }
+    );
+  }
+
   test.beforeAll(async () => {
     // Create a test git repo for the tests
     testRepoPath = await createTestRepo(os.tmpdir());
@@ -33,7 +49,7 @@ test.describe('Tab Lifecycle', () => {
   });
 
   test('should open path dialog when clicking new tab button', async () => {
-    ctx = await launchApp();
+    await launchCleanApp();
     const { window } = ctx;
 
     // Click new tab button
@@ -47,7 +63,7 @@ test.describe('Tab Lifecycle', () => {
   });
 
   test('should close path dialog when clicking cancel', async () => {
-    ctx = await launchApp();
+    await launchCleanApp();
     const { window } = ctx;
 
     // Open path dialog
@@ -65,7 +81,7 @@ test.describe('Tab Lifecycle', () => {
   });
 
   test('should show agent dialog after confirming path', async () => {
-    ctx = await launchApp();
+    await launchCleanApp();
     const { window } = ctx;
 
     // Open path dialog
@@ -85,7 +101,7 @@ test.describe('Tab Lifecycle', () => {
   });
 
   test('should show agent options in agent dialog', async () => {
-    ctx = await launchApp();
+    await launchCleanApp();
     const { window } = ctx;
 
     // Navigate to agent dialog
@@ -100,7 +116,7 @@ test.describe('Tab Lifecycle', () => {
   });
 
   test('should enable GSD toggle only for Claude agent', async () => {
-    ctx = await launchApp();
+    await launchCleanApp();
     const { window } = ctx;
 
     // Navigate to agent dialog
@@ -122,7 +138,7 @@ test.describe('Tab Lifecycle', () => {
   });
 
   test('should show worktree option for git repos', async () => {
-    ctx = await launchApp();
+    await launchCleanApp();
     const { window } = ctx;
 
     // Navigate to agent dialog with a git repo
@@ -135,7 +151,7 @@ test.describe('Tab Lifecycle', () => {
   });
 
   test('should show branch name input when worktree is enabled', async () => {
-    ctx = await launchApp();
+    await launchCleanApp();
     const { window } = ctx;
 
     // Navigate to agent dialog
@@ -151,7 +167,7 @@ test.describe('Tab Lifecycle', () => {
   });
 
   test('should show worktree helper text when enabled', async () => {
-    ctx = await launchApp();
+    await launchCleanApp();
     const { window } = ctx;
 
     await window.click(selectors.newTabButton);
@@ -163,7 +179,7 @@ test.describe('Tab Lifecycle', () => {
   });
 
   test('should validate worktree branch names in dialog', async () => {
-    ctx = await launchApp();
+    await launchCleanApp();
     const { window } = ctx;
 
     await window.click(selectors.newTabButton);

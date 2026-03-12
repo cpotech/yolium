@@ -9,6 +9,13 @@ test.describe('Scheduled Agents Status Bar', () => {
     ctx = await launchApp({ skipDockerWait: true });
     const { window } = ctx;
 
+    await window.evaluate(() => {
+      localStorage.removeItem('yolium-session');
+      localStorage.removeItem('yolium-sidebar-projects');
+      localStorage.removeItem('yolium-open-kanban-tabs');
+    });
+    await window.reload();
+    await window.waitForLoadState('domcontentloaded');
     await expect(window.locator(selectors.sidebar)).toBeVisible({ timeout: 30000 });
     await window.click(selectors.sidebarSchedule);
   }

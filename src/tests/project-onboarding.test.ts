@@ -11,6 +11,8 @@ import {
   validatePreFlightWithAdapters,
 } from '@main/services/project-onboarding';
 
+type StatFsResult = ReturnType<typeof fs.statfsSync>;
+
 function createTempProject(files: Record<string, string>): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yolium-onboarding-test-'));
   for (const [relativePath, content] of Object.entries(files)) {
@@ -119,7 +121,7 @@ describe('project-onboarding service', () => {
       statfsSync: () => ({
         bavail: 128,
         bsize: 1024,
-      } as unknown as fs.StatFs),
+      } as unknown as StatFsResult),
     });
 
     expect(result.success).toBe(false);
@@ -136,7 +138,7 @@ describe('project-onboarding service', () => {
       statfsSync: () => ({
         bavail: 2 * 1024 * 1024,
         bsize: 1024,
-      } as unknown as fs.StatFs),
+      } as unknown as StatFsResult),
     });
 
     expect(result.success).toBe(true);

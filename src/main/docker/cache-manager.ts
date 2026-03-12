@@ -149,7 +149,7 @@ export function cleanupOrphanedCaches(): CleanupResult {
     }
   }
 
-  logger.info('Orphaned caches cleaned up', result);
+  logger.info('Orphaned caches cleaned up', { ...result });
   return result;
 }
 

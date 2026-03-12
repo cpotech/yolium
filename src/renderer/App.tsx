@@ -211,7 +211,7 @@ function App(): React.ReactElement {
     closeTab(tabId);
 
     // Cleanup container and worktree in background (always delete worktree)
-    window.electronAPI.container.stop(tab.sessionId, true).catch((err) => {
+    window.electronAPI.container.stop(tab.sessionId!, true).catch((err) => {
       console.error('Failed to cleanup container:', err);
     });
   }, [tabs, closeTab]);
@@ -249,7 +249,7 @@ function App(): React.ReactElement {
 
     // Cleanup containers and worktrees in background (always delete worktrees)
     sessionIds.forEach(sessionId => {
-      window.electronAPI.container.stop(sessionId, true).catch((err) => {
+      window.electronAPI.container.stop(sessionId!, true).catch((err) => {
         console.error('Failed to cleanup container:', err);
       });
     });
@@ -267,7 +267,7 @@ function App(): React.ReactElement {
 
     // Cleanup containers and worktrees in background (always delete worktrees)
     sessionIds.forEach(sessionId => {
-      window.electronAPI.container.stop(sessionId, true).catch((err) => {
+      window.electronAPI.container.stop(sessionId!, true).catch((err) => {
         console.error('Failed to cleanup container:', err);
       });
     });
@@ -312,7 +312,7 @@ function App(): React.ReactElement {
     if (whisper.state.transcribedText && activeTabId) {
       const activeTab = tabs.find(t => t.id === activeTabId);
       if (activeTab) {
-        window.electronAPI.container.write(activeTab.sessionId, whisper.state.transcribedText);
+        window.electronAPI.container.write(activeTab.sessionId!, whisper.state.transcribedText);
         whisper.clearTranscription();
       }
     }
@@ -628,7 +628,7 @@ function App(): React.ReactElement {
                   >
                     <div className="flex-1 min-h-0 relative">
                       <Terminal
-                        sessionId={tab.sessionId}
+                        sessionId={tab.sessionId!}
                         isVisible={isActive}
                         isContainer={true}
                         onCwdChange={(cwd) => handleCwdChange(tab.id, cwd)}

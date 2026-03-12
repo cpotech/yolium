@@ -99,7 +99,7 @@ function mockCloneSuccess(): void {
     const done = callback as (error: Error | null, stdout: string, stderr: string) => void
     done(null, '', '')
     return { stderr: { on: vi.fn() } }
-  }) as typeof execFile)
+  }) as unknown as typeof execFile)
 }
 
 function mockCloneFailure(stderr: string): void {
@@ -107,7 +107,7 @@ function mockCloneFailure(stderr: string): void {
     const done = callback as (error: Error, stdout: string, stderr: string) => void
     done(new Error('clone failed'), '', stderr)
     return { stderr: { on: vi.fn() } }
-  }) as typeof execFile)
+  }) as unknown as typeof execFile)
 }
 
 describe('git:clone handler', () => {

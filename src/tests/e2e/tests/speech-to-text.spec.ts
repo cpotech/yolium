@@ -5,6 +5,21 @@ import { selectors } from '../helpers/selectors';
 test.describe('Speech-to-Text', () => {
   let ctx: AppContext;
 
+  async function launchCleanApp(): Promise<void> {
+    ctx = await launchApp();
+    const { window } = ctx;
+    await window.evaluate(() => {
+      localStorage.removeItem('yolium-session');
+      localStorage.removeItem('yolium-sidebar-projects');
+      localStorage.removeItem('yolium-open-kanban-tabs');
+    });
+    await window.reload();
+    await window.waitForLoadState('domcontentloaded');
+    await window.waitForSelector('[data-testid="empty-state"], [data-testid="docker-setup-dialog"], [data-testid="tab-bar"]', {
+      timeout: 30000,
+    });
+  }
+
   test.beforeEach(async () => {
     await cleanupYoliumContainers();
   });
@@ -17,7 +32,7 @@ test.describe('Speech-to-Text', () => {
 
   test.describe('Empty State Status Bar', () => {
     test('should show speech-to-text button with shortcut hint', async () => {
-      ctx = await launchApp();
+      await launchCleanApp();
       const { window } = ctx;
 
       await expect(window.locator(selectors.emptyState)).toBeVisible();
@@ -27,7 +42,7 @@ test.describe('Speech-to-Text', () => {
     });
 
     test('should show model selector next to mic button', async () => {
-      ctx = await launchApp();
+      await launchCleanApp();
       const { window } = ctx;
 
       await expect(window.locator(selectors.emptyState)).toBeVisible();
@@ -38,7 +53,7 @@ test.describe('Speech-to-Text', () => {
     });
 
     test('should open model dialog from empty state status bar', async () => {
-      ctx = await launchApp();
+      await launchCleanApp();
       const { window } = ctx;
 
       await expect(window.locator(selectors.emptyState)).toBeVisible();
@@ -52,7 +67,7 @@ test.describe('Speech-to-Text', () => {
     });
 
     test('should not show speech-to-text elements in the main empty state content', async () => {
-      ctx = await launchApp();
+      await launchCleanApp();
       const { window } = ctx;
 
       await expect(window.locator(selectors.emptyState)).toBeVisible();
@@ -144,7 +159,7 @@ test.describe('Speech-to-Text', () => {
     });
 
     test('should show model descriptions and sizes', async () => {
-      ctx = await launchApp();
+      await launchCleanApp();
       const { window } = ctx;
 
       // Open dialog from empty state status bar
@@ -165,7 +180,7 @@ test.describe('Speech-to-Text', () => {
     });
 
     test('should show Escape hint on Close button', async () => {
-      ctx = await launchApp();
+      await launchCleanApp();
       const { window } = ctx;
 
       await expect(window.locator(selectors.emptyState)).toBeVisible();
@@ -178,7 +193,7 @@ test.describe('Speech-to-Text', () => {
     });
 
     test('should reopen model dialog after closing', async () => {
-      ctx = await launchApp();
+      await launchCleanApp();
       const { window } = ctx;
 
       await expect(window.locator(selectors.emptyState)).toBeVisible();

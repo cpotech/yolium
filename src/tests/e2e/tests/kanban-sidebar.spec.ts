@@ -33,6 +33,7 @@ test.describe('Kanban Sidebar Integration', () => {
     const { window } = ctx;
 
     await window.evaluate(() => {
+      localStorage.removeItem('yolium-session');
       localStorage.removeItem('yolium-sidebar-projects');
       localStorage.removeItem('yolium-open-kanban-tabs');
     });
