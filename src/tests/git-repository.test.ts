@@ -11,6 +11,7 @@ vi.mock('node:fs', () => ({
 
 import { execFileSync } from 'node:child_process'
 import * as fs from 'node:fs'
+import * as path from 'node:path'
 import {
   getDefaultBranch,
   hasCommits,
@@ -89,7 +90,7 @@ describe('git-repository', () => {
 
     expect(result).toEqual({ initialized: true, hasCommits: true })
     expect(fs.writeFileSync).toHaveBeenCalledWith(
-      '/project/.gitignore',
+      path.join('/project', '.gitignore'),
       expect.stringContaining('node_modules/'),
       'utf-8',
     )

@@ -99,6 +99,7 @@ vi.mock('node:path', async () => {
 });
 
 import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { buildAgentPrompt, getCompletionColumn, stopAllAgentsForProject, clearSessions, startScheduledAgent } from '@main/services/agent-runner';
 import { createBoard, addItem, updateItem, addComment } from '@main/stores/kanban-store';
 import type { SpecialistDefinition } from '@shared/types/schedule';
@@ -556,7 +557,7 @@ describe('agent-runner', () => {
       });
 
       expect(capturedConfig).toBeDefined();
-      expect(capturedConfig!.projectPath).toBe('/home/test/.yolium/schedules/twitter-privacybooks/workspace');
+      expect(capturedConfig!.projectPath).toBe(path.join('/home/test', '.yolium', 'schedules', 'twitter-privacybooks', 'workspace'));
       expect(capturedConfig!.projectPath).not.toBe(process.cwd());
     });
 
@@ -576,7 +577,7 @@ describe('agent-runner', () => {
       });
 
       expect(fs.mkdirSync).toHaveBeenCalledWith(
-        '/home/test/.yolium/schedules/twitter-privacybooks/workspace',
+        path.join('/home/test', '.yolium', 'schedules', 'twitter-privacybooks', 'workspace'),
         { recursive: true }
       );
     });

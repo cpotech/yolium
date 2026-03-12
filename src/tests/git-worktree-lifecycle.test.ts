@@ -86,10 +86,10 @@ describe('git-worktree-lifecycle', () => {
   it('fixWorktreeGitFile should rewrite both the worktree .git file and reverse gitdir file on Windows-style MSYS2 paths', () => {
     vi.mocked(fs.readFileSync).mockImplementation((filePath: unknown) => {
       const file = String(filePath)
-      if (file.endsWith('/.git')) {
+      if (path.basename(file) === '.git') {
         return 'gitdir: /c/Users/gaming/repos/project/.git/worktrees/my-branch\n'
       }
-      if (file.endsWith('/gitdir')) {
+      if (path.basename(file) === 'gitdir') {
         return '/c/Users/gaming/.yolium/worktrees/project/my-branch\n'
       }
       return ''
@@ -98,11 +98,11 @@ describe('git-worktree-lifecycle', () => {
     fixWorktreeGitFile('/tmp/worktree')
 
     expect(fs.writeFileSync).toHaveBeenCalledWith(
-      '/tmp/worktree/.git',
+      path.join('/tmp/worktree', '.git'),
       'gitdir: C:/Users/gaming/repos/project/.git/worktrees/my-branch\n',
     )
     expect(fs.writeFileSync).toHaveBeenCalledWith(
-      'C:/Users/gaming/repos/project/.git/worktrees/my-branch/gitdir',
+      path.join('C:/Users/gaming/repos/project/.git/worktrees/my-branch', 'gitdir'),
       'C:/Users/gaming/.yolium/worktrees/project/my-branch\n',
     )
   })
@@ -110,10 +110,10 @@ describe('git-worktree-lifecycle', () => {
   it('fixWorktreeGitFile should leave already-native paths unchanged', () => {
     vi.mocked(fs.readFileSync).mockImplementation((filePath: unknown) => {
       const file = String(filePath)
-      if (file.endsWith('/.git')) {
+      if (path.basename(file) === '.git') {
         return 'gitdir: C:/Users/gaming/repos/project/.git/worktrees/my-branch\n'
       }
-      if (file.endsWith('/gitdir')) {
+      if (path.basename(file) === 'gitdir') {
         return 'C:/Users/gaming/.yolium/worktrees/project/my-branch\n'
       }
       return ''

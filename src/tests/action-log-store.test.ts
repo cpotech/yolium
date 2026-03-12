@@ -11,6 +11,7 @@ vi.mock('node:os', () => ({
   homedir: vi.fn(() => '/home/test'),
 }));
 
+import * as path from 'node:path';
 import {
   appendAction,
   getActionStats,
@@ -43,7 +44,7 @@ describe('action-log-store', () => {
     appendAction('twitter-growth', entry);
 
     expect(fs.appendFileSync).toHaveBeenCalledWith(
-      '/home/test/.yolium/schedules/twitter-growth/actions.jsonl',
+      path.join('/home/test', '.yolium', 'schedules', 'twitter-growth', 'actions.jsonl'),
       `${JSON.stringify(entry)}\n`,
       'utf-8'
     );
@@ -56,7 +57,7 @@ describe('action-log-store', () => {
     appendAction('twitter-growth', makeAction());
 
     expect(fs.mkdirSync).toHaveBeenCalledWith(
-      '/home/test/.yolium/schedules/twitter-growth',
+      path.join('/home/test', '.yolium', 'schedules', 'twitter-growth'),
       { recursive: true }
     );
   });

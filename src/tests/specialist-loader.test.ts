@@ -26,6 +26,7 @@ vi.mock('node-cron', () => {
 
 // Use real gray-matter — it's a pure JS library that parses YAML frontmatter correctly
 
+import * as path from 'node:path';
 import {
   parseSpecialistDefinition,
   listSpecialists,
@@ -497,9 +498,10 @@ Content`;
       const originalResourcesPath = process.resourcesPath;
       Object.defineProperty(process, 'resourcesPath', { value: '/app/resources', writable: true, configurable: true });
 
-      vi.mocked(fs.existsSync).mockImplementation((p) => p === '/app/resources/agents/cron');
+      const expectedPath = path.join('/app/resources', 'agents', 'cron');
+      vi.mocked(fs.existsSync).mockImplementation((p) => p === expectedPath);
 
-      expect(getSpecialistsDir()).toBe('/app/resources/agents/cron');
+      expect(getSpecialistsDir()).toBe(expectedPath);
 
       Object.defineProperty(process, 'resourcesPath', { value: originalResourcesPath, writable: true, configurable: true });
     });
