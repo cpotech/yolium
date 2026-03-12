@@ -70,6 +70,22 @@ export interface ScheduledRun {
   outcome: RunOutcome;
 }
 
+/** A single action emitted during a scheduled run */
+export interface ActionLogEntry {
+  id: string;
+  runId: string;
+  specialistId: string;
+  action: string;
+  data: Record<string, unknown>;
+  timestamp: string;
+}
+
+/** Aggregate action statistics for a specialist */
+export interface ActionStats {
+  totalActions: number;
+  actionCounts: Record<string, number>;
+}
+
 /** Status tracking for a specialist */
 export interface SpecialistStatus {
   id: string;

@@ -7,13 +7,25 @@ import type {
   CompleteMessage,
   ErrorMessage,
   ProgressMessage,
+  RunResultMessage,
+  ActionMessage,
 } from '@shared/types/agent';
 import { normalizeSvgToDataUri } from '@main/docker/svg-normalize';
 
 const PROTOCOL_PREFIX = '@@YOLIUM:';
-const VALID_TYPES = ['ask_question', 'create_item', 'update_description', 'add_comment', 'comment', 'set_test_specs', 'complete', 'error', 'progress'] as const;
+const VALID_TYPES = ['ask_question', 'create_item', 'update_description', 'add_comment', 'comment', 'set_test_specs', 'complete', 'error', 'progress', 'run_result', 'action'] as const;
 
-type AnyProtocolMessage = AskQuestionMessage | CreateItemMessage | UpdateDescriptionMessage | AddCommentMessage | SetTestSpecsMessage | CompleteMessage | ErrorMessage | ProgressMessage;
+type AnyProtocolMessage =
+  | AskQuestionMessage
+  | CreateItemMessage
+  | UpdateDescriptionMessage
+  | AddCommentMessage
+  | SetTestSpecsMessage
+  | CompleteMessage
+  | ErrorMessage
+  | ProgressMessage
+  | RunResultMessage
+  | ActionMessage;
 
 /**
  * Extract the first balanced JSON object from a string.
@@ -146,6 +158,26 @@ export function parseProtocolMessage(json: string): AnyProtocolMessage | null {
           detail: parsed.detail,
           attempt: typeof parsed.attempt === 'number' ? parsed.attempt : undefined,
           maxAttempts: typeof parsed.maxAttempts === 'number' ? parsed.maxAttempts : undefined,
+        };
+
+      case 'run_result':
+        if (typeof parsed.outcome !== 'string' || typeof parsed.summary !== 'string') return null;
+        return {
+          type: 'run_result',
+          outcome: parsed.outcome,
+          summary: parsed.summary,
+          tokensUsed: typeof parsed.tokensUsed === 'number' ? parsed.tokensUsed : undefined,
+        };
+
+      case 'action':
+        if (typeof parsed.action !== 'string') return null;
+        return {
+          type: 'action',
+          action: parsed.action,
+          data: typeof parsed.data === 'object' && parsed.data !== null && !Array.isArray(parsed.data)
+            ? parsed.data as Record<string, unknown>
+            : {},
+          timestamp: typeof parsed.timestamp === 'string' ? parsed.timestamp : undefined,
         };
 
       default:

@@ -44,4 +44,8 @@ describe('Dockerfile version pinning', () => {
     expect(nvmInstallLine).toBeDefined();
     expect(nvmInstallLine).toMatch(/curl\s+[^\n]*-[a-zA-Z]*f/);
   });
+
+  it('should copy twitter-tools into /opt/twitter-tools', () => {
+    expect(dockerfileContent).toContain('COPY twitter-tools /opt/twitter-tools');
+  });
 });

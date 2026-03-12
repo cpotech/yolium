@@ -13,6 +13,9 @@ const {
   toggleGlobal,
   getRecentRuns,
   getRunStats,
+  getRecentActions,
+  getActionsByRun,
+  getActionStats,
   loadRedactedCredentials,
   saveCredentials,
   deleteCredentials,
@@ -28,6 +31,9 @@ const {
   toggleGlobal: vi.fn(),
   getRecentRuns: vi.fn(),
   getRunStats: vi.fn(),
+  getRecentActions: vi.fn(),
+  getActionsByRun: vi.fn(),
+  getActionStats: vi.fn(),
   loadRedactedCredentials: vi.fn(),
   saveCredentials: vi.fn(),
   deleteCredentials: vi.fn(),
@@ -61,6 +67,12 @@ vi.mock('@main/stores/schedule-store', () => ({
 vi.mock('@main/stores/run-history-store', () => ({
   getRecentRuns,
   getRunStats,
+}));
+
+vi.mock('@main/stores/action-log-store', () => ({
+  getRecentActions,
+  getActionsByRun,
+  getActionStats,
 }));
 
 vi.mock('@main/stores/specialist-credentials-store', () => ({
@@ -118,5 +130,47 @@ describe('schedule:update-definition handler', () => {
     expect(result).toEqual({
       filePath: '/tmp/agents/cron/security-monitor.md',
     });
+  });
+});
+
+describe('schedule action handlers', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should register and return schedule:get-actions', async () => {
+    getRecentActions.mockReturnValue([{ id: 'action-1' }]);
+    const handlers = registerHandlersForTest();
+    const handler = handlers.get('schedule:get-actions');
+
+    expect(handler).toBeTypeOf('function');
+    await expect(Promise.resolve((handler as (event: unknown, specialistId: string, limit: number) => unknown)({}, 'twitter-growth', 25)))
+      .resolves
+      .toEqual([{ id: 'action-1' }]);
+    expect(getRecentActions).toHaveBeenCalledWith('twitter-growth', 25);
+  });
+
+  it('should register and return schedule:get-run-actions', async () => {
+    getActionsByRun.mockReturnValue([{ id: 'action-2', runId: 'run-42' }]);
+    const handlers = registerHandlersForTest();
+    const handler = handlers.get('schedule:get-run-actions');
+
+    expect(handler).toBeTypeOf('function');
+    await expect(Promise.resolve((handler as (event: unknown, specialistId: string, runId: string) => unknown)({}, 'twitter-growth', 'run-42')))
+      .resolves
+      .toEqual([{ id: 'action-2', runId: 'run-42' }]);
+    expect(getActionsByRun).toHaveBeenCalledWith('twitter-growth', 'run-42');
+  });
+
+  it('should register and return schedule:get-action-stats', async () => {
+    getActionStats.mockReturnValue({ totalActions: 4, actionCounts: { tweet_posted: 3 } });
+    const handlers = registerHandlersForTest();
+    const handler = handlers.get('schedule:get-action-stats');
+
+    expect(handler).toBeTypeOf('function');
+    await expect(Promise.resolve((handler as (event: unknown, specialistId: string) => unknown)({}, 'twitter-growth')))
+      .resolves
+      .toEqual({ totalActions: 4, actionCounts: { tweet_posted: 3 } });
+    expect(getActionStats).toHaveBeenCalledWith('twitter-growth');
   });
 });

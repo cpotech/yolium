@@ -412,6 +412,12 @@ const schedule = {
     ipcRenderer.invoke('schedule:delete-credentials', specialistId),
   getRunLog: (specialistId: string, runId: string) =>
     ipcRenderer.invoke('schedule:get-run-log', specialistId, runId),
+  getActions: (specialistId: string, limit?: number) =>
+    ipcRenderer.invoke('schedule:get-actions', specialistId, limit),
+  getRunActions: (specialistId: string, runId: string) =>
+    ipcRenderer.invoke('schedule:get-run-actions', specialistId, runId),
+  getActionStats: (specialistId: string) =>
+    ipcRenderer.invoke('schedule:get-action-stats', specialistId),
   getRunning: () =>
     ipcRenderer.invoke('schedule:get-running'),
   onAlert: (callback: (specialistId: string, message: string) => void): CleanupFn => {
@@ -777,6 +783,26 @@ declare global {
         saveCredentials: (specialistId: string, serviceId: string, credentials: Record<string, string>) => Promise<void>;
         deleteCredentials: (specialistId: string) => Promise<void>;
         getRunLog: (specialistId: string, runId: string) => Promise<string>;
+        getActions: (specialistId: string, limit?: number) => Promise<Array<{
+          id: string;
+          runId: string;
+          specialistId: string;
+          action: string;
+          data: Record<string, unknown>;
+          timestamp: string;
+        }>>;
+        getRunActions: (specialistId: string, runId: string) => Promise<Array<{
+          id: string;
+          runId: string;
+          specialistId: string;
+          action: string;
+          data: Record<string, unknown>;
+          timestamp: string;
+        }>>;
+        getActionStats: (specialistId: string) => Promise<{
+          totalActions: number;
+          actionCounts: Record<string, number>;
+        }>;
         getRunning: () => Promise<string[]>;
         onAlert: (callback: (specialistId: string, message: string) => void) => CleanupFunction;
         onStateChanged: (callback: (state: unknown) => void) => CleanupFunction;

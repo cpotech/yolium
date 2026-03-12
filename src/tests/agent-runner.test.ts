@@ -48,6 +48,11 @@ vi.mock('@main/stores/run-history-store', () => ({
   appendRunLog: vi.fn(),
 }));
 
+const mockAppendAction = vi.fn();
+vi.mock('@main/stores/action-log-store', () => ({
+  appendAction: (...args: unknown[]) => mockAppendAction(...args),
+}));
+
 // Mock agent-protocol
 const mockExtractProtocolMessages = vi.fn(() => []);
 vi.mock('@main/services/agent-protocol', () => ({
@@ -519,6 +524,7 @@ describe('agent-runner', () => {
       mockCreateAgentContainer.mockReset();
       mockGetAgentSession.mockReset();
       mockExtractProtocolMessages.mockReturnValue([]);
+      mockAppendAction.mockReset();
       vi.mocked(fs.existsSync).mockReturnValue(false);
       vi.mocked(fs.mkdirSync).mockClear();
     });
@@ -626,6 +632,41 @@ describe('agent-runner', () => {
 
       expect(result.outcome).toBe('failed');
       expect(result.summary).toBe('Agent exited with code 1');
+    });
+
+    it('should persist parsed action messages during scheduled runs', async () => {
+      mockExtractProtocolMessages.mockReturnValue([
+        {
+          type: 'action',
+          action: 'tweet_posted',
+          data: { dryRun: true, tweetId: '123' },
+          timestamp: '2026-03-11T09:00:00.000Z',
+        },
+      ]);
+      mockCreateAgentContainer.mockImplementation((_config: unknown, callbacks: { onOutput: (data: string) => void; onExit: (code: number) => void }) => {
+        callbacks.onOutput('@@YOLIUM:{"type":"action","action":"tweet_posted"}');
+        setTimeout(() => callbacks.onExit(0), 0);
+        return Promise.resolve('session-action');
+      });
+      mockGetAgentSession.mockReturnValue(undefined);
+
+      await startScheduledAgent({
+        specialist: makeSpecialist('twitter-growth'),
+        scheduleType: 'heartbeat',
+        memoryContext: '',
+        runId: 'run-action',
+      });
+
+      expect(mockAppendAction).toHaveBeenCalledWith(
+        'twitter-growth',
+        expect.objectContaining({
+          runId: 'run-action',
+          specialistId: 'twitter-growth',
+          action: 'tweet_posted',
+          data: { dryRun: true, tweetId: '123' },
+          timestamp: '2026-03-11T09:00:00.000Z',
+        })
+      );
     });
   });
 });

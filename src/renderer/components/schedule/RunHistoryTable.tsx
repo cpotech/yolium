@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { RefreshCw, ArrowLeft } from 'lucide-react';
+import type { ActionLogEntry } from '@shared/types/schedule';
 
 interface RunRecord {
   id: string;
@@ -59,6 +60,26 @@ function formatDuration(startedAt: string, completedAt: string): string {
   return `${minutes}m ${remainSec}s`;
 }
 
+function formatActionTimestamp(timestamp: string): string {
+  return new Date(timestamp).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function getActionSummary(data: Record<string, unknown>): string | null {
+  const text = typeof data.text === 'string' ? data.text : typeof data.tweetText === 'string' ? data.tweetText : null;
+  if (text) return text;
+
+  if (typeof data.count === 'number') {
+    return `${data.count} items`;
+  }
+
+  return null;
+}
+
 function RunDetailView({
   run,
   specialistId,
@@ -69,18 +90,24 @@ function RunDetailView({
   onBack: () => void;
 }): React.ReactElement {
   const [logContent, setLogContent] = useState<string>('');
+  const [actions, setActions] = useState<ActionLogEntry[]>([]);
   const [isLoadingLog, setIsLoadingLog] = useState(true);
   const logRef = useRef<HTMLPreElement>(null);
 
   useEffect(() => {
     setIsLoadingLog(true);
-    window.electronAPI.schedule.getRunLog(specialistId, run.id)
-      .then((log) => {
+    Promise.all([
+      window.electronAPI.schedule.getRunLog(specialistId, run.id),
+      window.electronAPI.schedule.getRunActions(specialistId, run.id),
+    ])
+      .then(([log, runActions]) => {
         setLogContent(log);
+        setActions(runActions);
       })
       .catch((err) => {
-        console.error('Failed to fetch run log:', err);
+        console.error('Failed to fetch run details:', err);
         setLogContent('');
+        setActions([]);
       })
       .finally(() => {
         setIsLoadingLog(false);
@@ -138,6 +165,57 @@ function RunDetailView({
       <div className="px-3 py-2 border-b border-[var(--color-border-primary)]">
         <span className="text-[10px] text-[var(--color-text-muted)]">Summary</span>
         <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">{run.summary}</p>
+      </div>
+
+      <div className="border-b border-[var(--color-border-primary)]" data-testid="run-detail-actions">
+        <div className="px-3 py-1.5 text-[10px] text-[var(--color-text-muted)]">
+          Actions
+        </div>
+        {actions.length === 0 ? (
+          <div className="px-3 py-3 text-xs text-[var(--color-text-muted)]" data-testid="run-detail-actions-empty">
+            No actions recorded for this run
+          </div>
+        ) : (
+          <div className="px-3 py-2 space-y-2">
+            {actions.map((action) => {
+              const dryRun = action.data.dryRun === true;
+              const tweetId = typeof action.data.tweetId === 'string' ? action.data.tweetId : null;
+              const summary = getActionSummary(action.data);
+
+              return (
+                <div
+                  key={action.id}
+                  className="rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-2"
+                  data-testid={`run-action-${action.id}`}
+                >
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] text-[var(--color-text-muted)]">
+                      {formatActionTimestamp(action.timestamp)}
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--color-accent-primary)]/10 text-[var(--color-accent-primary)]">
+                      {action.action}
+                    </span>
+                    {dryRun && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--color-status-warning)]/10 text-[var(--color-status-warning)]">
+                        Dry run
+                      </span>
+                    )}
+                    {tweetId && (
+                      <span className="text-[10px] text-[var(--color-text-secondary)]">
+                        id: {tweetId}
+                      </span>
+                    )}
+                  </div>
+                  {summary && (
+                    <p className="mt-1 text-xs text-[var(--color-text-secondary)] break-words">
+                      {summary}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Log panel */}

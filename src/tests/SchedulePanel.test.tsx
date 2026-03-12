@@ -9,6 +9,7 @@ const mockConfigDialog = vi.fn();
 const mockAddDialog = vi.fn();
 const mockGetState = vi.fn();
 const mockGetSpecialists = vi.fn();
+const mockGetActionStats = vi.fn();
 const mockGetRunning = vi.fn();
 
 vi.mock('@renderer/components/schedule/SpecialistConfigDialog', () => ({
@@ -85,6 +86,10 @@ beforeEach(() => {
       escalation: { onFailure: 'alert_user' },
     },
   });
+  mockGetActionStats.mockResolvedValue({
+    totalActions: 7,
+    actionCounts: { tweet_posted: 5, mentions_checked: 2 },
+  });
   mockGetRunning.mockResolvedValue([]);
 
   Object.defineProperty(window, 'electronAPI', {
@@ -92,6 +97,7 @@ beforeEach(() => {
       schedule: {
         getState: mockGetState,
         getSpecialists: mockGetSpecialists,
+        getActionStats: mockGetActionStats,
         getRunning: mockGetRunning,
         onAlert: vi.fn(() => vi.fn()),
         onStateChanged: vi.fn(() => vi.fn()),
@@ -106,6 +112,25 @@ beforeEach(() => {
 });
 
 describe('SchedulePanel', () => {
+  it('should request action stats while loading schedule state', async () => {
+    render(<SchedulePanel />);
+
+    await waitFor(() => {
+      expect(mockGetActionStats).toHaveBeenCalledWith('security-monitor');
+    });
+  });
+
+  it('should render the Actions stat on each specialist card', async () => {
+    render(<SchedulePanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-security-monitor')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Actions')).toBeInTheDocument();
+    expect(screen.getByTestId('specialist-actions-security-monitor')).toHaveTextContent('7');
+  });
+
   it('should open the configure dialog for a specialist and launch the edit dialog from the Edit definition action', async () => {
     render(<SchedulePanel />);
 
