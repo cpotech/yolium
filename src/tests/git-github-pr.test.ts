@@ -251,6 +251,35 @@ describe('git-github-pr', () => {
     })
   })
 
+  it('mergeBranchAndPushPR should use only the item title as the squash merge commit message', async () => {
+    setupSyncHelpers()
+    let capturedCommitMessage: string | undefined
+    setupExecFileAsyncMock((cmd, args) => {
+      const command = `${cmd} ${args.join(' ')}`
+      if (command === 'git fetch origin') return {}
+      if (command === 'git branch -D yolium/add-auth') return {}
+      if (command === 'git branch yolium/add-auth origin/main') return {}
+      if (command.startsWith('git worktree add ')) return {}
+      if (command === 'git merge --squash yolium-123-abc') return {}
+      if (cmd === 'git' && args[0] === 'commit' && args[1] === '-m') {
+        capturedCommitMessage = args[2]
+        return {}
+      }
+      if (command === 'git push -u origin yolium/add-auth') return {}
+      if (cmd === 'gh' && args[0] === '--version') return { stdout: 'gh version 2.0.0' }
+      if (cmd === 'gh' && args[0] === 'pr') return { stdout: 'https://github.com/yolium/repo/pull/42\n' }
+      if (command.startsWith('git worktree remove ')) return {}
+      if (command === 'git branch -d yolium-123-abc') return {}
+      return {}
+    })
+
+    await mergeBranchAndPushPR('/project', 'yolium-123-abc', '/agent-worktree', 'Add auth', 'Description')
+
+    expect(capturedCommitMessage).toBe('Add auth')
+    expect(capturedCommitMessage).not.toContain('yolium-')
+    expect(capturedCommitMessage).not.toContain('Squash merge branch')
+  })
+
   it('approvePR should return an install message when gh is not available', async () => {
     setupExecFileAsyncMock((cmd, args) => {
       if (cmd === 'gh' && args[0] === '--version') {

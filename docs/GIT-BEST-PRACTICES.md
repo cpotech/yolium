@@ -134,8 +134,6 @@ Enforce consistent commit messages:
 (type) Short description
 
 Longer explanation if needed.
-
-Co-Authored-By: Agent Name <agent@example.com>
 ```
 
 Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`
