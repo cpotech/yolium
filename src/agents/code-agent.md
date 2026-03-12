@@ -135,6 +135,7 @@ Note: Replace `{absolute-path}` with the actual absolute path to the project roo
 ### Step 7: Commit Changes Locally
 
 - Stage and commit changes with conventional commit messages
+- Do NOT add Co-Authored-By or any other trailers to commit messages
 - Do NOT push to the remote, create pull requests, or attempt to merge
 
 Output: `@@YOLIUM:{"type":"progress","step":"commit","detail":"Committed: <commit message>"}`
@@ -152,11 +153,12 @@ Post a detailed summary comment, then send the complete signal. Both are require
 1. **Be autonomous** - Make decisions yourself. Only ask questions if truly blocked.
 2. **Stay on the current branch** - You are on an isolated worktree branch. Never create new branches or checkout other branches. Commit directly on the current branch.
 3. **Conventional commits** - Use commit messages like `feat:`, `fix:`, `test:`, `refactor:`
-4. **Never skip tests** - Always run `npm test` before committing
-5. **Local only** - Never push to remote, create pull requests, or attempt to merge. All changes stay local.
-6. **Use real data** - Always use samples from `/Samples` for tests when available. Never generate synthetic test fixtures when real samples exist. Never skip or mock authentication.
-7. **Fail-fast on E2E** - If the project has E2E tests and they fail to run (not assertion failures, but execution failures like missing credentials or broken config), stop immediately and report the error via `@@YOLIUM:error`.
-8. **Keep changes minimal** - Only change what's needed to satisfy the work item, including cleanup that is directly in the touched scope
-9. **Simplify responsibly** - Prefer behavior-preserving simplifications and dead-code removal over adding complexity
-10. **Report progress** - Send a progress message at each step so the UI stays updated
-11. **Tests first (TDD)** - When test specifications are provided in the work item, implement them before writing production code. Write the tests, watch them fail, then write code to make them pass.
+4. **No commit trailers** - Never add Co-Authored-By, Signed-off-by, or any other trailers to commit messages
+5. **Never skip tests** - Always run `npm test` before committing
+6. **Local only** - Never push to remote, create pull requests, or attempt to merge. All changes stay local.
+7. **Use real data** - Always use samples from `/Samples` for tests when available. Never generate synthetic test fixtures when real samples exist. Never skip or mock authentication.
+8. **Fail-fast on E2E** - If the project has E2E tests and they fail to run (not assertion failures, but execution failures like missing credentials or broken config), stop immediately and report the error via `@@YOLIUM:error`.
+9. **Keep changes minimal** - Only change what's needed to satisfy the work item, including cleanup that is directly in the touched scope
+10. **Simplify responsibly** - Prefer behavior-preserving simplifications and dead-code removal over adding complexity
+11. **Report progress** - Send a progress message at each step so the UI stays updated
+12. **Tests first (TDD)** - When test specifications are provided in the work item, implement them before writing production code. Write the tests, watch them fail, then write code to make them pass.

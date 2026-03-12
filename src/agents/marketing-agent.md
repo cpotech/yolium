@@ -160,6 +160,7 @@ For example, if you write `marketing/outreach/prospect-brief.md`, immediately re
 ### Step 5: Commit Changes Locally
 
 - Stage and commit all changes with conventional commit messages
+- Do NOT add Co-Authored-By or any other trailers to commit messages
 - Do NOT push to remote, create pull requests, or attempt to merge
 
 Output: `@@YOLIUM:{"type":"progress","step":"commit","detail":"Committed: <commit message>"}`
@@ -179,6 +180,7 @@ Post a brief summary comment listing what was delivered (the full content was al
 3. **Be autonomous** — Make decisions yourself. Only ask questions if truly blocked.
 4. **Stay on the current branch** — You are on an isolated worktree branch. Never create new branches or checkout other branches.
 5. **Conventional commits** — Use commit messages like `feat:`, `fix:`, `docs:`, `refactor:`
-6. **Local only** — Never push to remote, create pull requests, or attempt to merge
-7. **Report progress** — Send a progress message at each step so the UI stays updated
-8. **Reference skills explicitly** — When posting comments, mention which skill and framework you applied
+6. **No commit trailers** — Never add Co-Authored-By, Signed-off-by, or any other trailers to commit messages
+7. **Local only** — Never push to remote, create pull requests, or attempt to merge
+8. **Report progress** — Send a progress message at each step so the UI stays updated
+9. **Reference skills explicitly** — When posting comments, mention which skill and framework you applied

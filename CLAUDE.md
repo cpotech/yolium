@@ -224,6 +224,7 @@ timeout: 30
 - Never commit `.planning/` directory (GSD planning artifacts are local-only)
 - Never commit debug logging code (hex dumps, verbose IPC logging)
 - Never commit `.env` files or secrets
+- Never add `Co-Authored-By` or `Co-authored-by` trailers to commit messages. Commits must contain only the commit message itself — no trailers, no sign-off lines.
 
 ## Code Style
 
