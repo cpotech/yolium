@@ -3,13 +3,13 @@ import { Clock, Play, History, Settings, Power, PowerOff, RefreshCw, AlertTriang
 import { RunHistoryTable } from './RunHistoryTable';
 import { SpecialistConfigDialog } from './SpecialistConfigDialog';
 import { AddSpecialistDialog } from './AddSpecialistDialog';
-import type { ActionStats } from '@shared/types/schedule';
+import type { ActionStats, ScheduleType } from '@shared/types/schedule';
 
 interface SpecialistInfo {
   name: string;
   description: string;
   model: string;
-  schedules: Array<{ type: string; cron: string; enabled: boolean }>;
+  schedules: Array<{ type: ScheduleType; cron: string; enabled: boolean }>;
   memory: { strategy: string; maxEntries: number; retentionDays: number };
   escalation: { onFailure?: string; onPattern?: string };
 }
@@ -106,7 +106,7 @@ export function SchedulePanel(): React.ReactElement {
     loadState();
   }, [loadState]);
 
-  const handleTriggerRun = useCallback(async (id: string, type: string) => {
+  const handleTriggerRun = useCallback(async (id: string, type: ScheduleType) => {
     setRunTypeMenu(null);
     const result = await window.electronAPI.schedule.triggerRun(id, type);
     if (result.skipped) {

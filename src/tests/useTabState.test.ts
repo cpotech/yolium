@@ -80,6 +80,7 @@ function tabReducer(state: TabState, action: TabAction): TabState {
 function createTab(overrides: Partial<Tab> = {}): Tab {
   return {
     id: `tab-${Date.now()}`,
+    type: 'terminal',
     sessionId: 'session-1',
     cwd: '/home/user/project',
     label: 'project',

@@ -52,27 +52,27 @@ vi.mock('@main/lib/logger', () => ({
 }));
 
 vi.mock('@main/services/project-onboarding', () => ({
-  detectProjectTypes: (...args: any[]) => detectProjectTypesMock(...args),
-  detectPackageManager: (...args: any[]) => detectPackageManagerMock(...args),
+  detectProjectTypes: detectProjectTypesMock,
+  detectPackageManager: detectPackageManagerMock,
 }));
 
 vi.mock('@main/git/git-config', () => ({
-  loadGitConfig: (...args: any[]) => loadGitConfigMock(...args),
-  refreshCodexOAuthTokenSerialized: (...args: any[]) => refreshCodexOAuthTokenSerializedMock(...args),
+  loadGitConfig: loadGitConfigMock,
+  refreshCodexOAuthTokenSerialized: refreshCodexOAuthTokenSerializedMock,
 }));
 
 vi.mock('@main/docker/project-registry', () => ({
-  getGitCredentialsBind: (...args: any[]) => getGitCredentialsBindMock(...args),
-  getClaudeOAuthBind: (...args: any[]) => getClaudeOAuthBindMock(...args),
-  getCodexOAuthBind: (...args: any[]) => getCodexOAuthBindMock(...args),
+  getGitCredentialsBind: getGitCredentialsBindMock,
+  getClaudeOAuthBind: getClaudeOAuthBindMock,
+  getCodexOAuthBind: getCodexOAuthBindMock,
 }));
 
 vi.mock('@main/stores/workitem-log-store', () => ({
-  formatLogTimestamp: (...args: any[]) => formatLogTimestampMock(...args),
+  formatLogTimestamp: formatLogTimestampMock,
 }));
 
 vi.mock('@main/git/git-worktree', () => ({
-  fixWorktreeGitFile: (...args: any[]) => fixWorktreeGitFileMock(...args),
+  fixWorktreeGitFile: fixWorktreeGitFileMock,
 }));
 
 vi.mock('@main/docker/shared', () => ({

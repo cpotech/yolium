@@ -1,6 +1,20 @@
 import { defineConfig } from 'vitest/config'
 import path from 'path'
 
+const testConfig = {
+  globals: true,
+  include: ['src/tests/**/*.test.ts', 'src/tests/**/*.test.tsx'],
+  environmentMatchGlobs: [
+    ['src/tests/**/*.test.tsx', 'jsdom'],
+    ['src/tests/**/*.test.ts', 'node'],
+  ],
+  setupFiles: ['./config/vitest.setup.ts'],
+  reporters: ['default', 'html'],
+  outputFile: {
+    html: './vitest-report/index.html',
+  },
+}
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -9,19 +23,5 @@ export default defineConfig({
       '@shared': path.resolve(__dirname, '../src/shared'),
     },
   },
-  test: {
-    globals: true,
-    include: ['src/tests/**/*.test.ts', 'src/tests/**/*.test.tsx'],
-    environmentMatchGlobs: [
-      // Use jsdom for React component tests (.tsx)
-      ['src/tests/**/*.test.tsx', 'jsdom'],
-      // Use node for other tests (.ts)
-      ['src/tests/**/*.test.ts', 'node'],
-    ],
-    setupFiles: ['./config/vitest.setup.ts'],
-    reporters: ['default', 'html'],
-    outputFile: {
-      html: './vitest-report/index.html',
-    },
-  },
+  test: testConfig,
 })

@@ -23,20 +23,22 @@ vi.mock('node:path', async () => {
   };
 });
 
-const mockExistsSync = vi.fn(() => false);
-const mockReadFileSync = vi.fn(() => '');
+const { mockExistsSync, mockReadFileSync } = vi.hoisted(() => ({
+  mockExistsSync: vi.fn(() => false),
+  mockReadFileSync: vi.fn(() => ''),
+}));
 vi.mock('node:fs', () => ({
-  existsSync: (...args: unknown[]) => mockExistsSync(...args),
+  existsSync: mockExistsSync,
   mkdirSync: vi.fn(),
   writeFileSync: vi.fn(),
-  readFileSync: (...args: unknown[]) => mockReadFileSync(...args),
+  readFileSync: mockReadFileSync,
   readdirSync: vi.fn(() => []),
   unlinkSync: vi.fn(),
 }));
 
-const mockGetAgentSession = vi.hoisted(() => vi.fn(() => undefined));
+const mockGetAgentSession = vi.hoisted(() => vi.fn());
 vi.mock('@main/docker', () => ({
-  getAgentSession: (...args: unknown[]) => mockGetAgentSession(...args),
+  getAgentSession: mockGetAgentSession,
 }));
 
 const mockState = vi.hoisted(() => ({
@@ -126,7 +128,7 @@ describe('agent-exit-handler', () => {
   describe('handleAgentExit', () => {
     it('should mark item completed on exit code 0 with no errors', () => {
       const board = getOrCreateBoard('/tmp/test-project');
-      const item = addItem(board, { title: 'Test', description: 'Desc', agentProvider: 'claude' });
+      const item = addItem(board, { title: 'Test', description: 'Desc', agentProvider: 'claude', order: 0 });
       updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
       mockGetAgentSession.mockReturnValue({ protocolMessageCount: 0 });
 
@@ -139,7 +141,7 @@ describe('agent-exit-handler', () => {
 
     it('should mark item failed when detectedError is present', () => {
       const board = getOrCreateBoard('/tmp/test-project');
-      const item = addItem(board, { title: 'Test', description: 'Desc', agentProvider: 'claude' });
+      const item = addItem(board, { title: 'Test', description: 'Desc', agentProvider: 'claude', order: 0 });
       updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
       mockGetAgentSession.mockReturnValue({ detectedError: 'Something went wrong', protocolMessageCount: 0 });
 
@@ -153,7 +155,7 @@ describe('agent-exit-handler', () => {
 
     it('should mark item interrupted when protocol messages sent but no complete', () => {
       const board = getOrCreateBoard('/tmp/test-project');
-      const item = addItem(board, { title: 'Test', description: 'Desc', agentProvider: 'claude' });
+      const item = addItem(board, { title: 'Test', description: 'Desc', agentProvider: 'claude', order: 0 });
       updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
       mockGetAgentSession.mockReturnValue({ protocolMessageCount: 5 });
 
@@ -165,7 +167,7 @@ describe('agent-exit-handler', () => {
 
     it('should treat non-Claude exit 0 with no protocol as success', () => {
       const board = getOrCreateBoard('/tmp/test-project');
-      const item = addItem(board, { title: 'Test', description: 'Desc', agentProvider: 'codex' });
+      const item = addItem(board, { title: 'Test', description: 'Desc', agentProvider: 'codex', order: 0 });
       updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
       mockGetAgentSession.mockReturnValue({ protocolMessageCount: 0 });
 
@@ -177,7 +179,7 @@ describe('agent-exit-handler', () => {
 
     it('should handle timeout exit code 124', () => {
       const board = getOrCreateBoard('/tmp/test-project');
-      const item = addItem(board, { title: 'Test', description: 'Desc', agentProvider: 'claude' });
+      const item = addItem(board, { title: 'Test', description: 'Desc', agentProvider: 'claude', order: 0 });
       updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
 
       const onError = vi.fn();
@@ -190,7 +192,7 @@ describe('agent-exit-handler', () => {
 
     it('should handle non-zero exit with detected error message', () => {
       const board = getOrCreateBoard('/tmp/test-project');
-      const item = addItem(board, { title: 'Test', description: 'Desc', agentProvider: 'claude' });
+      const item = addItem(board, { title: 'Test', description: 'Desc', agentProvider: 'claude', order: 0 });
       updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
       mockGetAgentSession.mockReturnValue({ detectedError: 'OOM killed' });
 
@@ -204,7 +206,7 @@ describe('agent-exit-handler', () => {
 
     it('should handle non-zero exit without detected error', () => {
       const board = getOrCreateBoard('/tmp/test-project');
-      const item = addItem(board, { title: 'Test', description: 'Desc', agentProvider: 'claude' });
+      const item = addItem(board, { title: 'Test', description: 'Desc', agentProvider: 'claude', order: 0 });
       updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
 
       const onError = vi.fn();
@@ -219,7 +221,7 @@ describe('agent-exit-handler', () => {
   describe('synthesizeNonClaudeConclusion', () => {
     it('should read .yolium-plan.md for non-Claude plan-agent on exit', () => {
       const board = getOrCreateBoard('/tmp/test-project');
-      const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex' });
+      const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex', order: 0 });
       mockGetAgentSession.mockReturnValue({ receivedUpdateDescription: false });
       mockExistsSync.mockReturnValue(true);
       mockReadFileSync.mockReturnValue('## Plan\n\nStep 1: Do things');
@@ -240,7 +242,7 @@ describe('agent-exit-handler', () => {
 
     it('should read .yolium-summary.md for non-Claude code-agent on exit', () => {
       const board = getOrCreateBoard('/tmp/test-project');
-      const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex' });
+      const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex', order: 0 });
       mockGetAgentSession.mockReturnValue({});
       mockExistsSync.mockReturnValue(true);
       mockReadFileSync.mockReturnValue('Summary of changes');
@@ -260,7 +262,7 @@ describe('agent-exit-handler', () => {
 
     it('should read .yolium-scout.json for non-Claude scout-agent on exit', () => {
       const board = getOrCreateBoard('/tmp/test-project');
-      const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex' });
+      const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex', order: 0 });
       mockGetAgentSession.mockReturnValue({});
       mockExistsSync.mockReturnValue(true);
       mockReadFileSync.mockReturnValue('[{"company":"Acme"}]');
@@ -280,7 +282,7 @@ describe('agent-exit-handler', () => {
 
     it('should read .yolium-verify.md for non-Claude verify-agent on exit', () => {
       const board = getOrCreateBoard('/tmp/test-project');
-      const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex' });
+      const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex', order: 0 });
       mockGetAgentSession.mockReturnValue({});
       mockExistsSync.mockReturnValue(true);
       mockReadFileSync.mockReturnValue('## Verification Report\n\nStatus: PASS');
@@ -300,7 +302,7 @@ describe('agent-exit-handler', () => {
 
     it('should fall back to accumulated agent message texts for plan-agent', () => {
       const board = getOrCreateBoard('/tmp/test-project');
-      const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex' });
+      const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex', order: 0 });
       mockGetAgentSession.mockReturnValue({
         receivedUpdateDescription: false,
         agentMessageTexts: [

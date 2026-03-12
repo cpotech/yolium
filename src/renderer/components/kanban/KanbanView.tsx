@@ -190,7 +190,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     if (item.agentType) {
       await window.electronAPI.agent.start({
         agentName: item.agentType,
-        projectPath,
+        projectPath: projectPath!,
         itemId: item.id,
         goal: item.description,
         agentProvider: item.agentProvider,

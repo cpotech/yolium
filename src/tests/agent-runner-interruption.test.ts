@@ -108,7 +108,7 @@ const mockLoadAgentDefinition = vi.hoisted(() =>
 );
 
 vi.mock('@main/services/agent-loader', () => ({
-  loadAgentDefinition: (...args: unknown[]) => mockLoadAgentDefinition(...args),
+  loadAgentDefinition: mockLoadAgentDefinition,
 }));
 
 vi.mock('@main/git/git-worktree', () => ({
@@ -133,13 +133,13 @@ vi.mock('@main/stores/workitem-log-store', () => ({
 const mockCreateAgentContainer = vi.hoisted(() => vi.fn());
 const mockStopAgentContainer = vi.hoisted(() => vi.fn());
 const mockCheckAgentAuth = vi.hoisted(() => vi.fn(() => ({ authenticated: true })));
-const mockGetAgentSession = vi.hoisted(() => vi.fn(() => undefined));
+const mockGetAgentSession = vi.hoisted(() => vi.fn());
 
 vi.mock('@main/docker', () => ({
-  createAgentContainer: (...args: unknown[]) => mockCreateAgentContainer(...args),
-  stopAgentContainer: (...args: unknown[]) => mockStopAgentContainer(...args),
-  checkAgentAuth: (...args: unknown[]) => mockCheckAgentAuth(...args),
-  getAgentSession: (...args: unknown[]) => mockGetAgentSession(...args),
+  createAgentContainer: mockCreateAgentContainer,
+  stopAgentContainer: mockStopAgentContainer,
+  checkAgentAuth: mockCheckAgentAuth,
+  getAgentSession: mockGetAgentSession,
 }));
 
 import { addItem, getOrCreateBoard, updateItem } from '@main/stores/kanban-store';

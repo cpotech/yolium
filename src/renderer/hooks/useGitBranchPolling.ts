@@ -30,7 +30,7 @@ export function useGitBranchPolling({
       if (!activeTab?.cwd) return
 
       // Check if session uses a worktree to get the correct path
-      const worktreeInfo = await window.electronAPI.container.getWorktreeInfo(activeTab.sessionId)
+      const worktreeInfo = await window.electronAPI.container.getWorktreeInfo(activeTab.sessionId!)
       // Use worktree path if available, otherwise use the tab's cwd
       const gitPath = worktreeInfo?.worktreePath || activeTab.cwd
       const branch = await window.electronAPI.git.getBranch(gitPath)

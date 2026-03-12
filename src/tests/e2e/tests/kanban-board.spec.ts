@@ -40,33 +40,33 @@ test.describe('Kanban Board', () => {
    */
   async function openKanbanBoard(): Promise<void> {
     ctx = await launchApp();
-    const { window } = ctx;
+    const page = ctx.window;
 
     // Clear stale localStorage from previous launches
-    await window.evaluate(() => {
+    await page.evaluate(() => {
       localStorage.removeItem('yolium-sidebar-projects');
       localStorage.removeItem('yolium-open-kanban-tabs');
     });
-    await window.reload();
-    await window.waitForLoadState('domcontentloaded');
-    await window.waitForSelector(
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForSelector(
       '[data-testid="empty-state"], [data-testid="docker-setup-dialog"], [data-testid="tab-bar"]',
       { timeout: 30000 }
     );
 
     // Add project via sidebar
-    await window.click(selectors.addProjectButton);
-    await window.fill(selectors.pathInput, testRepoPath);
-    await window.click(selectors.pathNextButton);
-    await expect(window.locator(selectors.kanbanView)).toBeVisible({ timeout: 10000 });
+    await page.click(selectors.addProjectButton);
+    await page.fill(selectors.pathInput, testRepoPath);
+    await page.click(selectors.pathNextButton);
+    await expect(page.locator(selectors.kanbanView)).toBeVisible({ timeout: 10000 });
   }
 
   /**
    * Create an item via IPC and refresh the board.
    */
   async function createItemViaIPC(title: string, description: string, opts?: { branch?: string; agentProvider?: 'claude' | 'codex' | 'opencode' }): Promise<{ id: string }> {
-    const { window } = ctx;
-    const item = await window.evaluate(
+    const page = ctx.window;
+    const item = await page.evaluate(
       async (params: { path: string; title: string; desc: string; branch?: string; agentProvider?: string }) => {
         return window.electronAPI.kanban.addItem(params.path, {
           title: params.title,
@@ -79,9 +79,9 @@ test.describe('Kanban Board', () => {
       { path: testRepoPath, title, desc: description, branch: opts?.branch, agentProvider: opts?.agentProvider }
     ) as { id: string };
 
-    await window.click(selectors.kanbanRefreshButton);
+    await page.click(selectors.kanbanRefreshButton);
     await expect(
-      window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard)
+      page.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard)
     ).toBeVisible({ timeout: 5000 });
 
     return item;
@@ -331,10 +331,10 @@ test.describe('Kanban Board', () => {
 
   test('should display multiple items in correct columns', async () => {
     await openKanbanBoard();
-    const { window } = ctx;
+    const page = ctx.window;
 
     // Create multiple items via IPC
-    await window.evaluate(async (repoPath: string) => {
+    await page.evaluate(async (repoPath: string) => {
       await window.electronAPI.kanban.addItem(repoPath, {
         title: 'Backlog Item 1', description: 'Desc 1',
         agentProvider: 'claude', order: 0,
@@ -345,20 +345,20 @@ test.describe('Kanban Board', () => {
       });
     }, testRepoPath);
 
-    await window.click(selectors.kanbanRefreshButton);
+    await page.click(selectors.kanbanRefreshButton);
 
     // Should have 2 items in backlog
     await expect(
-      window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard)
+      page.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard)
     ).toHaveCount(2);
 
     // Move one to ready via IPC
-    const board = await window.evaluate(async (repoPath: string) => {
+    const board = await page.evaluate(async (repoPath: string) => {
       return window.electronAPI.kanban.getBoard(repoPath);
     }, testRepoPath);
 
     const firstItem = (board as { items: Array<{ id: string }> }).items[0];
-    await window.evaluate(
+    await page.evaluate(
       async (params: { path: string; id: string }) => {
         await window.electronAPI.kanban.updateItem(params.path, params.id, { column: 'ready' });
       },
@@ -366,23 +366,23 @@ test.describe('Kanban Board', () => {
     );
 
     // Click refresh to trigger board reload
-    await window.click(selectors.kanbanRefreshButton);
+    await page.click(selectors.kanbanRefreshButton);
 
     // Verify columns
     await expect(
-      window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard)
+      page.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard)
     ).toHaveCount(1);
     await expect(
-      window.locator(selectors.kanbanColumn('ready')).locator(selectors.kanbanCard)
+      page.locator(selectors.kanbanColumn('ready')).locator(selectors.kanbanCard)
     ).toHaveCount(1);
   });
 
   test('should show correct item counts per column', async () => {
     await openKanbanBoard();
-    const { window } = ctx;
+    const page = ctx.window;
 
     // Create 3 items
-    await window.evaluate(async (repoPath: string) => {
+    await page.evaluate(async (repoPath: string) => {
       await window.electronAPI.kanban.addItem(repoPath, {
         title: 'Item 1', description: 'D', agentProvider: 'claude', order: 0,
       });
@@ -394,14 +394,14 @@ test.describe('Kanban Board', () => {
       });
     }, testRepoPath);
 
-    await window.click(selectors.kanbanRefreshButton);
+    await page.click(selectors.kanbanRefreshButton);
 
     // Backlog column count should be 3
-    const backlogCount = window.locator(selectors.kanbanColumn('backlog')).locator('[data-testid="item-count"]');
+    const backlogCount = page.locator(selectors.kanbanColumn('backlog')).locator('[data-testid="item-count"]');
     await expect(backlogCount).toContainText('3');
 
     // Other columns should be 0
-    const readyCount = window.locator(selectors.kanbanColumn('ready')).locator('[data-testid="item-count"]');
+    const readyCount = page.locator(selectors.kanbanColumn('ready')).locator('[data-testid="item-count"]');
     await expect(readyCount).toContainText('0');
   });
 
