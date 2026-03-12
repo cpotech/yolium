@@ -14,6 +14,7 @@ vi.mock('node:os', () => ({
 import * as path from 'node:path';
 import {
   appendAction,
+  getAllRecentActions,
   getActionStats,
   getActionsByRun,
   getRecentActions,
@@ -118,5 +119,102 @@ describe('action-log-store', () => {
     ].join('\n') + '\n');
 
     expect(getRecentActions('twitter-growth', 10).map(entry => entry.id)).toEqual(['a1', 'a2']);
+  });
+
+  describe('getAllRecentActions', () => {
+    it('should return an empty array when no specialist IDs are provided', () => {
+      expect(getAllRecentActions([], 100)).toEqual([]);
+    });
+
+    it('should merge actions from multiple specialists sorted by timestamp descending', async () => {
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+
+      const specialist1Actions = [
+        makeAction({ id: 'a1', specialistId: 'twitter-growth', timestamp: '2026-03-11T09:00:00.000Z' }),
+        makeAction({ id: 'a3', specialistId: 'twitter-growth', timestamp: '2026-03-11T11:00:00.000Z' }),
+      ].map(e => JSON.stringify(e)).join('\n') + '\n';
+
+      const specialist2Actions = [
+        makeAction({ id: 'a2', specialistId: 'security-monitor', timestamp: '2026-03-11T10:00:00.000Z' }),
+        makeAction({ id: 'a4', specialistId: 'security-monitor', timestamp: '2026-03-11T12:00:00.000Z' }),
+      ].map(e => JSON.stringify(e)).join('\n') + '\n';
+
+      vi.mocked(fs.readFileSync).mockImplementation((filePath: unknown) => {
+        const p = String(filePath);
+        if (p.includes('twitter-growth')) return specialist1Actions;
+        if (p.includes('security-monitor')) return specialist2Actions;
+        return '';
+      });
+
+      const result = getAllRecentActions(['twitter-growth', 'security-monitor'], 100);
+      expect(result.map(e => e.id)).toEqual(['a4', 'a3', 'a2', 'a1']);
+    });
+
+    it('should respect the limit parameter across merged results', async () => {
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+
+      const specialist1Actions = [
+        makeAction({ id: 'a1', specialistId: 'twitter-growth', timestamp: '2026-03-11T09:00:00.000Z' }),
+        makeAction({ id: 'a3', specialistId: 'twitter-growth', timestamp: '2026-03-11T11:00:00.000Z' }),
+      ].map(e => JSON.stringify(e)).join('\n') + '\n';
+
+      const specialist2Actions = [
+        makeAction({ id: 'a2', specialistId: 'security-monitor', timestamp: '2026-03-11T10:00:00.000Z' }),
+        makeAction({ id: 'a4', specialistId: 'security-monitor', timestamp: '2026-03-11T12:00:00.000Z' }),
+      ].map(e => JSON.stringify(e)).join('\n') + '\n';
+
+      vi.mocked(fs.readFileSync).mockImplementation((filePath: unknown) => {
+        const p = String(filePath);
+        if (p.includes('twitter-growth')) return specialist1Actions;
+        if (p.includes('security-monitor')) return specialist2Actions;
+        return '';
+      });
+
+      const result = getAllRecentActions(['twitter-growth', 'security-monitor'], 2);
+      expect(result).toHaveLength(2);
+      expect(result.map(e => e.id)).toEqual(['a4', 'a3']);
+    });
+
+    it('should handle missing action files for some specialists gracefully', async () => {
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockImplementation((filePath: unknown) => {
+        return String(filePath).includes('twitter-growth');
+      });
+
+      vi.mocked(fs.readFileSync).mockReturnValue(
+        JSON.stringify(makeAction({ id: 'a1', specialistId: 'twitter-growth' })) + '\n'
+      );
+
+      const result = getAllRecentActions(['twitter-growth', 'missing-specialist'], 100);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('a1');
+    });
+
+    it('should skip corrupted lines across multiple specialist files', async () => {
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+
+      vi.mocked(fs.readFileSync).mockImplementation((filePath: unknown) => {
+        const p = String(filePath);
+        if (p.includes('twitter-growth')) {
+          return [
+            JSON.stringify(makeAction({ id: 'a1', specialistId: 'twitter-growth', timestamp: '2026-03-11T09:00:00.000Z' })),
+            '{corrupted',
+          ].join('\n') + '\n';
+        }
+        if (p.includes('security-monitor')) {
+          return [
+            '{also bad',
+            JSON.stringify(makeAction({ id: 'a2', specialistId: 'security-monitor', timestamp: '2026-03-11T10:00:00.000Z' })),
+          ].join('\n') + '\n';
+        }
+        return '';
+      });
+
+      const result = getAllRecentActions(['twitter-growth', 'security-monitor'], 100);
+      expect(result.map(e => e.id)).toEqual(['a2', 'a1']);
+    });
   });
 });

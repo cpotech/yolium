@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Clock, Play, History, Settings, Power, PowerOff, RefreshCw, AlertTriangle, ChevronDown, Plus } from 'lucide-react';
 import { RunHistoryTable } from './RunHistoryTable';
+import { ActionsView } from './ActionsView';
 import { SpecialistConfigDialog } from './SpecialistConfigDialog';
 import { AddSpecialistDialog } from './AddSpecialistDialog';
 import type { ActionStats, ScheduleType } from '@shared/types/schedule';
@@ -42,6 +43,8 @@ export function SchedulePanel(): React.ReactElement {
   const [isLoading, setIsLoading] = useState(true);
   const [runTypeMenu, setRunTypeMenu] = useState<string | null>(null);
   const [runningIds, setRunningIds] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<'specialists' | 'actions'>('specialists');
+  const [actionsFilterSpecialist, setActionsFilterSpecialist] = useState<string | null>(null);
 
   const loadState = useCallback(async () => {
     try {
@@ -182,6 +185,30 @@ export function SchedulePanel(): React.ReactElement {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex rounded border border-[var(--color-border-primary)]">
+            <button
+              data-testid="view-toggle-specialists"
+              onClick={() => { setViewMode('specialists'); setActionsFilterSpecialist(null); }}
+              className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+                viewMode === 'specialists'
+                  ? 'bg-[var(--color-accent-primary)] text-white'
+                  : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+              }`}
+            >
+              Specialists
+            </button>
+            <button
+              data-testid="view-toggle-actions"
+              onClick={() => { setViewMode('actions'); setActionsFilterSpecialist(null); }}
+              className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+                viewMode === 'actions'
+                  ? 'bg-[var(--color-accent-primary)] text-white'
+                  : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+              }`}
+            >
+              Actions
+            </button>
+          </div>
           <button
             data-testid="add-specialist-btn"
             onClick={() => {
@@ -227,7 +254,18 @@ export function SchedulePanel(): React.ReactElement {
         </div>
       )}
 
-      {/* Specialist cards */}
+      {/* Main content */}
+      {viewMode === 'actions' ? (
+        <div className="flex-1 min-h-0 overflow-auto">
+          <ActionsView
+            specialistIds={Object.keys(specialists)}
+            specialistNames={Object.fromEntries(
+              Object.entries(specialists).map(([id, spec]) => [id, spec.name])
+            )}
+            initialSpecialist={actionsFilterSpecialist}
+          />
+        </div>
+      ) : (
       <div className="flex-1 min-h-0 overflow-auto p-3">
         {Object.keys(specialists).length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)]">
@@ -332,8 +370,13 @@ export function SchedulePanel(): React.ReactElement {
                     <div>
                       <span className="text-[var(--color-text-muted)]">Actions</span>
                       <span
-                        className="block text-[var(--color-text-primary)]"
+                        className="block text-[var(--color-accent-primary)] cursor-pointer hover:underline"
                         data-testid={`specialist-actions-${id}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActionsFilterSpecialist(id);
+                          setViewMode('actions');
+                        }}
                       >
                         {actionStats[id]?.totalActions || 0}
                       </span>
@@ -420,6 +463,7 @@ export function SchedulePanel(): React.ReactElement {
           </div>
         )}
       </div>
+      )}
 
       {/* Specialist Config Dialog */}
       <SpecialistConfigDialog

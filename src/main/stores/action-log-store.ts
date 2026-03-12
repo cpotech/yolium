@@ -49,6 +49,15 @@ export function getActionsByRun(specialistId: string, runId: string): ActionLogE
   return readAllActions(specialistId).filter(entry => entry.runId === runId);
 }
 
+export function getAllRecentActions(specialistIds: string[], limit: number): ActionLogEntry[] {
+  const allActions: ActionLogEntry[] = [];
+  for (const id of specialistIds) {
+    allActions.push(...readAllActions(id));
+  }
+  allActions.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  return allActions.slice(0, limit);
+}
+
 export function getActionStats(specialistId: string): ActionStats {
   const entries = readAllActions(specialistId);
   const actionCounts = entries.reduce<Record<string, number>>((counts, entry) => {

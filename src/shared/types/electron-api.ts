@@ -490,6 +490,7 @@ export interface ScheduleAPI {
   ) => Promise<void>;
   deleteCredentials: (specialistId: string) => Promise<void>;
   getRunLog: (specialistId: string, runId: string) => Promise<string>;
+  getAllActions: (specialistIds: string[], limit?: number) => Promise<ActionLogEntry[]>;
   getActions: (specialistId: string, limit?: number) => Promise<ActionLogEntry[]>;
   getRunActions: (specialistId: string, runId: string) => Promise<ActionLogEntry[]>;
   getActionStats: (specialistId: string) => Promise<ActionStats>;
