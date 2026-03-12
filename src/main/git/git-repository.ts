@@ -66,7 +66,7 @@ function ensureGitIdentity(folderPath: string): void {
       stdio: 'ignore',
     })
   } catch {
-    execFileSync('git', ['config', 'user.name', 'AI Agent (Yolium)'], {
+    execFileSync('git', ['config', 'user.name', 'Developer'], {
       cwd: folderPath,
       stdio: 'ignore',
     })
@@ -78,7 +78,7 @@ function ensureGitIdentity(folderPath: string): void {
       stdio: 'ignore',
     })
   } catch {
-    execFileSync('git', ['config', 'user.email', 'agent@yolium'], {
+    execFileSync('git', ['config', 'user.email', 'developer@localhost'], {
       cwd: folderPath,
       stdio: 'ignore',
     })

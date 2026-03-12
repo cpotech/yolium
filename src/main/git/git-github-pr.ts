@@ -104,7 +104,7 @@ export async function mergeBranchAndPushPR(
     await execFileAsync('git', ['merge', '--squash', worktreeBranch], {
       cwd: tempWorktreePath,
     })
-    await execFileAsync('git', ['commit', '-m', `Squash merge branch '${worktreeBranch}' for: ${itemTitle}`], {
+    await execFileAsync('git', ['commit', '-m', itemTitle], {
       cwd: tempWorktreePath,
     })
   } catch (err) {

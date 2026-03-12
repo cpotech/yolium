@@ -13,12 +13,12 @@ elif [ -f "/tmp/host_gitconfig" ]; then
 else
     cat > /home/agent/.gitconfig << 'EOF'
 [user]
-    email = agent@yolium
-    name = AI Agent (Yolium)
+    email = developer@localhost
+    name = Developer
 [init]
     defaultBranch = main
 EOF
-    add_status "ℹ️  Using default git identity (agent@yolium). Configure via Settings gear."
+    add_status "ℹ️  Using default git identity (developer@localhost). Configure via Settings gear."
 fi
 
 # Mark the project directory as safe for git (fixes ownership mismatch with mounted volumes)
