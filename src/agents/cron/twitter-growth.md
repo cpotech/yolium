@@ -32,6 +32,8 @@ integrations:
       TWITTER_API_KEY: ""
       TWITTER_API_SECRET: ""
       TWITTER_BEARER_TOKEN: ""
+      TWITTER_ACCESS_TOKEN: ""
+      TWITTER_ACCESS_TOKEN_SECRET: ""
 promptTemplates:
   heartbeat: |
     Review the last 30 minutes of engagement data.
@@ -234,3 +236,14 @@ Maintain this content balance:
 - Flag declining engagement trends for strategy adjustment
 - Balance consistency with freshness in content planning
 - You're not just tweeting — you're building a real-time brand presence that transforms conversations into community, engagement into authority, and followers into brand advocates through authentic, valuable participation in Twitter's dynamic ecosystem
+
+## Twitter API Integration
+
+- Use `/opt/twitter-tools/get_mentions.py` to read recent mentions before deciding whether to reply, post, or stand down.
+- Use `/opt/twitter-tools/post_tweet.py` for every original tweet, thread step, or reply you draft for publication.
+- Default to safe simulation: if `DRY_RUN` is unset or any value other than `false`, include `--dry-run` when calling `post_tweet.py`.
+- Only perform live posting when `DRY_RUN=false` is set and the content is ready for production publishing.
+- Emit `@@YOLIUM:{"type":"action","action":"mentions_checked","data":{...},"timestamp":"..."}` after each mention-read action.
+- Emit `@@YOLIUM:{"type":"action","action":"tweet_posted","data":{...},"timestamp":"..."}` after each tweet or reply action, including whether it was a dry run.
+- Include relevant action metadata such as `dryRun`, `tweetId`, `text`, `count`, or `conversationId` in the `data` payload.
+- Rate guardrails: never exceed 5 posted tweets/replies in one heartbeat run or 20 posted tweets/replies in one calendar day.

@@ -3,6 +3,7 @@ import { Clock, Play, History, Settings, Power, PowerOff, RefreshCw, AlertTriang
 import { RunHistoryTable } from './RunHistoryTable';
 import { SpecialistConfigDialog } from './SpecialistConfigDialog';
 import { AddSpecialistDialog } from './AddSpecialistDialog';
+import type { ActionStats } from '@shared/types/schedule';
 
 interface SpecialistInfo {
   name: string;
@@ -32,6 +33,7 @@ interface ScheduleState {
 export function SchedulePanel(): React.ReactElement {
   const [state, setState] = useState<ScheduleState | null>(null);
   const [specialists, setSpecialists] = useState<Record<string, SpecialistInfo>>({});
+  const [actionStats, setActionStats] = useState<Record<string, ActionStats>>({});
   const [selectedSpecialist, setSelectedSpecialist] = useState<string | null>(null);
   const [configSpecialist, setConfigSpecialist] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -48,8 +50,20 @@ export function SchedulePanel(): React.ReactElement {
         window.electronAPI.schedule.getSpecialists(),
         window.electronAPI.schedule.getRunning(),
       ]);
+      const actionStatsEntries = await Promise.all(
+        Object.keys(specialistDefs).map(async (specialistId) => {
+          try {
+            const stats = await window.electronAPI.schedule.getActionStats(specialistId);
+            return [specialistId, stats] as const;
+          } catch (err) {
+            console.warn(`Failed to load action stats for ${specialistId}:`, err);
+            return [specialistId, { totalActions: 0, actionCounts: {} }] as const;
+          }
+        })
+      );
       setState(scheduleState);
       setSpecialists(specialistDefs);
+      setActionStats(Object.fromEntries(actionStatsEntries));
       setRunningIds(running);
     } catch (err) {
       console.error('Failed to load schedule state:', err);
@@ -302,7 +316,7 @@ export function SchedulePanel(): React.ReactElement {
                   </div>
 
                   {/* Stats */}
-                  <div className="grid grid-cols-3 gap-2 text-xs mb-2">
+                  <div className="grid grid-cols-4 gap-2 text-xs mb-2">
                     <div>
                       <span className="text-[var(--color-text-muted)]">Runs</span>
                       <span className="block text-[var(--color-text-primary)]">{status?.totalRuns || 0}</span>
@@ -314,6 +328,15 @@ export function SchedulePanel(): React.ReactElement {
                     <div>
                       <span className="text-[var(--color-text-muted)]">$/wk</span>
                       <span className="block text-[var(--color-text-primary)]">${(status?.weeklyCost || 0).toFixed(2)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[var(--color-text-muted)]">Actions</span>
+                      <span
+                        className="block text-[var(--color-text-primary)]"
+                        data-testid={`specialist-actions-${id}`}
+                      >
+                        {actionStats[id]?.totalActions || 0}
+                      </span>
                     </div>
                   </div>
 

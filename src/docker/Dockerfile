@@ -219,6 +219,7 @@ RUN find /usr/local/bin/entrypoint.d -name '*.sh' -exec sed -i 's/\r$//' {} + &&
 
 # Copy marketing skills into container for the marketing agent
 COPY marketing-skills /opt/marketing-skills
+COPY twitter-tools /opt/twitter-tools
 
 # Set the user for runtime
 USER ${USERNAME}

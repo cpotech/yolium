@@ -1,27 +1,20 @@
-// src/tests/RunHistoryTable.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+/**
+ * @vitest-environment jsdom
+ */
+import React from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { RunHistoryTable } from '@renderer/components/schedule/RunHistoryTable';
 
-// Mock window.electronAPI.schedule
 const mockGetHistory = vi.fn();
 const mockGetStats = vi.fn();
 const mockGetRunLog = vi.fn();
-
-function setupMockAPI() {
-  (globalThis as Record<string, unknown>).window = {
-    electronAPI: {
-      schedule: {
-        getHistory: mockGetHistory,
-        getStats: mockGetStats,
-        getRunLog: mockGetRunLog,
-      },
-    },
-  };
-}
+const mockGetRunActions = vi.fn();
 
 function makeRunRecord(overrides: Record<string, unknown> = {}) {
   return {
     id: 'run-1',
-    specialistId: 'test-spec',
+    specialistId: 'twitter-growth',
     scheduleType: 'daily',
     startedAt: '2026-03-10T10:00:00.000Z',
     completedAt: '2026-03-10T10:05:00.000Z',
@@ -34,87 +27,93 @@ function makeRunRecord(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe('RunHistoryTable array handling', () => {
-  it('should not mutate the original history array when reversing', () => {
-    const original = [
-      { id: '1', startedAt: '2026-01-01' },
-      { id: '2', startedAt: '2026-01-02' },
-      { id: '3', startedAt: '2026-01-03' },
-    ];
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockGetHistory.mockResolvedValue([makeRunRecord()]);
+  mockGetStats.mockResolvedValue({
+    totalRuns: 1,
+    successRate: 100,
+    weeklyCost: 0.015,
+    averageTokensPerRun: 1500,
+    averageDurationMs: 300000,
+  });
+  mockGetRunLog.mockResolvedValue('[2026-03-10T10:00:00.000Z] Drafted tweet');
+  mockGetRunActions.mockResolvedValue([]);
 
-    const originalOrder = [...original];
-    const reversed = [...original].reverse();
-
-    expect(original).toEqual(originalOrder);
-    expect(reversed[0].id).toBe('3');
-    expect(reversed[1].id).toBe('2');
-    expect(reversed[2].id).toBe('1');
+  Object.defineProperty(window, 'electronAPI', {
+    value: {
+      schedule: {
+        getHistory: mockGetHistory,
+        getStats: mockGetStats,
+        getRunLog: mockGetRunLog,
+        getRunActions: mockGetRunActions,
+      },
+    },
+    writable: true,
   });
 });
 
-describe('RunHistoryTable detail view logic', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    setupMockAPI();
+describe('RunHistoryTable', () => {
+  it('should request run actions when a run detail view is opened', async () => {
+    render(React.createElement(RunHistoryTable, { specialistId: 'twitter-growth' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Completed analysis of repo')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Completed analysis of repo'));
+
+    await waitFor(() => {
+      expect(mockGetRunActions).toHaveBeenCalledWith('twitter-growth', 'run-1');
+    });
   });
 
-  it('should render run history table with clickable rows', () => {
-    const runs = [
-      makeRunRecord({ id: 'run-1' }),
-      makeRunRecord({ id: 'run-2', outcome: 'failed' }),
-    ];
+  it('should render an empty actions state when the selected run has no recorded actions', async () => {
+    render(React.createElement(RunHistoryTable, { specialistId: 'twitter-growth' }));
 
-    // Verify rows have data needed for click handling
-    for (const run of runs) {
-      expect(run.id).toBeDefined();
-      expect(typeof run.id).toBe('string');
-    }
+    await waitFor(() => {
+      expect(screen.getByText('Completed analysis of repo')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Completed analysis of repo'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('run-detail-actions-empty')).toHaveTextContent('No actions recorded for this run');
+    });
   });
 
-  it('should show run detail view when clicking a row', () => {
-    // Simulate selecting a run (state management logic)
-    let selectedRunId: string | null = null;
-    const selectRun = (id: string) => { selectedRunId = id; };
+  it('should render action rows with timestamp, action label, and dry-run badge when actions exist', async () => {
+    mockGetRunActions.mockResolvedValue([
+      {
+        id: 'action-1',
+        runId: 'run-1',
+        specialistId: 'twitter-growth',
+        action: 'tweet_posted',
+        data: {
+          dryRun: true,
+          tweetId: '123456789',
+          text: 'Dry-run tweet draft',
+        },
+        timestamp: '2026-03-10T10:02:00.000Z',
+      },
+    ]);
 
-    selectRun('run-1');
-    expect(selectedRunId).toBe('run-1');
-  });
+    render(React.createElement(RunHistoryTable, { specialistId: 'twitter-growth' }));
 
-  it('should display log content in the detail view', async () => {
-    const logContent = '[10:00:00] Assistant: Starting analysis\n[10:00:05] Tool: Read src/main.ts\n';
-    mockGetRunLog.mockResolvedValue(logContent);
+    await waitFor(() => {
+      expect(screen.getByText('Completed analysis of repo')).toBeInTheDocument();
+    });
 
-    const result = await mockGetRunLog('test-spec', 'run-1');
-    expect(result).toBe(logContent);
-    expect(mockGetRunLog).toHaveBeenCalledWith('test-spec', 'run-1');
-  });
+    fireEvent.click(screen.getByText('Completed analysis of repo'));
 
-  it('should show back button to return to run list', () => {
-    // Simulate back navigation
-    let selectedRunId: string | null = 'run-1';
-    const goBack = () => { selectedRunId = null; };
+    await waitFor(() => {
+      expect(screen.getByTestId('run-detail-actions')).toBeInTheDocument();
+    });
 
-    goBack();
-    expect(selectedRunId).toBeNull();
-  });
-
-  it('should show loading state while fetching log', () => {
-    // Simulate loading state transitions
-    let isLoadingLog = false;
-    const startLoading = () => { isLoadingLog = true; };
-    const stopLoading = () => { isLoadingLog = false; };
-
-    startLoading();
-    expect(isLoadingLog).toBe(true);
-
-    stopLoading();
-    expect(isLoadingLog).toBe(false);
-  });
-
-  it('should handle empty log gracefully', async () => {
-    mockGetRunLog.mockResolvedValue('');
-
-    const result = await mockGetRunLog('test-spec', 'run-empty');
-    expect(result).toBe('');
+    expect(screen.getByText('tweet_posted')).toBeInTheDocument();
+    expect(screen.getByText('Dry run')).toBeInTheDocument();
+    expect(screen.getByText('Dry-run tweet draft')).toBeInTheDocument();
+    expect(screen.getByText(/123456789/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Mar/).length).toBeGreaterThan(0);
   });
 });

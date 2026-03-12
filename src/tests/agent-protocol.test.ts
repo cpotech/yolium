@@ -96,6 +96,77 @@ describe('agent-protocol', () => {
       });
     });
 
+    it('should parse run_result message with outcome, summary, and tokensUsed', () => {
+      const json = '{"type":"run_result","outcome":"completed","summary":"Posted 2 tweets","tokensUsed":1440}';
+
+      expect(parseProtocolMessage(json)).toEqual({
+        type: 'run_result',
+        outcome: 'completed',
+        summary: 'Posted 2 tweets',
+        tokensUsed: 1440,
+      });
+    });
+
+    it('should parse run_result message without tokensUsed', () => {
+      const json = '{"type":"run_result","outcome":"no_action","summary":"No new mentions"}';
+
+      expect(parseProtocolMessage(json)).toEqual({
+        type: 'run_result',
+        outcome: 'no_action',
+        summary: 'No new mentions',
+        tokensUsed: undefined,
+      });
+    });
+
+    it('should reject run_result when outcome is missing', () => {
+      expect(parseProtocolMessage('{"type":"run_result","summary":"Missing outcome"}')).toBeNull();
+    });
+
+    it('should reject run_result when summary is missing', () => {
+      expect(parseProtocolMessage('{"type":"run_result","outcome":"completed"}')).toBeNull();
+    });
+
+    it('should parse action message with action, data, and timestamp', () => {
+      const json = '{"type":"action","action":"tweet_posted","data":{"tweetId":"123","dryRun":true},"timestamp":"2026-03-11T09:00:00.000Z"}';
+
+      expect(parseProtocolMessage(json)).toEqual({
+        type: 'action',
+        action: 'tweet_posted',
+        data: { tweetId: '123', dryRun: true },
+        timestamp: '2026-03-11T09:00:00.000Z',
+      });
+    });
+
+    it('should parse action message with empty data object', () => {
+      const json = '{"type":"action","action":"mentions_checked","data":{}}';
+
+      expect(parseProtocolMessage(json)).toEqual({
+        type: 'action',
+        action: 'mentions_checked',
+        data: {},
+        timestamp: undefined,
+      });
+    });
+
+    it('should default action data to an empty object when omitted or invalid', () => {
+      expect(parseProtocolMessage('{"type":"action","action":"mentions_checked"}')).toEqual({
+        type: 'action',
+        action: 'mentions_checked',
+        data: {},
+        timestamp: undefined,
+      });
+      expect(parseProtocolMessage('{"type":"action","action":"mentions_checked","data":"bad"}')).toEqual({
+        type: 'action',
+        action: 'mentions_checked',
+        data: {},
+        timestamp: undefined,
+      });
+    });
+
+    it('should reject action message when action is missing', () => {
+      expect(parseProtocolMessage('{"type":"action","data":{}}')).toBeNull();
+    });
+
     it('should reject progress missing required fields', () => {
       expect(parseProtocolMessage('{"type":"progress","step":"analyze"}')).toBeNull();
       expect(parseProtocolMessage('{"type":"progress","detail":"something"}')).toBeNull();
@@ -371,6 +442,44 @@ tokens used
         type: 'complete',
         summary: 'Done',
       });
+    });
+
+    it('should extract run_result messages from mixed stdout lines', () => {
+      const output = `drafting...
+@@YOLIUM:{"type":"progress","step":"tweet","detail":"Preparing output"}
+stdout noise
+@@YOLIUM:{"type":"run_result","outcome":"completed","summary":"Posted scheduled thread","tokensUsed":2100}`;
+
+      const results = extractProtocolMessages(output);
+
+      expect(results).toHaveLength(2);
+      expect(results[1]).toEqual({
+        type: 'run_result',
+        outcome: 'completed',
+        summary: 'Posted scheduled thread',
+        tokensUsed: 2100,
+      });
+    });
+
+    it('should extract action messages from multi-message Codex-style output', () => {
+      const output = '@@YOLIUM:{"type":"action","action":"tweet_posted","data":{"tweetId":"123","dryRun":true}} @@YOLIUM:{"type":"action","action":"mentions_checked","data":{"count":12},"timestamp":"2026-03-11T09:15:00.000Z"}';
+
+      const results = extractProtocolMessages(output);
+
+      expect(results).toEqual([
+        {
+          type: 'action',
+          action: 'tweet_posted',
+          data: { tweetId: '123', dryRun: true },
+          timestamp: undefined,
+        },
+        {
+          type: 'action',
+          action: 'mentions_checked',
+          data: { count: 12 },
+          timestamp: '2026-03-11T09:15:00.000Z',
+        },
+      ]);
     });
   });
 

@@ -22,7 +22,7 @@ export interface AgentDefinition {
 }
 
 // Protocol message types from agent stdout
-export type ProtocolMessageType = 'ask_question' | 'create_item' | 'update_description' | 'add_comment' | 'set_test_specs' | 'complete' | 'error' | 'progress' | 'run_result';
+export type ProtocolMessageType = 'ask_question' | 'create_item' | 'update_description' | 'add_comment' | 'set_test_specs' | 'complete' | 'error' | 'progress' | 'run_result' | 'action';
 
 export interface ProtocolMessage {
   type: ProtocolMessageType;
@@ -86,6 +86,13 @@ export interface RunResultMessage extends ProtocolMessage {
   outcome: 'completed' | 'no_action' | 'failed' | 'timeout';
   summary: string;
   tokensUsed?: number;
+}
+
+export interface ActionMessage extends ProtocolMessage {
+  type: 'action';
+  action: string;
+  data: Record<string, unknown>;
+  timestamp?: string;
 }
 
 // Claude OAuth usage data (5-hour and 7-day rate limit utilization)

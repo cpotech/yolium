@@ -11,8 +11,9 @@ import {
   getAgentSession,
 } from '@main/docker';
 import { appendRunLog } from '@main/stores/run-history-store';
+import { appendAction } from '@main/stores/action-log-store';
 import { loadCredentials } from '@main/stores/specialist-credentials-store';
-import type { CompleteMessage, ErrorMessage, RunResultMessage } from '@shared/types/agent';
+import type { ActionMessage, CompleteMessage, ErrorMessage, RunResultMessage } from '@shared/types/agent';
 import type { SpecialistDefinition, ScheduleType, RunOutcome } from '@shared/types/schedule';
 
 const logger = createLogger('agent-scheduled');
@@ -110,6 +111,16 @@ export function startScheduledAgent(params: ScheduledAgentParams): Promise<Sched
           for (const msg of messages) {
             if (msg.type === 'run_result') {
               lastRunResult = msg as RunResultMessage;
+            } else if (msg.type === 'action') {
+              const actionMessage = msg as ActionMessage;
+              appendAction(specialist.name, {
+                id: `action-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+                runId,
+                specialistId: specialist.name,
+                action: actionMessage.action,
+                data: actionMessage.data,
+                timestamp: actionMessage.timestamp || new Date().toISOString(),
+              });
             } else if (msg.type === 'complete') {
               outcome = 'completed';
               summary = (msg as CompleteMessage).summary;

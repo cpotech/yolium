@@ -404,7 +404,7 @@ Content`;
       expect(templates.weekly).toMatch(/follower growth|10%/i);
     });
 
-    it('should include twitter-api integration with TWITTER_API_KEY, TWITTER_API_SECRET, and TWITTER_BEARER_TOKEN env vars', () => {
+    it('should include TWITTER_ACCESS_TOKEN and TWITTER_ACCESS_TOKEN_SECRET in the twitter-api integration env map for twitter-growth.md', () => {
       const result = parseSpecialistDefinition(twitterGrowthMarkdown);
       const twitterIntegration = result.integrations!.find(i => i.service === 'twitter-api');
 
@@ -412,6 +412,8 @@ Content`;
       expect(twitterIntegration!.env).toHaveProperty('TWITTER_API_KEY');
       expect(twitterIntegration!.env).toHaveProperty('TWITTER_API_SECRET');
       expect(twitterIntegration!.env).toHaveProperty('TWITTER_BEARER_TOKEN');
+      expect(twitterIntegration!.env).toHaveProperty('TWITTER_ACCESS_TOKEN');
+      expect(twitterIntegration!.env).toHaveProperty('TWITTER_ACCESS_TOKEN_SECRET');
     });
   });
 
