@@ -3,6 +3,7 @@ name: scout-agent
 description: Discovers, qualifies, and profiles businesses matching a campaign brief using web research
 model: opus
 timeout: 60
+order: 4
 tools:
   - Read
   - Glob

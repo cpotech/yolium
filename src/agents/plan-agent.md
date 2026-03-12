@@ -2,6 +2,7 @@
 name: plan-agent
 description: Analyzes codebase and produces an implementation plan for a work item
 model: opus
+order: 1
 tools:
   - Read
   - Glob

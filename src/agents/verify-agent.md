@@ -3,6 +3,7 @@ name: verify-agent
 description: Reviews code changes for correctness, over-engineering, and project guideline compliance
 model: opus
 timeout: 30
+order: 3
 tools:
   - Read
   - Glob

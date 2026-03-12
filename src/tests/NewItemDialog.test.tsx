@@ -146,6 +146,7 @@ describe('NewItemDialog', () => {
         description: 'Task description here',
         branch: 'feature/my-branch',
         agentProvider: 'codex',
+        agentType: 'plan-agent',
         order: 0,
       })
     })
@@ -249,6 +250,7 @@ describe('NewItemDialog', () => {
         description: 'Description',
         branch: undefined,
         agentProvider: 'claude',
+        agentType: 'plan-agent',
         order: 0,
       })
     })
@@ -279,6 +281,7 @@ describe('NewItemDialog', () => {
         description: '',
         branch: undefined,
         agentProvider: 'claude',
+        agentType: 'plan-agent',
         order: 0,
       })
     })
@@ -421,6 +424,7 @@ describe('NewItemDialog', () => {
         description: 'Created via shortcut',
         branch: undefined,
         agentProvider: 'claude',
+        agentType: 'plan-agent',
         order: 0,
       })
     })
@@ -576,6 +580,7 @@ describe('NewItemDialog', () => {
         description: 'Testing model selection',
         branch: undefined,
         agentProvider: 'claude',
+        agentType: 'plan-agent',
         order: 0,
         model: 'opus',
       })
@@ -609,6 +614,7 @@ describe('NewItemDialog', () => {
         description: 'Uses agent default',
         branch: undefined,
         agentProvider: 'claude',
+        agentType: 'plan-agent',
         order: 0,
       })
     })

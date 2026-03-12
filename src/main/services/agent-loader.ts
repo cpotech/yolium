@@ -69,12 +69,18 @@ export function parseAgentDefinition(markdown: string): ParsedAgent {
     ? data.timeout
     : undefined;
 
+  // Parse optional order (must be a positive number if present)
+  const order = data.order != null && typeof data.order === 'number' && data.order > 0
+    ? data.order
+    : undefined;
+
   return {
     name: data.name,
     description: data.description,
     model: data.model,
     tools: data.tools,
     timeout,
+    order,
     systemPrompt: content.trim(),
   };
 }
