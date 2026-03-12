@@ -1,40 +1,58 @@
-import { useEffect, useState, useCallback } from 'react';
-import type { ClaudeUsageState } from '@shared/types/agent';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import type { ClaudeUsageData, ClaudeUsageSnapshot, ClaudeUsageState } from '@shared/types/agent';
 
 const POLL_INTERVAL_MS = 60 * 1000; // 60 seconds
 
-const DEFAULT_STATE: ClaudeUsageState = { hasOAuth: false, usage: null };
+const INITIAL_STATE: ClaudeUsageState = { status: 'loading', hasOAuth: true, usage: null };
+
+function toClaudeUsageState(snapshot: ClaudeUsageSnapshot): ClaudeUsageState {
+  if (!snapshot.hasOAuth) {
+    return { status: 'no-oauth', hasOAuth: false, usage: null };
+  }
+
+  if (snapshot.usage) {
+    return { status: 'ready', hasOAuth: true, usage: snapshot.usage };
+  }
+
+  return { status: 'unavailable', hasOAuth: true, usage: null };
+}
 
 /**
  * Hook to fetch and poll Claude OAuth usage data.
- * Returns { hasOAuth, usage } - always meaningful state:
- * either "no OAuth" or "has OAuth with/without usage data".
  * Polls every 60 seconds and on window focus.
  */
 export function useClaudeUsage(): ClaudeUsageState {
-  const [state, setState] = useState<ClaudeUsageState>(DEFAULT_STATE);
+  const [state, setState] = useState<ClaudeUsageState>(INITIAL_STATE);
+  const lastReadyUsageRef = useRef<ClaudeUsageData | null>(null);
 
   const fetchUsage = useCallback(async () => {
     try {
-      const data = await window.electronAPI.usage.getClaude();
-      setState(data);
+      const snapshot = await window.electronAPI.usage.getClaude();
+      if (snapshot.usage) {
+        lastReadyUsageRef.current = snapshot.usage;
+      }
+      setState(toClaudeUsageState(snapshot));
     } catch {
-      // Silent fail - reset to default on error
-      setState(DEFAULT_STATE);
+      setState(() => {
+        if (lastReadyUsageRef.current) {
+          return { status: 'ready', hasOAuth: true, usage: lastReadyUsageRef.current };
+        }
+
+        return { status: 'unavailable', hasOAuth: true, usage: null };
+      });
     }
   }, []);
 
   useEffect(() => {
-    // Initial fetch
-    fetchUsage();
+    void fetchUsage();
 
-    // Set up polling interval
-    const interval = setInterval(fetchUsage, POLL_INTERVAL_MS);
+    const interval = setInterval(() => {
+      void fetchUsage();
+    }, POLL_INTERVAL_MS);
 
-    // Refetch on window focus
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        fetchUsage();
+        void fetchUsage();
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
