@@ -178,9 +178,80 @@ export function hasHostClaudeOAuth(): boolean {
   }
 }
 
+/** Claude OAuth token endpoint (same as Claude Code CLI). */
+const CLAUDE_TOKEN_ENDPOINT = 'https://claude.ai/oauth/token';
+
+/**
+ * Refresh the Claude OAuth token on the host.
+ * Reads ~/.claude/.credentials.json, exchanges the refresh_token for a new access_token,
+ * and writes the updated credentials back to the file.
+ *
+ * @returns true if the token was successfully refreshed, false otherwise
+ */
+export async function refreshClaudeOAuthToken(): Promise<boolean> {
+  try {
+    const credPath = path.join(os.homedir(), '.claude', '.credentials.json');
+    if (!fs.existsSync(credPath)) return false;
+
+    const content = fs.readFileSync(credPath, 'utf-8');
+    const creds = JSON.parse(content);
+
+    const refreshToken = creds?.claudeAiOauth?.refreshToken;
+    if (!refreshToken) return false;
+
+    const response = await fetch(CLAUDE_TOKEN_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn(`[git-config] Claude OAuth refresh failed: ${response.status} ${response.statusText}`);
+      return false;
+    }
+
+    const data = await response.json();
+
+    creds.claudeAiOauth.accessToken = data.access_token;
+    if (data.refresh_token) {
+      creds.claudeAiOauth.refreshToken = data.refresh_token;
+    }
+
+    fs.writeFileSync(credPath, JSON.stringify(creds, null, 2), { encoding: 'utf-8', mode: 0o600 });
+    return true;
+  } catch (err) {
+    console.warn('[git-config] Claude OAuth refresh error:', err instanceof Error ? err.message : String(err));
+    return false;
+  }
+}
+
+/**
+ * Module-level mutex for Claude token refresh.
+ * Ensures parallel callers share a single refresh call.
+ */
+let claudeRefreshLock: Promise<boolean> | null = null;
+
+/**
+ * Refresh the Claude OAuth token with serialization.
+ * If a refresh is already in progress, returns the same promise.
+ *
+ * @returns true if the token was successfully refreshed, false otherwise
+ */
+export async function refreshClaudeOAuthTokenSerialized(): Promise<boolean> {
+  if (claudeRefreshLock) return claudeRefreshLock;
+  claudeRefreshLock = refreshClaudeOAuthToken().finally(() => {
+    claudeRefreshLock = null;
+  });
+  return claudeRefreshLock;
+}
+
 /**
  * Fetch Claude OAuth usage data from Anthropic API.
  * Returns 5-hour and 7-day rate limit utilization percentages and reset times.
+ * On 401 (expired token), attempts a single token refresh and retries.
  *
  * @returns ClaudeUsageData or null on any error (no OAuth, API error, etc.)
  */
@@ -189,18 +260,36 @@ export async function fetchClaudeUsage(): Promise<ClaudeUsageData | null> {
     const credPath = path.join(os.homedir(), '.claude', '.credentials.json');
     if (!fs.existsSync(credPath)) return null;
 
-    const content = fs.readFileSync(credPath, 'utf-8');
-    const creds = JSON.parse(content);
-    const accessToken = creds?.claudeAiOauth?.accessToken;
+    let content = fs.readFileSync(credPath, 'utf-8');
+    let creds = JSON.parse(content);
+    let accessToken = creds?.claudeAiOauth?.accessToken;
 
     if (!accessToken) return null;
 
-    const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
+    let response = await fetch('https://api.anthropic.com/api/oauth/usage', {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'anthropic-beta': 'oauth-2025-04-20',
       },
     });
+
+    // On 401, attempt token refresh and retry once
+    if (response.status === 401) {
+      const refreshed = await refreshClaudeOAuthTokenSerialized();
+      if (refreshed) {
+        content = fs.readFileSync(credPath, 'utf-8');
+        creds = JSON.parse(content);
+        accessToken = creds?.claudeAiOauth?.accessToken;
+        if (accessToken) {
+          response = await fetch('https://api.anthropic.com/api/oauth/usage', {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'anthropic-beta': 'oauth-2025-04-20',
+            },
+          });
+        }
+      }
+    }
 
     if (!response.ok) return null;
 

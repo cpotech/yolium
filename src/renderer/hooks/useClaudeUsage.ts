@@ -31,7 +31,13 @@ export function useClaudeUsage(): ClaudeUsageState {
       if (snapshot.usage) {
         lastReadyUsageRef.current = snapshot.usage;
       }
-      setState(toClaudeUsageState(snapshot));
+      const newState = toClaudeUsageState(snapshot);
+      // Preserve last-known-good usage on transient unavailable (e.g., expired token → 401)
+      if (newState.status === 'unavailable' && lastReadyUsageRef.current) {
+        setState({ status: 'ready', hasOAuth: true, usage: lastReadyUsageRef.current });
+      } else {
+        setState(newState);
+      }
     } catch {
       setState(() => {
         if (lastReadyUsageRef.current) {

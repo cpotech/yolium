@@ -149,6 +149,124 @@ describe('useClaudeUsage', () => {
     });
   });
 
+  it('should preserve last-known-good usage when API returns null usage with hasOAuth true', async () => {
+    vi.useFakeTimers();
+
+    // First call succeeds with usage data
+    mockGetClaude
+      .mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage })
+      // Second call returns null usage (e.g., expired token → 401 on backend)
+      .mockResolvedValueOnce({ hasOAuth: true, usage: null });
+
+    const { result } = renderHook(() => useClaudeUsage());
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current).toEqual({
+      status: 'ready',
+      hasOAuth: true,
+      usage: sampleUsage,
+    });
+
+    // Advance to next poll
+    await act(async () => {
+      vi.advanceTimersByTime(60_000);
+      await Promise.resolve();
+    });
+
+    expect(mockGetClaude).toHaveBeenCalledTimes(2);
+    // Should preserve the previous usage rather than showing unavailable
+    expect(result.current).toEqual({
+      status: 'ready',
+      hasOAuth: true,
+      usage: sampleUsage,
+    });
+  });
+
+  it('should show unavailable only when no previous ready state exists', async () => {
+    // First and only call returns null usage — no previous good data to preserve
+    mockGetClaude.mockResolvedValueOnce({ hasOAuth: true, usage: null });
+
+    const { result } = renderHook(() => useClaudeUsage());
+
+    await waitFor(() => {
+      expect(result.current).toEqual({
+        status: 'unavailable',
+        hasOAuth: true,
+        usage: null,
+      });
+    });
+  });
+
+  it('should update to new usage data when API returns valid data after stale period', async () => {
+    vi.useFakeTimers();
+
+    const updatedUsage: ClaudeUsageData = {
+      fiveHour: { utilization: 80, resetsAt: '2026-03-12T18:00:00.000Z' },
+      sevenDay: { utilization: 50, resetsAt: '2026-03-18T18:00:00.000Z' },
+    };
+
+    mockGetClaude
+      .mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage })
+      .mockResolvedValueOnce({ hasOAuth: true, usage: null }) // stale period
+      .mockResolvedValueOnce({ hasOAuth: true, usage: updatedUsage }); // fresh data
+
+    const { result } = renderHook(() => useClaudeUsage());
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.usage).toEqual(sampleUsage);
+
+    // Advance to second poll — null usage, should preserve stale data
+    await act(async () => {
+      vi.advanceTimersByTime(60_000);
+      await Promise.resolve();
+    });
+
+    expect(result.current.usage).toEqual(sampleUsage);
+
+    // Advance to third poll — new valid data
+    await act(async () => {
+      vi.advanceTimersByTime(60_000);
+      await Promise.resolve();
+    });
+
+    expect(result.current.usage).toEqual(updatedUsage);
+  });
+
+  it('should still show no-oauth when hasOAuth is false even with cached usage', async () => {
+    vi.useFakeTimers();
+
+    mockGetClaude
+      .mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage })
+      .mockResolvedValueOnce({ hasOAuth: false, usage: null });
+
+    const { result } = renderHook(() => useClaudeUsage());
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.status).toBe('ready');
+
+    // Advance to next poll — hasOAuth is now false (user logged out)
+    await act(async () => {
+      vi.advanceTimersByTime(60_000);
+      await Promise.resolve();
+    });
+
+    // Should show no-oauth even though we have cached usage
+    expect(result.current).toEqual({
+      status: 'no-oauth',
+      hasOAuth: false,
+      usage: null,
+    });
+  });
+
   it('should refetch Claude usage when the document becomes visible again', async () => {
     mockGetClaude
       .mockResolvedValueOnce({
