@@ -136,6 +136,7 @@ export function parseSpecialistDefinition(markdown: string): SpecialistDefinitio
         integrations.push({
           service: entry.service,
           env: entry.env as Record<string, string>,
+          tools: Array.isArray(entry.tools) ? entry.tools : [],
         });
       }
     }

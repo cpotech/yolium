@@ -350,6 +350,64 @@ Content`;
       const result = parseSpecialistDefinition(markdown);
       expect(result.integrations).toEqual([]);
     });
+
+    it('should parse tools array from integration entry when present', () => {
+      const markdown = `---
+name: test-specialist
+description: Test
+model: haiku
+tools:
+  - Read
+schedules:
+  - { type: daily, cron: "0 0 * * *", enabled: true }
+memory:
+  strategy: raw
+  maxEntries: 100
+  retentionDays: 30
+escalation:
+  onFailure: alert_user
+integrations:
+  - service: twitter-api
+    env:
+      API_KEY: ""
+    tools:
+      - twitter
+---
+
+Content`;
+
+      const result = parseSpecialistDefinition(markdown);
+      expect(result.integrations).toHaveLength(1);
+      expect(result.integrations![0].tools).toEqual(['twitter']);
+    });
+
+    it('should default to empty tools array when integration has no tools field', () => {
+      const markdown = `---
+name: test-specialist
+description: Test
+model: haiku
+tools:
+  - Read
+schedules:
+  - { type: daily, cron: "0 0 * * *", enabled: true }
+memory:
+  strategy: raw
+  maxEntries: 100
+  retentionDays: 30
+escalation:
+  onFailure: alert_user
+integrations:
+  - service: slack
+    env:
+      WEBHOOK_URL: ""
+---
+
+Content`;
+
+      const result = parseSpecialistDefinition(markdown);
+      expect(result.integrations).toHaveLength(1);
+      expect(result.integrations![0].tools).toEqual([]);
+    });
   });
 
   describe('twitter-growth specialist', () => {
@@ -402,6 +460,13 @@ Content`;
       // Weekly should reference Twitter Spaces, follower growth, KPI
       expect(templates.weekly).toMatch(/Twitter Spaces|Spaces/i);
       expect(templates.weekly).toMatch(/follower growth|10%/i);
+    });
+
+    it('should include tools field in parsed ServiceIntegration for twitter-growth.md', () => {
+      const result = parseSpecialistDefinition(twitterGrowthMarkdown);
+      const twitterIntegration = result.integrations!.find(i => i.service === 'twitter-api');
+      expect(twitterIntegration).toBeDefined();
+      expect(twitterIntegration!.tools).toEqual(['twitter']);
     });
 
     it('should include TWITTER_ACCESS_TOKEN and TWITTER_ACCESS_TOKEN_SECRET in the twitter-api integration env map for twitter-growth.md', () => {

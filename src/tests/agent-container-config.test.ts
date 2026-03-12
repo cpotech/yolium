@@ -215,4 +215,50 @@ describe('agent-container config helpers', () => {
     expect(env).not.toContain('AGENT_PROVIDER=opencode');
     expect(env).not.toContain('OPENAI_API_KEY=stolen');
   });
+
+  it('buildBindMounts should append toolBinds to the bind mount array when provided', () => {
+    const binds = buildBindMounts({
+      mountPath: '/home/user/project',
+      containerProjectPath: '/workspace/project',
+      gitCredentialsBind: null,
+      claudeOAuthBind: null,
+      codexOAuthBind: null,
+      toolBinds: ['/host/tools/twitter:/opt/tools/twitter:ro'],
+    });
+
+    expect(binds).toContain('/home/user/project:/workspace/project:rw');
+    expect(binds).toContain('/host/tools/twitter:/opt/tools/twitter:ro');
+  });
+
+  it('buildBindMounts should return only standard binds when toolBinds is empty', () => {
+    const binds = buildBindMounts({
+      mountPath: '/home/user/project',
+      containerProjectPath: '/workspace/project',
+      gitCredentialsBind: null,
+      claudeOAuthBind: null,
+      codexOAuthBind: null,
+      toolBinds: [],
+    });
+
+    expect(binds).toEqual(['/home/user/project:/workspace/project:rw']);
+  });
+
+  it('buildBindMounts should append multiple toolBinds in order', () => {
+    const binds = buildBindMounts({
+      mountPath: '/home/user/project',
+      containerProjectPath: '/workspace/project',
+      gitCredentialsBind: null,
+      claudeOAuthBind: null,
+      codexOAuthBind: null,
+      toolBinds: [
+        '/host/tools/twitter:/opt/tools/twitter:ro',
+        '/host/tools/slack:/opt/tools/slack:ro',
+      ],
+    });
+
+    const twitterIndex = binds.indexOf('/host/tools/twitter:/opt/tools/twitter:ro');
+    const slackIndex = binds.indexOf('/host/tools/slack:/opt/tools/slack:ro');
+    expect(twitterIndex).toBeGreaterThan(0);
+    expect(slackIndex).toBeGreaterThan(twitterIndex);
+  });
 });

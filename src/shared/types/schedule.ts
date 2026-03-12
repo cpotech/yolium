@@ -29,10 +29,18 @@ export interface EscalationConfig {
   onPattern?: EscalationAction;
 }
 
-/** Service integration declared in specialist frontmatter */
+/**
+ * Service integration declared in specialist frontmatter.
+ *
+ * Standard action data fields (advisory, not enforced):
+ * - summary (string): Human-readable description of the action
+ * - externalId (string): Provider-specific identifier (e.g. tweet ID, post ID)
+ * - dryRun (boolean): Whether the action was simulated
+ */
 export interface ServiceIntegration {
   service: string;
   env: Record<string, string>;
+  tools?: string[];
 }
 
 /** Per-specialist credentials: serviceId -> key/value pairs */

@@ -69,15 +69,30 @@ function formatActionTimestamp(timestamp: string): string {
   });
 }
 
+const STANDARD_ACTION_FIELDS = new Set([
+  'summary', 'externalId', 'dryRun', 'text', 'tweetText', 'tweetId', 'count',
+]);
+
 function getActionSummary(data: Record<string, unknown>): string | null {
-  const text = typeof data.text === 'string' ? data.text : typeof data.tweetText === 'string' ? data.tweetText : null;
-  if (text) return text;
+  if (typeof data.summary === 'string') return data.summary;
+  if (typeof data.text === 'string') return data.text;
+  if (typeof data.tweetText === 'string') return data.tweetText;
 
   if (typeof data.count === 'number') {
     return `${data.count} items`;
   }
 
   return null;
+}
+
+function getExtraFields(data: Record<string, unknown>): Record<string, unknown> {
+  const extra: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (!STANDARD_ACTION_FIELDS.has(key)) {
+      extra[key] = value;
+    }
+  }
+  return extra;
 }
 
 function RunDetailView({
@@ -179,8 +194,14 @@ function RunDetailView({
           <div className="px-3 py-2 space-y-2">
             {actions.map((action) => {
               const dryRun = action.data.dryRun === true;
-              const tweetId = typeof action.data.tweetId === 'string' ? action.data.tweetId : null;
+              const externalId = typeof action.data.externalId === 'string'
+                ? action.data.externalId
+                : typeof action.data.tweetId === 'string'
+                  ? action.data.tweetId
+                  : null;
               const summary = getActionSummary(action.data);
+              const extraFields = getExtraFields(action.data);
+              const hasExtraFields = Object.keys(extraFields).length > 0;
 
               return (
                 <div
@@ -200,9 +221,9 @@ function RunDetailView({
                         Dry run
                       </span>
                     )}
-                    {tweetId && (
+                    {externalId && (
                       <span className="text-[10px] text-[var(--color-text-secondary)]">
-                        id: {tweetId}
+                        id: {externalId}
                       </span>
                     )}
                   </div>
@@ -210,6 +231,16 @@ function RunDetailView({
                     <p className="mt-1 text-xs text-[var(--color-text-secondary)] break-words">
                       {summary}
                     </p>
+                  )}
+                  {hasExtraFields && (
+                    <details className="mt-1">
+                      <summary className="text-[10px] text-[var(--color-text-muted)] cursor-pointer">
+                        Extra fields
+                      </summary>
+                      <pre className="mt-1 text-[10px] text-[var(--color-text-secondary)] whitespace-pre-wrap break-words">
+                        {JSON.stringify(extraFields, null, 2)}
+                      </pre>
+                    </details>
                   )}
                 </div>
               );
