@@ -5,6 +5,7 @@ vi.mock('node:fs', () => ({
 }));
 
 import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { getToolsDir, resolveToolDir } from '@main/services/tools-resolver';
 
 describe('tools-resolver', () => {
@@ -30,7 +31,7 @@ describe('tools-resolver', () => {
 
   it('should return absolute path to src/tools/{name} in dev when directory exists', () => {
     vi.mocked(fs.existsSync).mockImplementation((p) => {
-      return typeof p === 'string' && p.endsWith('/twitter');
+      return typeof p === 'string' && p.endsWith(path.sep + 'twitter');
     });
 
     const result = resolveToolDir('twitter');
@@ -48,17 +49,18 @@ describe('tools-resolver', () => {
   it('should return resources/tools/{name} path in production when process.resourcesPath is set', () => {
     Object.defineProperty(process, 'resourcesPath', { value: '/app/resources', writable: true, configurable: true });
 
+    const expectedPath = path.join('/app/resources', 'tools', 'twitter');
     vi.mocked(fs.existsSync).mockImplementation((p) => {
-      return p === '/app/resources/tools/twitter';
+      return p === expectedPath;
     });
 
     const result = resolveToolDir('twitter');
-    expect(result).toBe('/app/resources/tools/twitter');
+    expect(result).toBe(expectedPath);
   });
 
   it('should handle tool names with hyphens and underscores', () => {
     vi.mocked(fs.existsSync).mockImplementation((p) => {
-      return typeof p === 'string' && (p.endsWith('/my-tool') || p.endsWith('/my_tool'));
+      return typeof p === 'string' && (p.endsWith(path.sep + 'my-tool') || p.endsWith(path.sep + 'my_tool'));
     });
 
     const hyphenResult = resolveToolDir('my-tool');

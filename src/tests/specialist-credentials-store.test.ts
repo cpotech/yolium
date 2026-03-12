@@ -97,7 +97,7 @@ describe('specialist-credentials-store', () => {
     });
   });
 
-  it('should write credentials file with mode 0o600', () => {
+  it.skipIf(process.platform === 'win32')('should write credentials file with mode 0o600', () => {
     saveCredentials('twitter-growth', 'twitter-api', { API_KEY: 'abc123' });
 
     expect(fs.existsSync(credentialsPath)).toBe(true);
