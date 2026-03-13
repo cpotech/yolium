@@ -56,6 +56,95 @@ test.describe('Kanban Sidebar Integration', () => {
     await expect(window.locator(selectors.kanbanView)).toBeVisible({ timeout: 10000 });
   }
 
+  async function notifyBoardUpdated(): Promise<void> {
+    const normalizedPath = testRepoPath.replace(/\\/g, '/');
+    await ctx.app.evaluate(({ BrowserWindow }, projectPath: string) => {
+      const win = BrowserWindow.getAllWindows()[0];
+      if (win) {
+        win.webContents.send('kanban:board-updated', projectPath);
+      }
+    }, normalizedPath);
+  }
+
+  async function updateItemState(itemId: string, updates: Record<string, unknown>): Promise<void> {
+    const { window } = ctx;
+
+    await window.evaluate(
+      async (params: { path: string; id: string; updates: Record<string, unknown> }) => {
+        await window.electronAPI.kanban.updateItem(params.path, params.id, params.updates);
+      },
+      { path: testRepoPath, id: itemId, updates }
+    );
+
+    await notifyBoardUpdated();
+  }
+
+  async function expandSidebar(): Promise<void> {
+    const { window } = ctx;
+    await window.click(selectors.sidebarCollapseToggle);
+    await window.waitForTimeout(300);
+  }
+
+  async function setupWaitingSidebarItem(): Promise<{ itemId: string }> {
+    await launchCleanApp();
+
+    await ctx.app.evaluate(({ ipcMain }) => {
+      ipcMain.removeHandler('agent:recover');
+      ipcMain.handle('agent:recover', () => []);
+    });
+
+    await addProject();
+    await expandSidebar();
+
+    const { window } = ctx;
+    const item = await window.evaluate(async (repoPath: string) => {
+      return window.electronAPI.kanban.addItem(repoPath, {
+        title: 'Sidebar waiting item',
+        description: 'E2E test item for sidebar waiting popovers',
+        agentProvider: 'claude' as const,
+        order: 0,
+      });
+    }, testRepoPath) as { id: string };
+
+    await updateItemState(item.id, {
+      agentStatus: 'waiting',
+      activeAgentName: 'code-agent',
+      lastAgentName: 'code-agent',
+      agentQuestion: 'How should I proceed?',
+      agentQuestionOptions: ['Ship it', 'Revise it'],
+      column: 'ready',
+    });
+
+    await expect(window.locator(selectors.statusDot(item.id))).toBeVisible({ timeout: 5000 });
+
+    return { itemId: item.id };
+  }
+
+  async function mockSidebarResumeFlow(): Promise<void> {
+    await ctx.app.evaluate(({ ipcMain }) => {
+      (globalThis as { __sidebarAgentCalls?: unknown[] }).__sidebarAgentCalls = [];
+
+      ipcMain.removeHandler('agent:answer');
+      ipcMain.handle('agent:answer', async (_event, projectPath: string, itemId: string, answer: string) => {
+        (globalThis as { __sidebarAgentCalls: unknown[] }).__sidebarAgentCalls.push({
+          type: 'answer',
+          projectPath,
+          itemId,
+          answer,
+        });
+      });
+
+      ipcMain.removeHandler('agent:resume');
+      ipcMain.handle('agent:resume', async (_event, params: Record<string, unknown>) => {
+        (globalThis as { __sidebarAgentCalls: unknown[] }).__sidebarAgentCalls.push({
+          type: 'resume',
+          params,
+        });
+        return { sessionId: 'sidebar-test-session' };
+      });
+    });
+  }
+
   test('should show sidebar with collapse toggle', async () => {
     await launchCleanApp();
     const { window } = ctx;
@@ -216,5 +305,66 @@ test.describe('Kanban Sidebar Integration', () => {
 
     await expect(window.locator(selectors.kanbanView)).not.toBeVisible();
     await expect(window.locator(selectors.emptyState)).toBeVisible();
+  });
+
+  test('should open and dismiss the waiting status popover from the sidebar', async () => {
+    const { itemId } = await setupWaitingSidebarItem();
+    const { window } = ctx;
+
+    await expect(window.locator(selectors.statusDot(itemId))).toHaveAttribute('data-status', 'waiting');
+
+    await window.click(selectors.statusDot(itemId));
+    await expect(window.locator(selectors.statusPopover(itemId))).toBeVisible();
+    await expect(window.locator(selectors.statusPopoverQuestion(itemId))).toHaveText('How should I proceed?');
+    await expect(window.locator(selectors.statusPopoverOption(itemId, 0))).toHaveText('Ship it');
+    await expect(window.locator(selectors.statusPopoverOption(itemId, 1))).toHaveText('Revise it');
+
+    await window.click(selectors.projectPathDisplay);
+    await expect(window.locator(selectors.statusPopover(itemId))).not.toBeVisible();
+  });
+
+  test('should close the waiting status popover with Escape', async () => {
+    const { itemId } = await setupWaitingSidebarItem();
+    const { window } = ctx;
+
+    await window.click(selectors.statusDot(itemId));
+    await expect(window.locator(selectors.statusPopover(itemId))).toBeVisible();
+
+    await window.keyboard.press('Escape');
+
+    await expect(window.locator(selectors.statusPopover(itemId))).not.toBeVisible();
+  });
+
+  test('should answer and resume a waiting item from the sidebar popover', async () => {
+    const { itemId } = await setupWaitingSidebarItem();
+    const { window } = ctx;
+
+    await mockSidebarResumeFlow();
+    await window.click(selectors.statusDot(itemId));
+    await window.click(selectors.statusPopoverOption(itemId, 0));
+
+    await expect(window.locator(selectors.statusPopover(itemId))).not.toBeVisible();
+
+    const calls = await ctx.app.evaluate(() => {
+      return (globalThis as { __sidebarAgentCalls?: unknown[] }).__sidebarAgentCalls ?? [];
+    });
+
+    expect(calls).toEqual([
+      {
+        type: 'answer',
+        projectPath: testRepoPath,
+        itemId,
+        answer: 'Ship it',
+      },
+      {
+        type: 'resume',
+        params: {
+          agentName: 'code-agent',
+          projectPath: testRepoPath,
+          itemId,
+          goal: 'E2E test item for sidebar waiting popovers',
+        },
+      },
+    ]);
   });
 });

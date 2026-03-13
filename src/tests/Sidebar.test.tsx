@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { Sidebar } from '@renderer/components/navigation/Sidebar'
 import type { SidebarProject } from '@renderer/stores/sidebar-store'
 import type { SidebarWorkItem } from '@renderer/components/navigation/ProjectList'
@@ -128,7 +128,195 @@ describe('Sidebar', () => {
     expect(container.firstChild).toHaveClass('w-48')
   })
 
-  describe('waiting items', () => {
+  describe('status dots', () => {
+    it('should render a green dot for running agents', () => {
+      render(
+        <Sidebar
+          projects={mockProjects}
+          collapsed={false}
+          {...defaultProps}
+          sidebarItems={[
+            {
+              projectPath: '/home/user/project1',
+              itemId: 'running-item',
+              itemTitle: 'Running item',
+              agentName: 'code-agent',
+              agentStatus: 'running',
+            },
+          ]}
+        />
+      )
+
+      expect(screen.getByTestId('status-dot-running-item')).toHaveClass('bg-green-500')
+    })
+
+    it('should render an orange dot for waiting agents', () => {
+      render(
+        <Sidebar
+          projects={mockProjects}
+          collapsed={false}
+          {...defaultProps}
+          sidebarItems={[
+            {
+              projectPath: '/home/user/project1',
+              itemId: 'waiting-item',
+              itemTitle: 'Waiting item',
+              question: 'Choose an option',
+              options: ['Option A', 'Option B'],
+              agentName: 'code-agent',
+              agentStatus: 'waiting',
+            },
+          ]}
+        />
+      )
+
+      expect(screen.getByTestId('status-dot-waiting-item')).toHaveClass('bg-orange-400')
+    })
+
+    it('should render a red dot for failed agents', () => {
+      render(
+        <Sidebar
+          projects={mockProjects}
+          collapsed={false}
+          {...defaultProps}
+          sidebarItems={[
+            {
+              projectPath: '/home/user/project1',
+              itemId: 'failed-item',
+              itemTitle: 'Failed item',
+              agentName: 'code-agent',
+              agentStatus: 'failed',
+            },
+          ]}
+        />
+      )
+
+      expect(screen.getByTestId('status-dot-failed-item')).toHaveClass('bg-red-500')
+    })
+
+    it('should focus the project when a running dot is clicked', () => {
+      const onProjectClick = vi.fn()
+
+      render(
+        <Sidebar
+          projects={mockProjects}
+          collapsed={false}
+          {...defaultProps}
+          onProjectClick={onProjectClick}
+          sidebarItems={[
+            {
+              projectPath: '/home/user/project1',
+              itemId: 'running-item',
+              itemTitle: 'Running item',
+              agentName: 'code-agent',
+              agentStatus: 'running',
+            },
+          ]}
+        />
+      )
+
+      fireEvent.click(screen.getByTestId('status-dot-running-item'))
+
+      expect(onProjectClick).toHaveBeenCalledWith('/home/user/project1')
+    })
+
+    it('should focus the project when a failed dot is clicked', () => {
+      const onProjectClick = vi.fn()
+
+      render(
+        <Sidebar
+          projects={mockProjects}
+          collapsed={false}
+          {...defaultProps}
+          onProjectClick={onProjectClick}
+          sidebarItems={[
+            {
+              projectPath: '/home/user/project1',
+              itemId: 'failed-item',
+              itemTitle: 'Failed item',
+              agentName: 'code-agent',
+              agentStatus: 'failed',
+            },
+          ]}
+        />
+      )
+
+      fireEvent.click(screen.getByTestId('status-dot-failed-item'))
+
+      expect(onProjectClick).toHaveBeenCalledWith('/home/user/project1')
+    })
+
+    it('should not render dots when no active items', () => {
+      render(
+        <Sidebar
+          projects={mockProjects}
+          collapsed={false}
+          {...defaultProps}
+          sidebarItems={[]}
+        />
+      )
+
+      expect(screen.queryByTestId('status-dot-running-item')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('status-dot-waiting-item')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('status-dot-failed-item')).not.toBeInTheDocument()
+    })
+
+    it('should not render dots when sidebar is collapsed', () => {
+      render(
+        <Sidebar
+          projects={mockProjects}
+          collapsed={true}
+          {...defaultProps}
+          sidebarItems={[
+            {
+              projectPath: '/home/user/project1',
+              itemId: 'waiting-item',
+              itemTitle: 'Waiting item',
+              question: 'Choose an option',
+              options: ['Option A', 'Option B'],
+              agentName: 'code-agent',
+              agentStatus: 'waiting',
+            },
+          ]}
+        />
+      )
+
+      expect(screen.queryByTestId('status-dot-waiting-item')).not.toBeInTheDocument()
+    })
+
+    it('should not render legacy inline status cards when active items exist', () => {
+      render(
+        <Sidebar
+          projects={mockProjects}
+          collapsed={false}
+          {...defaultProps}
+          sidebarItems={[
+            {
+              projectPath: '/home/user/project1',
+              itemId: 'running-item',
+              itemTitle: 'Running item',
+              agentName: 'code-agent',
+              agentStatus: 'running',
+            },
+            {
+              projectPath: '/home/user/project1',
+              itemId: 'waiting-item',
+              itemTitle: 'Waiting item',
+              question: 'Choose an option',
+              options: ['Option A', 'Option B'],
+              agentName: 'code-agent',
+              agentStatus: 'waiting',
+            },
+          ]}
+        />
+      )
+
+      expect(screen.queryByTestId('active-item-running-item')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('waiting-item-waiting-item')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('waiting popover', () => {
     const sidebarItems: SidebarWorkItem[] = [
       {
         projectPath: '/home/user/project1',
@@ -141,7 +329,7 @@ describe('Sidebar', () => {
       },
     ]
 
-    it('should show waiting item badge count on project', () => {
+    it('should show popover with question when waiting dot is clicked', () => {
       render(
         <Sidebar
           projects={mockProjects}
@@ -151,10 +339,12 @@ describe('Sidebar', () => {
         />
       )
 
-      expect(screen.getByText('1')).toBeInTheDocument()
+      fireEvent.click(screen.getByTestId('status-dot-item-1'))
+
+      expect(screen.getByTestId('status-popover-question-item-1')).toHaveTextContent('Should I use approach A or B?')
     })
 
-    it('should display waiting item question and options', () => {
+    it('should show option buttons in popover', () => {
       render(
         <Sidebar
           projects={mockProjects}
@@ -164,13 +354,13 @@ describe('Sidebar', () => {
         />
       )
 
-      expect(screen.getByText('Fix bug')).toBeInTheDocument()
-      expect(screen.getByText('Should I use approach A or B?')).toBeInTheDocument()
-      expect(screen.getByText('Approach A')).toBeInTheDocument()
-      expect(screen.getByText('Approach B')).toBeInTheDocument()
+      fireEvent.click(screen.getByTestId('status-dot-item-1'))
+
+      expect(screen.getByRole('button', { name: 'Approach A' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Approach B' })).toBeInTheDocument()
     })
 
-    it('should call onAnswerAndResume when option clicked', () => {
+    it('should call onAnswerAndResume when popover option is clicked', async () => {
       const onAnswerAndResume = vi.fn().mockResolvedValue(undefined)
       render(
         <Sidebar
@@ -182,27 +372,49 @@ describe('Sidebar', () => {
         />
       )
 
-      fireEvent.click(screen.getByTestId('sidebar-option-item-1-0'))
-      expect(onAnswerAndResume).toHaveBeenCalledWith(
-        '/home/user/project1',
-        'item-1',
-        'Approach A',
-        'code-agent'
-      )
+      fireEvent.click(screen.getByTestId('status-dot-item-1'))
+      fireEvent.click(screen.getByRole('button', { name: 'Approach A' }))
+
+      await waitFor(() => {
+        expect(onAnswerAndResume).toHaveBeenCalledWith(
+          '/home/user/project1',
+          'item-1',
+          'Approach A',
+          'code-agent'
+        )
+      })
     })
 
-    it('should not show waiting items when sidebar is collapsed', () => {
+    it('should close popover when clicking outside', () => {
       render(
         <Sidebar
           projects={mockProjects}
-          collapsed={true}
+          collapsed={false}
           {...defaultProps}
           sidebarItems={sidebarItems}
         />
       )
 
-      expect(screen.queryByText('Fix bug')).not.toBeInTheDocument()
-      expect(screen.queryByText('Should I use approach A or B?')).not.toBeInTheDocument()
+      fireEvent.click(screen.getByTestId('status-dot-item-1'))
+      fireEvent.mouseDown(document.body)
+
+      expect(screen.queryByTestId('status-popover-item-1')).not.toBeInTheDocument()
+    })
+
+    it('should close popover on Escape key', () => {
+      render(
+        <Sidebar
+          projects={mockProjects}
+          collapsed={false}
+          {...defaultProps}
+          sidebarItems={sidebarItems}
+        />
+      )
+
+      fireEvent.click(screen.getByTestId('status-dot-item-1'))
+      fireEvent.keyDown(document, { key: 'Escape' })
+
+      expect(screen.queryByTestId('status-popover-item-1')).not.toBeInTheDocument()
     })
   })
 })
