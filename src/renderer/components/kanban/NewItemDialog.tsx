@@ -138,8 +138,9 @@ export function NewItemDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col bg-[var(--color-bg-secondary)]"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] bg-black/50"
       onKeyDown={handleKeyDown}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
         ref={dialogRef}
@@ -147,10 +148,10 @@ export function NewItemDialog({
         role="dialog"
         aria-modal="true"
         aria-label="Create new item"
-        className="flex flex-col h-full"
+        className="w-full max-w-xl bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border-primary)] shadow-2xl overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border-primary)]">
           <h2 className="text-base font-semibold text-[var(--color-text-primary)]">New Item</h2>
           <button
             data-testid="close-button"
@@ -163,7 +164,7 @@ export function NewItemDialog({
 
         {/* Error banner */}
         {errorMessage && (
-          <div className="flex items-center justify-between px-6 py-2 bg-red-900/30 border-b border-red-700/50 text-red-300 text-sm">
+          <div className="flex items-center justify-between px-5 py-2 bg-red-900/30 border-b border-red-700/50 text-red-300 text-sm">
             <span>{errorMessage}</span>
             <button
               onClick={() => setErrorMessage(null)}
@@ -174,180 +175,160 @@ export function NewItemDialog({
           </div>
         )}
 
-        {/* Content - Two pane layout */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Left pane - Title, Description */}
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="max-w-3xl">
-              {/* Title */}
-              <div className="mb-5">
-                <label
-                  htmlFor="new-item-title"
-                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
-                >
-                  Title <span className="text-red-400">*</span>
-                </label>
-                <input
-                  id="new-item-title"
-                  data-testid="title-input"
-                  type="text"
-                  value={title}
-                  onChange={e => setTitle(e.target.value)}
-                  placeholder="Enter task title"
-                  autoFocus
-                  className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
-                />
-              </div>
-
-              {/* Description */}
-              <div className="mb-5">
-                <label
-                  htmlFor="new-item-description"
-                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
-                >
-                  Description <span className="normal-case tracking-normal">(optional)</span>
-                </label>
-                <textarea
-                  id="new-item-description"
-                  data-testid="description-input"
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
-                  placeholder="Describe what needs to be done"
-                  rows={10}
-                  className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
-                />
-              </div>
-            </div>
+        {/* Form */}
+        <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+          {/* Title */}
+          <div>
+            <label
+              htmlFor="new-item-title"
+              className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
+            >
+              Title <span className="text-red-400">*</span>
+            </label>
+            <input
+              id="new-item-title"
+              data-testid="title-input"
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Enter task title"
+              autoFocus
+              className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+            />
           </div>
 
-          {/* Right pane - Sidebar */}
-          <div className="w-72 overflow-y-auto border-l border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
-            {/* Properties */}
-            <div className="p-4 space-y-4">
-              {/* Branch */}
-              <div>
-                <label
-                  htmlFor="new-item-branch"
-                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
-                >
-                  Branch <span className="normal-case tracking-normal">(optional)</span>
-                </label>
-                <input
-                  id="new-item-branch"
-                  data-testid="branch-input"
-                  type="text"
-                  value={branch}
-                  onChange={e => setBranch(e.target.value)}
-                  placeholder="e.g., feature/my-feature"
-                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
-                />
-              </div>
+          {/* Description */}
+          <div>
+            <label
+              htmlFor="new-item-description"
+              className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
+            >
+              Description <span className="normal-case tracking-normal">(optional)</span>
+            </label>
+            <textarea
+              id="new-item-description"
+              data-testid="description-input"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Describe what needs to be done"
+              rows={4}
+              className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
+            />
+          </div>
 
-              {/* Agent Provider */}
+          {/* Config fields - compact grid */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Branch */}
+            <div className="col-span-2">
+              <label
+                htmlFor="new-item-branch"
+                className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
+              >
+                Branch <span className="normal-case tracking-normal">(optional)</span>
+              </label>
+              <input
+                id="new-item-branch"
+                data-testid="branch-input"
+                type="text"
+                value={branch}
+                onChange={e => setBranch(e.target.value)}
+                placeholder="e.g., feature/my-feature"
+                className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+              />
+            </div>
+
+            {/* Agent Provider */}
+            <div>
+              <label
+                htmlFor="new-item-agent-provider"
+                className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
+              >
+                Provider
+              </label>
+              <select
+                id="new-item-agent-provider"
+                data-testid="agent-provider-select"
+                value={agentProvider}
+                onChange={e => setAgentProvider(e.target.value as KanbanAgentProvider)}
+                className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+              >
+                {agentProviderOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Agent Type */}
+            {agentDefinitions.length > 0 && (
               <div>
                 <label
-                  htmlFor="new-item-agent-provider"
+                  htmlFor="new-item-agent-type"
                   className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
                 >
-                  Agent Provider
+                  Agent Type
                 </label>
                 <select
-                  id="new-item-agent-provider"
-                  data-testid="agent-provider-select"
-                  value={agentProvider}
-                  onChange={e => setAgentProvider(e.target.value as KanbanAgentProvider)}
+                  id="new-item-agent-type"
+                  data-testid="agent-type-select"
+                  value={agentType}
+                  onChange={e => setAgentType(e.target.value)}
                   className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
                 >
-                  {agentProviderOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
+                  <option value="">Not set</option>
+                  {agentDefinitions.map(agent => (
+                    <option key={agent.name} value={agent.name}>
+                      {agent.name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                     </option>
                   ))}
                 </select>
               </div>
+            )}
 
-              {/* Agent Type */}
-              {agentDefinitions.length > 0 && (
-                <div>
-                  <label
-                    htmlFor="new-item-agent-type"
-                    className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
-                  >
-                    Agent Type <span className="normal-case tracking-normal">(optional)</span>
-                  </label>
-                  <select
-                    id="new-item-agent-type"
-                    data-testid="agent-type-select"
-                    value={agentType}
-                    onChange={e => setAgentType(e.target.value)}
-                    className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
-                  >
-                    <option value="">Not set</option>
-                    {agentDefinitions.map(agent => (
-                      <option key={agent.name} value={agent.name}>
-                        {agent.name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Model Override */}
-              <div>
-                <label
-                  htmlFor="new-item-model"
-                  className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
-                >
-                  Model <span className="normal-case tracking-normal">(optional)</span>
-                </label>
-                <select
-                  id="new-item-model"
-                  data-testid="model-select"
-                  value={model}
-                  onChange={e => setModel(e.target.value)}
-                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
-                >
-                  <option value="">Provider default</option>
-                  {(providerModels[agentProvider] || []).map(m => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
-                  Leave empty to use provider default
-                </p>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="p-4 border-t border-[var(--color-border-primary)]">
-              <div className="space-y-2">
-                <button
-                  data-testid="create-button"
-                  onClick={handleSubmit}
-                  disabled={!canSubmit || isSubmitting}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-[var(--color-accent-primary)] text-white rounded-md hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Plus size={14} />
-                  {isSubmitting ? 'Creating...' : 'Create'}
-                  <span className="text-xs opacity-60 ml-1">(Ctrl+Enter)</span>
-                </button>
-                <button
-                  data-testid="cancel-button"
-                  onClick={onClose}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-[var(--color-text-secondary)] rounded-md hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="mt-auto p-4 border-t border-[var(--color-border-primary)]">
-              <p className="text-center text-[10px] text-[var(--color-text-tertiary)]">
-                Esc to close
-              </p>
+            {/* Model Override */}
+            <div className={agentDefinitions.length > 0 ? 'col-span-2' : ''}>
+              <label
+                htmlFor="new-item-model"
+                className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
+              >
+                Model <span className="normal-case tracking-normal">(optional)</span>
+              </label>
+              <select
+                id="new-item-model"
+                data-testid="model-select"
+                value={model}
+                onChange={e => setModel(e.target.value)}
+                className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+              >
+                <option value="">Provider default</option>
+                {(providerModels[agentProvider] || []).map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
             </div>
           </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
+          <button
+            data-testid="cancel-button"
+            onClick={onClose}
+            className="px-3 py-1.5 text-sm text-[var(--color-text-secondary)] rounded-md hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            data-testid="create-button"
+            onClick={handleSubmit}
+            disabled={!canSubmit || isSubmitting}
+            className="flex items-center gap-1.5 px-4 py-1.5 text-sm bg-[var(--color-accent-primary)] text-white rounded-md hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <Plus size={14} />
+            {isSubmitting ? 'Creating...' : 'Create'}
+            <span className="text-xs opacity-60 ml-1">Ctrl+Enter</span>
+          </button>
         </div>
       </div>
     </div>
