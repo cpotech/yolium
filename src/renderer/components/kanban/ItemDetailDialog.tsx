@@ -126,10 +126,32 @@ export function ItemDetailDialog({
       event.preventDefault()
       void handleDelete()
     }
+    // Agent shortcuts: Ctrl+Shift+{P,C,V,S,D,M}
+    if (event.ctrlKey && event.shiftKey && item) {
+      const agentKeyMap: Record<string, string> = {
+        P: 'plan-agent',
+        C: 'code-agent',
+        V: 'verify-agent',
+        S: 'scout-agent',
+        D: 'design-agent',
+        M: 'marketing-agent',
+      }
+      const agentName = agentKeyMap[event.key.toUpperCase()]
+      if (agentName) {
+        const target = event.target as HTMLElement
+        const tagName = target.tagName.toLowerCase()
+        const isEditable = tagName === 'input' || tagName === 'textarea' || tagName === 'select' || target.isContentEditable
+        const canStart = item.agentStatus === 'idle' || item.agentStatus === 'completed' || item.agentStatus === 'failed'
+        if (!isEditable && canStart && !lifecycle.isStartingAgent) {
+          event.preventDefault()
+          void lifecycle.startAgent(agentName)
+        }
+      }
+    }
     if (dialogRef.current) {
       trapFocus(event, dialogRef.current)
     }
-  }, [draft, handleClose, handleDelete, isDeleting])
+  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle])
 
   if (!isOpen || !item) return null
 

@@ -48,10 +48,21 @@ const shortcutGroups: ShortcutGroup[] = [
     title: 'Application',
     shortcuts: [
       { keys: 'Ctrl+?', description: 'Keyboard shortcuts' },
-      { keys: 'Ctrl+Shift+S', description: 'Settings' },
-      { keys: 'Ctrl+Shift+P', description: 'New project' },
+      { keys: 'Ctrl+Shift+,', description: 'Settings' },
+      { keys: 'Ctrl+Shift+N', description: 'New project' },
       { keys: 'Ctrl+Shift+H', description: 'Scheduled agents' },
       { keys: 'Ctrl+Shift+R', description: 'Toggle recording' },
+    ],
+  },
+  {
+    title: 'Agent Controls (Work Item)',
+    shortcuts: [
+      { keys: 'Ctrl+Shift+P', description: 'Plan Agent' },
+      { keys: 'Ctrl+Shift+C', description: 'Code Agent' },
+      { keys: 'Ctrl+Shift+V', description: 'Verify Agent' },
+      { keys: 'Ctrl+Shift+S', description: 'Scout Agent' },
+      { keys: 'Ctrl+Shift+D', description: 'Design Agent' },
+      { keys: 'Ctrl+Shift+M', description: 'Marketing Agent' },
     ],
   },
 ];
