@@ -25,37 +25,37 @@ describe('StatusDotPopover', () => {
   it('should render a yellow dot for items in the in-progress column', () => {
     render(<StatusDotPopover item={createItem({ agentStatus: 'running', column: 'in-progress' })} onAnswer={vi.fn()} />)
 
-    expect(screen.getByTestId('status-dot-item-1')).toHaveClass('bg-yellow-500')
+    expect(screen.getByTestId('status-dot-item-1')).toHaveClass('bg-[var(--color-status-warning)]')
   })
 
-  it('should render a blue dot for items in the ready column', () => {
+  it('should render an info dot for items in the ready column', () => {
     render(<StatusDotPopover item={createItem({ agentStatus: 'running', column: 'ready' })} onAnswer={vi.fn()} />)
 
-    expect(screen.getByTestId('status-dot-item-1')).toHaveClass('bg-blue-500')
+    expect(screen.getByTestId('status-dot-item-1')).toHaveClass('bg-[var(--color-status-info)]')
   })
 
-  it('should render a gray dot for items in the backlog column', () => {
+  it('should render a stopped dot for items in the backlog column', () => {
     render(<StatusDotPopover item={createItem({ agentStatus: 'running', column: 'backlog' })} onAnswer={vi.fn()} />)
 
-    expect(screen.getByTestId('status-dot-item-1')).toHaveClass('bg-gray-500')
+    expect(screen.getByTestId('status-dot-item-1')).toHaveClass('bg-[var(--color-status-stopped)]')
   })
 
-  it('should render a purple dot for items in the verify column', () => {
+  it('should render a worktree dot for items in the verify column', () => {
     render(<StatusDotPopover item={createItem({ agentStatus: 'running', column: 'verify' })} onAnswer={vi.fn()} />)
 
-    expect(screen.getByTestId('status-dot-item-1')).toHaveClass('bg-purple-500')
+    expect(screen.getByTestId('status-dot-item-1')).toHaveClass('bg-[var(--color-special-worktree)]')
   })
 
-  it('should render a green dot for items in the done column', () => {
+  it('should render a success dot for items in the done column', () => {
     render(<StatusDotPopover item={createItem({ agentStatus: 'running', column: 'done' })} onAnswer={vi.fn()} />)
 
-    expect(screen.getByTestId('status-dot-item-1')).toHaveClass('bg-green-500')
+    expect(screen.getByTestId('status-dot-item-1')).toHaveClass('bg-[var(--color-status-success)]')
   })
 
-  it('should render a red dot for failed status regardless of column', () => {
+  it('should render an error dot for failed status regardless of column', () => {
     render(<StatusDotPopover item={createItem({ agentStatus: 'failed', column: 'in-progress' })} onAnswer={vi.fn()} />)
 
-    expect(screen.getByTestId('status-dot-item-1')).toHaveClass('bg-red-500')
+    expect(screen.getByTestId('status-dot-item-1')).toHaveClass('bg-[var(--color-status-error)]')
   })
 
   it('should apply pulse animation for running status with column color', () => {
@@ -63,13 +63,13 @@ describe('StatusDotPopover', () => {
 
     const dot = screen.getByTestId('status-dot-item-1')
     expect(dot).toHaveClass('animate-pulse')
-    expect(dot).toHaveClass('bg-yellow-500')
+    expect(dot).toHaveClass('bg-[var(--color-status-warning)]')
   })
 
-  it('should default to gray when column is not provided', () => {
+  it('should default to stopped when column is not provided', () => {
     render(<StatusDotPopover item={createItem({ agentStatus: 'running', column: undefined })} onAnswer={vi.fn()} />)
 
-    expect(screen.getByTestId('status-dot-item-1')).toHaveClass('bg-gray-500')
+    expect(screen.getByTestId('status-dot-item-1')).toHaveClass('bg-[var(--color-status-stopped)]')
   })
 
   it('should show title attribute with item name', () => {

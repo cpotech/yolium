@@ -303,7 +303,7 @@ describe('KanbanCard', () => {
     render(<KanbanCard item={item} onClick={vi.fn()} />)
 
     const card = screen.getByTestId('kanban-card')
-    expect(card).toHaveClass('border-yellow-500/50')
+    expect(card).toHaveClass('border-[var(--color-status-warning)]/50')
   })
 
   it('should not have pulsing border for idle cards', () => {
@@ -311,7 +311,7 @@ describe('KanbanCard', () => {
     render(<KanbanCard item={item} onClick={vi.fn()} />)
 
     const card = screen.getByTestId('kanban-card')
-    expect(card).not.toHaveClass('border-yellow-500/50')
+    expect(card).not.toHaveClass('border-[var(--color-status-warning)]/50')
   })
 
   it('should show comment count when card has comments', () => {
@@ -500,27 +500,27 @@ describe('KanbanCard', () => {
     const indicator = screen.getByTestId('merge-status-indicator')
     expect(indicator).toBeInTheDocument()
     expect(indicator).toHaveTextContent('Unmerged')
-    expect(indicator).toHaveClass('text-blue-400')
+    expect(indicator).toHaveClass('text-[var(--color-status-info)]')
   })
 
-  it('should show merged indicator with green styling', () => {
+  it('should show merged indicator with success styling', () => {
     const item = createMockItem({ mergeStatus: 'merged' })
     render(<KanbanCard item={item} onClick={vi.fn()} />)
 
     const indicator = screen.getByTestId('merge-status-indicator')
     expect(indicator).toBeInTheDocument()
     expect(indicator).toHaveTextContent('Merged')
-    expect(indicator).toHaveClass('text-green-400')
+    expect(indicator).toHaveClass('text-[var(--color-status-success)]')
   })
 
-  it('should show conflict indicator with red styling', () => {
+  it('should show conflict indicator with error styling', () => {
     const item = createMockItem({ mergeStatus: 'conflict' })
     render(<KanbanCard item={item} onClick={vi.fn()} />)
 
     const indicator = screen.getByTestId('merge-status-indicator')
     expect(indicator).toBeInTheDocument()
     expect(indicator).toHaveTextContent('Conflict')
-    expect(indicator).toHaveClass('text-red-400')
+    expect(indicator).toHaveClass('text-[var(--color-status-error)]')
   })
 
   it('should show PR link button for merged items with prUrl', () => {
@@ -575,7 +575,7 @@ describe('KanbanCard', () => {
     const indicator = screen.getByTestId('verified-indicator')
     expect(indicator).toBeInTheDocument()
     expect(indicator).toHaveTextContent('Verified')
-    expect(indicator).toHaveClass('text-green-400')
+    expect(indicator).toHaveClass('text-[var(--color-status-success)]')
   })
 
   it('should not show verified indicator when item.verified is false', () => {

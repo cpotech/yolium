@@ -13,6 +13,7 @@ export const lightTheme: ThemeTokens = {
     text: {
       primary: '#11121D',     // tokyodark bg0 - Primary text
       secondary: '#353945',   // tokyodark bg3 - Secondary labels
+      tertiary: '#555A66',    // Between secondary and muted - Subtle labels
       muted: '#6B6F7B',       // Medium grey - Placeholders, hints
       disabled: '#B5B7C0',    // Light grey - Disabled text
     },
@@ -30,6 +31,7 @@ export const lightTheme: ThemeTokens = {
       warning: '#B8883F',     // Darker yellow for light bg contrast
       error: '#D05070',       // Darker red for light bg contrast
       stopped: '#6B6F7B',     // Medium grey - Stopped state
+      info: '#5A7FD4',        // Deeper blue for light bg - Info, unmerged
     },
     special: {
       worktree: '#8B6BBE',    // Deeper purple for light bg

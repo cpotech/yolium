@@ -10,18 +10,18 @@ interface StatusDotPopoverProps {
 }
 
 const columnDotColors: Record<KanbanColumn, string> = {
-  'backlog': 'bg-gray-500',
-  'ready': 'bg-blue-500',
-  'in-progress': 'bg-yellow-500',
-  'verify': 'bg-purple-500',
-  'done': 'bg-green-500',
+  'backlog': 'bg-[var(--color-status-stopped)]',
+  'ready': 'bg-[var(--color-status-info)]',
+  'in-progress': 'bg-[var(--color-status-warning)]',
+  'verify': 'bg-[var(--color-special-worktree)]',
+  'done': 'bg-[var(--color-status-success)]',
 }
 
 function getDotClasses(item: SidebarWorkItem): string {
   if (item.agentStatus === 'failed') {
-    return 'bg-red-500'
+    return 'bg-[var(--color-status-error)]'
   }
-  const colorClass = item.column ? columnDotColors[item.column] : 'bg-gray-500'
+  const colorClass = item.column ? columnDotColors[item.column] : 'bg-[var(--color-status-stopped)]'
   if (item.agentStatus === 'running') {
     return `${colorClass} animate-pulse`
   }
@@ -109,11 +109,11 @@ export function StatusDotPopover({
     <div
       ref={popoverRef}
       data-testid={`status-popover-${item.itemId}`}
-      className="fixed z-50 w-60 rounded-lg border border-orange-500/40 bg-[var(--color-bg-secondary)] p-3 shadow-2xl"
+      className="fixed z-50 w-60 rounded-lg border border-[var(--color-status-warning)]/40 bg-[var(--color-bg-secondary)] p-3 shadow-2xl"
       style={{ top: position.top, left: position.left }}
       onClick={(event) => event.stopPropagation()}
     >
-      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-orange-300">
+      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-[var(--color-status-warning)]">
         <MessageSquare size={12} />
         <span data-testid={`status-popover-title-${item.itemId}`} className="truncate">{item.itemTitle}</span>
       </div>
@@ -129,7 +129,7 @@ export function StatusDotPopover({
               onClick={(event) => {
                 void handleAnswerClick(event, option)
               }}
-              className="rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-2 py-1 text-[11px] text-[var(--color-text-primary)] transition-colors hover:border-orange-400 hover:text-orange-300 disabled:cursor-wait disabled:opacity-60"
+              className="rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-2 py-1 text-[11px] text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-status-warning)] hover:text-[var(--color-status-warning)] disabled:cursor-wait disabled:opacity-60"
             >
               {option}
             </button>
@@ -137,7 +137,7 @@ export function StatusDotPopover({
         </div>
       )}
       {isResuming && (
-        <div className="mt-2 flex items-center gap-1 text-[11px] text-orange-300">
+        <div className="mt-2 flex items-center gap-1 text-[11px] text-[var(--color-status-warning)]">
           <Play size={10} />
           <span>Resuming...</span>
         </div>

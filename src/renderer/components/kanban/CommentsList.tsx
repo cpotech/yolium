@@ -290,9 +290,9 @@ function createMarkdownComponents(onOpenMock: (filePath: string) => void) {
 }
 
 const commentBadgeColors: Record<CommentSource, string> = {
-  user: 'bg-green-600',
-  agent: 'bg-blue-600',
-  system: 'bg-gray-600',
+  user: 'bg-[var(--color-status-success)]',
+  agent: 'bg-[var(--color-status-info)]',
+  system: 'bg-[var(--color-status-stopped)]',
 }
 
 function getPrettyJson(text: string): string | null {

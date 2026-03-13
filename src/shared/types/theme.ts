@@ -15,6 +15,7 @@ export type ThemeTokens = {
     text: {
       primary: string;
       secondary: string;
+      tertiary: string;
       muted: string;
       disabled: string;
     };
@@ -32,6 +33,7 @@ export type ThemeTokens = {
       warning: string;
       error: string;
       stopped: string;
+      info: string;
     };
     special: {
       worktree: string;

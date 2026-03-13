@@ -94,7 +94,7 @@ export function ItemDetailEditorPane({
               data-testid="comment-submit"
               onClick={onAddComment}
               disabled={isAddingComment || !commentText.trim()}
-              className="px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 text-xs bg-[var(--color-accent-primary)] text-white rounded hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isAddingComment ? 'Posting...' : 'Post Comment'}
             </button>

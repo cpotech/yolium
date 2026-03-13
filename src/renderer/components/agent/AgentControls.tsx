@@ -9,12 +9,12 @@ import type { KanbanItem, AgentStatus } from '@shared/types/kanban'
 import type { AgentDefinition } from '@shared/types/agent'
 
 const statusColors: Record<AgentStatus, string> = {
-  idle: 'bg-gray-500',
-  running: 'bg-yellow-500',
-  waiting: 'bg-orange-500',
-  interrupted: 'bg-orange-500',
-  completed: 'bg-green-500',
-  failed: 'bg-red-500',
+  idle: 'bg-[var(--color-status-stopped)]',
+  running: 'bg-[var(--color-status-warning)]',
+  waiting: 'bg-[var(--color-status-warning)]',
+  interrupted: 'bg-[var(--color-status-warning)]',
+  completed: 'bg-[var(--color-status-success)]',
+  failed: 'bg-[var(--color-status-error)]',
 }
 
 /**
@@ -201,8 +201,8 @@ export function AgentControls({
         {/* Running - Show indicator with progress and stop button */}
         {item.agentStatus === 'running' && (
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm text-yellow-400">
-              <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
+            <div className="flex items-center gap-2 text-sm text-[var(--color-status-warning)]">
+              <div className="w-3 h-3 bg-[var(--color-status-warning)] rounded-full animate-pulse" />
               Agent is running...
             </div>
             {currentDetail && (
@@ -229,7 +229,7 @@ export function AgentControls({
         {/* Waiting - Show question and answer input */}
         {item.agentStatus === 'waiting' && item.agentQuestion && (
           <div className="space-y-2">
-            <div className="flex items-start gap-2 text-sm text-orange-400">
+            <div className="flex items-start gap-2 text-sm text-[var(--color-status-warning)]">
               <MessageSquare size={14} className="mt-0.5 flex-shrink-0" />
               <span>{item.agentQuestion}</span>
             </div>
@@ -308,7 +308,7 @@ export function AgentControls({
         {/* Failed - Show all agent buttons */}
         {item.agentStatus === 'failed' && (
           <div className="space-y-2">
-            <div className="text-sm text-red-400">Agent failed</div>
+            <div className="text-sm text-[var(--color-status-error)]">Agent failed</div>
             {sortedAgents.length > 0 && (
               <AgentButtonList
                 agents={sortedAgents}

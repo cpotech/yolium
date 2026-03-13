@@ -234,9 +234,9 @@ export function ItemDetailSidebar({
               type="checkbox"
               checked={verified}
               onChange={event => onSetVerified(event.target.checked)}
-              className="rounded border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-green-500 focus:ring-green-500"
+              className="rounded border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-status-success)] focus:ring-[var(--color-status-success)]"
             />
-            <span className={`flex items-center gap-1 text-sm ${verified ? 'text-green-400' : 'text-[var(--color-text-secondary)]'}`}>
+            <span className={`flex items-center gap-1 text-sm ${verified ? 'text-[var(--color-status-success)]' : 'text-[var(--color-text-secondary)]'}`}>
               <ShieldCheck size={14} />
               {verified ? 'Verified' : 'Not verified'}
             </span>
@@ -293,17 +293,17 @@ export function ItemDetailSidebar({
 
       <div className="p-4 border-t border-[var(--color-border-primary)]">
         {saveStatus === 'saving' && (
-          <div data-testid="save-status" className="text-center text-xs text-blue-400 font-medium mb-2">
+          <div data-testid="save-status" className="text-center text-xs text-[var(--color-status-info)] font-medium mb-2">
             Saving...
           </div>
         )}
         {saveStatus === 'saved' && (
-          <div data-testid="save-status" className="text-center text-xs text-green-400 font-medium mb-2">
+          <div data-testid="save-status" className="text-center text-xs text-[var(--color-status-success)] font-medium mb-2">
             Saved
           </div>
         )}
         {saveStatus === 'error' && (
-          <div data-testid="save-status" className="text-center text-xs text-red-400 font-medium mb-2">
+          <div data-testid="save-status" className="text-center text-xs text-[var(--color-status-error)] font-medium mb-2">
             Save failed
           </div>
         )}
@@ -312,7 +312,7 @@ export function ItemDetailSidebar({
             data-testid="delete-button"
             onClick={onDelete}
             disabled={isDeleting}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-red-400 rounded-md hover:bg-red-600/10 border border-red-600/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-[var(--color-status-error)] rounded-md hover:bg-[var(--color-status-error)]/10 border border-[var(--color-status-error)]/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Trash2 size={14} />
             {isDeleting ? 'Deleting...' : 'Delete'}
