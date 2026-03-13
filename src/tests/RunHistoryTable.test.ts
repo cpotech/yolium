@@ -54,6 +54,17 @@ beforeEach(() => {
 });
 
 describe('RunHistoryTable', () => {
+  it('should render the run list inside its own bounded scroll container', async () => {
+    render(React.createElement(RunHistoryTable, { specialistId: 'twitter-growth' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Completed analysis of repo')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('run-history-table')).toHaveClass('h-full', 'min-h-0', 'flex-col');
+    expect(screen.getByTestId('run-history-list')).toHaveClass('flex-1', 'min-h-0', 'overflow-auto');
+  });
+
   it('should request run actions when a run detail view is opened', async () => {
     render(React.createElement(RunHistoryTable, { specialistId: 'twitter-growth' }));
 
@@ -80,6 +91,9 @@ describe('RunHistoryTable', () => {
     await waitFor(() => {
       expect(screen.getByTestId('run-detail-actions-empty')).toHaveTextContent('No actions recorded for this run');
     });
+
+    expect(screen.getByTestId('run-history-detail-shell')).toHaveClass('h-full', 'min-h-0', 'overflow-hidden');
+    expect(screen.getByTestId('run-detail-view')).toHaveClass('h-full', 'min-h-0', 'overflow-hidden');
   });
 
   it('should render action rows with timestamp, action label, and dry-run badge when actions exist', async () => {

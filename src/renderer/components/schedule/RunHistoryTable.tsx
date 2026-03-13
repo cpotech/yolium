@@ -178,7 +178,7 @@ function RunDetailView({
   const duration = formatDuration(run.startedAt, run.completedAt);
 
   return (
-    <div className="flex flex-col h-full" data-testid="run-detail-view">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden" data-testid="run-detail-view">
       {/* Header with back + metadata inline */}
       <div className="flex items-center gap-3 px-3 py-2.5 border-b border-[var(--color-border-primary)]">
         <button
@@ -364,11 +364,13 @@ export function RunHistoryTable({ specialistId }: RunHistoryTableProps): React.R
 
   if (selectedRun) {
     return (
-      <RunDetailView
-        run={selectedRun}
-        specialistId={specialistId}
-        onBack={() => setSelectedRun(null)}
-      />
+      <div className="h-full min-h-0 overflow-hidden" data-testid="run-history-detail-shell">
+        <RunDetailView
+          run={selectedRun}
+          specialistId={specialistId}
+          onBack={() => setSelectedRun(null)}
+        />
+      </div>
     );
   }
 
@@ -384,10 +386,10 @@ export function RunHistoryTable({ specialistId }: RunHistoryTableProps): React.R
   const outcomeLabels: Record<string, string> = { all: 'All', completed: 'Completed', no_action: 'No action', failed: 'Failed', skipped: 'Skipped', timeout: 'Timeout' };
 
   return (
-    <div className="p-3" data-testid="run-history-table">
+    <div className="flex h-full min-h-0 flex-col" data-testid="run-history-table">
       {/* Compact stats summary — single flowing line, not hero cards */}
       {stats && stats.totalRuns > 0 && (
-        <div className="flex items-center gap-4 mb-3 text-xs text-[var(--color-text-muted)]">
+        <div className="flex shrink-0 items-center gap-4 px-3 pt-3 text-xs text-[var(--color-text-muted)]">
           <span>
             <span className="text-[var(--color-text-primary)] font-medium">{stats.totalRuns}</span> runs
           </span>
@@ -409,7 +411,7 @@ export function RunHistoryTable({ specialistId }: RunHistoryTableProps): React.R
       )}
 
       {/* Pill filters */}
-      <div className="flex items-center gap-3 mb-3">
+      <div className="flex shrink-0 items-center gap-3 px-3 py-3">
         <PillFilter
           testId="filter-type"
           options={availableTypes.map(t => ({ value: t, label: typeLabels[t] || t }))}
@@ -429,56 +431,58 @@ export function RunHistoryTable({ specialistId }: RunHistoryTableProps): React.R
       </div>
 
       {/* Run list — timeline style instead of table */}
-      {filteredRuns.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-[var(--color-text-muted)]">
-          <Clock size={24} className="mb-2 opacity-15" />
-          <p className="text-xs">No runs yet</p>
-        </div>
-      ) : (
-        <div className="space-y-px">
-          {filteredRuns.map(run => (
-            <button
-              key={run.id}
-              type="button"
-              data-testid={`run-row-${run.id}`}
-              onClick={() => setSelectedRun(run)}
-              className="w-full text-left flex items-center gap-2.5 px-2.5 py-2 rounded hover:bg-[var(--color-bg-tertiary)] transition-colors group cursor-pointer"
-            >
-              {/* Outcome dot */}
-              <span
-                className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${OUTCOME_DOT[run.outcome] || 'bg-[var(--color-text-muted)]'}`}
-                title={OUTCOME_LABELS[run.outcome] || run.outcome}
-              />
+      <div className="flex-1 min-h-0 overflow-auto px-3 pb-3" data-testid="run-history-list">
+        {filteredRuns.length === 0 ? (
+          <div className="flex h-full min-h-[12rem] flex-col items-center justify-center text-[var(--color-text-muted)]">
+            <Clock size={24} className="mb-2 opacity-15" />
+            <p className="text-xs">No runs yet</p>
+          </div>
+        ) : (
+          <div className="space-y-px">
+            {filteredRuns.map(run => (
+              <button
+                key={run.id}
+                type="button"
+                data-testid={`run-row-${run.id}`}
+                onClick={() => setSelectedRun(run)}
+                className="w-full cursor-pointer text-left flex items-center gap-2.5 rounded px-2.5 py-2 transition-colors group hover:bg-[var(--color-bg-tertiary)]"
+              >
+                {/* Outcome dot */}
+                <span
+                  className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${OUTCOME_DOT[run.outcome] || 'bg-[var(--color-text-muted)]'}`}
+                  title={OUTCOME_LABELS[run.outcome] || run.outcome}
+                />
 
-              {/* Main content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-[var(--color-text-primary)] truncate">
-                    {run.summary || OUTCOME_LABELS[run.outcome] || run.outcome}
-                  </span>
-                  <span className={`flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] ${OUTCOME_BADGE[run.outcome] || 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]'}`}>
-                    {OUTCOME_LABELS[run.outcome] || run.outcome}
-                  </span>
-                  <span className={`flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] ${TYPE_COLORS[run.scheduleType] || TYPE_COLORS.custom}`}>
-                    {run.scheduleType}
-                  </span>
+                {/* Main content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[var(--color-text-primary)] truncate">
+                      {run.summary || OUTCOME_LABELS[run.outcome] || run.outcome}
+                    </span>
+                    <span className={`flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] ${OUTCOME_BADGE[run.outcome] || 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]'}`}>
+                      {OUTCOME_LABELS[run.outcome] || run.outcome}
+                    </span>
+                    <span className={`flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] ${TYPE_COLORS[run.scheduleType] || TYPE_COLORS.custom}`}>
+                      {run.scheduleType}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-0.5 text-[11px] text-[var(--color-text-muted)]">
+                    <span title={formatAbsoluteTime(run.startedAt)}>
+                      {formatRelativeTime(run.startedAt)}
+                    </span>
+                    <span>{formatDuration(run.startedAt, run.completedAt)}</span>
+                    <span>{run.tokensUsed.toLocaleString()} tokens</span>
+                    <span>${run.costUsd.toFixed(4)}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 mt-0.5 text-[11px] text-[var(--color-text-muted)]">
-                  <span title={formatAbsoluteTime(run.startedAt)}>
-                    {formatRelativeTime(run.startedAt)}
-                  </span>
-                  <span>{formatDuration(run.startedAt, run.completedAt)}</span>
-                  <span>{run.tokensUsed.toLocaleString()} tokens</span>
-                  <span>${run.costUsd.toFixed(4)}</span>
-                </div>
-              </div>
 
-              {/* Chevron */}
-              <ChevronRight size={13} className="flex-shrink-0 text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
-            </button>
-          ))}
-        </div>
-      )}
+                {/* Chevron */}
+                <ChevronRight size={13} className="flex-shrink-0 text-[var(--color-text-muted)] opacity-0 transition-opacity group-hover:opacity-100" />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
