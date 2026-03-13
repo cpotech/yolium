@@ -214,6 +214,75 @@ describe('ActionsView', () => {
     expect(screen.getByText(/custom-value/)).toBeInTheDocument();
   });
 
+  it('should render content body below summary when action data has both summary and text', async () => {
+    mockGetAllActions.mockResolvedValue([
+      makeAction({
+        id: 'a1',
+        data: { summary: 'Posted a tweet about TypeScript', text: 'Here is the actual tweet content about TS...' },
+      }),
+    ]);
+
+    render(<ActionsView {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('action-content-a1')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('action-content-a1')).toHaveTextContent('Here is the actual tweet content about TS...');
+  });
+
+  it('should render content body from tweetText when text is absent but tweetText exists', async () => {
+    mockGetAllActions.mockResolvedValue([
+      makeAction({
+        id: 'a1',
+        data: { summary: 'Posted a tweet', tweetText: 'The tweet body from tweetText field' },
+      }),
+    ]);
+
+    render(<ActionsView {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('action-content-a1')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('action-content-a1')).toHaveTextContent('The tweet body from tweetText field');
+  });
+
+  it('should not render content body when text equals summary', async () => {
+    mockGetAllActions.mockResolvedValue([
+      makeAction({
+        id: 'a1',
+        data: { summary: 'Same content here', text: 'Same content here' },
+      }),
+    ]);
+
+    render(<ActionsView {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('action-card-a1')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('action-content-a1')).not.toBeInTheDocument();
+  });
+
+  it('should not render duplicate content body in dry-run actions', async () => {
+    mockGetAllActions.mockResolvedValue([
+      makeAction({
+        id: 'a1',
+        data: { summary: 'Identical text', text: 'Identical text', dryRun: true },
+      }),
+    ]);
+
+    render(<ActionsView {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('action-card-a1')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Dry run')).toBeInTheDocument();
+    expect(screen.queryByTestId('action-content-a1')).not.toBeInTheDocument();
+  });
+
   it('should accept an initialSpecialist prop to pre-filter to one specialist', async () => {
     mockGetAllActions.mockResolvedValue([
       makeAction({ id: 'a1', specialistId: 'twitter-growth', data: { summary: 'Tweet' } }),
