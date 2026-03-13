@@ -142,9 +142,9 @@ describe('useAgentSession', () => {
 
     await waitFor(() => {
       expect(mockGetActiveSession).toHaveBeenCalledWith('/test/project', 'item-1')
+      expect(screen.getByTestId('session-id')).toHaveTextContent('session-1')
+      expect(screen.getByTestId('token-usage')).toHaveTextContent('120/45/0.12')
     })
-    expect(screen.getByTestId('session-id')).toHaveTextContent('session-1')
-    expect(screen.getByTestId('token-usage')).toHaveTextContent('120/45/0.12')
   })
 
   it('should call recover(projectPath) when a running item has no active session and refresh on successful recovery', async () => {
