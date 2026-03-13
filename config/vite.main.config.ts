@@ -10,7 +10,8 @@ export default defineConfig({
       // - node-pty: pseudo-terminal for shell spawning
       // - dockerode: Docker API client (depends on ssh2 with native crypto)
       // - gray-matter: YAML frontmatter parser (has complex dependencies)
-      external: ['node-pty', 'dockerode', 'ssh2', 'gray-matter'],
+      // - better-sqlite3: native SQLite bindings for schedule database
+      external: ['node-pty', 'dockerode', 'ssh2', 'gray-matter', 'better-sqlite3'],
     },
   },
   resolve: {
