@@ -3,7 +3,7 @@
  * Comments list component for displaying kanban item comments.
  */
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import Markdown from 'react-markdown'
 import type { KanbanComment, CommentSource } from '@shared/types/kanban'
 import { MockPreviewModal } from './MockPreviewModal'
@@ -349,7 +349,14 @@ interface CommentsListProps {
  */
 export function CommentsList({ comments, onSelectOption }: CommentsListProps): React.ReactElement {
   const [mockFilePath, setMockFilePath] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const markdownComponents = createMarkdownComponents(setMockFilePath)
+
+  const filteredComments = useMemo(() => {
+    if (!searchQuery) return comments
+    const query = searchQuery.toLowerCase()
+    return comments.filter(c => c.text.toLowerCase().includes(query))
+  }, [comments, searchQuery])
 
   return (
     <div data-testid="comments-section">
@@ -365,7 +372,50 @@ export function CommentsList({ comments, onSelectOption }: CommentsListProps): R
         </p>
       ) : (
         <div className="space-y-3">
-          {comments.map(comment => (
+          <div className="relative">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)]">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              data-testid="comment-search-input"
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search comments..."
+              className="w-full pl-8 pr-16 py-1.5 text-sm bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] transition-all"
+              onKeyDown={e => {
+                if (e.key === 'Escape') {
+                  e.stopPropagation()
+                  setSearchQuery('')
+                }
+              }}
+            />
+            {searchQuery && (
+              <>
+                <span
+                  data-testid="comment-search-count"
+                  className="absolute right-8 top-1/2 -translate-y-1/2 text-[10px] text-[var(--color-text-tertiary)] whitespace-nowrap"
+                >
+                  {filteredComments.length} of {comments.length}
+                </span>
+                <button
+                  data-testid="comment-search-clear"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </>
+            )}
+          </div>
+          {filteredComments.length === 0 && searchQuery ? (
+            <p className="text-sm text-[var(--color-text-tertiary)] italic">No matching comments</p>
+          ) : null}
+          {filteredComments.map(comment => (
             <div
               key={comment.id}
               className="bg-[var(--color-bg-primary)] rounded-md p-3 border border-[var(--color-border-primary)]"

@@ -546,4 +546,124 @@ describe('CommentsList', () => {
     expect(screen.queryByTestId('report-preview-button')).not.toBeInTheDocument()
     expect(screen.getByTestId('mock-preview-button')).toBeInTheDocument()
   })
+
+  describe('comment search', () => {
+    const searchComments: KanbanComment[] = [
+      { id: 'c1', source: 'user', text: 'Hello world', timestamp: new Date().toISOString() },
+      { id: 'c2', source: 'agent', text: 'Found 5 relevant files', timestamp: new Date().toISOString() },
+      { id: 'c3', source: 'system', text: 'Agent started', timestamp: new Date().toISOString() },
+    ]
+
+    it('should render search input when comments exist', () => {
+      render(<CommentsList comments={searchComments} />)
+      expect(screen.getByTestId('comment-search-input')).toBeInTheDocument()
+    })
+
+    it('should not render search input when no comments exist', () => {
+      render(<CommentsList comments={[]} />)
+      expect(screen.queryByTestId('comment-search-input')).not.toBeInTheDocument()
+    })
+
+    it('should filter comments by search query (case-insensitive)', () => {
+      render(<CommentsList comments={searchComments} />)
+
+      fireEvent.change(screen.getByTestId('comment-search-input'), { target: { value: 'hello' } })
+
+      expect(screen.getByText('Hello world')).toBeInTheDocument()
+      expect(screen.queryByText('Found 5 relevant files')).not.toBeInTheDocument()
+      expect(screen.queryByText('Agent started')).not.toBeInTheDocument()
+    })
+
+    it('should show match count when search query is active', () => {
+      render(<CommentsList comments={searchComments} />)
+
+      fireEvent.change(screen.getByTestId('comment-search-input'), { target: { value: 'hello' } })
+
+      const matchCount = screen.getByTestId('comment-search-count')
+      expect(matchCount).toBeInTheDocument()
+      expect(matchCount).toHaveTextContent('1 of 3')
+    })
+
+    it('should show no matches message when search matches nothing', () => {
+      render(<CommentsList comments={searchComments} />)
+
+      fireEvent.change(screen.getByTestId('comment-search-input'), { target: { value: 'zzzznotfound' } })
+
+      expect(screen.getByText('No matching comments')).toBeInTheDocument()
+    })
+
+    it('should clear search query when clear button is clicked', () => {
+      render(<CommentsList comments={searchComments} />)
+
+      const input = screen.getByTestId('comment-search-input')
+      fireEvent.change(input, { target: { value: 'hello' } })
+
+      // Only one comment visible
+      expect(screen.queryByText('Found 5 relevant files')).not.toBeInTheDocument()
+
+      // Click clear button
+      fireEvent.click(screen.getByTestId('comment-search-clear'))
+
+      // All comments visible again
+      expect(screen.getByText('Hello world')).toBeInTheDocument()
+      expect(screen.getByText('Found 5 relevant files')).toBeInTheDocument()
+      expect(screen.getByText('Agent started')).toBeInTheDocument()
+    })
+
+    it('should clear search query when Escape is pressed in search input', () => {
+      render(<CommentsList comments={searchComments} />)
+
+      const input = screen.getByTestId('comment-search-input')
+      fireEvent.change(input, { target: { value: 'hello' } })
+
+      expect(screen.queryByText('Found 5 relevant files')).not.toBeInTheDocument()
+
+      fireEvent.keyDown(input, { key: 'Escape' })
+
+      expect(screen.getByText('Hello world')).toBeInTheDocument()
+      expect(screen.getByText('Found 5 relevant files')).toBeInTheDocument()
+      expect(screen.getByText('Agent started')).toBeInTheDocument()
+    })
+
+    it('should show all comments when search query is empty', () => {
+      render(<CommentsList comments={searchComments} />)
+
+      // With empty query, all comments should be visible
+      expect(screen.getByText('Hello world')).toBeInTheDocument()
+      expect(screen.getByText('Found 5 relevant files')).toBeInTheDocument()
+      expect(screen.getByText('Agent started')).toBeInTheDocument()
+    })
+
+    it('should still render option buttons on filtered comments', () => {
+      const commentsWithOptions: KanbanComment[] = [
+        { id: 'c1', source: 'agent', text: 'Which approach?', timestamp: new Date().toISOString(), options: ['Option A', 'Option B'] },
+        { id: 'c2', source: 'user', text: 'Something else', timestamp: new Date().toISOString() },
+      ]
+
+      render(<CommentsList comments={commentsWithOptions} />)
+
+      fireEvent.change(screen.getByTestId('comment-search-input'), { target: { value: 'approach' } })
+
+      expect(screen.getByText('Which approach?')).toBeInTheDocument()
+      expect(screen.getByText('Option A')).toBeInTheDocument()
+      expect(screen.getByText('Option B')).toBeInTheDocument()
+      expect(screen.queryByText('Something else')).not.toBeInTheDocument()
+    })
+
+    it('should preserve search state across re-renders with same comments', () => {
+      const { rerender } = render(<CommentsList comments={searchComments} />)
+
+      fireEvent.change(screen.getByTestId('comment-search-input'), { target: { value: 'hello' } })
+
+      expect(screen.queryByText('Found 5 relevant files')).not.toBeInTheDocument()
+
+      // Re-render with same comments
+      rerender(<CommentsList comments={searchComments} />)
+
+      // Search state should persist
+      expect((screen.getByTestId('comment-search-input') as HTMLInputElement).value).toBe('hello')
+      expect(screen.getByText('Hello world')).toBeInTheDocument()
+      expect(screen.queryByText('Found 5 relevant files')).not.toBeInTheDocument()
+    })
+  })
 })
