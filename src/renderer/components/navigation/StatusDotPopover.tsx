@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { MessageSquare, Play } from 'lucide-react'
+import type { KanbanColumn } from '@shared/types/kanban'
 import type { SidebarWorkItem } from './ProjectList'
 
 interface StatusDotPopoverProps {
@@ -8,10 +9,23 @@ interface StatusDotPopoverProps {
   onAnswer: (item: SidebarWorkItem, answer: string) => Promise<void> | void
 }
 
-const dotClasses: Record<'running' | 'waiting' | 'failed', string> = {
-  running: 'bg-green-500 animate-pulse',
-  waiting: 'bg-orange-400',
-  failed: 'bg-red-500',
+const columnDotColors: Record<KanbanColumn, string> = {
+  'backlog': 'bg-gray-500',
+  'ready': 'bg-blue-500',
+  'in-progress': 'bg-yellow-500',
+  'verify': 'bg-purple-500',
+  'done': 'bg-green-500',
+}
+
+function getDotClasses(item: SidebarWorkItem): string {
+  if (item.agentStatus === 'failed') {
+    return 'bg-red-500'
+  }
+  const colorClass = item.column ? columnDotColors[item.column] : 'bg-gray-500'
+  if (item.agentStatus === 'running') {
+    return `${colorClass} animate-pulse`
+  }
+  return colorClass
 }
 
 export function StatusDotPopover({
@@ -144,7 +158,7 @@ export function StatusDotPopover({
         aria-haspopup={isWaiting ? 'dialog' : undefined}
         aria-expanded={isWaiting ? isOpen : undefined}
         onClick={handleDotClick}
-        className={`h-[7px] w-[7px] rounded-full ${dotClasses[item.agentStatus as 'running' | 'waiting' | 'failed']} ${
+        className={`h-[7px] w-[7px] rounded-full ${getDotClasses(item)} ${
           isWaiting ? 'cursor-pointer' : 'cursor-default'
         }`}
       />
