@@ -19,7 +19,7 @@ vi.mock('node-cron', () => ({
   validate: mockCronValidate,
 }));
 
-// Mock fs
+// Mock fs (for memory-distiller writeDigest which stays file-based)
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(() => false),
   mkdirSync: vi.fn(),
@@ -67,8 +67,8 @@ vi.mock('@main/services/agent-runner', () => ({
   startScheduledAgent: mockStartScheduledAgent,
 }));
 
-// Mock stores
-vi.mock('@main/stores/schedule-store', () => ({
+// Mock schedule-db (the unified store)
+vi.mock('@main/stores/schedule-db', () => ({
   getScheduleState: vi.fn(() => ({
     specialists: {
       'security-monitor': {
@@ -84,34 +84,22 @@ vi.mock('@main/stores/schedule-store', () => ({
     globalEnabled: true,
   })),
   saveScheduleState: vi.fn(),
-  updateSpecialistStatus: vi.fn((state, _id, updates) => ({ ...state, specialists: { ...state.specialists, [_id]: { ...state.specialists[_id], ...updates } } })),
-  toggleSpecialist: vi.fn((state, id, enabled) => ({ ...state, specialists: { ...state.specialists, [id]: { ...state.specialists[id], enabled } } })),
+  updateSpecialistStatus: vi.fn((state, _id, updates) => ({
+    ...state,
+    specialists: { ...state.specialists, [_id]: { ...state.specialists[_id], ...updates } },
+  })),
+  toggleSpecialist: vi.fn((state, id, enabled) => ({
+    ...state,
+    specialists: { ...state.specialists, [id]: { ...state.specialists[id], enabled } },
+  })),
   toggleGlobal: vi.fn((state, enabled) => ({ ...state, globalEnabled: enabled })),
-}));
-
-vi.mock('@main/stores/run-history-store', () => ({
   appendRun: vi.fn(),
   getRecentRuns: vi.fn(() => []),
   getRunsSince: vi.fn(() => []),
   getRunStats: vi.fn(() => ({ totalRuns: 0, successRate: 0, weeklyCost: 0, averageTokensPerRun: 0, averageDurationMs: 0 })),
   trimHistory: vi.fn(),
-}));
-
-// Mock pattern detector
-vi.mock('@main/services/pattern-detector', () => ({
-  detectPatterns: vi.fn(() => []),
-}));
-
-// Mock escalation
-vi.mock('@main/services/escalation', () => ({
-  handleEscalation: vi.fn(),
-}));
-
-// Mock memory distiller
-vi.mock('@main/services/memory-distiller', () => ({
-  distillDaily: vi.fn(() => 'Daily summary'),
-  distillWeekly: vi.fn(() => 'Weekly summary'),
-  writeDigest: vi.fn(),
+  appendRunLog: vi.fn(),
+  getRunLog: vi.fn(() => ''),
 }));
 
 // Mock logger (requires electron)
@@ -125,9 +113,25 @@ vi.mock('@main/lib/logger', () => ({
 }));
 
 import { CronScheduler } from '@main/services/scheduler';
-import { getScheduleState } from '@main/stores/schedule-store';
-import { appendRun, getRecentRuns, getRunStats } from '@main/stores/run-history-store';
-import { detectPatterns } from '@main/services/pattern-detector';
+import { getScheduleState, appendRun, getRecentRuns, getRunStats, getRunsSince, saveScheduleState, updateSpecialistStatus } from '@main/stores/schedule-db';
+import { BrowserWindow } from 'electron';
+import type { ScheduledRun } from '@shared/types/schedule';
+
+function makeRun(overrides: Partial<ScheduledRun> = {}): ScheduledRun {
+  return {
+    id: `run-${Math.random().toString(36).slice(2)}`,
+    specialistId: 'test-specialist',
+    scheduleType: 'heartbeat',
+    startedAt: new Date().toISOString(),
+    completedAt: new Date().toISOString(),
+    status: 'completed',
+    tokensUsed: 1000,
+    costUsd: 0.01,
+    summary: 'Test run',
+    outcome: 'completed',
+    ...overrides,
+  };
+}
 
 describe('scheduler', () => {
   let scheduler: CronScheduler;
@@ -267,23 +271,8 @@ describe('scheduler', () => {
       costUsd: 0.005,
     });
 
-    // Pattern detection should be triggered
-    expect(detectPatterns).toHaveBeenCalledWith('security-monitor');
     // Run stats should be fetched for successRate/weeklyCost
     expect(getRunStats).toHaveBeenCalledWith('security-monitor');
-  });
-
-  it('should trigger pattern detection after each run', () => {
-    scheduler.start();
-
-    scheduler.handleRunComplete('security-monitor', {
-      outcome: 'failed',
-      summary: 'Error',
-      tokensUsed: 0,
-      costUsd: 0,
-    });
-
-    expect(detectPatterns).toHaveBeenCalledWith('security-monitor');
   });
 
   it('should stop all cron jobs on shutdown', () => {
@@ -350,5 +339,214 @@ describe('scheduler', () => {
 
     // Should have registered new jobs
     expect(mockCronSchedule.mock.calls.length).toBeGreaterThan(initialCallCount);
+  });
+
+  // ─── Pattern Detection (inlined) ──────────────────────────────────────────
+
+  describe('pattern detection (inlined)', () => {
+    it('should detect 3 consecutive no-action runs and return reduce_frequency', () => {
+      vi.mocked(getRecentRuns).mockReturnValue([
+        makeRun({ outcome: 'no_action' }),
+        makeRun({ outcome: 'no_action' }),
+        makeRun({ outcome: 'no_action' }),
+      ]);
+
+      scheduler.start();
+      // detectPatterns is now a private method, but handleRunComplete calls it.
+      // We test it indirectly via handleRunComplete which triggers pattern detection + escalation.
+      // For direct testing, we can access it via the class if we expose it for testing,
+      // or we test the behavior through handleRunComplete side effects.
+
+      // Use the internal detectPatterns method via (scheduler as any)
+      const patterns = (scheduler as any).detectPatterns('security-monitor');
+      expect(patterns.length).toBeGreaterThan(0);
+      expect(patterns.some((a: any) => a.action === 'reduce_frequency')).toBe(true);
+    });
+
+    it('should detect 3 consecutive failures and return alert_user', () => {
+      vi.mocked(getRecentRuns).mockReturnValue([
+        makeRun({ outcome: 'failed' }),
+        makeRun({ outcome: 'failed' }),
+        makeRun({ outcome: 'failed' }),
+      ]);
+
+      scheduler.start();
+      const patterns = (scheduler as any).detectPatterns('security-monitor');
+      expect(patterns.length).toBeGreaterThan(0);
+      expect(patterns.some((a: any) => a.action === 'alert_user')).toBe(true);
+    });
+
+    it('should not trigger on non-consecutive same-outcome runs', () => {
+      vi.mocked(getRecentRuns).mockReturnValue([
+        makeRun({ outcome: 'no_action' }),
+        makeRun({ outcome: 'completed' }),
+        makeRun({ outcome: 'no_action' }),
+        makeRun({ outcome: 'no_action' }),
+      ]);
+
+      scheduler.start();
+      const patterns = (scheduler as any).detectPatterns('security-monitor');
+      const reduceFreq = patterns.filter((a: any) => a.action === 'reduce_frequency');
+      expect(reduceFreq.length).toBe(0);
+    });
+
+    it('should detect cost spike exceeding 2x rolling average', () => {
+      const historicalRuns = Array.from({ length: 10 }, () =>
+        makeRun({ costUsd: 0.01 })
+      );
+      const recentRun = makeRun({ costUsd: 0.05 });
+
+      vi.mocked(getRecentRuns).mockReturnValue([...historicalRuns, recentRun]);
+
+      scheduler.start();
+      const patterns = (scheduler as any).detectPatterns('security-monitor');
+      expect(patterns.some((a: any) => a.action === 'alert_user' && a.reason.includes('cost'))).toBe(true);
+    });
+
+    it('should return empty array when no patterns detected', () => {
+      vi.mocked(getRecentRuns).mockReturnValue([
+        makeRun({ outcome: 'completed' }),
+        makeRun({ outcome: 'completed' }),
+      ]);
+
+      scheduler.start();
+      const patterns = (scheduler as any).detectPatterns('security-monitor');
+      expect(patterns).toEqual([]);
+    });
+  });
+
+  // ─── Escalation Handling (inlined) ────────────────────────────────────────
+
+  describe('escalation handling (inlined)', () => {
+    it('should reduce frequency by doubling skipEveryN', () => {
+      const state = {
+        specialists: {
+          'security-monitor': {
+            id: 'security-monitor',
+            enabled: true,
+            consecutiveNoAction: 0,
+            consecutiveFailures: 0,
+            totalRuns: 0,
+            successRate: 0,
+            weeklyCost: 0,
+            skipEveryN: 1,
+          },
+        },
+        globalEnabled: true,
+      };
+      vi.mocked(getScheduleState).mockReturnValue(state);
+
+      scheduler = new CronScheduler();
+      scheduler.start();
+
+      (scheduler as any).handleEscalation('reduce_frequency', 'security-monitor', { reason: 'test' });
+
+      expect(updateSpecialistStatus).toHaveBeenCalledWith(
+        expect.anything(),
+        'security-monitor',
+        expect.objectContaining({ skipEveryN: 2 })
+      );
+    });
+
+    it('should pause specialist by setting enabled to false', () => {
+      const state = {
+        specialists: {
+          'security-monitor': {
+            id: 'security-monitor',
+            enabled: true,
+            consecutiveNoAction: 0,
+            consecutiveFailures: 0,
+            totalRuns: 0,
+            successRate: 0,
+            weeklyCost: 0,
+          },
+        },
+        globalEnabled: true,
+      };
+      vi.mocked(getScheduleState).mockReturnValue(state);
+
+      scheduler = new CronScheduler();
+      scheduler.start();
+
+      (scheduler as any).handleEscalation('pause', 'security-monitor', { reason: 'test' });
+
+      expect(updateSpecialistStatus).toHaveBeenCalledWith(
+        expect.anything(),
+        'security-monitor',
+        expect.objectContaining({ enabled: false })
+      );
+    });
+
+    it('should broadcast alert to renderer windows', () => {
+      const mockSend = vi.fn();
+      vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+        { isDestroyed: () => false, webContents: { send: mockSend } } as any,
+      ]);
+
+      scheduler.start();
+      (scheduler as any).handleEscalation('alert_user', 'security-monitor', { reason: 'test alert' });
+
+      expect(mockSend).toHaveBeenCalledWith('schedule:alert', 'security-monitor', expect.stringContaining('test alert'));
+    });
+  });
+
+  // ─── Memory Distillation (inlined) ────────────────────────────────────────
+
+  describe('memory distillation (inlined)', () => {
+    it('should produce daily summary from today\'s runs', () => {
+      const runs = [
+        makeRun({ summary: 'Checked all endpoints', outcome: 'completed' }),
+        makeRun({ summary: 'Found 2 issues', outcome: 'completed' }),
+      ];
+      vi.mocked(getRunsSince).mockReturnValue(runs);
+
+      scheduler.start();
+      const summary = (scheduler as any).distillDaily('security-monitor');
+      expect(summary).toContain('Checked all endpoints');
+      expect(summary).toContain('Found 2 issues');
+    });
+
+    it('should produce weekly digest with header and run details', () => {
+      const runs = [
+        makeRun({ summary: 'Monday check', scheduleType: 'daily' }),
+        makeRun({ summary: 'Tuesday check', scheduleType: 'daily' }),
+      ];
+      vi.mocked(getRunsSince).mockReturnValue(runs);
+
+      scheduler.start();
+      const digest = (scheduler as any).distillWeekly('security-monitor');
+      expect(digest).toContain('Monday check');
+      expect(digest).toContain('Weekly Digest');
+    });
+
+    it('should write digest to specialist\'s digest.md file', async () => {
+      const fs = await import('node:fs');
+
+      scheduler.start();
+      (scheduler as any).writeDigest('security-monitor', '# Digest\n\nContent');
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writePath = vi.mocked(fs.writeFileSync).mock.calls[0][0] as string;
+      expect(writePath).toContain('security-monitor');
+      expect(writePath).toContain('digest.md');
+    });
+
+    it('should return empty string when no runs exist for distillation', () => {
+      vi.mocked(getRunsSince).mockReturnValue([]);
+
+      scheduler.start();
+      const summary = (scheduler as any).distillDaily('security-monitor');
+      expect(summary).toBe('');
+    });
+
+    it('should truncate overly long summaries', () => {
+      const longSummary = 'A'.repeat(10000);
+      const runs = [makeRun({ summary: longSummary })];
+      vi.mocked(getRunsSince).mockReturnValue(runs);
+
+      scheduler.start();
+      const summary = (scheduler as any).distillDaily('security-monitor');
+      expect(summary.length).toBeLessThan(10000);
+    });
   });
 });

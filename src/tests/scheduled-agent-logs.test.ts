@@ -19,7 +19,7 @@ import * as path from 'node:path';
 import {
   appendRunLog,
   getRunLog,
-} from '@main/stores/run-history-store';
+} from '@main/stores/schedule-db';
 
 describe('scheduled-agent-logs', () => {
   beforeEach(() => {

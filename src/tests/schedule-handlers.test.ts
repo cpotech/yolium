@@ -57,25 +57,18 @@ vi.mock('@main/services/specialist-loader', () => ({
   loadSpecialistRaw,
 }));
 
-vi.mock('@main/stores/schedule-store', () => ({
+vi.mock('@main/stores/schedule-db', () => ({
   getScheduleState,
   saveScheduleState,
   toggleSpecialist,
   toggleGlobal,
-}));
-
-vi.mock('@main/stores/run-history-store', () => ({
   getRecentRuns,
   getRunStats,
-}));
-
-vi.mock('@main/stores/action-log-store', () => ({
+  getRunLog: vi.fn(() => ''),
   getRecentActions,
+  getAllRecentActions: vi.fn(() => []),
   getActionsByRun,
   getActionStats,
-}));
-
-vi.mock('@main/stores/specialist-credentials-store', () => ({
   loadRedactedCredentials,
   saveCredentials,
   deleteCredentials,

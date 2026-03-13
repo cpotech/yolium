@@ -1,25 +1,51 @@
 /**
  * @module src/main/services/scheduler
  * CRON scheduling service for specialist agents.
+ * Includes inlined pattern detection, escalation handling, and memory distillation.
  */
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as os from 'node:os';
 import cron from 'node-cron';
 import { BrowserWindow } from 'electron';
 import { createLogger } from '@main/lib/logger';
 import { listSpecialists, loadSpecialist } from '@main/services/specialist-loader';
 import { startScheduledAgent } from '@main/services/agent-runner';
-import { getScheduleState, saveScheduleState, updateSpecialistStatus } from '@main/stores/schedule-store';
-import { appendRun, getRecentRuns, getRunStats } from '@main/stores/run-history-store';
-import { detectPatterns } from '@main/services/pattern-detector';
-import { handleEscalation } from '@main/services/escalation';
-import { distillDaily, distillWeekly, writeDigest } from '@main/services/memory-distiller';
-import type { SpecialistDefinition, ScheduledRun, ScheduleType, RunOutcome, ScheduleState } from '@shared/types/schedule';
+import {
+  getScheduleState,
+  saveScheduleState,
+  updateSpecialistStatus,
+  appendRun,
+  getRecentRuns,
+  getRunsSince,
+  getRunStats,
+} from '@main/stores/schedule-db';
+import type {
+  SpecialistDefinition,
+  ScheduledRun,
+  ScheduleType,
+  RunOutcome,
+  ScheduleState,
+  PatternAction,
+  EscalationAction,
+} from '@shared/types/schedule';
 
 const logger = createLogger('scheduler');
 
 interface CronJob {
   stop: () => void;
 }
+
+// ─── Pattern Detection Constants ──────────────────────────────────────────
+
+const DETECTION_WINDOW = 20;
+const CONSECUTIVE_THRESHOLD = 3;
+const COST_SPIKE_MULTIPLIER = 2;
+
+// ─── Memory Distillation Constants ────────────────────────────────────────
+
+const MAX_SUMMARY_LENGTH = 5000;
 
 /**
  * Broadcast schedule state changes to all renderer windows.
@@ -43,6 +69,7 @@ function generateRunId(): string {
 /**
  * CRON scheduler for specialist agents.
  * Manages cron job registration, run execution, and lifecycle.
+ * Includes inlined pattern detection, escalation, and memory distillation.
  */
 export class CronScheduler {
   private jobs: Map<string, CronJob[]> = new Map();
@@ -123,7 +150,6 @@ export class CronScheduler {
     scheduleType: ScheduleType
   ): { skipped?: boolean; reason?: string } {
     if (this.running.has(specialistId)) {
-      // Record the skipped run
       const skippedRun: ScheduledRun = {
         id: generateRunId(),
         specialistId,
@@ -140,7 +166,6 @@ export class CronScheduler {
       return { skipped: true, reason: 'already running' };
     }
 
-    // Execute the run asynchronously (manual trigger bypasses skipEveryN)
     this.executeScheduledRun(specialistId, scheduleType, true);
     return {};
   }
@@ -155,10 +180,10 @@ export class CronScheduler {
   ): void {
     this.running.delete(specialistId);
 
-    // Run pattern detection
-    const patterns = detectPatterns(specialistId);
+    // Run pattern detection (inlined)
+    const patterns = this.detectPatterns(specialistId);
     for (const pattern of patterns) {
-      handleEscalation(pattern.action, specialistId, { reason: pattern.reason });
+      this.handleEscalation(pattern.action, specialistId, { reason: pattern.reason });
     }
 
     // Reload state after escalation (escalation handlers may have modified it)
@@ -230,7 +255,7 @@ export class CronScheduler {
     return this.state;
   }
 
-  // ─── Private ──────────────────────────────────────────────────────────────
+  // ─── Private: Core Scheduling ──────────────────────────────────────────
 
   private loadSpecialists(): void {
     const names = listSpecialists();
@@ -239,7 +264,6 @@ export class CronScheduler {
         const specialist = loadSpecialist(name);
         this.specialists.set(name, specialist);
 
-        // Ensure specialist has a status entry
         if (!this.state.specialists[name]) {
           this.state.specialists[name] = {
             id: name,
@@ -293,7 +317,6 @@ export class CronScheduler {
       return;
     }
 
-    // Check skipEveryN for frequency reduction (skip for cron-triggered runs, not manual)
     if (!isManual) {
       const skipEveryN = this.state.specialists[specialistId]?.skipEveryN ?? 1;
       if (skipEveryN > 1) {
@@ -317,19 +340,13 @@ export class CronScheduler {
     broadcastStateChanged(this.state);
 
     const startedAt = new Date().toISOString();
-
-    // Build memory context from recent run history
     const memoryContext = this.buildMemoryContext(specialistId);
-
-    // Generate runId before starting so log file and run record share the same ID
     const runId = generateRunId();
 
-    // Start the agent container (headless — no renderer window)
     startScheduledAgent({ specialist, scheduleType, memoryContext, runId })
       .then((result) => {
         const completedAt = new Date().toISOString();
 
-        // Record the run
         const run: ScheduledRun = {
           id: runId,
           specialistId,
@@ -344,7 +361,6 @@ export class CronScheduler {
         };
         appendRun(specialistId, run);
 
-        // Update state and trigger pattern detection
         this.handleRunComplete(specialistId, result);
 
         logger.info('Scheduled run completed', {
@@ -382,27 +398,139 @@ export class CronScheduler {
       });
   }
 
-  /**
-   * Run memory distillation for all specialists.
-   * Called daily at 23:59 UTC.
-   */
+  private countJobs(): number {
+    let count = 0;
+    for (const jobList of this.jobs.values()) {
+      count += jobList.length;
+    }
+    return count;
+  }
+
+  // ─── Private: Pattern Detection (inlined from pattern-detector.ts) ─────
+
+  private detectPatterns(specialistId: string): PatternAction[] {
+    const runs = getRecentRuns(specialistId, DETECTION_WINDOW);
+    if (runs.length === 0) return [];
+
+    const actions: PatternAction[] = [];
+
+    const lastRuns = runs.slice(-CONSECUTIVE_THRESHOLD);
+    if (lastRuns.length >= CONSECUTIVE_THRESHOLD) {
+      const allNoAction = lastRuns.every(r => r.outcome === 'no_action');
+      if (allNoAction) {
+        actions.push({
+          action: 'reduce_frequency',
+          reason: `${CONSECUTIVE_THRESHOLD} consecutive no-action runs`,
+          specialistId,
+        });
+      }
+
+      const allFailed = lastRuns.every(r => r.outcome === 'failed');
+      if (allFailed) {
+        actions.push({
+          action: 'alert_user',
+          reason: `${CONSECUTIVE_THRESHOLD} consecutive failures`,
+          specialistId,
+        });
+      }
+    }
+
+    if (runs.length > 3) {
+      const historicalRuns = runs.slice(0, -1);
+      const averageCost = historicalRuns.reduce((sum, r) => sum + r.costUsd, 0) / historicalRuns.length;
+      const lastRun = runs[runs.length - 1];
+
+      if (averageCost > 0 && lastRun.costUsd > averageCost * COST_SPIKE_MULTIPLIER) {
+        actions.push({
+          action: 'alert_user',
+          reason: `cost spike detected: $${lastRun.costUsd.toFixed(4)} vs avg $${averageCost.toFixed(4)}`,
+          specialistId,
+        });
+      }
+    }
+
+    return actions;
+  }
+
+  // ─── Private: Escalation Handling (inlined from escalation.ts) ─────────
+
+  private handleEscalation(
+    action: EscalationAction,
+    specialistId: string,
+    context: { reason: string }
+  ): void {
+    logger.info('Handling escalation', { action, specialistId, reason: context.reason });
+
+    switch (action) {
+      case 'alert_user':
+        this.alertUser(specialistId, context.reason);
+        break;
+      case 'reduce_frequency':
+        this.reduceFrequency(specialistId, context.reason);
+        break;
+      case 'pause':
+        this.pauseSpecialist(specialistId, context.reason);
+        break;
+      case 'notify_slack':
+        logger.info('Slack notification stub', { specialistId, reason: context.reason });
+        break;
+    }
+  }
+
+  private reduceFrequency(specialistId: string, reason: string): void {
+    let state = getScheduleState();
+    const status = state.specialists[specialistId];
+    if (!status) return;
+
+    const currentSkip = status.skipEveryN ?? 1;
+    const newSkip = currentSkip * 2;
+
+    state = updateSpecialistStatus(state, specialistId, { skipEveryN: newSkip });
+    saveScheduleState(state);
+
+    logger.info('Reduced frequency', { specialistId, from: currentSkip, to: newSkip });
+    this.alertUser(specialistId, `Frequency reduced (now running every ${newSkip} triggers): ${reason}`);
+  }
+
+  private pauseSpecialist(specialistId: string, reason: string): void {
+    let state = getScheduleState();
+    const status = state.specialists[specialistId];
+    if (!status) return;
+
+    state = updateSpecialistStatus(state, specialistId, { enabled: false });
+    saveScheduleState(state);
+
+    logger.info('Paused specialist', { specialistId });
+    this.alertUser(specialistId, `Specialist paused: ${reason}`);
+  }
+
+  private alertUser(specialistId: string, message: string): void {
+    const windows = BrowserWindow.getAllWindows();
+    for (const win of windows) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('schedule:alert', specialistId, message);
+      }
+    }
+  }
+
+  // ─── Private: Memory Distillation (inlined from memory-distiller.ts) ───
+
   private runDistillation(): void {
     logger.info('Running memory distillation');
 
     for (const [id, specialist] of this.specialists) {
       try {
         if (specialist.memory.strategy === 'distill_daily') {
-          const dailySummary = distillDaily(id);
+          const dailySummary = this.distillDaily(id);
           if (dailySummary) {
-            writeDigest(id, dailySummary);
+            this.writeDigest(id, dailySummary);
             logger.info('Daily distillation complete', { specialistId: id });
           }
         } else if (specialist.memory.strategy === 'distill_weekly') {
-          // Weekly distillation only runs on Sundays
           if (new Date().getDay() === 0) {
-            const weeklySummary = distillWeekly(id);
+            const weeklySummary = this.distillWeekly(id);
             if (weeklySummary) {
-              writeDigest(id, weeklySummary);
+              this.writeDigest(id, weeklySummary);
               logger.info('Weekly distillation complete', { specialistId: id });
             }
           }
@@ -413,12 +541,46 @@ export class CronScheduler {
     }
   }
 
-  private countJobs(): number {
-    let count = 0;
-    for (const jobList of this.jobs.values()) {
-      count += jobList.length;
+  private formatRunsSummary(runs: ScheduledRun[]): string {
+    if (runs.length === 0) return '';
+
+    const lines: string[] = [];
+    for (const run of runs) {
+      const ts = new Date(run.startedAt).toISOString().slice(0, 16).replace('T', ' ');
+      const summaryTrimmed = run.summary.length > 200 ? run.summary.slice(0, 200) + '...' : run.summary;
+      lines.push(`- [${ts}] ${run.outcome}: ${summaryTrimmed} (${run.tokensUsed} tokens, $${run.costUsd.toFixed(4)})`);
     }
-    return count;
+
+    const result = lines.join('\n');
+    if (result.length > MAX_SUMMARY_LENGTH) {
+      return result.slice(0, MAX_SUMMARY_LENGTH) + '\n... (truncated)';
+    }
+    return result;
+  }
+
+  private distillDaily(specialistId: string): string {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const runs = getRunsSince(specialistId, today);
+    return this.formatRunsSummary(runs);
+  }
+
+  private distillWeekly(specialistId: string): string {
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const runs = getRunsSince(specialistId, oneWeekAgo);
+    if (runs.length === 0) return '';
+
+    const header = `# Weekly Digest — ${specialistId}\n\nPeriod: ${oneWeekAgo.toISOString().slice(0, 10)} to ${new Date().toISOString().slice(0, 10)}\nTotal runs: ${runs.length}\n\n`;
+    return header + this.formatRunsSummary(runs);
+  }
+
+  private writeDigest(specialistId: string, content: string): void {
+    const digestPath = path.join(os.homedir(), '.yolium', 'schedules', specialistId, 'digest.md');
+    const dir = path.dirname(digestPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(digestPath, content, 'utf-8');
   }
 }
 

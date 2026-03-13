@@ -10,20 +10,23 @@ import {
   saveScheduleState,
   toggleSpecialist,
   toggleGlobal,
-} from '@main/stores/schedule-store';
-import { getRecentRuns, getRunStats, getRunLog } from '@main/stores/run-history-store';
-import { getRecentActions, getAllRecentActions, getActionsByRun, getActionStats } from '@main/stores/action-log-store';
+  getRecentRuns,
+  getRunStats,
+  getRunLog,
+  getRecentActions,
+  getAllRecentActions,
+  getActionsByRun,
+  getActionStats,
+  loadRedactedCredentials,
+  saveCredentials,
+  deleteCredentials,
+} from '@main/stores/schedule-db';
 import {
   scaffoldSpecialist,
   getDefaultTemplate,
   updateSpecialistDefinition,
 } from '@main/services/specialist-scaffold';
 import { loadSpecialistRaw } from '@main/services/specialist-loader';
-import {
-  loadRedactedCredentials,
-  saveCredentials,
-  deleteCredentials,
-} from '@main/stores/specialist-credentials-store';
 import type { ScheduleType } from '@shared/types/schedule';
 
 export function registerScheduleHandlers(ipcMain: IpcMain): void {
@@ -74,7 +77,6 @@ export function registerScheduleHandlers(ipcMain: IpcMain): void {
   // Get loaded specialist definitions
   ipcMain.handle('schedule:get-specialists', () => {
     const specialists = scheduler.getSpecialists();
-    // Convert Map to plain object for IPC serialization
     const result: Record<string, unknown> = {};
     for (const [id, def] of specialists) {
       result[id] = {
