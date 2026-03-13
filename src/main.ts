@@ -10,6 +10,7 @@ import { createLogger, getLogPath } from '@main/lib/logger';
 import { clearSessions } from '@main/services/agent-runner';
 import { registerAllHandlers, performCleanup, isCleanupDone } from '@main/ipc';
 import { scheduler } from '@main/services/scheduler';
+import { buildContextMenuItems } from '@main/context-menu';
 
 const logger = createLogger('main');
 
@@ -174,6 +175,13 @@ function createWindow(): void {
       path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
     );
   }
+
+  // Native right-click context menu (Copy, Cut, Paste, Select All)
+  mainWindow.webContents.on('context-menu', (_event, params) => {
+    const items = buildContextMenuItems(params);
+    const menu = Menu.buildFromTemplate(items);
+    menu.popup();
+  });
 
   // Create application menu with accelerators
   createAppMenu(mainWindow);
