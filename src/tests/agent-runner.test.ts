@@ -50,17 +50,10 @@ vi.mock('@main/docker', () => ({
   stopAgentContainer: mockStopAgentContainer,
 }));
 
-// Mock specialist credentials store
-vi.mock('@main/stores/specialist-credentials-store', () => ({
+// Mock schedule-db (unified store)
+vi.mock('@main/stores/schedule-db', () => ({
   loadCredentials: vi.fn(() => ({})),
-}));
-
-// Mock run-history-store
-vi.mock('@main/stores/run-history-store', () => ({
   appendRunLog: vi.fn(),
-}));
-
-vi.mock('@main/stores/action-log-store', () => ({
   appendAction: mockAppendAction,
 }));
 

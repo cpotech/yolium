@@ -10,9 +10,7 @@ import {
   checkAgentAuth,
   getAgentSession,
 } from '@main/docker';
-import { appendRunLog } from '@main/stores/run-history-store';
-import { appendAction } from '@main/stores/action-log-store';
-import { loadCredentials } from '@main/stores/specialist-credentials-store';
+import { appendRunLog, appendAction, loadCredentials } from '@main/stores/schedule-db';
 import type { ActionMessage, CompleteMessage, ErrorMessage, RunResultMessage } from '@shared/types/agent';
 import type { SpecialistDefinition, ScheduleType, RunOutcome } from '@shared/types/schedule';
 
