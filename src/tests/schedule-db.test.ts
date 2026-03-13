@@ -427,6 +427,213 @@ describe('schedule-db', () => {
     });
   });
 
+  describe('resetSpecialist', () => {
+    it('should clear runs for the specialist', () => {
+      scheduleDb.appendRun('test-specialist', makeRun({ id: 'run-1', specialistId: 'test-specialist' }));
+      scheduleDb.appendRun('test-specialist', makeRun({ id: 'run-2', specialistId: 'test-specialist' }));
+
+      const state = {
+        specialists: {
+          'test-specialist': {
+            id: 'test-specialist', enabled: true,
+            consecutiveNoAction: 3, consecutiveFailures: 2,
+            totalRuns: 10, successRate: 80, weeklyCost: 5.0, skipEveryN: 4,
+          },
+        },
+        globalEnabled: true,
+      };
+      scheduleDb.saveScheduleState(state);
+
+      const updated = scheduleDb.resetSpecialist(scheduleDb.getScheduleState(), 'test-specialist');
+      scheduleDb.saveScheduleState(updated);
+
+      const runs = scheduleDb.getRecentRuns('test-specialist', 100);
+      expect(runs).toHaveLength(0);
+    });
+
+    it('should clear actions for the specialist', () => {
+      scheduleDb.appendAction('test-specialist', makeAction({ id: 'a1', specialistId: 'test-specialist' }));
+      scheduleDb.appendAction('test-specialist', makeAction({ id: 'a2', specialistId: 'test-specialist' }));
+
+      const state = {
+        specialists: {
+          'test-specialist': {
+            id: 'test-specialist', enabled: true,
+            consecutiveNoAction: 0, consecutiveFailures: 0,
+            totalRuns: 5, successRate: 100, weeklyCost: 1.0,
+          },
+        },
+        globalEnabled: true,
+      };
+      scheduleDb.saveScheduleState(state);
+
+      const updated = scheduleDb.resetSpecialist(scheduleDb.getScheduleState(), 'test-specialist');
+      scheduleDb.saveScheduleState(updated);
+
+      const actions = scheduleDb.getRecentActions('test-specialist', 100);
+      expect(actions).toHaveLength(0);
+    });
+
+    it('should clear run log files for the specialist', () => {
+      scheduleDb.appendRunLog('test-specialist', 'run-1', 'Some log data');
+      const logBefore = scheduleDb.getRunLog('test-specialist', 'run-1');
+      expect(logBefore).toContain('Some log data');
+
+      const state = {
+        specialists: {
+          'test-specialist': {
+            id: 'test-specialist', enabled: true,
+            consecutiveNoAction: 0, consecutiveFailures: 0,
+            totalRuns: 1, successRate: 100, weeklyCost: 0.1,
+          },
+        },
+        globalEnabled: true,
+      };
+      scheduleDb.saveScheduleState(state);
+
+      const updated = scheduleDb.resetSpecialist(scheduleDb.getScheduleState(), 'test-specialist');
+      scheduleDb.saveScheduleState(updated);
+
+      // Run log directory should be deleted
+      const runsDir = path.join(tempDir, '.yolium', 'schedules', 'test-specialist', 'runs');
+      expect(fs.existsSync(runsDir)).toBe(false);
+    });
+
+    it('should clear the digest file for the specialist', () => {
+      const specialistDir = path.join(tempDir, '.yolium', 'schedules', 'test-specialist');
+      fs.mkdirSync(specialistDir, { recursive: true });
+      fs.writeFileSync(path.join(specialistDir, 'digest.md'), '# Digest\nSome content');
+      expect(fs.existsSync(path.join(specialistDir, 'digest.md'))).toBe(true);
+
+      const state = {
+        specialists: {
+          'test-specialist': {
+            id: 'test-specialist', enabled: true,
+            consecutiveNoAction: 0, consecutiveFailures: 0,
+            totalRuns: 1, successRate: 100, weeklyCost: 0.1,
+          },
+        },
+        globalEnabled: true,
+      };
+      scheduleDb.saveScheduleState(state);
+
+      const updated = scheduleDb.resetSpecialist(scheduleDb.getScheduleState(), 'test-specialist');
+      scheduleDb.saveScheduleState(updated);
+
+      expect(fs.existsSync(path.join(specialistDir, 'digest.md'))).toBe(false);
+    });
+
+    it('should delete the workspace directory for the specialist', () => {
+      const workspaceDir = path.join(tempDir, '.yolium', 'schedules', 'test-specialist', 'workspace');
+      fs.mkdirSync(workspaceDir, { recursive: true });
+      fs.writeFileSync(path.join(workspaceDir, 'some-file.txt'), 'workspace data');
+      expect(fs.existsSync(workspaceDir)).toBe(true);
+
+      const state = {
+        specialists: {
+          'test-specialist': {
+            id: 'test-specialist', enabled: true,
+            consecutiveNoAction: 0, consecutiveFailures: 0,
+            totalRuns: 1, successRate: 100, weeklyCost: 0.1,
+          },
+        },
+        globalEnabled: true,
+      };
+      scheduleDb.saveScheduleState(state);
+
+      const updated = scheduleDb.resetSpecialist(scheduleDb.getScheduleState(), 'test-specialist');
+      scheduleDb.saveScheduleState(updated);
+
+      expect(fs.existsSync(workspaceDir)).toBe(false);
+    });
+
+    it('should reset specialist status counters (consecutiveNoAction, consecutiveFailures, totalRuns, successRate, weeklyCost, skipEveryN)', () => {
+      const state = {
+        specialists: {
+          'test-specialist': {
+            id: 'test-specialist', enabled: true,
+            consecutiveNoAction: 5, consecutiveFailures: 3,
+            totalRuns: 50, successRate: 72, weeklyCost: 12.5, skipEveryN: 8,
+          },
+        },
+        globalEnabled: true,
+      };
+      scheduleDb.saveScheduleState(state);
+
+      const updated = scheduleDb.resetSpecialist(scheduleDb.getScheduleState(), 'test-specialist');
+
+      const specialist = updated.specialists['test-specialist'];
+      expect(specialist.consecutiveNoAction).toBe(0);
+      expect(specialist.consecutiveFailures).toBe(0);
+      expect(specialist.totalRuns).toBe(0);
+      expect(specialist.successRate).toBe(0);
+      expect(specialist.weeklyCost).toBe(0);
+      expect(specialist.skipEveryN).toBeUndefined();
+      // enabled should be preserved
+      expect(specialist.enabled).toBe(true);
+    });
+
+    it('should not affect runs/actions/files of other specialists', () => {
+      // Set up data for two specialists
+      scheduleDb.appendRun('test-specialist', makeRun({ id: 'run-a', specialistId: 'test-specialist' }));
+      scheduleDb.appendRun('other-specialist', makeRun({ id: 'run-b', specialistId: 'other-specialist' }));
+      scheduleDb.appendAction('test-specialist', makeAction({ id: 'a1', specialistId: 'test-specialist' }));
+      scheduleDb.appendAction('other-specialist', makeAction({ id: 'a2', specialistId: 'other-specialist' }));
+      scheduleDb.appendRunLog('other-specialist', 'run-b', 'Other specialist log');
+      scheduleDb.saveCredentials('test-specialist', 'twitter-api', { API_KEY: 'key1' });
+      scheduleDb.saveCredentials('other-specialist', 'slack', { WEBHOOK: 'url' });
+
+      const state = {
+        specialists: {
+          'test-specialist': {
+            id: 'test-specialist', enabled: true,
+            consecutiveNoAction: 3, consecutiveFailures: 2,
+            totalRuns: 10, successRate: 80, weeklyCost: 5.0,
+          },
+          'other-specialist': {
+            id: 'other-specialist', enabled: true,
+            consecutiveNoAction: 1, consecutiveFailures: 0,
+            totalRuns: 5, successRate: 100, weeklyCost: 2.0,
+          },
+        },
+        globalEnabled: true,
+      };
+      scheduleDb.saveScheduleState(state);
+
+      const updated = scheduleDb.resetSpecialist(scheduleDb.getScheduleState(), 'test-specialist');
+      scheduleDb.saveScheduleState(updated);
+
+      // Other specialist's data should be intact
+      expect(scheduleDb.getRecentRuns('other-specialist', 100)).toHaveLength(1);
+      expect(scheduleDb.getRecentActions('other-specialist', 100)).toHaveLength(1);
+      expect(scheduleDb.getRunLog('other-specialist', 'run-b')).toContain('Other specialist log');
+      expect(updated.specialists['other-specialist'].totalRuns).toBe(5);
+      // Credentials for test-specialist should NOT be cleared
+      expect(scheduleDb.loadCredentials('test-specialist')).toEqual({ 'twitter-api': { API_KEY: 'key1' } });
+      expect(scheduleDb.loadCredentials('other-specialist')).toEqual({ slack: { WEBHOOK: 'url' } });
+    });
+
+    it('should handle specialist with no existing data gracefully', () => {
+      const state = {
+        specialists: {
+          'empty-specialist': {
+            id: 'empty-specialist', enabled: false,
+            consecutiveNoAction: 0, consecutiveFailures: 0,
+            totalRuns: 0, successRate: 0, weeklyCost: 0,
+          },
+        },
+        globalEnabled: true,
+      };
+      scheduleDb.saveScheduleState(state);
+
+      // Should not throw
+      const updated = scheduleDb.resetSpecialist(scheduleDb.getScheduleState(), 'empty-specialist');
+
+      expect(updated.specialists['empty-specialist'].totalRuns).toBe(0);
+      expect(updated.specialists['empty-specialist'].consecutiveFailures).toBe(0);
+    });
+  });
+
   describe('migration', () => {
     it('should import legacy config.json into schedule_state table', async () => {
       // Close existing DB so we can set up legacy files before opening

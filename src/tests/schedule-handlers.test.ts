@@ -19,6 +19,7 @@ const {
   loadRedactedCredentials,
   saveCredentials,
   deleteCredentials,
+  resetSpecialist,
 } = vi.hoisted(() => ({
   schedulerReload: vi.fn(),
   scaffoldSpecialist: vi.fn(),
@@ -37,6 +38,7 @@ const {
   loadRedactedCredentials: vi.fn(),
   saveCredentials: vi.fn(),
   deleteCredentials: vi.fn(),
+  resetSpecialist: vi.fn(),
 }));
 
 vi.mock('@main/services/scheduler', () => ({
@@ -72,6 +74,7 @@ vi.mock('@main/stores/schedule-db', () => ({
   loadRedactedCredentials,
   saveCredentials,
   deleteCredentials,
+  resetSpecialist,
 }));
 
 import { registerScheduleHandlers } from '@main/ipc/schedule-handlers';
@@ -165,5 +168,69 @@ describe('schedule action handlers', () => {
       .resolves
       .toEqual({ totalActions: 4, actionCounts: { tweet_posted: 3 } });
     expect(getActionStats).toHaveBeenCalledWith('twitter-growth');
+  });
+});
+
+describe('schedule:reset-specialist', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should call resetSpecialist and scheduler.reload and return updated state', () => {
+    const initialState = {
+      specialists: {
+        'twitter-growth': {
+          id: 'twitter-growth', enabled: true,
+          consecutiveNoAction: 5, consecutiveFailures: 3,
+          totalRuns: 50, successRate: 72, weeklyCost: 12.5, skipEveryN: 8,
+        },
+      },
+      globalEnabled: true,
+    };
+    const resetState = {
+      specialists: {
+        'twitter-growth': {
+          id: 'twitter-growth', enabled: true,
+          consecutiveNoAction: 0, consecutiveFailures: 0,
+          totalRuns: 0, successRate: 0, weeklyCost: 0,
+        },
+      },
+      globalEnabled: true,
+    };
+
+    getScheduleState.mockReturnValue(initialState);
+    resetSpecialist.mockReturnValue(resetState);
+
+    const handlers = registerHandlersForTest();
+    const handler = handlers.get('schedule:reset-specialist') as (event: unknown, id: string) => unknown;
+
+    expect(handler).toBeTypeOf('function');
+
+    const result = handler({}, 'twitter-growth');
+
+    expect(getScheduleState).toHaveBeenCalled();
+    expect(resetSpecialist).toHaveBeenCalledWith(initialState, 'twitter-growth');
+    expect(saveScheduleState).toHaveBeenCalledWith(resetState);
+    expect(schedulerReload).toHaveBeenCalledTimes(1);
+    expect(result).toEqual(resetState);
+  });
+
+  it('should return current state if specialist does not exist', () => {
+    const currentState = {
+      specialists: {},
+      globalEnabled: true,
+    };
+
+    getScheduleState.mockReturnValue(currentState);
+    resetSpecialist.mockReturnValue(currentState);
+
+    const handlers = registerHandlersForTest();
+    const handler = handlers.get('schedule:reset-specialist') as (event: unknown, id: string) => unknown;
+
+    const result = handler({}, 'nonexistent');
+
+    expect(resetSpecialist).toHaveBeenCalledWith(currentState, 'nonexistent');
+    expect(saveScheduleState).toHaveBeenCalledWith(currentState);
+    expect(result).toEqual(currentState);
   });
 });

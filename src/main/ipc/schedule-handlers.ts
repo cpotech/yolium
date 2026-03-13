@@ -20,6 +20,7 @@ import {
   loadRedactedCredentials,
   saveCredentials,
   deleteCredentials,
+  resetSpecialist,
 } from '@main/stores/schedule-db';
 import {
   scaffoldSpecialist,
@@ -149,6 +150,15 @@ export function registerScheduleHandlers(ipcMain: IpcMain): void {
 
   ipcMain.handle('schedule:get-action-stats', (_event, specialistId: string) => {
     return getActionStats(specialistId);
+  });
+
+  // Reset a specialist: clear runs, actions, logs, workspace, and counters
+  ipcMain.handle('schedule:reset-specialist', (_event, id: string) => {
+    let state = getScheduleState();
+    state = resetSpecialist(state, id);
+    saveScheduleState(state);
+    scheduler.reload();
+    return state;
   });
 
   // Get list of currently running specialist IDs

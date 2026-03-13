@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Clock, Play, History, Settings, Power, PowerOff, RefreshCw, AlertTriangle, ChevronDown, Plus } from 'lucide-react';
+import { Clock, Play, History, Settings, Power, PowerOff, RefreshCw, AlertTriangle, ChevronDown, Plus, RotateCcw } from 'lucide-react';
 import { RunHistoryTable } from './RunHistoryTable';
 import { ActionsView } from './ActionsView';
 import { SpecialistConfigDialog } from './SpecialistConfigDialog';
@@ -143,6 +143,16 @@ export function SchedulePanel(): React.ReactElement {
     setShowAddDialog(false);
     setConfigSpecialist(null);
   }, [configSpecialist]);
+
+  const handleResetSpecialist = useCallback(async (id: string) => {
+    const confirmed = await window.electronAPI.dialog.confirmOkCancel(
+      'Reset Specialist',
+      'This will clear all run history, action logs, and workspace files for this specialist. This cannot be undone.',
+    );
+    if (!confirmed) return;
+    await window.electronAPI.schedule.resetSpecialist(id);
+    loadState();
+  }, [loadState]);
 
   if (isLoading) {
     return (
@@ -455,6 +465,20 @@ export function SchedulePanel(): React.ReactElement {
                     >
                       <Settings size={10} />
                       Configure
+                    </button>
+                    <button
+                      data-testid={`reset-${id}`}
+                      onClick={() => handleResetSpecialist(id)}
+                      disabled={isRunning}
+                      className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
+                        isRunning
+                          ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] cursor-not-allowed opacity-50'
+                          : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[#ef4444] hover:bg-[rgba(239,68,68,0.15)]'
+                      }`}
+                      title="Reset specialist: clear history, actions, and workspace"
+                    >
+                      <RotateCcw size={10} />
+                      Reset
                     </button>
                   </div>
                 </div>
