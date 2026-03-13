@@ -13,7 +13,7 @@ import fs from 'fs';
 
 // Modules that are external to the Vite bundle and must be copied
 // These are externalized in config/vite.main.config.ts and need to be available at runtime
-const externalModules = ['node-pty', 'dockerode', 'ssh2', 'gray-matter'];
+const externalModules = ['node-pty', 'dockerode', 'ssh2', 'gray-matter', 'better-sqlite3'];
 
 // Find a module's package.json, checking nested node_modules if not at root
 function findModulePath(moduleName: string, rootNodeModules: string, parentModulePath?: string): string | null {
