@@ -50,6 +50,8 @@ interface ItemDetailSidebarProps {
   onCheckConflicts: () => void
   onRebase: () => void
   onMerge: () => void
+  onFixConflicts: () => void
+  isFixingConflicts: boolean
   onUpdated: () => void
 }
 
@@ -94,6 +96,8 @@ export function ItemDetailSidebar({
   onCheckConflicts,
   onRebase,
   onMerge,
+  onFixConflicts,
+  isFixingConflicts,
   onUpdated,
 }: ItemDetailSidebarProps): React.ReactElement {
   return (
@@ -282,6 +286,8 @@ export function ItemDetailSidebar({
           onCheckConflicts={onCheckConflicts}
           onRebase={onRebase}
           onMerge={onMerge}
+          onFixConflicts={onFixConflicts}
+          isFixingConflicts={isFixingConflicts}
         />
       </div>
 

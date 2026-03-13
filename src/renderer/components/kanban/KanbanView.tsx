@@ -4,6 +4,7 @@ import { KanbanColumn } from './KanbanColumn'
 import { NewItemDialog } from './NewItemDialog'
 import { ItemDetailDialog } from './ItemDetailDialog'
 import type { KanbanBoard, KanbanItem, KanbanColumn as ColumnId } from '@shared/types/kanban'
+import { prepareConflictResolution } from './item-detail/useItemDetailPrWorkflow'
 
 interface KanbanViewProps {
   projectPath: string | null
@@ -432,6 +433,29 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     loadBoard()
   }, [projectPath, board, loadBoard])
 
+  const handleFixConflicts = useCallback(async (itemId: string) => {
+    if (!projectPath || !board) return
+
+    const item = board.items.find(i => i.id === itemId)
+    if (!item || !item.branch) return
+
+    try {
+      await prepareConflictResolution(projectPath, item.id, item.branch)
+
+      await window.electronAPI.agent.start({
+        agentName: 'code-agent',
+        projectPath,
+        itemId: item.id,
+        goal: item.description,
+        agentProvider: item.agentProvider,
+      })
+      loadBoard()
+    } catch (error) {
+      console.error('Failed to fix conflicts:', error)
+      setErrorMessage('Failed to start conflict resolution. Please try again.')
+    }
+  }, [projectPath, board, loadBoard])
+
   // Empty state when no project selected
   if (!projectPath) {
     return (
@@ -715,6 +739,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
               onRetryAgent={handleRetryAgent}
               onResumeAgent={handleResumeAgent}
               onRunAgainAgent={handleRunAgainAgent}
+              onFixConflicts={handleFixConflicts}
             />
           ))}
         </div>

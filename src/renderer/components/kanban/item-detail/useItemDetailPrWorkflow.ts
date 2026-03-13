@@ -13,6 +13,34 @@ export interface RebaseResultState {
   conflictingFiles?: string[]
 }
 
+/**
+ * Shared utility: check conflicts, add system comment, reset mergeStatus.
+ * Used by both the hook's fixConflicts() and KanbanView's handleFixConflicts().
+ */
+export async function prepareConflictResolution(
+  projectPath: string,
+  itemId: string,
+  branch: string,
+): Promise<ConflictCheckResult> {
+  const result = await window.electronAPI.git.checkMergeConflicts(projectPath, branch)
+  const fileList = result.conflictingFiles.length > 0
+    ? result.conflictingFiles.map((file: string) => `  - ${file}`).join('\n')
+    : '  (unable to determine specific files)'
+
+  await window.electronAPI.kanban.addComment(
+    projectPath,
+    itemId,
+    'system',
+    `MERGE CONFLICT RESOLUTION NEEDED\n\nConflicting files:\n${fileList}\n\nRebase the worktree branch onto the latest default branch and resolve all merge conflicts. After resolving, commit the changes.`,
+  )
+
+  await window.electronAPI.kanban.updateItem(projectPath, itemId, {
+    mergeStatus: 'unmerged',
+  })
+
+  return result
+}
+
 interface UseItemDetailPrWorkflowOptions {
   item: KanbanItem | null
   projectPath: string
@@ -29,6 +57,8 @@ export interface ItemDetailPrWorkflowController {
   isMergingPr: boolean
   isRebasing: boolean
   rebaseResult: RebaseResultState | null
+  isFixingConflicts: boolean
+  fixConflicts: () => Promise<void>
   checkConflicts: () => Promise<void>
   rebaseOntoDefault: () => Promise<void>
   mergeAndPushPr: () => Promise<void>
@@ -50,6 +80,7 @@ export function useItemDetailPrWorkflow({
   const [isMergingPr, setIsMergingPr] = useState(false)
   const [isRebasing, setIsRebasing] = useState(false)
   const [rebaseResult, setRebaseResult] = useState<RebaseResultState | null>(null)
+  const [isFixingConflicts, setIsFixingConflicts] = useState(false)
 
   useEffect(() => {
     setPrUrl(item?.prUrl || null)
@@ -91,6 +122,23 @@ export function useItemDetailPrWorkflow({
       setIsRebasing(false)
     }
   }, [isRebasing, item, projectPath])
+
+  const fixConflicts = useCallback(async () => {
+    if (!item || !item.branch || isFixingConflicts) return
+
+    setIsFixingConflicts(true)
+    try {
+      const result = await prepareConflictResolution(projectPath, item.id, item.branch)
+      setConflictCheck(result)
+      onUpdated()
+    } catch (error) {
+      console.error('Failed to fix conflicts:', error)
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      setErrorMessage(`Failed to prepare conflict resolution: ${message}`)
+    } finally {
+      setIsFixingConflicts(false)
+    }
+  }, [isFixingConflicts, item, onUpdated, projectPath, setErrorMessage])
 
   const mergeAndPushPr = useCallback(async () => {
     if (!item || !item.branch || !item.worktreePath || isMerging) return
@@ -221,6 +269,8 @@ export function useItemDetailPrWorkflow({
     isMergingPr,
     isRebasing,
     rebaseResult,
+    isFixingConflicts,
+    fixConflicts,
     checkConflicts,
     rebaseOntoDefault,
     mergeAndPushPr,
