@@ -129,7 +129,7 @@ describe('Sidebar', () => {
   })
 
   describe('status dots', () => {
-    it('should render a green dot for running agents', () => {
+    it('should render a yellow dot for running agents in the in-progress column', () => {
       render(
         <Sidebar
           projects={mockProjects}
@@ -142,15 +142,16 @@ describe('Sidebar', () => {
               itemTitle: 'Running item',
               agentName: 'code-agent',
               agentStatus: 'running',
+              column: 'in-progress',
             },
           ]}
         />
       )
 
-      expect(screen.getByTestId('status-dot-running-item')).toHaveClass('bg-green-500')
+      expect(screen.getByTestId('status-dot-running-item')).toHaveClass('bg-yellow-500')
     })
 
-    it('should render an orange dot for waiting agents', () => {
+    it('should render a yellow dot for waiting agents in the in-progress column', () => {
       render(
         <Sidebar
           projects={mockProjects}
@@ -165,15 +166,16 @@ describe('Sidebar', () => {
               options: ['Option A', 'Option B'],
               agentName: 'code-agent',
               agentStatus: 'waiting',
+              column: 'in-progress',
             },
           ]}
         />
       )
 
-      expect(screen.getByTestId('status-dot-waiting-item')).toHaveClass('bg-orange-400')
+      expect(screen.getByTestId('status-dot-waiting-item')).toHaveClass('bg-yellow-500')
     })
 
-    it('should render a red dot for failed agents', () => {
+    it('should render a red dot for failed agents regardless of column', () => {
       render(
         <Sidebar
           projects={mockProjects}
@@ -186,6 +188,7 @@ describe('Sidebar', () => {
               itemTitle: 'Failed item',
               agentName: 'code-agent',
               agentStatus: 'failed',
+              column: 'in-progress',
             },
           ]}
         />
@@ -210,6 +213,7 @@ describe('Sidebar', () => {
               itemTitle: 'Running item',
               agentName: 'code-agent',
               agentStatus: 'running',
+              column: 'in-progress',
             },
           ]}
         />
@@ -236,6 +240,7 @@ describe('Sidebar', () => {
               itemTitle: 'Failed item',
               agentName: 'code-agent',
               agentStatus: 'failed',
+              column: 'in-progress',
             },
           ]}
         />
@@ -276,6 +281,7 @@ describe('Sidebar', () => {
               options: ['Option A', 'Option B'],
               agentName: 'code-agent',
               agentStatus: 'waiting',
+              column: 'in-progress',
             },
           ]}
         />
@@ -297,6 +303,7 @@ describe('Sidebar', () => {
               itemTitle: 'Running item',
               agentName: 'code-agent',
               agentStatus: 'running',
+              column: 'in-progress',
             },
             {
               projectPath: '/home/user/project1',
@@ -306,6 +313,7 @@ describe('Sidebar', () => {
               options: ['Option A', 'Option B'],
               agentName: 'code-agent',
               agentStatus: 'waiting',
+              column: 'in-progress',
             },
           ]}
         />
@@ -326,6 +334,7 @@ describe('Sidebar', () => {
         options: ['Approach A', 'Approach B'],
         agentName: 'code-agent',
         agentStatus: 'waiting',
+        column: 'in-progress',
       },
     ]
 

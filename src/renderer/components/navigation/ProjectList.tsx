@@ -1,7 +1,7 @@
 import React from 'react';
 import { Folder, X, Plus } from 'lucide-react';
 import type { SidebarProject } from '@renderer/stores/sidebar-store';
-import type { AgentStatus } from '@shared/types/kanban';
+import type { AgentStatus, KanbanColumn } from '@shared/types/kanban';
 import { StatusDotPopover } from './StatusDotPopover';
 
 export interface SidebarWorkItem {
@@ -12,6 +12,7 @@ export interface SidebarWorkItem {
   options?: string[];
   agentName?: string;
   agentStatus: AgentStatus;
+  column?: KanbanColumn;
   agentType?: string;
 }
 

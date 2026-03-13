@@ -147,6 +147,7 @@ function App(): React.ReactElement {
                 itemId: item.id,
                 itemTitle: item.title,
                 agentStatus: item.agentStatus,
+                column: item.column,
                 agentName: item.activeAgentName,
                 agentType: item.agentType,
               });
@@ -159,6 +160,7 @@ function App(): React.ReactElement {
                 options: item.agentQuestionOptions,
                 agentName: item.activeAgentName,
                 agentStatus: item.agentStatus,
+                column: item.column,
                 agentType: item.agentType,
               });
             }
