@@ -101,6 +101,11 @@ export function ItemDetailDialog({
     }
   }, [isDeleting, item, onClose, onUpdated, projectPath])
 
+  const handleFixConflicts = useCallback(async () => {
+    await prWorkflow.fixConflicts()
+    await lifecycle.startAgent('code-agent')
+  }, [prWorkflow, lifecycle])
+
   const handleClose = useCallback(() => {
     if (draft.hasUnsavedChanges && draft.title.trim()) {
       void draft.flushDraft('close')
@@ -222,6 +227,8 @@ export function ItemDetailDialog({
             onCheckConflicts={() => void prWorkflow.checkConflicts()}
             onRebase={() => void prWorkflow.rebaseOntoDefault()}
             onMerge={() => void prWorkflow.mergeAndPushPr()}
+            onFixConflicts={() => void handleFixConflicts()}
+            isFixingConflicts={prWorkflow.isFixingConflicts}
             onUpdated={onUpdated}
           />
         </div>

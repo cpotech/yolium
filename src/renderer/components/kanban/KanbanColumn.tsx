@@ -12,6 +12,7 @@ interface KanbanColumnProps {
   onRetryAgent?: (itemId: string) => void
   onResumeAgent?: (itemId: string) => void
   onRunAgainAgent?: (itemId: string) => void
+  onFixConflicts?: (itemId: string) => void
 }
 
 const columnBorderColors: Record<ColumnId, string> = {
@@ -32,6 +33,7 @@ export function KanbanColumn({
   onRetryAgent,
   onResumeAgent,
   onRunAgainAgent,
+  onFixConflicts,
 }: KanbanColumnProps): React.ReactElement {
   const borderColor = columnBorderColors[columnId]
   const [isDragOver, setIsDragOver] = useState(false)
@@ -115,6 +117,7 @@ export function KanbanColumn({
               onRetryAgent={onRetryAgent}
               onResumeAgent={onResumeAgent}
               onRunAgainAgent={onRunAgainAgent}
+              onFixConflicts={onFixConflicts}
             />
           ))
         )}

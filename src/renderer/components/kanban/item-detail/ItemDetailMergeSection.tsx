@@ -1,5 +1,5 @@
 import React from 'react'
-import { AlertTriangle, ArrowDownToLine, ArrowLeftRight, Check, ExternalLink, GitMerge, GitPullRequest } from 'lucide-react'
+import { AlertTriangle, ArrowDownToLine, ArrowLeftRight, Check, ExternalLink, GitMerge, GitPullRequest, Wrench } from 'lucide-react'
 import type { KanbanItem } from '@shared/types/kanban'
 import type { ConflictCheckResult, RebaseResultState } from './useItemDetailPrWorkflow'
 
@@ -20,6 +20,8 @@ interface ItemDetailMergeSectionProps {
   onCheckConflicts: () => void
   onRebase: () => void
   onMerge: () => void
+  onFixConflicts: () => void
+  isFixingConflicts: boolean
 }
 
 export function ItemDetailMergeSection({
@@ -39,6 +41,8 @@ export function ItemDetailMergeSection({
   onCheckConflicts,
   onRebase,
   onMerge,
+  onFixConflicts,
+  isFixingConflicts,
 }: ItemDetailMergeSectionProps): React.ReactElement | null {
   if (!item.mergeStatus || !item.branch) {
     return null
@@ -105,6 +109,37 @@ export function ItemDetailMergeSection({
             <AlertTriangle size={14} />
             <span>Merge Conflict</span>
           </div>
+          {conflictCheck && !conflictCheck.clean && conflictCheck.conflictingFiles.length > 0 && (
+            <div className="mb-2 text-xs text-red-400">
+              <ul className="ml-4 space-y-0.5">
+                {conflictCheck.conflictingFiles.map((file, index) => (
+                  <li key={index} className="font-mono text-[10px] truncate">
+                    {file}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {item.worktreePath && (
+            <button
+              data-testid="conflict-rebase-button"
+              onClick={onRebase}
+              disabled={isRebasing || isMerging}
+              className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 text-purple-400 rounded-md hover:bg-purple-600/10 border border-purple-600/30 transition-colors mb-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ArrowDownToLine size={12} />
+              {isRebasing ? 'Pulling...' : 'Pull Latest (Rebase)'}
+            </button>
+          )}
+          <button
+            data-testid="fix-conflicts-button"
+            onClick={onFixConflicts}
+            disabled={isFixingConflicts}
+            className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 text-blue-400 rounded-md hover:bg-blue-600/10 border border-blue-600/30 transition-colors mb-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Wrench size={12} />
+            {isFixingConflicts ? 'Fixing...' : 'Fix Conflicts (Run Agent)'}
+          </button>
           <button
             data-testid="retry-merge-button"
             onClick={onMerge}

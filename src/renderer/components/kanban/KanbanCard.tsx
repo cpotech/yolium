@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { GitBranch, GitMerge, Loader2, AlertCircle, AlertTriangle, CheckCircle, XCircle, MessageSquare, RotateCcw, Play, ExternalLink, ShieldCheck } from 'lucide-react'
+import { GitBranch, GitMerge, Loader2, AlertCircle, AlertTriangle, CheckCircle, XCircle, MessageSquare, RotateCcw, Play, ExternalLink, ShieldCheck, Wrench } from 'lucide-react'
 import type { KanbanItem, AgentStatus, MergeStatus } from '@shared/types/kanban'
 
 interface KanbanCardProps {
@@ -10,6 +10,7 @@ interface KanbanCardProps {
   onRetryAgent?: (itemId: string) => void
   onResumeAgent?: (itemId: string) => void
   onRunAgainAgent?: (itemId: string) => void
+  onFixConflicts?: (itemId: string) => void
 }
 
 const agentProviderLabels: Record<KanbanItem['agentProvider'], string> = {
@@ -104,7 +105,7 @@ function getMergeStatusConfig(status: MergeStatus): MergeStatusConfig {
   }
 }
 
-export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgent, onResumeAgent, onRunAgainAgent }: KanbanCardProps): React.ReactElement {
+export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgent, onResumeAgent, onRunAgainAgent, onFixConflicts }: KanbanCardProps): React.ReactElement {
   const statusConfig = getStatusConfig(item.agentStatus)
   const mergeStatusConfig = item.mergeStatus ? getMergeStatusConfig(item.mergeStatus) : null
   const [isDragging, setIsDragging] = useState(false)
@@ -137,6 +138,11 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
   const handleRunAgainClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     onRunAgainAgent?.(item.id)
+  }
+
+  const handleFixConflictsClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onFixConflicts?.(item.id)
   }
 
   // Determine which action button to show based on status
@@ -279,6 +285,15 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
                   className="p-0.5 rounded hover:bg-green-500/20 hover:text-green-300 transition-colors"
                 >
                   <ExternalLink size={11} />
+                </button>
+              )}
+              {item.mergeStatus === 'conflict' && onFixConflicts && (
+                <button
+                  data-testid="fix-conflicts-card-btn"
+                  onClick={handleFixConflictsClick}
+                  className="p-0.5 rounded hover:bg-red-500/20 hover:text-red-300 transition-colors"
+                >
+                  <Wrench size={11} />
                 </button>
               )}
             </div>
