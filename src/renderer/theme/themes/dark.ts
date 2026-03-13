@@ -13,6 +13,7 @@ export const darkTheme: ThemeTokens = {
     text: {
       primary: '#A0A8CD',     // tokyodark fg - Primary text
       secondary: '#717CB4',   // Dimmed fg - Secondary labels
+      tertiary: '#5A6070',    // Between secondary and muted - Subtle labels
       muted: '#4A5057',       // tokyodark grey/bg4 - Placeholders, hints
       disabled: '#353945',    // tokyodark bg3 - Disabled text
     },
@@ -30,6 +31,7 @@ export const darkTheme: ThemeTokens = {
       warning: '#D7A65F',     // tokyodark yellow - Starting, warning
       error: '#EE6D85',       // tokyodark red - Crashed, error
       stopped: '#4A5057',     // tokyodark grey - Stopped state
+      info: '#7199EE',        // tokyodark blue - Info, unmerged
     },
     special: {
       worktree: '#A485DD',    // tokyodark purple - Worktree indicator

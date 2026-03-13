@@ -125,7 +125,7 @@ describe('KanbanColumn', () => {
       />
     )
 
-    expect(screen.getByTestId('kanban-column-backlog')).toHaveClass('border-t-gray-500')
+    expect(screen.getByTestId('kanban-column-backlog')).toHaveClass('border-t-[var(--color-status-stopped)]')
   })
 
   it('should have blue top border for ready column', () => {
@@ -138,7 +138,7 @@ describe('KanbanColumn', () => {
       />
     )
 
-    expect(screen.getByTestId('kanban-column-ready')).toHaveClass('border-t-blue-500')
+    expect(screen.getByTestId('kanban-column-ready')).toHaveClass('border-t-[var(--color-status-info)]')
   })
 
   it('should have yellow top border for in-progress column', () => {
@@ -151,7 +151,7 @@ describe('KanbanColumn', () => {
       />
     )
 
-    expect(screen.getByTestId('kanban-column-in-progress')).toHaveClass('border-t-yellow-500')
+    expect(screen.getByTestId('kanban-column-in-progress')).toHaveClass('border-t-[var(--color-status-warning)]')
   })
 
   it('should have purple top border for verify column', () => {
@@ -164,7 +164,7 @@ describe('KanbanColumn', () => {
       />
     )
 
-    expect(screen.getByTestId('kanban-column-verify')).toHaveClass('border-t-purple-500')
+    expect(screen.getByTestId('kanban-column-verify')).toHaveClass('border-t-[var(--color-special-worktree)]')
   })
 
   it('should have green top border for done column', () => {
@@ -177,7 +177,7 @@ describe('KanbanColumn', () => {
       />
     )
 
-    expect(screen.getByTestId('kanban-column-done')).toHaveClass('border-t-green-500')
+    expect(screen.getByTestId('kanban-column-done')).toHaveClass('border-t-[var(--color-status-success)]')
   })
 
   it('should have fixed width classes', () => {

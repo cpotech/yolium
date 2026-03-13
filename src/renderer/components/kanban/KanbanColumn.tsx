@@ -16,11 +16,11 @@ interface KanbanColumnProps {
 }
 
 const columnBorderColors: Record<ColumnId, string> = {
-  backlog: 'border-t-gray-500',
-  ready: 'border-t-blue-500',
-  'in-progress': 'border-t-yellow-500',
-  verify: 'border-t-purple-500',
-  done: 'border-t-green-500',
+  backlog: 'border-t-[var(--color-status-stopped)]',
+  ready: 'border-t-[var(--color-status-info)]',
+  'in-progress': 'border-t-[var(--color-status-warning)]',
+  verify: 'border-t-[var(--color-special-worktree)]',
+  done: 'border-t-[var(--color-status-success)]',
 }
 
 export function KanbanColumn({
@@ -80,7 +80,7 @@ export function KanbanColumn({
           {runningCount > 0 && (
             <span
               data-testid="running-count"
-              className="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-yellow-500/20 text-yellow-400"
+              className="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-[var(--color-status-warning)]/20 text-[var(--color-status-warning)]"
             >
               {runningCount} running
             </span>

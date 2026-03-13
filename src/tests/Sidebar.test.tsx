@@ -148,7 +148,7 @@ describe('Sidebar', () => {
         />
       )
 
-      expect(screen.getByTestId('status-dot-running-item')).toHaveClass('bg-yellow-500')
+      expect(screen.getByTestId('status-dot-running-item')).toHaveClass('bg-[var(--color-status-warning)]')
     })
 
     it('should render a yellow dot for waiting agents in the in-progress column', () => {
@@ -172,7 +172,7 @@ describe('Sidebar', () => {
         />
       )
 
-      expect(screen.getByTestId('status-dot-waiting-item')).toHaveClass('bg-yellow-500')
+      expect(screen.getByTestId('status-dot-waiting-item')).toHaveClass('bg-[var(--color-status-warning)]')
     })
 
     it('should render a red dot for failed agents regardless of column', () => {
@@ -194,7 +194,7 @@ describe('Sidebar', () => {
         />
       )
 
-      expect(screen.getByTestId('status-dot-failed-item')).toHaveClass('bg-red-500')
+      expect(screen.getByTestId('status-dot-failed-item')).toHaveClass('bg-[var(--color-status-error)]')
     })
 
     it('should focus the project when a running dot is clicked', () => {

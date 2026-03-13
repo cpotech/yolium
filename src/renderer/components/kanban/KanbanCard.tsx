@@ -45,31 +45,31 @@ function getStatusConfig(status: AgentStatus): StatusConfig | null {
       return {
         icon: <Loader2 size={12} className="animate-spin" />,
         text: 'Agent working...',
-        colorClass: 'text-yellow-400',
+        colorClass: 'text-[var(--color-status-warning)]',
       }
     case 'waiting':
       return {
         icon: <AlertCircle size={12} />,
         text: 'Needs input',
-        colorClass: 'text-orange-400',
+        colorClass: 'text-[var(--color-status-warning)]',
       }
     case 'interrupted':
       return {
         icon: <AlertCircle size={12} />,
         text: 'Interrupted',
-        colorClass: 'text-orange-400',
+        colorClass: 'text-[var(--color-status-warning)]',
       }
     case 'completed':
       return {
         icon: <CheckCircle size={12} />,
         text: 'Completed',
-        colorClass: 'text-green-400',
+        colorClass: 'text-[var(--color-status-success)]',
       }
     case 'failed':
       return {
         icon: <XCircle size={12} />,
         text: 'Failed',
-        colorClass: 'text-red-400',
+        colorClass: 'text-[var(--color-status-error)]',
       }
     default:
       return null
@@ -88,19 +88,19 @@ function getMergeStatusConfig(status: MergeStatus): MergeStatusConfig {
       return {
         icon: <GitBranch size={12} />,
         text: 'Unmerged',
-        colorClass: 'text-blue-400',
+        colorClass: 'text-[var(--color-status-info)]',
       }
     case 'merged':
       return {
         icon: <GitMerge size={12} />,
         text: 'Merged',
-        colorClass: 'text-green-400',
+        colorClass: 'text-[var(--color-status-success)]',
       }
     case 'conflict':
       return {
         icon: <AlertTriangle size={12} />,
         text: 'Conflict',
-        colorClass: 'text-red-400',
+        colorClass: 'text-[var(--color-status-error)]',
       }
   }
 }
@@ -153,7 +153,7 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
           <button
             data-testid="retry-agent-card-btn"
             onClick={handleRetryClick}
-            className="p-1 rounded hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors"
+            className="p-1 rounded hover:bg-[var(--color-status-error)]/20 text-[var(--color-status-error)] transition-colors"
           >
             <RotateCcw size={14} />
           </button>
@@ -163,7 +163,7 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
           <button
             data-testid="run-again-card-btn"
             onClick={handleRunAgainClick}
-            className="p-1 rounded hover:bg-green-500/20 text-green-400 hover:text-green-300 transition-colors"
+            className="p-1 rounded hover:bg-[var(--color-status-success)]/20 text-[var(--color-status-success)] transition-colors"
           >
             <RotateCcw size={14} />
           </button>
@@ -173,7 +173,7 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
           <button
             data-testid="resume-agent-card-btn"
             onClick={handleResumeClick}
-            className="p-1 rounded hover:bg-orange-500/20 text-orange-400 hover:text-orange-300 transition-colors"
+            className="p-1 rounded hover:bg-[var(--color-status-warning)]/20 text-[var(--color-status-warning)] transition-colors"
           >
             <Play size={14} />
           </button>
@@ -202,7 +202,7 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
       onDragEnd={() => setIsDragging(false)}
       className={`bg-[var(--color-bg-primary)] rounded-md p-3 cursor-pointer transition-all hover:border-[var(--color-accent-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] ${
         isSelected ? 'border-2 border-[var(--color-accent-primary)] ring-1 ring-[var(--color-accent-primary)]/30' :
-        isRunning ? 'border border-yellow-500/50 shadow-[0_0_8px_rgba(234,179,8,0.15)]' : 'border border-[var(--color-border-primary)]'
+        isRunning ? 'border border-[var(--color-status-warning)]/50 shadow-[0_0_8px_var(--color-status-warning)]/15' : 'border border-[var(--color-border-primary)]'
       } ${isDragging ? 'opacity-50' : ''}`}
     >
       {/* Header: Title and Agent Badge */}
@@ -282,7 +282,7 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
                 <button
                   data-testid="pr-link-btn"
                   onClick={handlePrLinkClick}
-                  className="p-0.5 rounded hover:bg-green-500/20 hover:text-green-300 transition-colors"
+                  className="p-0.5 rounded hover:bg-[var(--color-status-success)]/20 transition-colors"
                 >
                   <ExternalLink size={11} />
                 </button>
@@ -291,7 +291,7 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
                 <button
                   data-testid="fix-conflicts-card-btn"
                   onClick={handleFixConflictsClick}
-                  className="p-0.5 rounded hover:bg-red-500/20 hover:text-red-300 transition-colors"
+                  className="p-0.5 rounded hover:bg-[var(--color-status-error)]/20 transition-colors"
                 >
                   <Wrench size={11} />
                 </button>
@@ -301,7 +301,7 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
           {item.verified && (
             <div
               data-testid="verified-indicator"
-              className="flex items-center gap-1 text-[11px] text-green-400"
+              className="flex items-center gap-1 text-[11px] text-[var(--color-status-success)]"
             >
               <ShieldCheck size={12} />
               <span>Verified</span>
