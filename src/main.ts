@@ -47,12 +47,12 @@ function createAppMenu(window: BrowserWindow): void {
         { type: 'separator' },
         {
           label: 'Settings',
-          accelerator: 'CmdOrCtrl+Shift+S',
+          accelerator: 'CmdOrCtrl+Shift+,',
           click: () => window.webContents.send('git-settings:show'),
         },
         {
           label: 'New Project',
-          accelerator: 'CmdOrCtrl+Shift+P',
+          accelerator: 'CmdOrCtrl+Shift+N',
           click: () => window.webContents.send('project:new'),
         },
         { type: 'separator' },

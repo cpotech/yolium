@@ -241,6 +241,99 @@ describe('ItemDetailDialog', () => {
     expect(screen.getByTestId('item-detail-dialog')).toBeInTheDocument()
   })
 
+  describe('agent keyboard shortcuts', () => {
+    const agentShortcuts: Array<{ key: string; agentName: string }> = [
+      { key: 'p', agentName: 'plan-agent' },
+      { key: 'c', agentName: 'code-agent' },
+      { key: 'v', agentName: 'verify-agent' },
+      { key: 's', agentName: 'scout-agent' },
+      { key: 'd', agentName: 'design-agent' },
+      { key: 'm', agentName: 'marketing-agent' },
+    ]
+
+    for (const { key, agentName } of agentShortcuts) {
+      it(`should start ${agentName} when Ctrl+Shift+${key.toUpperCase()} is pressed in the item detail dialog`, async () => {
+        const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+        window.electronAPI.agent.start = mockStart
+
+        render(
+          <ItemDetailDialog
+            isOpen={true}
+            item={createMockItem({ agentStatus: 'idle' })}
+            projectPath="/test/project"
+            onClose={vi.fn()}
+            onUpdated={vi.fn()}
+          />,
+        )
+
+        await act(async () => {
+          fireEvent.keyDown(screen.getByTestId('item-detail-dialog').parentElement!, {
+            key: key.toUpperCase(),
+            ctrlKey: true,
+            shiftKey: true,
+          })
+        })
+
+        expect(mockStart).toHaveBeenCalledWith(
+          expect.objectContaining({ agentName }),
+        )
+      })
+    }
+
+    it('should not start an agent when Ctrl+Shift+P is pressed while an agent is running', async () => {
+      const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+      window.electronAPI.agent.start = mockStart
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'running' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      await act(async () => {
+        fireEvent.keyDown(screen.getByTestId('item-detail-dialog').parentElement!, {
+          key: 'P',
+          ctrlKey: true,
+          shiftKey: true,
+        })
+      })
+
+      expect(mockStart).not.toHaveBeenCalled()
+    })
+
+    it('should not start an agent when Ctrl+Shift+P is pressed while focus is in a textarea', async () => {
+      const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+      window.electronAPI.agent.start = mockStart
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'idle' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      const textarea = screen.getByTestId('description-input')
+      textarea.focus()
+
+      await act(async () => {
+        fireEvent.keyDown(textarea, {
+          key: 'P',
+          ctrlKey: true,
+          shiftKey: true,
+        })
+      })
+
+      expect(mockStart).not.toHaveBeenCalled()
+    })
+  })
+
   it('should keep the existing item-detail test ids and still omit any manual save button', () => {
     render(
       <ItemDetailDialog

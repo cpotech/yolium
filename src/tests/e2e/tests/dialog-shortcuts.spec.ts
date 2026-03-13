@@ -258,7 +258,7 @@ test.describe('Dialog Shortcuts', () => {
       expect(dialogText).not.toContain('Quit');
     });
 
-    test('should show Ctrl+Shift+S for Settings and Ctrl+Shift+P for New Project', async () => {
+    test('should show Ctrl+Shift+N for New Project and Ctrl+Shift+, for Settings', async () => {
       ctx = await launchApp();
       const { window } = ctx;
 
@@ -266,12 +266,27 @@ test.describe('Dialog Shortcuts', () => {
       await window.click(selectors.shortcutsButton);
       await expect(window.locator(selectors.shortcutsDialog)).toBeVisible();
 
-      // Should contain settings and new project shortcuts
+      // Should contain reassigned shortcuts
       const dialogText = await window.locator(selectors.shortcutsDialog).textContent();
-      expect(dialogText).toContain('Ctrl+Shift+S');
+      expect(dialogText).toContain('Ctrl+Shift+,');
       expect(dialogText).toContain('Settings');
-      expect(dialogText).toContain('Ctrl+Shift+P');
+      expect(dialogText).toContain('Ctrl+Shift+N');
       expect(dialogText).toContain('New project');
+    });
+
+    test('should show Agent Controls section with Ctrl+Shift+P for Plan Agent', async () => {
+      ctx = await launchApp();
+      const { window } = ctx;
+
+      // Open shortcuts dialog
+      await window.click(selectors.shortcutsButton);
+      await expect(window.locator(selectors.shortcutsDialog)).toBeVisible();
+
+      // Should contain Agent Controls group
+      const dialogText = await window.locator(selectors.shortcutsDialog).textContent();
+      expect(dialogText).toContain('Agent Controls');
+      expect(dialogText).toContain('Plan Agent');
+      expect(dialogText).toContain('Ctrl+Shift+P');
     });
   });
 });
