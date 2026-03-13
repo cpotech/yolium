@@ -294,6 +294,59 @@ export function toggleGlobal(
   return { ...state, globalEnabled: enabled };
 }
 
+// ─── Reset ────────────────────────────────────────────────────────────────
+
+export function resetSpecialist(
+  state: ScheduleState,
+  specialistId: string,
+): ScheduleState {
+  const database = getDb();
+
+  // 1. Clear runs from SQLite
+  database.prepare('DELETE FROM runs WHERE specialist_id = ?').run(specialistId);
+
+  // 2. Clear actions from SQLite
+  database.prepare('DELETE FROM actions WHERE specialist_id = ?').run(specialistId);
+
+  // 3. Delete run log files
+  const runsDir = path.join(getSchedulesDir(), specialistId, 'runs');
+  if (fs.existsSync(runsDir)) {
+    fs.rmSync(runsDir, { recursive: true, force: true });
+  }
+
+  // 4. Delete digest file
+  const digestPath = path.join(getSchedulesDir(), specialistId, 'digest.md');
+  if (fs.existsSync(digestPath)) {
+    fs.rmSync(digestPath);
+  }
+
+  // 5. Delete workspace directory
+  const workspaceDir = path.join(getSchedulesDir(), specialistId, 'workspace');
+  if (fs.existsSync(workspaceDir)) {
+    fs.rmSync(workspaceDir, { recursive: true, force: true });
+  }
+
+  // 6. Reset specialist status counters (preserve id, enabled, and other identity fields)
+  const existing = state.specialists[specialistId];
+  if (!existing) return state;
+
+  const { skipEveryN: _, ...rest } = existing;
+  return {
+    ...state,
+    specialists: {
+      ...state.specialists,
+      [specialistId]: {
+        ...rest,
+        consecutiveNoAction: 0,
+        consecutiveFailures: 0,
+        totalRuns: 0,
+        successRate: 0,
+        weeklyCost: 0,
+      },
+    },
+  };
+}
+
 // ─── Run History ──────────────────────────────────────────────────────────
 
 export function appendRun(specialistId: string, run: ScheduledRun): void {

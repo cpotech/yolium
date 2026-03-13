@@ -268,6 +268,9 @@ const schedule: ElectronAPI['schedule'] = {
   getActionStats: invoke(
     'schedule:get-action-stats',
   ) as ElectronAPI['schedule']['getActionStats'],
+  resetSpecialist: invoke(
+    'schedule:reset-specialist',
+  ) as ElectronAPI['schedule']['resetSpecialist'],
   getRunning: invoke('schedule:get-running') as ElectronAPI['schedule']['getRunning'],
   onAlert: (callback) => listen('schedule:alert', callback),
   onStateChanged: (callback) => listen('schedule:state-changed', callback),

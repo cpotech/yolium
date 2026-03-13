@@ -494,6 +494,7 @@ export interface ScheduleAPI {
   getActions: (specialistId: string, limit?: number) => Promise<ActionLogEntry[]>;
   getRunActions: (specialistId: string, runId: string) => Promise<ActionLogEntry[]>;
   getActionStats: (specialistId: string) => Promise<ActionStats>;
+  resetSpecialist: (id: string) => Promise<ScheduleState>;
   getRunning: () => Promise<string[]>;
   onAlert: (
     callback: (specialistId: string, message: string) => void,
