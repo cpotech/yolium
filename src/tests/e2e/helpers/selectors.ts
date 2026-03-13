@@ -97,6 +97,10 @@ export const selectors = {
   addProjectButton: '[data-testid="add-project-button"]',
   projectItem: (path: string) => `[data-testid="project-item-${path}"]`,
   removeProjectButton: (path: string) => `[data-testid="remove-project-${path}"]`,
+  statusDot: (itemId: string) => `[data-testid="status-dot-${itemId}"]`,
+  statusPopover: (itemId: string) => `[data-testid="status-popover-${itemId}"]`,
+  statusPopoverQuestion: (itemId: string) => `[data-testid="status-popover-question-${itemId}"]`,
+  statusPopoverOption: (itemId: string, index: number) => `[data-testid="status-popover-option-${itemId}-${index}"]`,
 
   // Kanban - Agent controls
   runCodeAgentButton: '[data-testid="run-code-agent-button"]',
