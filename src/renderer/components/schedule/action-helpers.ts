@@ -23,6 +23,15 @@ export function getActionSummary(data: Record<string, unknown>): string | null {
   return null;
 }
 
+export function getActionContent(data: Record<string, unknown>): string | null {
+  const summary = typeof data.summary === 'string' ? data.summary : null;
+  const text = typeof data.text === 'string' ? data.text : null;
+  const tweetText = typeof data.tweetText === 'string' ? data.tweetText : null;
+  const content = text || tweetText;
+  if (content && summary && content !== summary) return content;
+  return null;
+}
+
 export function getExtraFields(data: Record<string, unknown>): Record<string, unknown> {
   const extra: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {

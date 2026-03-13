@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { RefreshCw, ArrowLeft } from 'lucide-react';
 import type { ActionLogEntry } from '@shared/types/schedule';
-import { formatActionTimestamp, getActionSummary, getExtraFields } from './action-helpers';
+import { formatActionTimestamp, getActionSummary, getActionContent, getExtraFields } from './action-helpers';
 
 interface RunRecord {
   id: string;
@@ -166,6 +166,7 @@ function RunDetailView({
                   ? action.data.tweetId
                   : null;
               const summary = getActionSummary(action.data);
+              const content = getActionContent(action.data);
               const extraFields = getExtraFields(action.data);
               const hasExtraFields = Object.keys(extraFields).length > 0;
 
@@ -197,6 +198,16 @@ function RunDetailView({
                     <p className="mt-1 text-xs text-[var(--color-text-secondary)] break-words">
                       {summary}
                     </p>
+                  )}
+                  {content && (
+                    <div
+                      className="mt-1.5 pl-2.5 border-l-2 border-[var(--color-accent-primary)]/30 bg-[var(--color-bg-tertiary)] rounded-r px-2 py-1.5"
+                      data-testid={`action-content-${action.id}`}
+                    >
+                      <p className="text-xs text-[var(--color-text-primary)] whitespace-pre-wrap break-words">
+                        {content}
+                      </p>
+                    </div>
                   )}
                   {hasExtraFields && (
                     <details className="mt-1">
