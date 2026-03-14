@@ -96,6 +96,22 @@ describe('RunHistoryTable', () => {
     expect(screen.getByTestId('run-detail-view')).toHaveClass('h-full', 'min-h-0', 'overflow-hidden');
   });
 
+  it('should use the shared scrollbar styling for run logs', async () => {
+    render(React.createElement(RunHistoryTable, { specialistId: 'twitter-growth' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Completed analysis of repo')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Completed analysis of repo'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('run-detail-log')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('run-detail-log')).toHaveClass('yolium-scrollbar', 'overflow-auto');
+  });
+
   it('should render action rows with timestamp, action label, and dry-run badge when actions exist', async () => {
     mockGetRunActions.mockResolvedValue([
       {
