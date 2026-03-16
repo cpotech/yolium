@@ -3,7 +3,7 @@
  * Electron main process entry point. Handles app lifecycle, window creation, and menu setup.
  */
 
-import { app, BrowserWindow, Menu } from 'electron';
+import { app, BrowserWindow, Menu, session } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { createLogger, getLogPath } from '@main/lib/logger';
@@ -11,6 +11,7 @@ import { clearSessions } from '@main/services/agent-runner';
 import { registerAllHandlers, performCleanup, isCleanupDone } from '@main/ipc';
 import { scheduler } from '@main/services/scheduler';
 import { buildContextMenuItems } from '@main/context-menu';
+import { initSpellChecker } from '@main/services/spellcheck-setup';
 
 const logger = createLogger('main');
 
@@ -176,9 +177,9 @@ function createWindow(): void {
     );
   }
 
-  // Native right-click context menu (Copy, Cut, Paste, Select All)
+  // Native right-click context menu (Copy, Cut, Paste, Select All, Spell Check)
   mainWindow.webContents.on('context-menu', (_event, params) => {
-    const items = buildContextMenuItems(params);
+    const items = buildContextMenuItems(params, mainWindow!.webContents);
     const menu = Menu.buildFromTemplate(items);
     menu.popup();
   });
@@ -212,6 +213,9 @@ app.on('ready', () => {
 
   // Start the CRON scheduler for specialist agents
   scheduler.start();
+
+  // Enable built-in spell checker
+  initSpellChecker(session.defaultSession);
 
   createWindow();
 });

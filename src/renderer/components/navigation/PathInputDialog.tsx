@@ -79,6 +79,7 @@ export function PathInputDialog({
             onChange={nav.handleInputChange}
             onKeyDown={nav.handleKeyDown}
             placeholder="Enter path (e.g., ~/projects/)"
+            spellCheck={false}
             className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-secondary)] rounded-md text-[var(--color-text-primary)] font-mono text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             autoFocus
           />

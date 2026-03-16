@@ -587,6 +587,49 @@ describe('NewItemDialog', () => {
     })
   })
 
+  // Spell check attribute tests
+  it('should have spellCheck enabled on title input', () => {
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    const titleInput = screen.getByTestId('title-input')
+    expect(titleInput.getAttribute('spellcheck')).not.toBe('false')
+  })
+
+  it('should have spellCheck enabled on description textarea', () => {
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    const descriptionInput = screen.getByTestId('description-input')
+    expect(descriptionInput.getAttribute('spellcheck')).not.toBe('false')
+  })
+
+  it('should have spellCheck disabled on branch input', () => {
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    const branchInput = screen.getByTestId('branch-input')
+    expect(branchInput.getAttribute('spellcheck')).toBe('false')
+  })
+
   it('should not include model when default option is selected', async () => {
     mockKanbanAddItem.mockResolvedValueOnce({ id: 'new-item-1' })
 

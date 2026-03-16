@@ -266,6 +266,7 @@ export function AgentSelectDialog({
                   setBranchName(nextValue);
                   setBranchError(validateBranchName(nextValue));
                 }}
+                spellCheck={false}
                 className="mt-2 ml-6 w-[calc(100%-1.5rem)] px-2 py-1 text-sm rounded bg-[var(--color-bg-tertiary)] border border-[var(--color-border-secondary)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-blue-500"
               />
               <div data-testid="worktree-branch-helper" className="mt-1 ml-6 text-xs text-[var(--color-text-muted)]">
