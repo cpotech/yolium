@@ -109,7 +109,7 @@ describe('RunHistoryTable', () => {
       expect(screen.getByTestId('run-detail-log')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('run-detail-log')).toHaveClass('yolium-scrollbar', 'overflow-auto');
+    expect(screen.getByTestId('run-detail-log')).toHaveClass('yolium-scrollbar', 'overflow-y-auto');
   });
 
   it('should render action rows with timestamp, action label, and dry-run badge when actions exist', async () => {
