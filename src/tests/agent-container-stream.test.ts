@@ -133,6 +133,33 @@ describe('agent-container stream helpers', () => {
     });
   });
 
+  it('parseStreamEvent result event does not duplicate assistant text in display output', () => {
+    const parsed = parseStreamEvent({
+      type: 'result',
+      result: 'This is the agent response text that was already shown by the assistant event',
+      cost_usd: 0.0123,
+      usage: { input_tokens: 500, output_tokens: 200 },
+    });
+
+    // Should only show the cost line, not the duplicated result text
+    expect(parsed.display).toBe('[Cost: $0.0123]');
+    expect(parsed.display).not.toContain('agent response text');
+    expect(parsed.usage).toEqual({
+      inputTokens: 500,
+      outputTokens: 200,
+      costUsd: 0.0123,
+    });
+  });
+
+  it('parseStreamEvent result event with no cost returns no display', () => {
+    const parsed = parseStreamEvent({
+      type: 'result',
+      result: 'Some text that should not appear',
+    });
+
+    expect(parsed.display).toBeUndefined();
+  });
+
   it('combines usage parts and accumulates them into the session total', () => {
     const combined = combineUsageParts([
       { inputTokens: 100, outputTokens: 50, costUsd: 0.001 },

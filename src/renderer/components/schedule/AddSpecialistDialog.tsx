@@ -12,6 +12,7 @@ interface AddSpecialistDialogProps {
 interface CredentialRow {
   key: string;
   value: string;
+  configured?: boolean;
 }
 
 interface ServiceBlock {
@@ -300,8 +301,11 @@ export function parseMarkdownToGuidedForm(markdown: string): GuidedFormState {
           const envLines = envSection[1].match(/(\w+):\s*(.*)/g);
           if (envLines) {
             for (const el of envLines) {
-              const m = el.match(/(\w+):\s*"?([^"]*)"?/);
-              if (m) env[m[1]] = m[2];
+              const m = el.match(/(\w+):\s*(.*)/);
+              if (m) {
+                // Strip surrounding quotes (single or double) and YAML escaped quotes
+                env[m[1]] = m[2].trim().replace(/^["']+|["']+$/g, '');
+              }
             }
           }
         }
@@ -419,10 +423,30 @@ export function AddSpecialistDialog({
     if (!isOpen || !editingSpecialistId) return;
 
     let cancelled = false;
-    window.electronAPI.schedule.getRawDefinition(editingSpecialistId)
-      .then((raw) => {
-        if (!cancelled) {
-          applyMarkdownState(raw, { specialistId: editingSpecialistId });
+    Promise.all([
+      window.electronAPI.schedule.getRawDefinition(editingSpecialistId),
+      window.electronAPI.schedule.getCredentials(editingSpecialistId),
+    ])
+      .then(([raw, redactedCreds]) => {
+        if (cancelled) return;
+        applyMarkdownState(raw, { specialistId: editingSpecialistId });
+
+        // Merge stored credential status into service blocks so the UI
+        // shows which keys are already configured in the database.
+        if (Object.keys(redactedCreds).length > 0) {
+          setServices((prev) =>
+            prev.map((service) => {
+              const storedKeys = redactedCreds[service.name];
+              if (!storedKeys) return service;
+              return {
+                ...service,
+                credentials: service.credentials.map((cred) => ({
+                  ...cred,
+                  configured: storedKeys[cred.key] === true,
+                })),
+              };
+            })
+          );
         }
       })
       .catch((err) => {
@@ -1198,10 +1222,13 @@ export function AddSpecialistDialog({
                   type="password"
                   value={cred.value}
                   onChange={(e) => updateCredentialValue(si, ci, e.target.value)}
-                  placeholder="Enter value"
+                  placeholder={cred.configured ? '••••••••  (configured)' : 'Enter value'}
                   spellCheck={false}
                   className="flex-1 rounded border border-[var(--color-border-secondary)] bg-[var(--color-bg-secondary)] px-2 py-1.5 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)]"
                 />
+                {cred.configured && !cred.value && (
+                  <span className="text-[10px] text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded whitespace-nowrap flex-shrink-0">set</span>
+                )}
                 <button
                   type="button"
                   data-testid={`specialist-remove-credential-${si}-${ci}`}
