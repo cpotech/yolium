@@ -293,7 +293,7 @@ function RunDetailView({
       </div>
 
       {/* Log panel */}
-      <div className="flex-1 min-h-0 overflow-hidden flex flex-col mt-1">
+      <div className="h-0 flex-grow overflow-hidden flex flex-col mt-1">
         <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-medium">
           Log
         </div>
@@ -304,7 +304,7 @@ function RunDetailView({
         ) : logContent ? (
           <pre
             ref={logRef}
-            className="yolium-scrollbar flex-1 min-h-0 overflow-auto px-3 pb-3 text-[11px] font-mono leading-relaxed text-[var(--color-text-secondary)] whitespace-pre-wrap break-words"
+            className="yolium-scrollbar h-0 flex-grow overflow-y-scroll px-3 pb-3 text-[11px] font-mono leading-relaxed text-[var(--color-text-secondary)] whitespace-pre-wrap break-words"
             data-testid="run-detail-log"
           >
             {logContent}
