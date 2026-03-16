@@ -214,7 +214,7 @@ function RunDetailView({
       )}
 
       {/* Actions */}
-      <div data-testid="run-detail-actions">
+      <div className="shrink-0 max-h-[40%] overflow-auto yolium-scrollbar" data-testid="run-detail-actions">
         {actions.length === 0 ? (
           <div className="px-3 py-3 text-xs text-[var(--color-text-muted)]" data-testid="run-detail-actions-empty">
             No actions recorded for this run
@@ -431,7 +431,7 @@ export function RunHistoryTable({ specialistId }: RunHistoryTableProps): React.R
       </div>
 
       {/* Run list — timeline style instead of table */}
-      <div className="flex-1 min-h-0 overflow-auto px-3 pb-3" data-testid="run-history-list">
+      <div className="yolium-scrollbar flex-1 min-h-0 overflow-auto px-3 pb-3" data-testid="run-history-list">
         {filteredRuns.length === 0 ? (
           <div className="flex h-full min-h-[12rem] flex-col items-center justify-center text-[var(--color-text-muted)]">
             <Clock size={24} className="mb-2 opacity-15" />

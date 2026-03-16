@@ -271,6 +271,91 @@ describe('RunHistoryTable', () => {
     expect(screen.getByText(/custom-value/)).toBeInTheDocument();
   });
 
+  it('should apply yolium-scrollbar class to the run history list for visible scrollbar styling', async () => {
+    render(React.createElement(RunHistoryTable, { specialistId: 'twitter-growth' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Completed analysis of repo')).toBeInTheDocument();
+    });
+
+    const list = screen.getByTestId('run-history-list');
+    expect(list).toHaveClass('yolium-scrollbar');
+    expect(list).toHaveClass('overflow-auto');
+  });
+
+  it('should constrain the actions section with max-height and overflow-auto in run detail view', async () => {
+    mockGetRunActions.mockResolvedValue([
+      {
+        id: 'action-constrain-1',
+        runId: 'run-1',
+        specialistId: 'twitter-growth',
+        action: 'tweet_posted',
+        data: { summary: 'Test action' },
+        timestamp: '2026-03-10T10:02:00.000Z',
+      },
+    ]);
+
+    render(React.createElement(RunHistoryTable, { specialistId: 'twitter-growth' }));
+    await waitFor(() => { expect(screen.getByText('Completed analysis of repo')).toBeInTheDocument(); });
+    fireEvent.click(screen.getByText('Completed analysis of repo'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('run-detail-actions')).toBeInTheDocument();
+    });
+
+    const actions = screen.getByTestId('run-detail-actions');
+    expect(actions).toHaveClass('shrink-0');
+    expect(actions).toHaveClass('max-h-[40%]');
+    expect(actions).toHaveClass('overflow-auto');
+  });
+
+  it('should apply yolium-scrollbar class to the actions scroll container in run detail view', async () => {
+    mockGetRunActions.mockResolvedValue([
+      {
+        id: 'action-scrollbar-1',
+        runId: 'run-1',
+        specialistId: 'twitter-growth',
+        action: 'tweet_posted',
+        data: { summary: 'Test action' },
+        timestamp: '2026-03-10T10:02:00.000Z',
+      },
+    ]);
+
+    render(React.createElement(RunHistoryTable, { specialistId: 'twitter-growth' }));
+    await waitFor(() => { expect(screen.getByText('Completed analysis of repo')).toBeInTheDocument(); });
+    fireEvent.click(screen.getByText('Completed analysis of repo'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('run-detail-actions')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('run-detail-actions')).toHaveClass('yolium-scrollbar');
+  });
+
+  it('should keep the log panel visible when actions section is present', async () => {
+    mockGetRunActions.mockResolvedValue([
+      {
+        id: 'action-log-visible-1',
+        runId: 'run-1',
+        specialistId: 'twitter-growth',
+        action: 'tweet_posted',
+        data: { summary: 'Test action' },
+        timestamp: '2026-03-10T10:02:00.000Z',
+      },
+    ]);
+
+    render(React.createElement(RunHistoryTable, { specialistId: 'twitter-growth' }));
+    await waitFor(() => { expect(screen.getByText('Completed analysis of repo')).toBeInTheDocument(); });
+    fireEvent.click(screen.getByText('Completed analysis of repo'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('run-detail-actions')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('run-detail-log')).toBeInTheDocument();
+    expect(screen.getByTestId('run-detail-actions')).toBeInTheDocument();
+  });
+
   it('should render action with no extra fields without collapsible section', async () => {
     mockGetRunActions.mockResolvedValue([
       {
