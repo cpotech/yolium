@@ -167,6 +167,7 @@ export function GitCloneInput({
           }}
           onKeyDown={handleKeyDown}
           placeholder="Repository URL (https://... or git@...)"
+          spellCheck={false}
           className="flex-1 px-2 py-1 bg-[var(--color-bg-secondary)] border border-[var(--color-border-secondary)] rounded text-[var(--color-text-primary)] font-mono text-sm focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
           disabled={isCloning}
         />

@@ -802,6 +802,7 @@ export function AddSpecialistDialog({
               onBlur={handleNameBlur}
               placeholder="e.g. code-quality"
               disabled={isEditMode}
+              spellCheck={false}
               className={inputClass}
             />
           </div>
@@ -831,6 +832,7 @@ export function AddSpecialistDialog({
                 data-testid="specialist-markdown-editor"
                 value={markdownContent}
                 onChange={handleMarkdownChange}
+                spellCheck={false}
                 placeholder="Paste a specialist definition, or switch to Guided mode"
                 className={`w-full rounded border ${
                   validation && !validation.valid ? 'border-[var(--color-status-error)]' : 'border-[var(--color-border-secondary)]'
@@ -914,6 +916,7 @@ export function AddSpecialistDialog({
                         value={sched.cron}
                         onChange={(e) => updateSchedule(si, 'cron', e.target.value)}
                         placeholder="*/30 * * * *"
+                        spellCheck={false}
                         className={`${inputClass} text-xs`}
                       />
                       <CronHelper value={sched.cron} onChange={(c) => updateSchedule(si, 'cron', c)} />
@@ -1063,6 +1066,7 @@ export function AddSpecialistDialog({
                             updateGuided('integrations', updated);
                           }}
                           className="text-[11px] text-[var(--color-text-muted)] w-[120px] bg-transparent border-b border-[var(--color-border-secondary)] outline-none focus:border-[var(--color-accent-primary)] font-mono"
+                          spellCheck={false}
                         />
                         <input
                           type="password"
@@ -1073,6 +1077,7 @@ export function AddSpecialistDialog({
                             updateGuided('integrations', updated);
                           }}
                           placeholder="Value"
+                          spellCheck={false}
                           className={`flex-1 ${inputClass} text-xs`}
                         />
                         <button
@@ -1121,6 +1126,7 @@ export function AddSpecialistDialog({
                   value={guidedForm.systemPrompt}
                   onChange={(e) => updateGuided('systemPrompt', e.target.value)}
                   placeholder="# Specialist Name\n\nYou are a specialist agent..."
+                  spellCheck={false}
                   className={`w-full rounded border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] px-3 py-2.5 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)] resize-y`}
                   style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace", minHeight: '200px', lineHeight: '1.5' }}
                 />
@@ -1162,6 +1168,7 @@ export function AddSpecialistDialog({
                 value={service.name}
                 onChange={(e) => updateServiceName(si, e.target.value)}
                 placeholder="Service name"
+                spellCheck={false}
                 className="bg-transparent border-b border-[var(--color-border-secondary)] py-0.5 text-xs font-medium text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)] w-[150px]"
               />
               <button
@@ -1183,6 +1190,7 @@ export function AddSpecialistDialog({
                   value={cred.key}
                   onChange={(e) => updateCredentialKey(si, ci, e.target.value)}
                   placeholder="Key name"
+                  spellCheck={false}
                   className="flex-[0_0_40%] rounded border border-[var(--color-border-secondary)] bg-[var(--color-bg-secondary)] px-2 py-1.5 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)]"
                 />
                 <input
@@ -1191,6 +1199,7 @@ export function AddSpecialistDialog({
                   value={cred.value}
                   onChange={(e) => updateCredentialValue(si, ci, e.target.value)}
                   placeholder="Enter value"
+                  spellCheck={false}
                   className="flex-1 rounded border border-[var(--color-border-secondary)] bg-[var(--color-bg-secondary)] px-2 py-1.5 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)]"
                 />
                 <button

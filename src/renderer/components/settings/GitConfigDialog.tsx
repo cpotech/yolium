@@ -360,6 +360,7 @@ export function GitConfigDialog({
                     onChange={(e) => handlePatChange(e.target.value)}
                     placeholder={initialConfig?.hasPat ? '(keep existing token)' : 'github_pat_XXXXX or ghp_XXXXX'}
                     data-testid="git-pat-input"
+                    spellCheck={false}
                     className={`w-full px-3 py-2 pr-20 bg-[var(--color-bg-tertiary)] border rounded-md text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm ${
                       patError ? 'border-red-500' : 'border-[var(--color-border-secondary)]'
                     }`}
@@ -497,6 +498,7 @@ export function GitConfigDialog({
                       placeholder={useClaudeOAuth ? '(disabled — using OAuth)' : initialConfig?.hasAnthropicKey ? '(keep existing key)' : 'sk-ant-...'}
                       disabled={useClaudeOAuth}
                       data-testid="anthropic-key-input"
+                      spellCheck={false}
                       className={`w-full px-3 py-2 pr-20 bg-[var(--color-bg-tertiary)] border rounded-md text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm ${
                         anthropicKeyError ? 'border-red-500' : 'border-[var(--color-border-secondary)]'
                       } ${useClaudeOAuth ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -618,6 +620,7 @@ export function GitConfigDialog({
                       placeholder={useCodexOAuth ? '(disabled — using OAuth)' : initialConfig?.hasOpenaiKey ? '(keep existing key)' : 'sk-...'}
                       disabled={useCodexOAuth}
                       data-testid="openai-key-input"
+                      spellCheck={false}
                       className={`w-full px-3 py-2 pr-20 bg-[var(--color-bg-tertiary)] border rounded-md text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm ${
                         openaiKeyError ? 'border-red-500' : 'border-[var(--color-border-secondary)]'
                       } ${useCodexOAuth ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -741,6 +744,7 @@ export function GitConfigDialog({
                               }
                             }
                           }}
+                          spellCheck={false}
                           placeholder={placeholder}
                           data-testid={`model-input-${key}`}
                           className="flex-1 min-w-0 px-2 py-1.5 bg-[var(--color-bg-tertiary)] border border-[var(--color-border-secondary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
