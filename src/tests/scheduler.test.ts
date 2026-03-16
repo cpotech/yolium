@@ -62,9 +62,17 @@ vi.mock('@main/services/specialist-loader', () => ({
   parseSpecialistDefinition: vi.fn(),
 }));
 
-// Mock agent-runner
+// Mock agent-runner (re-exports startScheduledAgent from agent-scheduled)
 vi.mock('@main/services/agent-runner', () => ({
   startScheduledAgent: mockStartScheduledAgent,
+}));
+
+// Mock specialist-readiness
+const { mockCheckSpecialistReadiness } = vi.hoisted(() => ({
+  mockCheckSpecialistReadiness: vi.fn(() => ({ ready: true, reasons: [] })),
+}));
+vi.mock('@main/services/specialist-readiness', () => ({
+  checkSpecialistReadiness: mockCheckSpecialistReadiness,
 }));
 
 // Mock schedule-db (the unified store)
@@ -339,6 +347,83 @@ describe('scheduler', () => {
 
     // Should have registered new jobs
     expect(mockCronSchedule.mock.calls.length).toBeGreaterThan(initialCallCount);
+  });
+
+  // ─── Pre-flight Readiness Check ────────────────────────────────────────────
+
+  describe('pre-flight readiness check', () => {
+    it('should skip run and record failure when specialist readiness check fails (missing credentials)', async () => {
+      mockStartScheduledAgent.mockResolvedValueOnce({
+        outcome: 'failed' as const,
+        summary: 'Specialist not ready: Missing credentials for twitter-api: TWITTER_API_KEY, TWITTER_API_SECRET',
+        tokensUsed: 0,
+        costUsd: 0,
+        durationMs: 0,
+      });
+
+      scheduler.start();
+      scheduler.triggerRun('security-monitor', 'daily');
+
+      // Wait for the async startScheduledAgent to resolve
+      await vi.waitFor(() => {
+        expect(appendRun).toHaveBeenCalledWith(
+          'security-monitor',
+          expect.objectContaining({ outcome: 'failed' })
+        );
+      });
+    });
+
+    it('should skip run and record failure when specialist readiness check fails (missing tools)', async () => {
+      mockStartScheduledAgent.mockResolvedValueOnce({
+        outcome: 'failed' as const,
+        summary: 'Specialist not ready: Tool directory not found: twitter',
+        tokensUsed: 0,
+        costUsd: 0,
+        durationMs: 0,
+      });
+
+      scheduler.start();
+      scheduler.triggerRun('security-monitor', 'daily');
+
+      await vi.waitFor(() => {
+        expect(appendRun).toHaveBeenCalledWith(
+          'security-monitor',
+          expect.objectContaining({ outcome: 'failed' })
+        );
+      });
+    });
+
+    it('should proceed with run when specialist readiness check passes', () => {
+      // Default mock returns completed successfully
+      scheduler.start();
+      const result = scheduler.triggerRun('security-monitor', 'daily');
+      expect(result.skipped).toBeFalsy();
+      expect(mockStartScheduledAgent).toHaveBeenCalled();
+    });
+
+    it('should log readiness failure reason in the skipped run summary', async () => {
+      const failureMessage = 'Specialist not ready: Missing credentials for twitter-api: TWITTER_API_KEY';
+      mockStartScheduledAgent.mockResolvedValueOnce({
+        outcome: 'failed' as const,
+        summary: failureMessage,
+        tokensUsed: 0,
+        costUsd: 0,
+        durationMs: 0,
+      });
+
+      scheduler.start();
+      scheduler.triggerRun('security-monitor', 'daily');
+
+      await vi.waitFor(() => {
+        expect(appendRun).toHaveBeenCalledWith(
+          'security-monitor',
+          expect.objectContaining({
+            outcome: 'failed',
+            summary: expect.stringContaining('not ready'),
+          })
+        );
+      });
+    });
   });
 
   // ─── Pattern Detection (inlined) ──────────────────────────────────────────

@@ -210,8 +210,8 @@ describe('agent-prompts', () => {
         description: 'Monitor',
         memoryContext: '',
       });
-      const afterSchedule = result.split('Do the daily task.')[1];
-      expect(afterSchedule.trim()).toBe('');
+      // Should still contain the protocol reminder even without memory context
+      expect(result).toContain('@@YOLIUM:');
     });
 
     it('should always include system prompt as the base', () => {
@@ -223,6 +223,86 @@ describe('agent-prompts', () => {
         memoryContext: '',
       });
       expect(result.startsWith('You are the specialist.')).toBe(true);
+    });
+
+    it('should append @@YOLIUM protocol reminder to scheduled agent prompts', () => {
+      const result = buildScheduledPrompt({
+        systemPrompt: 'You are the specialist.',
+        scheduleType: 'daily',
+        promptTemplate: 'Do the daily task.',
+        description: 'Monitor',
+        memoryContext: '',
+      });
+      expect(result).toContain('@@YOLIUM:');
+      expect(result).toContain('CRITICAL');
+    });
+
+    it('should include run_result message format instructions in the protocol reminder', () => {
+      const result = buildScheduledPrompt({
+        systemPrompt: 'You are the specialist.',
+        scheduleType: 'daily',
+        promptTemplate: 'Do the daily task.',
+        description: 'Monitor',
+        memoryContext: '',
+      });
+      expect(result).toContain('run_result');
+      expect(result).toContain('completed|no_action|failed');
+    });
+
+    it('should include the protocol reminder after memory context section', () => {
+      const result = buildScheduledPrompt({
+        systemPrompt: 'You are the specialist.',
+        scheduleType: 'daily',
+        promptTemplate: 'Do the daily task.',
+        description: 'Monitor',
+        memoryContext: '## Run History\n\nSome history here.',
+      });
+      const memoryIdx = result.indexOf('## Run History');
+      const protocolIdx = result.indexOf('CRITICAL: You MUST output @@YOLIUM:');
+      expect(memoryIdx).toBeGreaterThan(-1);
+      expect(protocolIdx).toBeGreaterThan(memoryIdx);
+    });
+
+    it('should preserve existing prompt structure (system prompt, schedule section, memory context)', () => {
+      const result = buildScheduledPrompt({
+        systemPrompt: 'You are the specialist.',
+        scheduleType: 'daily',
+        promptTemplate: 'Do the daily task.',
+        description: 'Monitor',
+        memoryContext: '## Run History\n\nSome history.',
+      });
+      const systemIdx = result.indexOf('You are the specialist.');
+      const scheduleIdx = result.indexOf('## Schedule: daily');
+      const memoryIdx = result.indexOf('## Run History');
+      const protocolIdx = result.indexOf('CRITICAL: You MUST output @@YOLIUM:');
+      expect(systemIdx).toBe(0);
+      expect(scheduleIdx).toBeGreaterThan(systemIdx);
+      expect(memoryIdx).toBeGreaterThan(scheduleIdx);
+      expect(protocolIdx).toBeGreaterThan(memoryIdx);
+    });
+
+    it('should include protocol reminder even when memoryContext is empty', () => {
+      const result = buildScheduledPrompt({
+        systemPrompt: 'You are the specialist.',
+        scheduleType: 'daily',
+        promptTemplate: 'Do the daily task.',
+        description: 'Monitor',
+        memoryContext: '',
+      });
+      expect(result).toContain('CRITICAL: You MUST output @@YOLIUM:');
+      expect(result).toContain('run_result');
+    });
+
+    it('should include protocol reminder even when promptTemplate is undefined', () => {
+      const result = buildScheduledPrompt({
+        systemPrompt: 'You are the specialist.',
+        scheduleType: 'daily',
+        promptTemplate: undefined,
+        description: 'Monitor engagement',
+        memoryContext: '',
+      });
+      expect(result).toContain('CRITICAL: You MUST output @@YOLIUM:');
+      expect(result).toContain('run_result');
     });
   });
 });

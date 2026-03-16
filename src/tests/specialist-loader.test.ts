@@ -411,6 +411,43 @@ Content`;
     });
   });
 
+  describe('cron-schedule-type consistency', () => {
+    it('should warn when a daily schedule type has a cron expression that fires more than once per day', () => {
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // */15 * * * * fires every 15 minutes — not daily
+      const markdown = `---
+name: test-specialist
+description: Test
+model: haiku
+tools:
+  - Read
+schedules:
+  - type: daily
+    cron: "*/15 * * * *"
+    enabled: true
+memory:
+  strategy: raw
+  maxEntries: 100
+  retentionDays: 30
+escalation:
+  onFailure: alert_user
+---
+
+Content`;
+
+      const result = parseSpecialistDefinition(markdown);
+      // Should still parse successfully
+      expect(result.name).toBe('test-specialist');
+      // But should have warned about the mismatch
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('daily'),
+      );
+
+      consoleWarnSpy.mockRestore();
+    });
+  });
+
   describe('twitter-growth specialist', () => {
     // These tests validate the actual twitter-growth.md content by parsing its frontmatter
     // We read the file content as a string constant and parse it with parseSpecialistDefinition

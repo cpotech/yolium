@@ -5,6 +5,7 @@ import { createLogger } from '@main/lib/logger';
 import { extractProtocolMessages } from './agent-protocol';
 import { buildScheduledPrompt } from './agent-prompts';
 import { resolveModel } from './agent-model';
+import { checkSpecialistReadiness } from './specialist-readiness';
 import {
   createAgentContainer,
   checkAgentAuth,
@@ -88,6 +89,21 @@ export function startScheduledAgent(params: ScheduledAgentParams): Promise<Sched
     // Load specialist credentials for injection
     const specialistCreds = loadCredentials(specialist.name);
     const hasCredentials = Object.keys(specialistCreds).length > 0;
+
+    // Pre-flight readiness check: verify credentials and tools before starting
+    const readiness = checkSpecialistReadiness(specialist, specialistCreds);
+    if (!readiness.ready) {
+      const summary = `Specialist not ready: ${readiness.reasons.join('; ')}`;
+      logger.warn('Specialist readiness check failed', { specialistId: specialist.name, reasons: readiness.reasons });
+      resolve({
+        outcome: 'failed',
+        summary,
+        tokensUsed: 0,
+        costUsd: 0,
+        durationMs: 0,
+      });
+      return;
+    }
 
     createAgentContainer(
       {
