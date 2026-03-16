@@ -235,13 +235,15 @@ export function SpecialistConfigDialog({
                   <div key={serviceId} className="mb-2 rounded border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] p-3">
                     <div className="text-xs font-medium text-[var(--color-text-primary)] mb-2">{serviceId}</div>
                     {Object.entries(keys).map(([key, hasValue]) => (
-                      <div key={key} className="flex items-center gap-2 mb-1.5">
-                        <span className="text-xs text-[var(--color-text-secondary)] shrink-0 font-mono">{key}</span>
-                        {hasValue ? (
-                          <span className="text-[10px] text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded">configured</span>
-                        ) : (
-                          <span className="text-[10px] text-[var(--color-text-muted)] bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded">not set</span>
-                        )}
+                      <div key={key} className="mb-2">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs text-[var(--color-text-secondary)] font-mono">{key}</span>
+                          {hasValue ? (
+                            <span className="text-[10px] text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded">configured</span>
+                          ) : (
+                            <span className="text-[10px] text-[var(--color-text-muted)] bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded">not set</span>
+                          )}
+                        </div>
                         <input
                           type="password"
                           value={editingCreds[serviceId]?.[key] || ''}
@@ -252,7 +254,7 @@ export function SpecialistConfigDialog({
                             }));
                           }}
                           placeholder="Enter new value"
-                          className="flex-1 rounded border border-[var(--color-border-secondary)] bg-[var(--color-bg-secondary)] px-2 py-1 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)]"
+                          className="w-full rounded border border-[var(--color-border-secondary)] bg-[var(--color-bg-secondary)] px-2 py-1 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)]"
                         />
                       </div>
                     ))}
