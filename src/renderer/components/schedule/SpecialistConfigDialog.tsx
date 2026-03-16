@@ -236,7 +236,7 @@ export function SpecialistConfigDialog({
                     <div className="text-xs font-medium text-[var(--color-text-primary)] mb-2">{serviceId}</div>
                     {Object.entries(keys).map(([key, hasValue]) => (
                       <div key={key} className="flex items-center gap-2 mb-1.5">
-                        <span className="text-xs text-[var(--color-text-secondary)] w-[140px] truncate font-mono">{key}</span>
+                        <span className="text-xs text-[var(--color-text-secondary)] shrink-0 font-mono">{key}</span>
                         {hasValue ? (
                           <span className="text-[10px] text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded">configured</span>
                         ) : (
