@@ -34,6 +34,7 @@ integrations:
       TWITTER_BEARER_TOKEN: ""
       TWITTER_ACCESS_TOKEN: ""
       TWITTER_ACCESS_TOKEN_SECRET: ""
+      TWITTER_USER_ID: ""
     tools:
       - twitter
 promptTemplates:

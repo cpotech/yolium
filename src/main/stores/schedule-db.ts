@@ -579,6 +579,46 @@ export function deleteCredentials(specialistId: string): void {
   database.prepare('DELETE FROM credentials WHERE specialist_id = ?').run(specialistId);
 }
 
+/**
+ * Remove stored credential keys that are not declared in the specialist's integrations.
+ * Returns the number of rows deleted.
+ */
+export function pruneCredentials(
+  specialistId: string,
+  integrations: Array<{ service: string; env: Record<string, string> }>
+): number {
+  const database = getDb();
+
+  // Build the set of valid (serviceId, key) pairs from the definition
+  const validKeys = new Set<string>();
+  const validServices = new Set<string>();
+  for (const integration of integrations) {
+    validServices.add(integration.service);
+    for (const key of Object.keys(integration.env)) {
+      validKeys.add(`${integration.service}\0${key}`);
+    }
+  }
+
+  // Find and delete stale rows
+  const rows = database.prepare(
+    'SELECT service_id, key FROM credentials WHERE specialist_id = ?'
+  ).all(specialistId) as Array<{ service_id: string; key: string }>;
+
+  const del = database.prepare(
+    'DELETE FROM credentials WHERE specialist_id = ? AND service_id = ? AND key = ?'
+  );
+
+  let deleted = 0;
+  for (const row of rows) {
+    if (!validKeys.has(`${row.service_id}\0${row.key}`)) {
+      del.run(specialistId, row.service_id, row.key);
+      deleted++;
+    }
+  }
+
+  return deleted;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
 function loadServiceCredentials(

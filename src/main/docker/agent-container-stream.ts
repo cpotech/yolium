@@ -128,18 +128,15 @@ export function parseStreamEvent(event: Record<string, unknown>): ParsedStreamEv
     }
 
     case 'result': {
-      const result = event.result as string | undefined;
       const costUsd = event.cost_usd as number | undefined;
       const usage = event.usage as { input_tokens?: number; output_tokens?: number } | undefined;
       const inputTokens = usage?.input_tokens ?? 0;
       const outputTokens = usage?.output_tokens ?? 0;
-      const parts: string[] = [];
 
-      if (result) parts.push(result);
-      if (typeof costUsd === 'number') parts.push(`[Cost: $${costUsd.toFixed(4)}]`);
-
+      // Note: event.result contains a verbatim copy of the assistant's text,
+      // which was already emitted by the 'assistant' event. Only show the cost line.
       return {
-        display: parts.length > 0 ? parts.join('\n') : undefined,
+        display: typeof costUsd === 'number' ? `[Cost: $${costUsd.toFixed(4)}]` : undefined,
         ...(typeof costUsd === 'number' || inputTokens > 0 || outputTokens > 0
           ? { usage: { inputTokens, outputTokens, costUsd: costUsd ?? 0 } }
           : {}),

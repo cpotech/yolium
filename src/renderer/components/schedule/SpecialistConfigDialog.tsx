@@ -28,21 +28,20 @@ function mergeCredentialState(
   credentials: Record<string, Record<string, boolean>>,
   integrations?: Array<{ service: string; env: Record<string, string> }>
 ): Record<string, Record<string, boolean>> {
-  const merged: Record<string, Record<string, boolean>> = { ...credentials };
-
-  if (!integrations) {
-    return merged;
+  if (!integrations?.length) {
+    return { ...credentials };
   }
+
+  // When integrations are defined, only show keys declared in the definition.
+  // This filters out stale DB keys that no longer match the specialist config.
+  const merged: Record<string, Record<string, boolean>> = {};
 
   for (const integration of integrations) {
     if (!integration.service) continue;
-    if (!merged[integration.service]) {
-      merged[integration.service] = {};
-    }
+    const storedService = credentials[integration.service] ?? {};
+    merged[integration.service] = {};
     for (const key of Object.keys(integration.env)) {
-      if (!(key in merged[integration.service])) {
-        merged[integration.service][key] = false;
-      }
+      merged[integration.service][key] = storedService[key] ?? false;
     }
   }
 

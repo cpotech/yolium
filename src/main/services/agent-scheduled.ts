@@ -6,12 +6,13 @@ import { extractProtocolMessages } from './agent-protocol';
 import { buildScheduledPrompt } from './agent-prompts';
 import { resolveModel } from './agent-model';
 import { checkSpecialistReadiness } from './specialist-readiness';
+import { resolveToolDir } from './tools-resolver';
 import {
   createAgentContainer,
   checkAgentAuth,
   getAgentSession,
 } from '@main/docker';
-import { appendRunLog, appendAction, loadCredentials } from '@main/stores/schedule-db';
+import { appendRunLog, appendAction, loadCredentials, pruneCredentials } from '@main/stores/schedule-db';
 import type { ActionMessage, CompleteMessage, ErrorMessage, RunResultMessage } from '@shared/types/agent';
 import type { SpecialistDefinition, ScheduleType, RunOutcome } from '@shared/types/schedule';
 
@@ -86,9 +87,49 @@ export function startScheduledAgent(params: ScheduledAgentParams): Promise<Sched
     let lastRunResult: RunResultMessage | undefined;
     let capturedSessionId: string | undefined;
 
+    // Prune stale credential keys that no longer match the definition
+    if (specialist.integrations?.length) {
+      const pruned = pruneCredentials(specialist.name, specialist.integrations);
+      if (pruned > 0) {
+        logger.info('Pruned stale credentials', { specialistId: specialist.name, keysRemoved: pruned });
+      }
+    }
+
     // Load specialist credentials for injection
     const specialistCreds = loadCredentials(specialist.name);
     const hasCredentials = Object.keys(specialistCreds).length > 0;
+
+    // Log tools and service credentials at startup
+    const integrationTools: Record<string, string[]> = {};
+    if (specialist.integrations) {
+      for (const integration of specialist.integrations) {
+        for (const toolName of integration.tools ?? []) {
+          const toolDir = resolveToolDir(toolName);
+          if (toolDir) {
+            try {
+              integrationTools[toolName] = fs.readdirSync(toolDir).filter(f => !f.startsWith('.'));
+            } catch {
+              integrationTools[toolName] = [`<unreadable: ${toolDir}>`];
+            }
+          } else {
+            integrationTools[toolName] = ['<not found>'];
+          }
+        }
+      }
+    }
+
+    logger.info('Agent starting', {
+      specialistId: specialist.name,
+      scheduleType,
+      claudeTools: specialist.tools,
+      integrationTools,
+      serviceCredentials: Object.fromEntries(
+        Object.entries(specialistCreds).map(([serviceId, keys]) => [
+          serviceId,
+          Object.keys(keys),
+        ])
+      ),
+    });
 
     // Pre-flight readiness check: verify credentials and tools before starting
     const readiness = checkSpecialistReadiness(specialist, specialistCreds);

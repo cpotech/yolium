@@ -18,6 +18,7 @@ const mockSaveCredentials = vi.fn();
 const mockGetTemplate = vi.fn();
 const mockGetSpecialists = vi.fn();
 const mockGetRawDefinition = vi.fn();
+const mockGetCredentials = vi.fn();
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -25,6 +26,7 @@ beforeEach(() => {
   mockUpdateDefinition.mockResolvedValue({ filePath: '/tmp/agents/cron/security-monitor.md' });
   mockSaveCredentials.mockResolvedValue(undefined);
   mockGetTemplate.mockResolvedValue('---\nname: code-quality\ndescription: code-quality monitoring and analysis\nmodel: haiku\n---\n\n# Code Quality Specialist\n');
+  mockGetCredentials.mockResolvedValue({});
   mockGetSpecialists.mockResolvedValue({
     'security-monitor': { name: 'security-monitor', description: 'Security scanning', model: 'haiku', schedules: [] },
     'code-quality': { name: 'code-quality', description: 'Code quality checks', model: 'sonnet', schedules: [] },
@@ -63,6 +65,7 @@ integrations:
         getTemplate: mockGetTemplate,
         getSpecialists: mockGetSpecialists,
         getRawDefinition: mockGetRawDefinition,
+        getCredentials: mockGetCredentials,
       },
     },
     writable: true,
