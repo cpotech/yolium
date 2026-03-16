@@ -156,7 +156,7 @@ export function SchedulePanel(): React.ReactElement {
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center" data-testid="schedule-panel-loading">
+      <div className="h-full flex items-center justify-center" data-testid="schedule-panel-loading">
         <RefreshCw className="w-6 h-6 text-[var(--color-text-muted)] animate-spin" />
       </div>
     );
@@ -164,7 +164,7 @@ export function SchedulePanel(): React.ReactElement {
 
   if (selectedSpecialist) {
     return (
-      <div className="flex-1 flex flex-col overflow-hidden" data-testid="schedule-panel-history">
+      <div className="h-full flex flex-col overflow-hidden" data-testid="schedule-panel-history">
         <div className="flex items-center gap-2 p-3 border-b border-[var(--color-border-primary)]">
           <button
             onClick={() => setSelectedSpecialist(null)}
@@ -184,7 +184,7 @@ export function SchedulePanel(): React.ReactElement {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden" data-testid="schedule-panel">
+    <div className="h-full flex flex-col overflow-hidden" data-testid="schedule-panel">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-[var(--color-border-primary)]">
         <div className="flex items-center gap-2">
