@@ -15,10 +15,10 @@ schedules:
     enabled: false
   - type: daily
     cron: "0 8 * * *"
-    enabled: true
+    enabled: false
   - type: weekly
     cron: "0 7 * * 1"
-    enabled: true
+    enabled: false
 memory:
   strategy: distill_daily
   maxEntries: 500

@@ -64,6 +64,37 @@ export function validateSchedules(schedules: ScheduleConfig[]): boolean {
 }
 
 /**
+ * Warn if a schedule's cron expression fires more frequently than its declared type implies.
+ * For example, a 'daily' type with a cron that fires every 15 minutes is not actually daily.
+ */
+function warnScheduleMismatch(name: string, schedules: ScheduleConfig[]): void {
+  for (const schedule of schedules) {
+    if (schedule.type === 'daily') {
+      const parts = schedule.cron.trim().split(/\s+/);
+      if (parts.length < 5) continue;
+      const [minute, hour] = parts;
+      // A daily schedule should have specific minute and hour values (not wildcards or intervals)
+      const isWildcardOrInterval = (field: string) => field === '*' || field.includes('/');
+      if (isWildcardOrInterval(minute) || isWildcardOrInterval(hour)) {
+        console.warn(
+          `[specialist-loader] Schedule mismatch in "${name}": daily schedule has cron "${schedule.cron}" which fires more than once per day`
+        );
+      }
+    } else if (schedule.type === 'weekly') {
+      const parts = schedule.cron.trim().split(/\s+/);
+      if (parts.length < 5) continue;
+      const [minute, hour, , , dayOfWeek] = parts;
+      const isWildcardOrInterval = (field: string) => field === '*' || field.includes('/');
+      if (isWildcardOrInterval(minute) || isWildcardOrInterval(hour) || isWildcardOrInterval(dayOfWeek)) {
+        console.warn(
+          `[specialist-loader] Schedule mismatch in "${name}": weekly schedule has cron "${schedule.cron}" which fires more than once per week`
+        );
+      }
+    }
+  }
+}
+
+/**
  * Parse a specialist definition from Markdown with YAML frontmatter.
  */
 export function parseSpecialistDefinition(markdown: string): SpecialistDefinition {
@@ -91,6 +122,9 @@ export function parseSpecialistDefinition(markdown: string): SpecialistDefinitio
   } else if (!data.schedules) {
     throw new Error(`Specialist "${data.name}" missing required schedules field`);
   }
+
+  // Validate cron-schedule-type consistency
+  warnScheduleMismatch(data.name, schedules);
 
   // Parse memory config
   const memoryData = data.memory || {};

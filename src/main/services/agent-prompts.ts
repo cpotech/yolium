@@ -214,5 +214,8 @@ export function buildScheduledPrompt(params: {
     prompt += `\n\n${memoryContext}`;
   }
 
+  // Protocol reminder — reinforces @@YOLIUM: message requirements at the end of the prompt
+  prompt += `\n\n---\n\nCRITICAL: You MUST output @@YOLIUM: protocol messages. At minimum, emit a run_result before finishing:\n@@YOLIUM:{"type":"run_result","outcome":"completed|no_action|failed","summary":"...","tokensUsed":0}\nIf you take external actions (API calls, posts, etc.), also emit action messages:\n@@YOLIUM:{"type":"action","action":"action_name","data":{...},"timestamp":"..."}`;
+
   return prompt;
 }
