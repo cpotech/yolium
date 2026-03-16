@@ -140,7 +140,6 @@ export function NewItemDialog({
     <div
       className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] bg-black/50"
       onKeyDown={handleKeyDown}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
         ref={dialogRef}

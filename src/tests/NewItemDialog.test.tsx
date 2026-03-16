@@ -587,6 +587,24 @@ describe('NewItemDialog', () => {
     })
   })
 
+  it('should not close dialog when clicking the backdrop overlay', () => {
+    const onClose = vi.fn()
+
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={onClose}
+        onCreated={vi.fn()}
+      />
+    )
+
+    const dialog = screen.getByTestId('new-item-dialog')
+    const backdrop = dialog.parentElement!
+    fireEvent.click(backdrop)
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
   // Spell check attribute tests
   it('should have spellCheck enabled on title input', () => {
     render(
