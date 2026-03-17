@@ -6,7 +6,6 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import {
   AddSpecialistDialog,
   sanitizeSpecialistName,
-  tryParseIntegrations,
   serializeGuidedFormToMarkdown,
   parseMarkdownToGuidedForm,
 } from '@renderer/components/schedule/AddSpecialistDialog';
@@ -73,11 +72,17 @@ integrations:
 });
 
 describe('AddSpecialistDialog', () => {
-  it('should render name field and markdown editor textarea', () => {
+  it('should render name field and guided form (no paste mode toggle)', () => {
     render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
 
     expect(screen.getByTestId('specialist-name-input')).toBeInTheDocument();
-    expect(screen.getByTestId('specialist-markdown-editor')).toBeInTheDocument();
+    // Guided form sections should be visible
+    expect(screen.getByTestId('guided-description')).toBeInTheDocument();
+    // No paste mode toggle should exist
+    expect(screen.queryByTestId('specialist-mode-paste')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('specialist-mode-guided')).not.toBeInTheDocument();
+    // No markdown editor textarea
+    expect(screen.queryByTestId('specialist-markdown-editor')).not.toBeInTheDocument();
   });
 
   it('should render service credentials section with add service button', () => {
@@ -156,7 +161,7 @@ describe('AddSpecialistDialog', () => {
     fireEvent.click(screen.getByTestId('specialist-create-btn'));
 
     await waitFor(() => {
-      expect(mockScaffold).toHaveBeenCalledWith('test-specialist', undefined);
+      expect(mockScaffold).toHaveBeenCalled();
       expect(mockSaveCredentials).toHaveBeenCalledWith(
         'test-specialist',
         'twitter-api',
@@ -173,108 +178,6 @@ describe('AddSpecialistDialog', () => {
 
     const valueInput = screen.getByTestId('specialist-credential-value-0-0');
     expect(valueInput).toHaveAttribute('type', 'password');
-  });
-
-  it('should pass markdown content to scaffold when editor has content', async () => {
-    const onCreated = vi.fn();
-
-    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={onCreated} />);
-
-    fireEvent.change(screen.getByTestId('specialist-name-input'), {
-      target: { value: 'custom-agent' },
-    });
-
-    const markdownContent = `---
-name: custom-agent
-description: A custom agent
-model: sonnet
-tools:
-  - Read
-schedules:
-  - type: daily
-    cron: "0 0 * * *"
-    enabled: true
----
-
-# Custom Agent`;
-
-    fireEvent.change(screen.getByTestId('specialist-markdown-editor'), {
-      target: { value: markdownContent },
-    });
-
-    fireEvent.click(screen.getByTestId('specialist-create-btn'));
-
-    await waitFor(() => {
-      expect(mockScaffold).toHaveBeenCalledWith('custom-agent', { content: markdownContent });
-    });
-  });
-
-  it('should use template scaffold when markdown editor is empty', async () => {
-    const onCreated = vi.fn();
-
-    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={onCreated} />);
-
-    fireEvent.change(screen.getByTestId('specialist-name-input'), {
-      target: { value: 'simple-agent' },
-    });
-
-    fireEvent.click(screen.getByTestId('specialist-create-btn'));
-
-    await waitFor(() => {
-      expect(mockScaffold).toHaveBeenCalledWith('simple-agent', undefined);
-    });
-  });
-
-  it('should show validation error when markdown content is invalid', async () => {
-    mockScaffold.mockRejectedValueOnce(new Error('Specialist definition missing required fields'));
-
-    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
-
-    fireEvent.change(screen.getByTestId('specialist-name-input'), {
-      target: { value: 'bad-agent' },
-    });
-
-    fireEvent.change(screen.getByTestId('specialist-markdown-editor'), {
-      target: { value: 'invalid markdown' },
-    });
-
-    fireEvent.click(screen.getByTestId('specialist-create-btn'));
-
-    await waitFor(() => {
-      expect(screen.getByText('Specialist definition missing required fields')).toBeInTheDocument();
-    });
-  });
-
-  it('should auto-populate credential fields from parsed frontmatter integrations', () => {
-    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
-
-    const markdownWithIntegrations = `---
-name: test
-description: Test
-model: haiku
-tools:
-  - Read
-schedules:
-  - type: daily
-    cron: "0 0 * * *"
-    enabled: true
-integrations:
-  - service: twitter-api
-    env:
-      API_KEY: ""
-      API_SECRET: ""
----
-
-# Test`;
-
-    fireEvent.change(screen.getByTestId('specialist-markdown-editor'), {
-      target: { value: markdownWithIntegrations },
-    });
-
-    // Should auto-populate service credentials from integrations
-    expect(screen.getByTestId('specialist-service-name-0')).toHaveValue('twitter-api');
-    expect(screen.getByTestId('specialist-credential-key-0-0')).toHaveValue('API_KEY');
-    expect(screen.getByTestId('specialist-credential-key-0-1')).toHaveValue('API_SECRET');
   });
 
   it('should disable Create button when name is empty', () => {
@@ -308,112 +211,46 @@ integrations:
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('should populate markdown editor with default template after entering a name and blurring', async () => {
-    const templateContent = '---\nname: code-quality\nmodel: haiku\n---\n\n# Code Quality Specialist\n';
-    mockGetTemplate.mockResolvedValue(templateContent);
-
-    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
-
-    const nameInput = screen.getByTestId('specialist-name-input');
-
-    await act(async () => {
-      fireEvent.change(nameInput, { target: { value: 'code-quality' } });
-    });
-
-    await act(async () => {
-      fireEvent.blur(nameInput);
-    });
-
-    // Allow effects + microtasks to flush
-    await act(async () => {
-      await Promise.resolve();
-    });
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    expect(mockGetTemplate).toHaveBeenCalledWith('code-quality');
-    const editor = screen.getByTestId('specialist-markdown-editor') as HTMLTextAreaElement;
-    expect(editor.value).toContain('code-quality');
-  });
-
-  it('should allow editing the pre-populated template content', async () => {
-    const templateContent = '---\nname: code-quality\nmodel: haiku\n---\n\n# Code Quality Specialist\n';
-    mockGetTemplate.mockResolvedValue(templateContent);
-
-    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
-
-    const nameInput = screen.getByTestId('specialist-name-input');
-    await act(async () => { fireEvent.change(nameInput, { target: { value: 'code-quality' } }); });
-    await act(async () => { fireEvent.blur(nameInput); });
-    await act(async () => { await Promise.resolve(); });
-    await act(async () => { await Promise.resolve(); });
-
-    const editor = screen.getByTestId('specialist-markdown-editor') as HTMLTextAreaElement;
-    expect(editor.value).toContain('code-quality');
-
-    // User edits the content
-    fireEvent.change(screen.getByTestId('specialist-markdown-editor'), {
-      target: { value: 'user edited content' },
-    });
-
-    expect(screen.getByTestId('specialist-markdown-editor')).toHaveValue('user edited content');
-  });
-
-  it('should not overwrite user-edited markdown when name changes', async () => {
-    const templateContent = '---\nname: some-name\nmodel: haiku\n---\n';
-    mockGetTemplate.mockResolvedValue(templateContent);
-
-    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
-
-    // User types in the textarea first
-    fireEvent.change(screen.getByTestId('specialist-markdown-editor'), {
-      target: { value: 'my custom definition' },
-    });
-
-    // Then enters and blurs name
-    const nameInput = screen.getByTestId('specialist-name-input');
-    await act(async () => { fireEvent.change(nameInput, { target: { value: 'some-name' } }); });
-    await act(async () => { fireEvent.blur(nameInput); });
-    await act(async () => { await Promise.resolve(); });
-    await act(async () => { await Promise.resolve(); });
-
-    expect(screen.getByTestId('specialist-markdown-editor')).toHaveValue('my custom definition');
-    // getTemplate should not have been called since user already edited
-    expect(mockGetTemplate).not.toHaveBeenCalled();
-  });
-
-  it('should send edited template content to scaffold on create', async () => {
-    const templateContent = '---\nname: code-quality\nmodel: haiku\n---\n\n# Code Quality Specialist\n';
-    mockGetTemplate.mockResolvedValue(templateContent);
-
+  it('should serialize guided form and pass to scaffold on create', async () => {
     const onCreated = vi.fn();
+
     render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={onCreated} />);
 
-    // Enter name and blur to trigger template population
-    const nameInput = screen.getByTestId('specialist-name-input');
-    await act(async () => { fireEvent.change(nameInput, { target: { value: 'code-quality' } }); });
-    await act(async () => { fireEvent.blur(nameInput); });
-    await act(async () => { await Promise.resolve(); });
-    await act(async () => { await Promise.resolve(); });
+    // Enter name
+    fireEvent.change(screen.getByTestId('specialist-name-input'), {
+      target: { value: 'my-agent' },
+    });
 
-    const editor = screen.getByTestId('specialist-markdown-editor') as HTMLTextAreaElement;
-    expect(editor.value).toContain('code-quality');
-
-    // User edits the pre-populated content
-    const editedContent = '---\nname: code-quality\ndescription: edited\nmodel: sonnet\n---\n\n# Edited';
-    fireEvent.change(screen.getByTestId('specialist-markdown-editor'), {
-      target: { value: editedContent },
+    // Fill in guided form fields
+    fireEvent.change(screen.getByTestId('guided-description'), {
+      target: { value: 'A great agent' },
     });
 
     fireEvent.click(screen.getByTestId('specialist-create-btn'));
 
     await waitFor(() => {
-      expect(mockScaffold).toHaveBeenCalledWith('code-quality', { content: editedContent });
+      expect(mockScaffold).toHaveBeenCalled();
+      const call = mockScaffold.mock.calls[0];
+      expect(call[0]).toBe('my-agent');
+      // Should pass serialized content from guided form
+      expect(call[1]).toBeDefined();
+      expect(call[1].content).toContain('name: my-agent');
+      expect(call[1].content).toContain('description: A great agent');
     });
   });
 
-  it('should preload the current markdown definition and integration-derived service rows when opened in edit mode', async () => {
+  it('should use default guided form state when no content provided', () => {
+    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
+
+    // The guided form should have default state visible
+    const descInput = screen.getByTestId('guided-description') as HTMLInputElement;
+    expect(descInput.value).toBe('');
+
+    const modelSelect = screen.getByTestId('guided-model') as HTMLSelectElement;
+    expect(modelSelect.value).toBe('haiku');
+  });
+
+  it('should preload guided form state and service rows when opened in edit mode', async () => {
     render(
       <AddSpecialistDialog
         isOpen={true}
@@ -427,16 +264,21 @@ integrations:
       expect(mockGetRawDefinition).toHaveBeenCalledWith('security-monitor');
     });
 
+    // Name should be set
     expect(screen.getByTestId('specialist-name-input')).toHaveValue('security-monitor');
-    expect((screen.getByTestId('specialist-markdown-editor') as HTMLTextAreaElement).value).toContain(
-      'description: Security scanning'
-    );
+
+    // Guided form should be populated
+    await waitFor(() => {
+      expect((screen.getByTestId('guided-description') as HTMLInputElement).value).toBe('Security scanning');
+    });
+
+    // Service credential rows derived from integrations
     expect(screen.getByTestId('specialist-service-name-0')).toHaveValue('slack');
     expect(screen.getByTestId('specialist-credential-key-0-0')).toHaveValue('SLACK_WEBHOOK');
     expect(screen.getByTestId('specialist-credential-key-0-1')).toHaveValue('SLACK_CHANNEL');
   });
 
-  it('should lock the specialist name and hide create-only clone/template affordances in edit mode', async () => {
+  it('should lock the specialist name and hide clone dropdown in edit mode', async () => {
     render(
       <AddSpecialistDialog
         isOpen={true}
@@ -452,11 +294,10 @@ integrations:
 
     expect(screen.getByTestId('specialist-name-input')).toBeDisabled();
     expect(screen.queryByTestId('specialist-clone-select')).not.toBeInTheDocument();
-    expect(screen.queryByText(/auto-populate with the default template/i)).not.toBeInTheDocument();
     expect(screen.getByTestId('specialist-create-btn')).toHaveTextContent('Save');
   });
 
-  it('should call schedule.updateDefinition instead of schedule.scaffold when saving an edited specialist', async () => {
+  it('should call schedule.updateDefinition with serialized guided form when saving in edit mode', async () => {
     const onCreated = vi.fn();
 
     render(
@@ -472,16 +313,23 @@ integrations:
       expect(mockGetRawDefinition).toHaveBeenCalledWith('security-monitor');
     });
 
-    fireEvent.change(screen.getByTestId('specialist-markdown-editor'), {
-      target: { value: '---\nname: security-monitor\ndescription: Updated\nmodel: haiku\nschedules:\n  - type: daily\n    cron: "0 0 * * *"\n    enabled: true\ntools:\n  - Read\n---\n\n# Updated' },
+    // Wait for guided form to be populated
+    await waitFor(() => {
+      expect((screen.getByTestId('guided-description') as HTMLInputElement).value).toBe('Security scanning');
     });
+
+    // Modify a field in the guided form
+    fireEvent.change(screen.getByTestId('guided-description'), {
+      target: { value: 'Updated security scanning' },
+    });
+
     fireEvent.click(screen.getByTestId('specialist-create-btn'));
 
     await waitFor(() => {
-      expect(mockUpdateDefinition).toHaveBeenCalledWith(
-        'security-monitor',
-        '---\nname: security-monitor\ndescription: Updated\nmodel: haiku\nschedules:\n  - type: daily\n    cron: "0 0 * * *"\n    enabled: true\ntools:\n  - Read\n---\n\n# Updated'
-      );
+      expect(mockUpdateDefinition).toHaveBeenCalled();
+      const content = mockUpdateDefinition.mock.calls[0][1];
+      expect(content).toContain('name: security-monitor');
+      expect(content).toContain('description: Updated security scanning');
     });
 
     expect(mockScaffold).not.toHaveBeenCalled();
@@ -497,10 +345,38 @@ integrations:
     fireEvent.click(screen.getByTestId('specialist-create-btn'));
 
     await waitFor(() => {
-      expect(mockScaffold).toHaveBeenCalledWith('create-me', undefined);
+      expect(mockScaffold).toHaveBeenCalled();
+      expect(mockScaffold.mock.calls[0][0]).toBe('create-me');
     });
 
     expect(mockUpdateDefinition).not.toHaveBeenCalled();
+  });
+
+  it('should populate guided form from cloned specialist definition', async () => {
+    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
+
+    // Wait for specialists to load
+    await waitFor(() => {
+      expect(mockGetSpecialists).toHaveBeenCalled();
+    });
+
+    // Clone from security-monitor
+    const cloneSelect = screen.getByTestId('specialist-clone-select');
+    await act(async () => {
+      fireEvent.change(cloneSelect, { target: { value: 'security-monitor' } });
+    });
+
+    await waitFor(() => {
+      expect(mockGetRawDefinition).toHaveBeenCalledWith('security-monitor');
+    });
+
+    // Guided form should be populated from the cloned definition
+    await waitFor(() => {
+      expect((screen.getByTestId('guided-description') as HTMLInputElement).value).toBe('Security scanning');
+    });
+
+    // Name should be cleared for user to provide a new one
+    expect(screen.getByTestId('specialist-name-input')).toHaveValue('');
   });
 });
 
@@ -515,72 +391,6 @@ describe('sanitizeSpecialistName', () => {
     expect(sanitizeSpecialistName('hello!!world@#$%')).toBe('helloworld');
     expect(sanitizeSpecialistName('  --leading-trailing--  ')).toBe('leading-trailing');
     expect(sanitizeSpecialistName('UPPERCASE')).toBe('uppercase');
-  });
-});
-
-describe('tryParseIntegrations', () => {
-  it('should extract services from valid YAML frontmatter', () => {
-    const markdown = `---
-name: test
-integrations:
-  - service: twitter-api
-    env:
-      API_KEY: ""
-      API_SECRET: ""
-  - service: slack
-    env:
-      WEBHOOK_URL: ""
----
-
-# Content`;
-
-    const result = tryParseIntegrations(markdown);
-    expect(result).toHaveLength(2);
-    expect(result[0].name).toBe('twitter-api');
-    expect(result[0].credentials).toHaveLength(2);
-    expect(result[0].credentials[0].key).toBe('API_KEY');
-    expect(result[1].name).toBe('slack');
-  });
-
-  it('should return empty array for invalid frontmatter', () => {
-    expect(tryParseIntegrations('no frontmatter here')).toEqual([]);
-    expect(tryParseIntegrations('---\nname: test\n---\nno integrations')).toEqual([]);
-  });
-
-  it('should preserve existing credential values when re-parsing', () => {
-    const markdown = `---
-name: test
-integrations:
-  - service: twitter-api
-    env:
-      API_KEY: ""
----
-
-# Content`;
-
-    const result = tryParseIntegrations(markdown);
-    expect(result[0].credentials[0].value).toBe('');
-  });
-});
-
-describe('auto-detect name from pasted YAML', () => {
-  it('should extract name from pasted YAML frontmatter and auto-fill name input', () => {
-    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
-
-    const markdown = `---
-name: my-cool-agent
-description: Does cool things
-model: sonnet
----
-
-# My Cool Agent`;
-
-    fireEvent.change(screen.getByTestId('specialist-markdown-editor'), {
-      target: { value: markdown },
-    });
-
-    // Name input should be auto-filled from YAML frontmatter
-    expect(screen.getByTestId('specialist-name-input')).toHaveValue('my-cool-agent');
   });
 });
 
@@ -607,7 +417,7 @@ describe('guided mode serialization', () => {
     expect(result).toContain('# Test Agent');
   });
 
-  it('should parse markdown into form state for mode switching', () => {
+  it('should parse markdown into form state', () => {
     const markdown = `---
 name: test-agent
 description: A test agent
@@ -684,28 +494,5 @@ describe('clone from existing', () => {
     // Clone dropdown should be present
     const cloneSelect = screen.getByTestId('specialist-clone-select');
     expect(cloneSelect).toBeInTheDocument();
-  });
-});
-
-describe('validation', () => {
-  it('should show error for missing required fields in real-time', async () => {
-    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
-
-    // Type invalid YAML into editor
-    const invalidMarkdown = `---
-name: test
----
-
-# Test`;
-
-    fireEvent.change(screen.getByTestId('specialist-markdown-editor'), {
-      target: { value: invalidMarkdown },
-    });
-
-    // Validation badge should appear after debounce
-    await waitFor(() => {
-      const badge = screen.queryByTestId('specialist-validation-badge');
-      expect(badge).toBeInTheDocument();
-    }, { timeout: 1000 });
   });
 });
