@@ -21,7 +21,7 @@ import {
   saveCredentials,
   deleteCredentials,
   resetSpecialist,
-} from '@main/stores/schedule-db';
+} from '@main/stores/yolium-db';
 import {
   scaffoldSpecialist,
   getDefaultTemplate,

@@ -8,8 +8,7 @@ import { createLogger } from '@main/lib/logger';
 import { closeAllPty } from '@main/services/pty-manager';
 import { closeAllContainers } from '@main/docker';
 import { scheduler } from '@main/services/scheduler';
-import { closeDb as closeYoliumDb } from '@main/stores/yolium-db';
-import { closeDb as closeScheduleDb } from '@main/stores/schedule-db';
+import { closeDb } from '@main/stores/yolium-db';
 
 const logger = createLogger('app-handlers');
 
@@ -28,8 +27,7 @@ export async function performCleanup(): Promise<void> {
   scheduler.stop();
   closeAllPty();
   await closeAllContainers();
-  closeYoliumDb();
-  closeScheduleDb();
+  closeDb();
   logger.info('Cleanup complete');
 }
 

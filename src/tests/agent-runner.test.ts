@@ -113,6 +113,11 @@ vi.mock('@main/stores/yolium-db', () => {
     loadProjectRegistry: () => ({ version: 1, projects: {} }),
     saveProjectRegistry: vi.fn(),
     registerProject: vi.fn(),
+    // Schedule functions (consolidated from schedule-db)
+    loadCredentials: vi.fn(() => ({})),
+    appendRunLog: vi.fn(),
+    appendAction: (...args: any[]) => mockAppendAction(...args),
+    pruneCredentials: vi.fn(() => 0),
   };
 });
 
@@ -140,12 +145,6 @@ vi.mock('@main/docker', () => ({
   stopAgentContainer: mockStopAgentContainer,
 }));
 
-// Mock schedule-db (unified store)
-vi.mock('@main/stores/schedule-db', () => ({
-  loadCredentials: vi.fn(() => ({})),
-  appendRunLog: vi.fn(),
-  appendAction: mockAppendAction,
-}));
 
 // Mock agent-protocol
 vi.mock('@main/services/agent-protocol', () => ({

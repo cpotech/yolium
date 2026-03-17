@@ -1,8 +1,7 @@
 /**
  * @module src/main/stores/yolium-db
- * Unified SQLite store for kanban boards and project registry.
- * Replaces kanban-store.ts (JSON files) and project-registry.ts (JSON file).
- * Follows the same patterns as schedule-db.ts.
+ * Unified SQLite store for kanban boards, project registry, and schedules.
+ * Single database at ~/.yolium/yolium.db.
  */
 
 import Database from 'better-sqlite3';
@@ -17,6 +16,15 @@ import type {
   CommentSource,
 } from '@shared/types/kanban';
 import type { KanbanAgentProvider } from '@shared/types/agent';
+import type {
+  ScheduleState,
+  SpecialistStatus,
+  ScheduledRun,
+  RunStats,
+  ActionLogEntry,
+  ActionStats,
+  ServiceCredentials,
+} from '@shared/types/schedule';
 import { createLogger } from '@main/lib/logger';
 
 const logger = createLogger('yolium-db');
@@ -29,6 +37,10 @@ function getDbPath(): string {
 
 function generateId(): string {
   return crypto.randomBytes(8).toString('hex');
+}
+
+function getSchedulesDir(): string {
+  return path.join(os.homedir(), '.yolium', 'schedules');
 }
 
 // ─── Path Normalization ───────────────────────────────────────────────────
@@ -108,6 +120,44 @@ function createSchema(database: Database.Database): void {
       folder_name TEXT NOT NULL,
       last_accessed TEXT NOT NULL,
       created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS schedule_state (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS runs (
+      id TEXT PRIMARY KEY,
+      specialist_id TEXT NOT NULL,
+      schedule_type TEXT NOT NULL,
+      started_at TEXT NOT NULL,
+      completed_at TEXT NOT NULL,
+      status TEXT NOT NULL,
+      tokens_used INTEGER NOT NULL DEFAULT 0,
+      cost_usd REAL NOT NULL DEFAULT 0,
+      summary TEXT NOT NULL DEFAULT '',
+      outcome TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_runs_specialist ON runs(specialist_id, started_at);
+
+    CREATE TABLE IF NOT EXISTS actions (
+      id TEXT PRIMARY KEY,
+      run_id TEXT NOT NULL,
+      specialist_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      data TEXT NOT NULL DEFAULT '{}',
+      timestamp TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_actions_specialist ON actions(specialist_id, timestamp);
+    CREATE INDEX IF NOT EXISTS idx_actions_run ON actions(run_id);
+
+    CREATE TABLE IF NOT EXISTS credentials (
+      specialist_id TEXT NOT NULL,
+      service_id TEXT NOT NULL,
+      key TEXT NOT NULL,
+      value TEXT NOT NULL,
+      PRIMARY KEY (specialist_id, service_id, key)
     );
   `);
 }
@@ -238,6 +288,206 @@ function migrateLegacyProjectRegistry(database: Database.Database): void {
   }
 }
 
+// ─── Schedule Migrations ──────────────────────────────────────────────────
+
+function migrateSchedulesDb(database: Database.Database): void {
+  const yoliumDir = path.join(os.homedir(), '.yolium');
+  const schedulesDbPath = path.join(yoliumDir, 'schedules.db');
+  const migratedPath = schedulesDbPath + '.migrated';
+
+  if (!fs.existsSync(schedulesDbPath) || fs.existsSync(migratedPath)) return;
+
+  let sourceDb: Database.Database | null = null;
+  try {
+    sourceDb = new Database(schedulesDbPath, { readonly: true });
+
+    const tables = sourceDb.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table'"
+    ).all() as Array<{ name: string }>;
+    const tableNames = new Set(tables.map(t => t.name));
+
+    database.transaction(() => {
+      if (tableNames.has('schedule_state')) {
+        const rows = sourceDb!.prepare('SELECT key, value FROM schedule_state').all() as any[];
+        const insert = database.prepare('INSERT OR IGNORE INTO schedule_state (key, value) VALUES (?, ?)');
+        for (const row of rows) insert.run(row.key, row.value);
+      }
+
+      if (tableNames.has('runs')) {
+        const rows = sourceDb!.prepare('SELECT * FROM runs').all() as any[];
+        const insert = database.prepare(
+          'INSERT OR IGNORE INTO runs (id, specialist_id, schedule_type, started_at, completed_at, status, tokens_used, cost_usd, summary, outcome) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        for (const row of rows) {
+          insert.run(row.id, row.specialist_id, row.schedule_type, row.started_at, row.completed_at, row.status, row.tokens_used, row.cost_usd, row.summary, row.outcome);
+        }
+      }
+
+      if (tableNames.has('actions')) {
+        const rows = sourceDb!.prepare('SELECT * FROM actions').all() as any[];
+        const insert = database.prepare(
+          'INSERT OR IGNORE INTO actions (id, run_id, specialist_id, action, data, timestamp) VALUES (?, ?, ?, ?, ?, ?)'
+        );
+        for (const row of rows) {
+          insert.run(row.id, row.run_id, row.specialist_id, row.action, row.data, row.timestamp);
+        }
+      }
+
+      if (tableNames.has('credentials')) {
+        const rows = sourceDb!.prepare('SELECT * FROM credentials').all() as any[];
+        const insert = database.prepare(
+          'INSERT OR IGNORE INTO credentials (specialist_id, service_id, key, value) VALUES (?, ?, ?, ?)'
+        );
+        for (const row of rows) {
+          insert.run(row.specialist_id, row.service_id, row.key, row.value);
+        }
+      }
+    })();
+
+    sourceDb.close();
+    sourceDb = null;
+
+    fs.renameSync(schedulesDbPath, migratedPath);
+  } catch (err) {
+    logger.warn('Failed to migrate schedules.db', { error: String(err) });
+    if (sourceDb) {
+      try { sourceDb.close(); } catch { /* ignore */ }
+    }
+  }
+}
+
+function migrateLegacyScheduleConfig(database: Database.Database): void {
+  const configPath = path.join(getSchedulesDir(), 'config.json');
+  if (!fs.existsSync(configPath)) return;
+
+  try {
+    const content = fs.readFileSync(configPath, 'utf-8');
+    const state = JSON.parse(content) as ScheduleState;
+
+    database.prepare(
+      'INSERT OR REPLACE INTO schedule_state (key, value) VALUES (?, ?)'
+    ).run('state', JSON.stringify(state));
+
+    fs.renameSync(configPath, configPath + '.migrated');
+  } catch (err) {
+    logger.warn('Failed to migrate legacy config', { error: String(err) });
+  }
+}
+
+function migrateLegacyRunHistory(database: Database.Database): void {
+  const schedulesDir = getSchedulesDir();
+  if (!fs.existsSync(schedulesDir)) return;
+
+  const insert = database.prepare(`
+    INSERT OR IGNORE INTO runs (id, specialist_id, schedule_type, started_at, completed_at, status, tokens_used, cost_usd, summary, outcome)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(schedulesDir);
+  } catch {
+    return;
+  }
+
+  for (const entry of entries) {
+    const historyPath = path.join(schedulesDir, entry, 'run_history.jsonl');
+    if (!fs.existsSync(historyPath)) continue;
+
+    try {
+      const content = fs.readFileSync(historyPath, 'utf-8');
+      for (const line of content.split('\n').filter(l => l.trim())) {
+        try {
+          const run = JSON.parse(line) as ScheduledRun;
+          insert.run(
+            run.id, run.specialistId, run.scheduleType,
+            run.startedAt, run.completedAt, run.status,
+            run.tokensUsed, run.costUsd, run.summary, run.outcome
+          );
+        } catch (err) {
+          logger.warn('Failed to parse run history line', { entry, error: String(err) });
+        }
+      }
+      fs.renameSync(historyPath, historyPath + '.migrated');
+    } catch (err) {
+      logger.warn('Failed to migrate run history file', { entry, error: String(err) });
+    }
+  }
+}
+
+function migrateLegacyActionLogs(database: Database.Database): void {
+  const schedulesDir = getSchedulesDir();
+  if (!fs.existsSync(schedulesDir)) return;
+
+  const insert = database.prepare(`
+    INSERT OR IGNORE INTO actions (id, run_id, specialist_id, action, data, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(schedulesDir);
+  } catch {
+    return;
+  }
+
+  for (const entry of entries) {
+    const actionsPath = path.join(schedulesDir, entry, 'actions.jsonl');
+    if (!fs.existsSync(actionsPath)) continue;
+
+    try {
+      const content = fs.readFileSync(actionsPath, 'utf-8');
+      for (const line of content.split('\n').filter(l => l.trim())) {
+        try {
+          const action = JSON.parse(line) as ActionLogEntry;
+          insert.run(
+            action.id, action.runId, action.specialistId,
+            action.action, JSON.stringify(action.data), action.timestamp
+          );
+        } catch (err) {
+          logger.warn('Failed to parse action log line', { entry, error: String(err) });
+        }
+      }
+      fs.renameSync(actionsPath, actionsPath + '.migrated');
+    } catch (err) {
+      logger.warn('Failed to migrate action log file', { entry, error: String(err) });
+    }
+  }
+}
+
+function migrateLegacyCredentials(database: Database.Database): void {
+  const credPath = path.join(os.homedir(), '.yolium', 'specialist-credentials.json');
+  if (!fs.existsSync(credPath)) return;
+
+  try {
+    const content = fs.readFileSync(credPath, 'utf-8');
+    const store = JSON.parse(content) as Record<string, ServiceCredentials>;
+
+    const insert = database.prepare(
+      'INSERT OR REPLACE INTO credentials (specialist_id, service_id, key, value) VALUES (?, ?, ?, ?)'
+    );
+
+    for (const [specialistId, services] of Object.entries(store)) {
+      for (const [serviceId, creds] of Object.entries(services)) {
+        for (const [key, value] of Object.entries(creds)) {
+          insert.run(specialistId, serviceId, key, value);
+        }
+      }
+    }
+
+    fs.renameSync(credPath, credPath + '.migrated');
+  } catch (err) {
+    logger.warn('Failed to migrate legacy credentials', { error: String(err) });
+  }
+}
+
+function migrateLegacyScheduleData(database: Database.Database): void {
+  migrateLegacyScheduleConfig(database);
+  migrateLegacyRunHistory(database);
+  migrateLegacyActionLogs(database);
+  migrateLegacyCredentials(database);
+}
+
 // ─── Database Lifecycle ───────────────────────────────────────────────────
 
 export function getDb(): Database.Database {
@@ -257,6 +507,8 @@ export function getDb(): Database.Database {
   createSchema(db);
   migrateLegacyBoards(db);
   migrateLegacyProjectRegistry(db);
+  migrateSchedulesDb(db);
+  migrateLegacyScheduleData(db);
 
   const version = db.pragma('user_version', { simple: true }) as number;
   if (version < 1) {
@@ -723,4 +975,413 @@ export function registerProject(projectPath: string): void {
     INSERT OR REPLACE INTO project_registry (dir_name, path, folder_name, last_accessed, created_at)
     VALUES (?, ?, ?, ?, ?)
   `).run(dirName, absolutePath, folderName, now, existing?.created_at || now);
+}
+
+// ─── Schedule State ───────────────────────────────────────────────────────
+
+function createDefaultState(): ScheduleState {
+  return { specialists: {}, globalEnabled: false };
+}
+
+export function getScheduleState(): ScheduleState {
+  const database = getDb();
+  const row = database.prepare('SELECT value FROM schedule_state WHERE key = ?').get('state') as { value: string } | undefined;
+  if (!row) return createDefaultState();
+
+  try {
+    return JSON.parse(row.value) as ScheduleState;
+  } catch {
+    return createDefaultState();
+  }
+}
+
+export function saveScheduleState(state: ScheduleState): void {
+  const database = getDb();
+  database.prepare('INSERT OR REPLACE INTO schedule_state (key, value) VALUES (?, ?)').run('state', JSON.stringify(state));
+}
+
+export function updateSpecialistStatus(
+  state: ScheduleState,
+  id: string,
+  updates: Partial<SpecialistStatus>
+): ScheduleState {
+  const existing = state.specialists[id];
+  if (!existing) return state;
+
+  return {
+    ...state,
+    specialists: {
+      ...state.specialists,
+      [id]: { ...existing, ...updates },
+    },
+  };
+}
+
+export function toggleSpecialist(
+  state: ScheduleState,
+  id: string,
+  enabled: boolean
+): ScheduleState {
+  return updateSpecialistStatus(state, id, { enabled });
+}
+
+export function toggleGlobal(
+  state: ScheduleState,
+  enabled: boolean
+): ScheduleState {
+  return { ...state, globalEnabled: enabled };
+}
+
+// ─── Reset ────────────────────────────────────────────────────────────────
+
+export function resetSpecialist(
+  state: ScheduleState,
+  specialistId: string,
+): ScheduleState {
+  const database = getDb();
+
+  database.prepare('DELETE FROM runs WHERE specialist_id = ?').run(specialistId);
+  database.prepare('DELETE FROM actions WHERE specialist_id = ?').run(specialistId);
+
+  const runsDir = path.join(getSchedulesDir(), specialistId, 'runs');
+  if (fs.existsSync(runsDir)) {
+    fs.rmSync(runsDir, { recursive: true, force: true });
+  }
+
+  const digestPath = path.join(getSchedulesDir(), specialistId, 'digest.md');
+  if (fs.existsSync(digestPath)) {
+    fs.rmSync(digestPath);
+  }
+
+  const workspaceDir = path.join(getSchedulesDir(), specialistId, 'workspace');
+  if (fs.existsSync(workspaceDir)) {
+    fs.rmSync(workspaceDir, { recursive: true, force: true });
+  }
+
+  const existing = state.specialists[specialistId];
+  if (!existing) return state;
+
+  const { skipEveryN: _, ...rest } = existing;
+  return {
+    ...state,
+    specialists: {
+      ...state.specialists,
+      [specialistId]: {
+        ...rest,
+        consecutiveNoAction: 0,
+        consecutiveFailures: 0,
+        totalRuns: 0,
+        successRate: 0,
+        weeklyCost: 0,
+      },
+    },
+  };
+}
+
+// ─── Run History ──────────────────────────────────────────────────────────
+
+export function appendRun(specialistId: string, run: ScheduledRun): void {
+  const database = getDb();
+  database.prepare(`
+    INSERT OR REPLACE INTO runs (id, specialist_id, schedule_type, started_at, completed_at, status, tokens_used, cost_usd, summary, outcome)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    run.id, run.specialistId, run.scheduleType,
+    run.startedAt, run.completedAt, run.status,
+    run.tokensUsed, run.costUsd, run.summary, run.outcome
+  );
+}
+
+export function getRecentRuns(specialistId: string, limit: number): ScheduledRun[] {
+  const database = getDb();
+  const rows = database.prepare(`
+    SELECT * FROM (
+      SELECT id, specialist_id, schedule_type, started_at, completed_at, status, tokens_used, cost_usd, summary, outcome
+      FROM runs WHERE specialist_id = ?
+      ORDER BY started_at DESC LIMIT ?
+    ) sub ORDER BY started_at ASC
+  `).all(specialistId, limit) as any[];
+
+  return rows.map(rowToRun);
+}
+
+export function getRunsSince(specialistId: string, since: Date): ScheduledRun[] {
+  const database = getDb();
+  const rows = database.prepare(`
+    SELECT id, specialist_id, schedule_type, started_at, completed_at, status, tokens_used, cost_usd, summary, outcome
+    FROM runs WHERE specialist_id = ? AND started_at >= ?
+    ORDER BY started_at ASC
+  `).all(specialistId, since.toISOString()) as any[];
+
+  return rows.map(rowToRun);
+}
+
+export function getRunStats(specialistId: string): RunStats {
+  const database = getDb();
+
+  const statsRow = database.prepare(`
+    SELECT
+      COUNT(*) as total_runs,
+      SUM(CASE WHEN outcome IN ('completed', 'no_action') THEN 1 ELSE 0 END) as success_count,
+      SUM(tokens_used) as total_tokens,
+      SUM(
+        (julianday(completed_at) - julianday(started_at)) * 86400000
+      ) as total_duration_ms
+    FROM runs WHERE specialist_id = ?
+  `).get(specialistId) as any;
+
+  if (!statsRow || statsRow.total_runs === 0) {
+    return { totalRuns: 0, successRate: 0, weeklyCost: 0, averageTokensPerRun: 0, averageDurationMs: 0 };
+  }
+
+  const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const costRow = database.prepare(`
+    SELECT COALESCE(SUM(cost_usd), 0) as weekly_cost
+    FROM runs WHERE specialist_id = ? AND started_at >= ?
+  `).get(specialistId, oneWeekAgo) as any;
+
+  return {
+    totalRuns: statsRow.total_runs,
+    successRate: (statsRow.success_count / statsRow.total_runs) * 100,
+    weeklyCost: costRow.weekly_cost,
+    averageTokensPerRun: statsRow.total_tokens / statsRow.total_runs,
+    averageDurationMs: statsRow.total_duration_ms / statsRow.total_runs,
+  };
+}
+
+export function trimHistory(specialistId: string, maxEntries: number): void {
+  const database = getDb();
+  database.prepare(`
+    DELETE FROM runs WHERE specialist_id = ? AND id NOT IN (
+      SELECT id FROM runs WHERE specialist_id = ?
+      ORDER BY started_at DESC LIMIT ?
+    )
+  `).run(specialistId, specialistId, maxEntries);
+}
+
+// ─── Per-Run Log Files (stay as files, not SQLite) ────────────────────────
+
+function getRunLogDir(specialistId: string): string {
+  return path.join(getSchedulesDir(), specialistId, 'runs');
+}
+
+function getRunLogPath(specialistId: string, runId: string): string {
+  return path.join(getRunLogDir(specialistId), `${runId}.log`);
+}
+
+export function appendRunLog(specialistId: string, runId: string, data: string): void {
+  const dir = getRunLogDir(specialistId);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const timestamp = new Date().toISOString();
+  fs.appendFileSync(getRunLogPath(specialistId, runId), `[${timestamp}] ${data}\n`, 'utf-8');
+}
+
+export function getRunLog(specialistId: string, runId: string): string {
+  const logPath = getRunLogPath(specialistId, runId);
+  if (!fs.existsSync(logPath)) return '';
+  return fs.readFileSync(logPath, 'utf-8');
+}
+
+// ─── Action Log ───────────────────────────────────────────────────────────
+
+export function appendAction(specialistId: string, entry: ActionLogEntry): void {
+  const database = getDb();
+  database.prepare(`
+    INSERT OR REPLACE INTO actions (id, run_id, specialist_id, action, data, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(entry.id, entry.runId, entry.specialistId, entry.action, JSON.stringify(entry.data), entry.timestamp);
+}
+
+export function getRecentActions(specialistId: string, limit: number): ActionLogEntry[] {
+  const database = getDb();
+  const rows = database.prepare(`
+    SELECT * FROM (
+      SELECT id, run_id, specialist_id, action, data, timestamp
+      FROM actions WHERE specialist_id = ?
+      ORDER BY timestamp DESC LIMIT ?
+    ) sub ORDER BY timestamp ASC
+  `).all(specialistId, limit) as any[];
+
+  return rows.map(rowToAction);
+}
+
+export function getActionsByRun(specialistId: string, runId: string): ActionLogEntry[] {
+  const database = getDb();
+  const rows = database.prepare(`
+    SELECT id, run_id, specialist_id, action, data, timestamp
+    FROM actions WHERE specialist_id = ? AND run_id = ?
+    ORDER BY timestamp ASC
+  `).all(specialistId, runId) as any[];
+
+  return rows.map(rowToAction);
+}
+
+export function getAllRecentActions(specialistIds: string[], limit: number): ActionLogEntry[] {
+  if (specialistIds.length === 0) return [];
+
+  const database = getDb();
+  const placeholders = specialistIds.map(() => '?').join(', ');
+  const rows = database.prepare(`
+    SELECT id, run_id, specialist_id, action, data, timestamp
+    FROM actions WHERE specialist_id IN (${placeholders})
+    ORDER BY timestamp DESC LIMIT ?
+  `).all(...specialistIds, limit) as any[];
+
+  return rows.map(rowToAction);
+}
+
+export function getActionStats(specialistId: string): ActionStats {
+  const database = getDb();
+
+  const totalRow = database.prepare(
+    'SELECT COUNT(*) as total FROM actions WHERE specialist_id = ?'
+  ).get(specialistId) as any;
+
+  const countRows = database.prepare(
+    'SELECT action, COUNT(*) as cnt FROM actions WHERE specialist_id = ? GROUP BY action'
+  ).all(specialistId) as any[];
+
+  const actionCounts: Record<string, number> = {};
+  for (const row of countRows) {
+    actionCounts[row.action] = row.cnt;
+  }
+
+  return {
+    totalActions: totalRow?.total || 0,
+    actionCounts,
+  };
+}
+
+// ─── Credentials ──────────────────────────────────────────────────────────
+
+function loadServiceCredentials(
+  database: Database.Database,
+  specialistId: string,
+  serviceId: string
+): Record<string, string> {
+  const rows = database.prepare(
+    'SELECT key, value FROM credentials WHERE specialist_id = ? AND service_id = ?'
+  ).all(specialistId, serviceId) as any[];
+
+  const result: Record<string, string> = {};
+  for (const row of rows) {
+    result[row.key] = row.value;
+  }
+  return result;
+}
+
+export function saveCredentials(
+  specialistId: string,
+  serviceId: string,
+  credentials: Record<string, string>
+): void {
+  if (Object.keys(credentials).length === 0) return;
+
+  const database = getDb();
+  const existing = loadServiceCredentials(database, specialistId, serviceId);
+
+  const upsert = database.prepare(
+    'INSERT OR REPLACE INTO credentials (specialist_id, service_id, key, value) VALUES (?, ?, ?, ?)'
+  );
+
+  for (const [key, value] of Object.entries(credentials)) {
+    if (value.length > 0 || !(key in existing)) {
+      upsert.run(specialistId, serviceId, key, value);
+    }
+  }
+}
+
+export function loadCredentials(specialistId: string): ServiceCredentials {
+  const database = getDb();
+  const rows = database.prepare(
+    'SELECT service_id, key, value FROM credentials WHERE specialist_id = ?'
+  ).all(specialistId) as any[];
+
+  const result: ServiceCredentials = {};
+  for (const row of rows) {
+    if (!result[row.service_id]) result[row.service_id] = {};
+    result[row.service_id][row.key] = row.value;
+  }
+  return result;
+}
+
+export function loadRedactedCredentials(
+  specialistId: string
+): Record<string, Record<string, boolean>> {
+  const credentials = loadCredentials(specialistId);
+  const redacted: Record<string, Record<string, boolean>> = {};
+  for (const [serviceId, creds] of Object.entries(credentials)) {
+    redacted[serviceId] = {};
+    for (const [key, value] of Object.entries(creds)) {
+      redacted[serviceId][key] = value.length > 0;
+    }
+  }
+  return redacted;
+}
+
+export function deleteCredentials(specialistId: string): void {
+  const database = getDb();
+  database.prepare('DELETE FROM credentials WHERE specialist_id = ?').run(specialistId);
+}
+
+export function pruneCredentials(
+  specialistId: string,
+  integrations: Array<{ service: string; env: Record<string, string> }>
+): number {
+  const database = getDb();
+
+  const validKeys = new Set<string>();
+  for (const integration of integrations) {
+    for (const key of Object.keys(integration.env)) {
+      validKeys.add(`${integration.service}\0${key}`);
+    }
+  }
+
+  const rows = database.prepare(
+    'SELECT service_id, key FROM credentials WHERE specialist_id = ?'
+  ).all(specialistId) as Array<{ service_id: string; key: string }>;
+
+  const del = database.prepare(
+    'DELETE FROM credentials WHERE specialist_id = ? AND service_id = ? AND key = ?'
+  );
+
+  let deleted = 0;
+  for (const row of rows) {
+    if (!validKeys.has(`${row.service_id}\0${row.key}`)) {
+      del.run(specialistId, row.service_id, row.key);
+      deleted++;
+    }
+  }
+
+  return deleted;
+}
+
+// ─── Schedule Row Helpers ─────────────────────────────────────────────────
+
+function rowToRun(row: any): ScheduledRun {
+  return {
+    id: row.id,
+    specialistId: row.specialist_id,
+    scheduleType: row.schedule_type,
+    startedAt: row.started_at,
+    completedAt: row.completed_at,
+    status: row.status,
+    tokensUsed: row.tokens_used,
+    costUsd: row.cost_usd,
+    summary: row.summary,
+    outcome: row.outcome,
+  };
+}
+
+function rowToAction(row: any): ActionLogEntry {
+  return {
+    id: row.id,
+    runId: row.run_id,
+    specialistId: row.specialist_id,
+    action: row.action,
+    data: safeJsonParse(row.data, {}),
+    timestamp: row.timestamp,
+  };
 }

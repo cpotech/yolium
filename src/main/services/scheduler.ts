@@ -20,7 +20,7 @@ import {
   getRecentRuns,
   getRunsSince,
   getRunStats,
-} from '@main/stores/schedule-db';
+} from '@main/stores/yolium-db';
 import type {
   SpecialistDefinition,
   ScheduledRun,

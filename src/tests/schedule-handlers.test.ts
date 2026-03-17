@@ -59,7 +59,7 @@ vi.mock('@main/services/specialist-loader', () => ({
   loadSpecialistRaw,
 }));
 
-vi.mock('@main/stores/schedule-db', () => ({
+vi.mock('@main/stores/yolium-db', () => ({
   getScheduleState,
   saveScheduleState,
   toggleSpecialist,

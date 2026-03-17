@@ -29,7 +29,7 @@ import type { ScheduledRun, ActionLogEntry } from '@shared/types/schedule';
 
 // We need to import fresh for each test to get clean DB state.
 // The module caches the singleton DB, so we re-import after resetModules.
-let scheduleDb: typeof import('@main/stores/schedule-db');
+let scheduleDb: typeof import('@main/stores/yolium-db');
 
 function makeRun(overrides: Partial<ScheduledRun> = {}): ScheduledRun {
   return {
@@ -69,7 +69,7 @@ describe('schedule-db', () => {
 
     // Reset module registry so each test gets a fresh DB singleton
     vi.resetModules();
-    scheduleDb = await import('@main/stores/schedule-db');
+    scheduleDb = await import('@main/stores/yolium-db');
   });
 
   afterEach(() => {
@@ -662,7 +662,7 @@ describe('schedule-db', () => {
       scheduleDb.closeDb();
 
       vi.resetModules();
-      scheduleDb = await import('@main/stores/schedule-db');
+      scheduleDb = await import('@main/stores/yolium-db');
 
       const database = scheduleDb.getDb();
       const version = database.pragma('user_version', { simple: true });
@@ -692,7 +692,7 @@ describe('schedule-db', () => {
       fs.writeFileSync(path.join(schedulesDir, 'config.json'), '{corrupted json');
 
       vi.resetModules();
-      scheduleDb = await import('@main/stores/schedule-db');
+      scheduleDb = await import('@main/stores/yolium-db');
       scheduleDb.getDb();
 
       expect(loggerWarnMock).toHaveBeenCalled();
@@ -709,7 +709,7 @@ describe('schedule-db', () => {
       fs.writeFileSync(path.join(specialistDir, 'run_history.jsonl'), '{bad\n{also bad\n');
 
       vi.resetModules();
-      scheduleDb = await import('@main/stores/schedule-db');
+      scheduleDb = await import('@main/stores/yolium-db');
       scheduleDb.getDb();
 
       // The inner catch for individual lines should log warnings
@@ -725,7 +725,7 @@ describe('schedule-db', () => {
       fs.writeFileSync(path.join(specialistDir, 'actions.jsonl'), '{corrupted\n');
 
       vi.resetModules();
-      scheduleDb = await import('@main/stores/schedule-db');
+      scheduleDb = await import('@main/stores/yolium-db');
       scheduleDb.getDb();
 
       expect(loggerWarnMock).toHaveBeenCalled();
@@ -740,7 +740,7 @@ describe('schedule-db', () => {
       fs.writeFileSync(path.join(yoliumDir, 'specialist-credentials.json'), 'not json');
 
       vi.resetModules();
-      scheduleDb = await import('@main/stores/schedule-db');
+      scheduleDb = await import('@main/stores/yolium-db');
       scheduleDb.getDb();
 
       expect(loggerWarnMock).toHaveBeenCalled();
@@ -773,7 +773,7 @@ describe('schedule-db', () => {
 
       // Re-import to trigger migration
       vi.resetModules();
-      scheduleDb = await import('@main/stores/schedule-db');
+      scheduleDb = await import('@main/stores/yolium-db');
 
       const state = scheduleDb.getScheduleState();
       expect(state.globalEnabled).toBe(true);
@@ -800,7 +800,7 @@ describe('schedule-db', () => {
       );
 
       vi.resetModules();
-      scheduleDb = await import('@main/stores/schedule-db');
+      scheduleDb = await import('@main/stores/yolium-db');
 
       const loaded = scheduleDb.getRecentRuns('test-specialist', 100);
       expect(loaded).toHaveLength(2);
@@ -827,7 +827,7 @@ describe('schedule-db', () => {
       );
 
       vi.resetModules();
-      scheduleDb = await import('@main/stores/schedule-db');
+      scheduleDb = await import('@main/stores/yolium-db');
 
       const loaded = scheduleDb.getRecentActions('test-specialist', 100);
       expect(loaded).toHaveLength(2);
@@ -851,7 +851,7 @@ describe('schedule-db', () => {
       );
 
       vi.resetModules();
-      scheduleDb = await import('@main/stores/schedule-db');
+      scheduleDb = await import('@main/stores/yolium-db');
 
       const loaded = scheduleDb.loadCredentials('twitter-growth');
       expect(loaded).toEqual({
@@ -865,7 +865,7 @@ describe('schedule-db', () => {
     it('should skip migration when no legacy files exist', async () => {
       scheduleDb.closeDb();
       vi.resetModules();
-      scheduleDb = await import('@main/stores/schedule-db');
+      scheduleDb = await import('@main/stores/yolium-db');
 
       // Should just work with empty state
       const state = scheduleDb.getScheduleState();

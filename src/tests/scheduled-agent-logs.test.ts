@@ -28,7 +28,7 @@ import * as path from 'node:path';
 import {
   appendRunLog,
   getRunLog,
-} from '@main/stores/schedule-db';
+} from '@main/stores/yolium-db';
 
 describe('scheduled-agent-logs', () => {
   beforeEach(() => {
