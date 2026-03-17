@@ -20,16 +20,6 @@ vi.mock('electron', () => ({
   },
 }));
 
-// Mock fs for kanban-store tests
-vi.mock('node:fs', () => ({
-  existsSync: vi.fn(() => true),
-  mkdirSync: vi.fn(),
-  writeFileSync: vi.fn(),
-  readFileSync: vi.fn(() => '{}'),
-  readdirSync: vi.fn(() => []),
-  unlinkSync: vi.fn(),
-}));
-
 // Mock git-config for getDisplayModel tests
 const mockLoadGitConfig = vi.fn();
 vi.mock('@main/git/git-config', () => ({
@@ -53,6 +43,81 @@ vi.mock('node:path', async () => {
     // (Docker bind mounts always need forward slashes)
     join: actual.posix.join,
     resolve: vi.fn((...args: string[]) => args[args.length - 1]),
+  };
+});
+
+// Mock yolium-db with in-memory kanban implementations
+// (avoids SQLite dependency which conflicts with mocked fs/os)
+vi.mock('@main/stores/yolium-db', () => {
+  let nextId = 0;
+  const generateId = () => `mock-${++nextId}`;
+  const VALID_COLUMNS = new Set(['backlog', 'ready', 'in-progress', 'verify', 'done']);
+  const VALID_AGENT_STATUSES = new Set(['idle', 'running', 'waiting', 'interrupted', 'completed', 'failed']);
+  const VALID_MERGE_STATUSES = new Set(['unmerged', 'merged', 'conflict']);
+  const VALID_AGENT_PROVIDERS = new Set(['claude', 'opencode', 'codex']);
+
+  return {
+    normalizeForHash: (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '') || '/',
+    createBoard: (projectPath: string) => ({
+      id: generateId(),
+      projectPath: projectPath.replace(/\\/g, '/').replace(/\/$/, '') || '/',
+      items: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }),
+    getBoard: () => null,
+    getOrCreateBoard: (projectPath: string) => ({
+      id: generateId(),
+      projectPath,
+      items: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }),
+    updateBoard: (board: any, updates: any) => {
+      Object.assign(board, updates, { updatedAt: new Date().toISOString() });
+      return board;
+    },
+    addItem: (board: any, params: any) => {
+      if (!params.title.trim()) throw new Error('Title is required');
+      const item = {
+        id: generateId(),
+        title: params.title,
+        description: params.description,
+        column: 'backlog',
+        branch: params.branch,
+        agentProvider: params.agentProvider,
+        agentType: params.agentType,
+        order: params.order,
+        model: params.model,
+        agentStatus: 'idle',
+        comments: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      board.items.push(item);
+      return item;
+    },
+    updateItem: (board: any, itemId: string, updates: any) => {
+      const item = board.items.find((i: any) => i.id === itemId);
+      if (!item) return null;
+      if (updates.title !== undefined && !updates.title.trim()) return null;
+      if (updates.column !== undefined && !VALID_COLUMNS.has(updates.column)) return null;
+      if (updates.agentStatus !== undefined && !VALID_AGENT_STATUSES.has(updates.agentStatus)) return null;
+      if (updates.mergeStatus !== undefined && !VALID_MERGE_STATUSES.has(updates.mergeStatus)) return null;
+      if (updates.agentProvider !== undefined && !VALID_AGENT_PROVIDERS.has(updates.agentProvider)) return null;
+      Object.assign(item, updates, { updatedAt: new Date().toISOString() });
+      return item;
+    },
+    addComment: () => null,
+    buildConversationHistory: () => '',
+    deleteItem: () => true,
+    deleteItems: () => [],
+    deleteBoard: () => true,
+    closeDb: vi.fn(),
+    getDb: vi.fn(),
+    loadProjectRegistry: () => ({ version: 1, projects: {} }),
+    saveProjectRegistry: vi.fn(),
+    registerProject: vi.fn(),
   };
 });
 
