@@ -5,7 +5,6 @@ import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-const mockConfigDialog = vi.fn();
 const mockAddDialog = vi.fn();
 const mockGetState = vi.fn();
 const mockGetSpecialists = vi.fn();
@@ -21,29 +20,6 @@ vi.mock('@renderer/components/schedule/ActionsView', () => ({
     return (
       <div data-testid="mock-actions-view">
         <div data-testid="mock-actions-initial-specialist">{props.initialSpecialist ?? 'all'}</div>
-      </div>
-    );
-  },
-}));
-
-vi.mock('@renderer/components/schedule/SpecialistConfigDialog', () => ({
-  SpecialistConfigDialog: (props: {
-    isOpen: boolean;
-    specialistId: string | null;
-    onClose: () => void;
-    onEdit?: () => void;
-  }) => {
-    mockConfigDialog(props);
-    if (!props.isOpen || !props.specialistId) return null;
-    return (
-      <div data-testid="mock-specialist-config-dialog">
-        <div>{props.specialistId}</div>
-        <button data-testid="mock-specialist-config-edit" onClick={() => props.onEdit?.()}>
-          Edit definition
-        </button>
-        <button data-testid="mock-specialist-config-close" onClick={props.onClose}>
-          Close
-        </button>
       </div>
     );
   },
@@ -146,7 +122,7 @@ describe('SchedulePanel', () => {
     expect(screen.getByTestId('specialist-actions-security-monitor')).toHaveTextContent('7');
   });
 
-  it('should open the configure dialog for a specialist and launch the edit dialog from the Edit definition action', async () => {
+  it('should open AddSpecialistDialog directly in edit mode when Configure button is clicked', async () => {
     render(<SchedulePanel />);
 
     await waitFor(() => {
@@ -154,12 +130,6 @@ describe('SchedulePanel', () => {
     });
 
     fireEvent.click(screen.getByTestId('configure-security-monitor'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('mock-specialist-config-dialog')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('mock-specialist-config-edit'));
 
     await waitFor(() => {
       expect(screen.getByTestId('mock-add-specialist-dialog')).toBeInTheDocument();
@@ -168,7 +138,7 @@ describe('SchedulePanel', () => {
     expect(screen.getByTestId('mock-editing-specialist-id')).toHaveTextContent('security-monitor');
   });
 
-  it('should reload the specialist list and close the editor after a successful scheduled-agent save', async () => {
+  it('should reload the specialist list and close the editor after a successful scheduled-agent save (direct edit flow)', async () => {
     render(<SchedulePanel />);
 
     await waitFor(() => {
@@ -176,10 +146,6 @@ describe('SchedulePanel', () => {
     });
 
     fireEvent.click(screen.getByTestId('configure-security-monitor'));
-    await waitFor(() => {
-      expect(screen.getByTestId('mock-specialist-config-edit')).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByTestId('mock-specialist-config-edit'));
 
     await waitFor(() => {
       expect(screen.getByTestId('mock-add-specialist-created')).toBeInTheDocument();
