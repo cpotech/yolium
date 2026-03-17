@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import Database from 'better-sqlite3';
 
 // Mock os.homedir to return a temp directory
 const { homedirMock } = vi.hoisted(() => ({
@@ -22,6 +23,16 @@ vi.mock('node:path', async () => {
     resolve: vi.fn((...args: string[]) => args[args.length - 1]),
   };
 });
+
+const loggerWarnMock = vi.fn();
+vi.mock('@main/lib/logger', () => ({
+  createLogger: vi.fn(() => ({
+    info: vi.fn(),
+    debug: vi.fn(),
+    warn: loggerWarnMock,
+    error: vi.fn(),
+  })),
+}));
 
 let yoliumDb: typeof import('@main/stores/yolium-db');
 
@@ -459,6 +470,163 @@ describe('yolium-db', () => {
       expect(history).toContain('[system]: Agent started');
       expect(history).toContain('[agent]: Which framework?');
       expect(history).toContain('[user]: Use React');
+    });
+  });
+
+  describe('database hardening', () => {
+    it('should set busy_timeout pragma on database initialization', () => {
+      const database = yoliumDb.getDb();
+      const timeout = database.pragma('busy_timeout', { simple: true });
+      expect(timeout).toBe(5000);
+    });
+
+    it('should set user_version pragma to 1 on fresh database', () => {
+      const database = yoliumDb.getDb();
+      const version = database.pragma('user_version', { simple: true });
+      expect(version).toBe(1);
+    });
+
+    it('should preserve user_version 1 on subsequent opens', async () => {
+      yoliumDb.getDb();
+      yoliumDb.closeDb();
+
+      vi.resetModules();
+      yoliumDb = await import('@main/stores/yolium-db');
+
+      const database = yoliumDb.getDb();
+      const version = database.pragma('user_version', { simple: true });
+      expect(version).toBe(1);
+    });
+
+    it('should update prUrl via updateItem without type errors', () => {
+      const board = yoliumDb.createBoard('/home/user/project');
+      const item = yoliumDb.addItem(board, {
+        title: 'Test PR',
+        description: 'desc',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      const updated = yoliumDb.updateItem(board, item.id, { prUrl: 'https://github.com/org/repo/pull/42' });
+      expect(updated).not.toBeNull();
+      expect(updated!.prUrl).toBe('https://github.com/org/repo/pull/42');
+
+      const reloaded = yoliumDb.getBoard('/home/user/project');
+      expect(reloaded!.items[0].prUrl).toBe('https://github.com/org/repo/pull/42');
+    });
+
+    it('should handle malformed JSON in agent_question_options gracefully', () => {
+      const board = yoliumDb.createBoard('/home/user/project');
+      const item = yoliumDb.addItem(board, {
+        title: 'Test',
+        description: 'desc',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      // Directly insert malformed JSON into the DB
+      const database = yoliumDb.getDb();
+      database.prepare('UPDATE kanban_items SET agent_question_options = ? WHERE id = ?')
+        .run('{bad json', item.id);
+
+      const reloaded = yoliumDb.getBoard('/home/user/project');
+      expect(reloaded).not.toBeNull();
+      expect(reloaded!.items[0].agentQuestionOptions).toEqual([]);
+    });
+
+    it('should handle malformed JSON in test_specs gracefully', () => {
+      const board = yoliumDb.createBoard('/home/user/project');
+      const item = yoliumDb.addItem(board, {
+        title: 'Test',
+        description: 'desc',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      const database = yoliumDb.getDb();
+      database.prepare('UPDATE kanban_items SET test_specs = ? WHERE id = ?')
+        .run('not valid json', item.id);
+
+      const reloaded = yoliumDb.getBoard('/home/user/project');
+      expect(reloaded).not.toBeNull();
+      expect(reloaded!.items[0].testSpecs).toEqual([]);
+    });
+
+    it('should handle malformed JSON in comment options gracefully', () => {
+      const board = yoliumDb.createBoard('/home/user/project');
+      const item = yoliumDb.addItem(board, {
+        title: 'Test',
+        description: 'desc',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      yoliumDb.addComment(board, item.id, 'agent', 'Which approach?', ['A', 'B']);
+
+      // Corrupt the comment options in the DB
+      const database = yoliumDb.getDb();
+      database.prepare('UPDATE kanban_comments SET options = ? WHERE item_id = ?')
+        .run('corrupted', item.id);
+
+      const reloaded = yoliumDb.getBoard('/home/user/project');
+      expect(reloaded).not.toBeNull();
+      expect(reloaded!.items[0].comments[0].options).toEqual([]);
+    });
+
+    it('should wrap addComment INSERT and UPDATE in a single transaction', () => {
+      const board = yoliumDb.createBoard('/home/user/project');
+      const item = yoliumDb.addItem(board, {
+        title: 'Test',
+        description: 'desc',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      // Verify both the comment and updated_at are set atomically
+      const comment = yoliumDb.addComment(board, item.id, 'user', 'Hello');
+      expect(comment).not.toBeNull();
+
+      const database = yoliumDb.getDb();
+      const itemRow = database.prepare('SELECT updated_at FROM kanban_items WHERE id = ?').get(item.id) as any;
+      const commentRow = database.prepare('SELECT timestamp FROM kanban_comments WHERE item_id = ?').get(item.id) as any;
+
+      // Both timestamps should match (set in same transaction)
+      expect(itemRow.updated_at).toBe(commentRow.timestamp);
+    });
+
+    it('should update order via updateItem fieldMap', () => {
+      const board = yoliumDb.createBoard('/home/user/project');
+      const item = yoliumDb.addItem(board, {
+        title: 'Test',
+        description: 'desc',
+        agentProvider: 'claude',
+        order: 0,
+      });
+
+      const updated = yoliumDb.updateItem(board, item.id, { order: 5 });
+      expect(updated).not.toBeNull();
+      expect(updated!.order).toBe(5);
+
+      const reloaded = yoliumDb.getBoard('/home/user/project');
+      expect(reloaded!.items[0].order).toBe(5);
+    });
+
+    it('should log a warning when legacy board migration fails on a corrupted file', async () => {
+      yoliumDb.closeDb();
+      loggerWarnMock.mockClear();
+
+      // Create a corrupted board JSON file
+      const boardsDir = path.join(tempDir, '.yolium', 'boards');
+      fs.mkdirSync(boardsDir, { recursive: true });
+      fs.writeFileSync(path.join(boardsDir, 'corrupted.json'), '{invalid json content');
+
+      vi.resetModules();
+      yoliumDb = await import('@main/stores/yolium-db');
+
+      // Trigger DB initialization which runs migration
+      yoliumDb.getDb();
+
+      expect(loggerWarnMock).toHaveBeenCalled();
     });
   });
 

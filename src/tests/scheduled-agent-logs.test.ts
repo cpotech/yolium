@@ -15,6 +15,15 @@ vi.mock('node:os', () => ({
   homedir: vi.fn(() => '/home/test'),
 }));
 
+vi.mock('@main/lib/logger', () => ({
+  createLogger: vi.fn(() => ({
+    info: vi.fn(),
+    debug: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  })),
+}));
+
 import * as path from 'node:path';
 import {
   appendRunLog,
