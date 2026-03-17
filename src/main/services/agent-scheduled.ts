@@ -12,7 +12,7 @@ import {
   checkAgentAuth,
   getAgentSession,
 } from '@main/docker';
-import { appendRunLog, appendAction, loadCredentials, pruneCredentials } from '@main/stores/schedule-db';
+import { appendRunLog, appendAction, loadCredentials, pruneCredentials } from '@main/stores/yolium-db';
 import type { ActionMessage, CompleteMessage, ErrorMessage, RunResultMessage } from '@shared/types/agent';
 import type { SpecialistDefinition, ScheduleType, RunOutcome } from '@shared/types/schedule';
 

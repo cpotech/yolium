@@ -76,7 +76,7 @@ vi.mock('@main/services/specialist-readiness', () => ({
 }));
 
 // Mock schedule-db (the unified store)
-vi.mock('@main/stores/schedule-db', () => ({
+vi.mock('@main/stores/yolium-db', () => ({
   getScheduleState: vi.fn(() => ({
     specialists: {
       'security-monitor': {
@@ -121,7 +121,7 @@ vi.mock('@main/lib/logger', () => ({
 }));
 
 import { CronScheduler } from '@main/services/scheduler';
-import { getScheduleState, appendRun, getRecentRuns, getRunStats, getRunsSince, saveScheduleState, updateSpecialistStatus } from '@main/stores/schedule-db';
+import { getScheduleState, appendRun, getRecentRuns, getRunStats, getRunsSince, saveScheduleState, updateSpecialistStatus } from '@main/stores/yolium-db';
 import { BrowserWindow } from 'electron';
 import type { ScheduledRun } from '@shared/types/schedule';
 
