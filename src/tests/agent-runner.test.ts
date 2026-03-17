@@ -19,12 +19,102 @@ vi.mock('node:fs', () => ({
   readFileSync: vi.fn(() => '{}'),
   readdirSync: vi.fn(() => []),
   unlinkSync: vi.fn(),
+  chmodSync: vi.fn(),
 }));
 
 vi.mock('node:os', () => ({
   homedir: vi.fn(() => '/home/test'),
   platform: vi.fn(() => 'linux'),
+  tmpdir: vi.fn(() => '/tmp'),
 }));
+
+// Mock yolium-db with in-memory kanban implementations
+// (avoids SQLite dependency which conflicts with the node:fs mock)
+vi.mock('@main/stores/yolium-db', () => {
+  let nextId = 0;
+  const generateId = () => `mock-${++nextId}`;
+  const VALID_COLUMNS = new Set(['backlog', 'ready', 'in-progress', 'verify', 'done']);
+  const VALID_AGENT_STATUSES = new Set(['idle', 'running', 'waiting', 'interrupted', 'completed', 'failed']);
+  const VALID_MERGE_STATUSES = new Set(['unmerged', 'merged', 'conflict']);
+  const VALID_AGENT_PROVIDERS = new Set(['claude', 'opencode', 'codex']);
+
+  return {
+    normalizeForHash: (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '') || '/',
+    createBoard: (projectPath: string) => ({
+      id: generateId(),
+      projectPath: projectPath.replace(/\\/g, '/').replace(/\/$/, '') || '/',
+      items: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }),
+    getBoard: () => null,
+    getOrCreateBoard: (projectPath: string) => ({
+      id: generateId(),
+      projectPath,
+      items: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }),
+    updateBoard: (board: any, updates: any) => {
+      Object.assign(board, updates, { updatedAt: new Date().toISOString() });
+      return board;
+    },
+    addItem: (board: any, params: any) => {
+      if (!params.title.trim()) throw new Error('Title is required');
+      const item = {
+        id: generateId(),
+        title: params.title,
+        description: params.description,
+        column: 'backlog',
+        branch: params.branch,
+        agentProvider: params.agentProvider,
+        agentType: params.agentType,
+        order: params.order,
+        model: params.model,
+        agentStatus: 'idle',
+        comments: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      board.items.push(item);
+      return item;
+    },
+    updateItem: (board: any, itemId: string, updates: any) => {
+      const item = board.items.find((i: any) => i.id === itemId);
+      if (!item) return null;
+      if (updates.title !== undefined && !updates.title.trim()) return null;
+      if (updates.column !== undefined && !VALID_COLUMNS.has(updates.column)) return null;
+      if (updates.agentStatus !== undefined && !VALID_AGENT_STATUSES.has(updates.agentStatus)) return null;
+      if (updates.mergeStatus !== undefined && !VALID_MERGE_STATUSES.has(updates.mergeStatus)) return null;
+      if (updates.agentProvider !== undefined && !VALID_AGENT_PROVIDERS.has(updates.agentProvider)) return null;
+      Object.assign(item, updates, { updatedAt: new Date().toISOString() });
+      return item;
+    },
+    addComment: (board: any, itemId: string, source: string, text: string, options?: string[]) => {
+      const item = board.items.find((i: any) => i.id === itemId);
+      if (!item) return null;
+      const comment = {
+        id: generateId(),
+        source,
+        text,
+        timestamp: new Date().toISOString(),
+        ...(options && options.length > 0 ? { options } : {}),
+      };
+      item.comments.push(comment);
+      return comment;
+    },
+    buildConversationHistory: (item: any) =>
+      item.comments.map((c: any) => `[${c.source}]: ${c.text}`).join('\n\n'),
+    deleteItem: () => true,
+    deleteItems: () => [],
+    deleteBoard: () => true,
+    closeDb: vi.fn(),
+    getDb: vi.fn(),
+    loadProjectRegistry: () => ({ version: 1, projects: {} }),
+    saveProjectRegistry: vi.fn(),
+    registerProject: vi.fn(),
+  };
+});
 
 // Mock Docker module for startScheduledAgent tests
 const {
@@ -536,7 +626,6 @@ describe('agent-runner', () => {
       let capturedConfig: Record<string, unknown> | undefined;
       mockCreateAgentContainer.mockImplementation((config: Record<string, unknown>, callbacks: { onExit: (code: number) => void }) => {
         capturedConfig = config;
-        // Simulate immediate exit
         setTimeout(() => callbacks.onExit(0), 0);
         return Promise.resolve('session-123');
       });
@@ -595,7 +684,6 @@ describe('agent-runner', () => {
 
     it('should capture session usage even when container exits quickly', async () => {
       mockCreateAgentContainer.mockImplementation((_config: unknown, callbacks: { onExit: (code: number) => void }) => {
-        // Container exits immediately after promise resolves
         setTimeout(() => callbacks.onExit(0), 0);
         return Promise.resolve('session-fast');
       });

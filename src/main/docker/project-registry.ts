@@ -11,51 +11,28 @@ import { createLogger } from '@main/lib/logger';
 import { loadGitConfig, generateGitCredentials, getHostClaudeCredentialsPath, getHostCodexCredentialsPath } from '@main/git/git-config';
 import { getValidatedSharedDirs } from '@main/services/project-config';
 import { getProjectDirName, toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
+import {
+  loadProjectRegistry as loadProjectRegistryDb,
+  saveProjectRegistry as saveProjectRegistryDb,
+  registerProject as registerProjectDb,
+} from '@main/stores/yolium-db';
 
 const logger = createLogger('project-registry');
 
-interface ProjectEntry {
-  path: string;
-  folderName: string;
-  lastAccessed: string;  // ISO timestamp
-  createdAt: string;     // ISO timestamp
-}
-
-interface ProjectRegistry {
-  version: 1;
-  projects: Record<string, ProjectEntry>;  // dirName → entry
-}
-
 /**
- * Get the path to the project registry file.
- * @returns Path to project-registry.json
+ * Load the project registry from SQLite.
+ * @returns Parsed registry or empty registry if no entries exist
  */
-function getProjectRegistryPath(): string {
-  return path.join(os.homedir(), '.yolium', 'project-registry.json');
+export function loadProjectRegistry() {
+  return loadProjectRegistryDb();
 }
 
 /**
- * Load the project registry from disk.
- * @returns Parsed registry or empty registry if file doesn't exist
- */
-export function loadProjectRegistry(): ProjectRegistry {
-  const registryPath = getProjectRegistryPath();
-  try {
-    const data = fs.readFileSync(registryPath, 'utf-8');
-    return JSON.parse(data);
-  } catch {
-    return { version: 1, projects: {} };
-  }
-}
-
-/**
- * Save the project registry to disk.
+ * Save the project registry to SQLite.
  * @param registry - The registry to save
  */
-export function saveProjectRegistry(registry: ProjectRegistry): void {
-  const registryPath = getProjectRegistryPath();
-  fs.mkdirSync(path.dirname(registryPath), { recursive: true });
-  fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2));
+export function saveProjectRegistry(registry: ReturnType<typeof loadProjectRegistryDb>): void {
+  saveProjectRegistryDb(registry);
 }
 
 /**
@@ -65,22 +42,8 @@ export function saveProjectRegistry(registry: ProjectRegistry): void {
  * @param projectPath - The project path to register
  */
 export function registerProject(projectPath: string): void {
-  const absolutePath = path.resolve(projectPath);
-  const dirName = getProjectDirName(absolutePath);
-  const now = new Date().toISOString();
-
-  const registry = loadProjectRegistry();
-  const existing = registry.projects[dirName];
-
-  registry.projects[dirName] = {
-    path: absolutePath,
-    folderName: path.basename(absolutePath),
-    lastAccessed: now,
-    createdAt: existing?.createdAt || now,
-  };
-
-  saveProjectRegistry(registry);
-  logger.debug('Project registered', { dirName, path: absolutePath });
+  registerProjectDb(projectPath);
+  logger.debug('Project registered', { path: projectPath });
 }
 
 /**
