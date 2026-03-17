@@ -33,8 +33,6 @@ interface GuidedFormState {
   systemPrompt: string;
 }
 
-type DialogMode = 'paste' | 'guided';
-
 const AVAILABLE_TOOLS = ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep', 'WebSearch', 'WebFetch'];
 const MODELS = ['haiku', 'sonnet', 'opus'];
 const MEMORY_STRATEGIES: MemoryStrategy[] = ['distill_daily', 'distill_weekly', 'raw'];
@@ -52,68 +50,6 @@ export function sanitizeSpecialistName(value: string): string {
     .replace(/[^a-z0-9-]/g, '')
     .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '');
-}
-
-export function tryParseIntegrations(markdown: string): ServiceBlock[] {
-  try {
-    const normalizedMarkdown = normalizeMarkdownNewlines(markdown);
-    const match = normalizedMarkdown.match(/^---\n([\s\S]*?)\n---/);
-    if (!match) return [];
-
-    const frontmatter = match[1];
-    const integrationsMatch = frontmatter.match(/integrations:\s*\n((?:\s+-[\s\S]*?)(?=\n\w|\n---|$))/);
-    if (!integrationsMatch) return [];
-
-    const services: ServiceBlock[] = [];
-    const lines = integrationsMatch[1].split('\n');
-    let currentService: ServiceBlock | null = null;
-    let inEnv = false;
-
-    for (const line of lines) {
-      const serviceMatch = line.match(/^\s+-\s+service:\s*(.+)/);
-      if (serviceMatch) {
-        if (currentService) services.push(currentService);
-        currentService = { name: serviceMatch[1].trim(), credentials: [] };
-        inEnv = false;
-        continue;
-      }
-
-      if (line.match(/^\s+env:\s*$/)) {
-        inEnv = true;
-        continue;
-      }
-
-      if (inEnv && currentService) {
-        const envMatch = line.match(/^\s+(\w+):\s*(.*)/);
-        if (envMatch) {
-          currentService.credentials.push({ key: envMatch[1], value: '' });
-        }
-      }
-    }
-    if (currentService) services.push(currentService);
-    return services;
-  } catch {
-    return [];
-  }
-}
-
-function extractNameFromMarkdown(markdown: string): string | null {
-  const match = normalizeMarkdownNewlines(markdown).match(/^---\n[\s\S]*?name:\s*(.+)/m);
-  return match ? match[1].trim() : null;
-}
-
-function validateFrontmatter(markdown: string): { valid: boolean; error?: string } {
-  const fmMatch = normalizeMarkdownNewlines(markdown).match(/^---\n([\s\S]*?)\n---/);
-  if (!fmMatch) return { valid: false, error: 'Missing frontmatter (---...---)' };
-
-  const fm = fmMatch[1];
-  if (!fm.match(/name:\s*.+/)) return { valid: false, error: 'Missing required field: name' };
-  if (!fm.match(/description:\s*.+/)) return { valid: false, error: 'Missing required field: description' };
-  if (!fm.match(/model:\s*.+/)) return { valid: false, error: 'Missing required field: model' };
-  if (!fm.match(/tools:/)) return { valid: false, error: 'Missing required field: tools' };
-  if (!fm.match(/schedules:/)) return { valid: false, error: 'Missing required field: schedules' };
-
-  return { valid: true };
 }
 
 const DEFAULT_GUIDED_STATE: GuidedFormState = {
@@ -138,23 +74,6 @@ function createInitialGuidedState(): GuidedFormState {
     schedules: [{ ...DEFAULT_GUIDED_SCHEDULE }],
     integrations: [],
   };
-}
-
-function mergeServiceBlocks(previous: ServiceBlock[], next: ServiceBlock[]): ServiceBlock[] {
-  return next.map((newService) => {
-    const existing = previous.find((service) => service.name === newService.name);
-    if (!existing) {
-      return newService;
-    }
-
-    return {
-      name: newService.name,
-      credentials: newService.credentials.map((credential) => {
-        const existingCredential = existing.credentials.find((item) => item.key === credential.key);
-        return existingCredential ? existingCredential : credential;
-      }),
-    };
-  });
 }
 
 export function serializeGuidedFormToMarkdown(form: GuidedFormState): string {
@@ -352,50 +271,20 @@ export function AddSpecialistDialog({
   editingSpecialistId = null,
 }: AddSpecialistDialogProps): React.ReactElement | null {
   const isEditMode = Boolean(editingSpecialistId);
-  const [mode, setMode] = useState<DialogMode>('paste');
   const [name, setName] = useState('');
-  const [markdownContent, setMarkdownContent] = useState('');
   const [services, setServices] = useState<ServiceBlock[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [templateName, setTemplateName] = useState<string | null>(null);
   const [existingSpecialists, setExistingSpecialists] = useState<string[]>([]);
-  const [validation, setValidation] = useState<{ valid: boolean; error?: string } | null>(null);
   const [guidedForm, setGuidedForm] = useState<GuidedFormState>(createInitialGuidedState());
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const userHasEdited = useRef(false);
-  const validationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetDialogState = useCallback((lockedSpecialistId: string | null) => {
-    setMode('paste');
     setName(lockedSpecialistId || '');
-    setMarkdownContent('');
     setServices([]);
     setError(null);
     setIsSubmitting(false);
-    setTemplateName(null);
-    setValidation(null);
     setGuidedForm(createInitialGuidedState());
-    userHasEdited.current = false;
-  }, []);
-
-  const applyMarkdownState = useCallback((
-    content: string,
-    options: { specialistId?: string; preserveEdited?: boolean } = {}
-  ) => {
-    const specialistId = options.specialistId ?? extractNameFromMarkdown(content) ?? '';
-    setMarkdownContent(content);
-    setName(specialistId);
-    setGuidedForm({
-      ...parseMarkdownToGuidedForm(content),
-      name: specialistId,
-    });
-    setServices((prev) => mergeServiceBlocks(prev, tryParseIntegrations(content)));
-    setValidation(validateFrontmatter(content));
-
-    if (options.preserveEdited) {
-      userHasEdited.current = true;
-    }
   }, []);
 
   // Load existing specialists for clone dropdown
@@ -419,6 +308,7 @@ export function AddSpecialistDialog({
     }
   }, [editingSpecialistId, isOpen, resetDialogState]);
 
+  // Load existing definition in edit mode
   useEffect(() => {
     if (!isOpen || !editingSpecialistId) return;
 
@@ -429,24 +319,35 @@ export function AddSpecialistDialog({
     ])
       .then(([raw, redactedCreds]) => {
         if (cancelled) return;
-        applyMarkdownState(raw, { specialistId: editingSpecialistId });
 
-        // Merge stored credential status into service blocks so the UI
-        // shows which keys are already configured in the database.
+        // Parse raw markdown into guided form state
+        const parsed = parseMarkdownToGuidedForm(raw);
+        parsed.name = editingSpecialistId;
+        setGuidedForm(parsed);
+        setName(editingSpecialistId);
+
+        // Derive service blocks from integrations
+        const serviceBlocks: ServiceBlock[] = parsed.integrations.map((int) => ({
+          name: int.service,
+          credentials: Object.keys(int.env).map((key) => ({ key, value: '' })),
+        }));
+
+        // Merge stored credential status into service blocks
         if (Object.keys(redactedCreds).length > 0) {
-          setServices((prev) =>
-            prev.map((service) => {
-              const storedKeys = redactedCreds[service.name];
-              if (!storedKeys) return service;
-              return {
-                ...service,
-                credentials: service.credentials.map((cred) => ({
-                  ...cred,
-                  configured: storedKeys[cred.key] === true,
-                })),
-              };
-            })
-          );
+          const merged = serviceBlocks.map((service) => {
+            const storedKeys = redactedCreds[service.name];
+            if (!storedKeys) return service;
+            return {
+              ...service,
+              credentials: service.credentials.map((cred) => ({
+                ...cred,
+                configured: storedKeys[cred.key] === true,
+              })),
+            };
+          });
+          setServices(merged);
+        } else {
+          setServices(serviceBlocks);
         }
       })
       .catch((err) => {
@@ -458,57 +359,12 @@ export function AddSpecialistDialog({
     return () => {
       cancelled = true;
     };
-  }, [applyMarkdownState, editingSpecialistId, isOpen]);
-
-  // Fetch and populate template when templateName changes
-  useEffect(() => {
-    if (!templateName || isEditMode) return;
-    let cancelled = false;
-    window.electronAPI.schedule.getTemplate(templateName).then((template) => {
-      if (!cancelled && !userHasEdited.current) {
-        setMarkdownContent(template);
-      }
-    });
-    return () => { cancelled = true; };
-  }, [isEditMode, templateName]);
+  }, [editingSpecialistId, isOpen]);
 
   const canCreate = useMemo(
-    () => name.trim().length > 0 && !isSubmitting && (!isEditMode || markdownContent.trim().length > 0),
-    [isEditMode, isSubmitting, markdownContent, name]
+    () => name.trim().length > 0 && !isSubmitting,
+    [isSubmitting, name]
   );
-
-  // Live validation (debounced)
-  const runValidation = useCallback((content: string) => {
-    if (validationTimer.current) clearTimeout(validationTimer.current);
-    if (!content.trim()) {
-      setValidation(null);
-      return;
-    }
-    validationTimer.current = setTimeout(() => {
-      setValidation(validateFrontmatter(content));
-    }, 300);
-  }, []);
-
-  const handleMarkdownChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setMarkdownContent(value);
-    setError(null);
-    userHasEdited.current = true;
-
-    // Auto-detect name from pasted YAML
-    const detectedName = extractNameFromMarkdown(value);
-    if (!isEditMode && detectedName && !name) {
-      setName(detectedName);
-    }
-
-    // Parse integrations for credential fields
-    const parsed = tryParseIntegrations(value);
-    if (parsed.length > 0) {
-      setServices(prev => mergeServiceBlocks(prev, parsed));
-    }
-
-    runValidation(value);
-  }, [isEditMode, name, runValidation]);
 
   const handleSubmit = useCallback(async () => {
     const targetSpecialistId = isEditMode
@@ -521,22 +377,16 @@ export function AddSpecialistDialog({
     setIsSubmitting(true);
 
     try {
-      let content: string | undefined;
-      if (mode === 'guided') {
-        const formWithName = { ...guidedForm, name: targetSpecialistId };
-        content = serializeGuidedFormToMarkdown(formWithName);
-      } else {
-        content = markdownContent.trim() ? markdownContent : undefined;
-      }
+      const formWithName = { ...guidedForm, name: targetSpecialistId };
+      const content = serializeGuidedFormToMarkdown(formWithName);
 
       if (isEditMode) {
-        await window.electronAPI.schedule.updateDefinition(targetSpecialistId, content || '');
+        await window.electronAPI.schedule.updateDefinition(targetSpecialistId, content);
       } else {
-        const options = content ? { content } : undefined;
-        await window.electronAPI.schedule.scaffold(targetSpecialistId, options);
+        await window.electronAPI.schedule.scaffold(targetSpecialistId, { content });
       }
 
-      // Save credentials from the bottom Service Credentials section
+      // Save credentials from the Service Credentials section
       for (const service of services) {
         if (!service.name.trim()) continue;
         const creds: Record<string, string> = {};
@@ -552,21 +402,19 @@ export function AddSpecialistDialog({
         }
       }
 
-      // Also save credentials from guided mode integrations (these are separate from services)
-      if (mode === 'guided') {
-        for (const integration of guidedForm.integrations) {
-          if (!integration.service.trim()) continue;
-          const creds: Record<string, string> = {};
-          let hasValues = false;
-          for (const [key, value] of Object.entries(integration.env)) {
-            if (key.trim() && value) {
-              creds[key.trim()] = value;
-              hasValues = true;
-            }
+      // Save credentials from guided form integrations
+      for (const integration of guidedForm.integrations) {
+        if (!integration.service.trim()) continue;
+        const creds: Record<string, string> = {};
+        let hasValues = false;
+        for (const [key, value] of Object.entries(integration.env)) {
+          if (key.trim() && value) {
+            creds[key.trim()] = value;
+            hasValues = true;
           }
-          if (hasValues) {
-            await window.electronAPI.schedule.saveCredentials(targetSpecialistId, integration.service.trim(), creds);
-          }
+        }
+        if (hasValues) {
+          await window.electronAPI.schedule.saveCredentials(targetSpecialistId, integration.service.trim(), creds);
         }
       }
 
@@ -582,16 +430,12 @@ export function AddSpecialistDialog({
     } finally {
       setIsSubmitting(false);
     }
-  }, [editingSpecialistId, guidedForm, isEditMode, markdownContent, mode, name, onCreated, services]);
+  }, [editingSpecialistId, guidedForm, isEditMode, name, onCreated, services]);
 
   const handleNameBlur = useCallback(() => {
     if (isEditMode) return;
     const sanitized = sanitizeSpecialistName(name);
     setName(sanitized);
-
-    if (sanitized && !userHasEdited.current) {
-      setTemplateName(sanitized);
-    }
   }, [isEditMode, name]);
 
   const handleBackdropClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -662,39 +506,28 @@ export function AddSpecialistDialog({
     ));
   }, []);
 
-  // Mode switching
-  const handleModeSwitch = useCallback((newMode: DialogMode) => {
-    if (newMode === mode) return;
-
-    if (newMode === 'guided' && markdownContent.trim()) {
-      // Parse markdown into guided form
-      const parsed = parseMarkdownToGuidedForm(markdownContent);
-      if (name) parsed.name = name;
-      setGuidedForm(parsed);
-    } else if (newMode === 'paste') {
-      // Serialize guided form to markdown
-      const formWithName = { ...guidedForm, name: name || guidedForm.name };
-      const serialized = serializeGuidedFormToMarkdown(formWithName);
-      setMarkdownContent(serialized);
-      userHasEdited.current = true;
-      runValidation(serialized);
-    }
-
-    setMode(newMode);
-  }, [mode, markdownContent, name, guidedForm, runValidation]);
-
   // Clone handler
   const handleClone = useCallback(async (specialistName: string) => {
     if (!specialistName) return;
     try {
       const raw = await window.electronAPI.schedule.getRawDefinition(specialistName);
-      setMode('paste');
-      applyMarkdownState(raw, { specialistId: '', preserveEdited: true });
-      runValidation(raw);
+
+      // Parse into guided form and clear the name for the user to provide
+      const parsed = parseMarkdownToGuidedForm(raw);
+      parsed.name = '';
+      setGuidedForm(parsed);
+      setName('');
+
+      // Derive service blocks from parsed integrations
+      const serviceBlocks: ServiceBlock[] = parsed.integrations.map((int) => ({
+        name: int.service,
+        credentials: Object.keys(int.env).map((key) => ({ key, value: '' })),
+      }));
+      setServices(serviceBlocks);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load specialist.');
     }
-  }, [applyMarkdownState, runValidation]);
+  }, []);
 
   // Guided form update helpers
   const updateGuided = useCallback(<K extends keyof GuidedFormState>(key: K, value: GuidedFormState[K]) => {
@@ -787,26 +620,6 @@ export function AddSpecialistDialog({
             : <>Create a new scheduled specialist definition in <code>src/agents/cron/</code>.</>}
         </p>
 
-        {/* Mode Toggle */}
-        <div className="flex gap-1 mb-4 p-0.5 rounded-md bg-[var(--color-bg-primary)] w-fit">
-          <button
-            type="button"
-            data-testid="specialist-mode-paste"
-            onClick={() => handleModeSwitch('paste')}
-            className={`px-3 py-1 text-xs rounded ${mode === 'paste' ? 'bg-[var(--color-accent-primary)] text-white' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'}`}
-          >
-            Paste
-          </button>
-          <button
-            type="button"
-            data-testid="specialist-mode-guided"
-            onClick={() => handleModeSwitch('guided')}
-            className={`px-3 py-1 text-xs rounded ${mode === 'guided' ? 'bg-[var(--color-accent-primary)] text-white' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'}`}
-          >
-            Guided
-          </button>
-        </div>
-
         <div className="space-y-3">
           {/* Name Field */}
           <div>
@@ -831,335 +644,295 @@ export function AddSpecialistDialog({
             />
           </div>
 
-          {mode === 'paste' ? (
-            /* ====== PASTE MODE ====== */
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-medium text-[var(--color-text-secondary)]" htmlFor="specialist-markdown-editor">
-                  Definition (Markdown)
-                </label>
-                {validation && (
-                  <span
-                    data-testid="specialist-validation-badge"
-                    className={`text-[10px] px-2 py-0.5 rounded-full ${
-                      validation.valid
-                        ? 'bg-[var(--color-status-success)]/20 text-[var(--color-status-success)]'
-                        : 'bg-[var(--color-status-error)]/20 text-[var(--color-status-error)]'
-                    }`}
-                  >
-                    {validation.valid ? 'Valid YAML' : validation.error}
-                  </span>
-                )}
-              </div>
-              <textarea
-                id="specialist-markdown-editor"
-                data-testid="specialist-markdown-editor"
-                value={markdownContent}
-                onChange={handleMarkdownChange}
-                spellCheck={false}
-                placeholder="Paste a specialist definition, or switch to Guided mode"
-                className={`w-full rounded border ${
-                  validation && !validation.valid ? 'border-[var(--color-status-error)]' : 'border-[var(--color-border-secondary)]'
-                } bg-[var(--color-bg-primary)] px-3 py-2.5 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)] resize-y`}
-                style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace", minHeight: '400px', lineHeight: '1.5' }}
-              />
-              {!isEditMode && (
-                <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">
-                  Paste a complete definition or enter a name above to auto-populate with the default template.
-                </p>
-              )}
-            </div>
-          ) : (
-            /* ====== GUIDED MODE ====== */
-            <div className="space-y-3">
-              {/* Basics */}
-              <Section title="Basics" defaultOpen={true}>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={labelClass}>Description</label>
-                    <input
-                      data-testid="guided-description"
-                      type="text"
-                      value={guidedForm.description}
-                      onChange={(e) => updateGuided('description', e.target.value)}
-                      placeholder="What does this specialist do?"
-                      className={inputClass}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelClass}>Model</label>
-                    <select
-                      data-testid="guided-model"
-                      value={guidedForm.model}
-                      onChange={(e) => updateGuided('model', e.target.value)}
-                      className={`${inputClass} cursor-pointer`}
-                    >
-                      {MODELS.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                  </div>
+          {/* Guided Form */}
+          <div className="space-y-3">
+            {/* Basics */}
+            <Section title="Basics" defaultOpen={true}>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>Description</label>
+                  <input
+                    data-testid="guided-description"
+                    type="text"
+                    value={guidedForm.description}
+                    onChange={(e) => updateGuided('description', e.target.value)}
+                    placeholder="What does this specialist do?"
+                    className={inputClass}
+                  />
                 </div>
                 <div>
-                  <label className={labelClass}>Tools</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {AVAILABLE_TOOLS.map(tool => (
-                      <button
-                        key={tool}
-                        type="button"
-                        data-testid={`guided-tool-${tool}`}
-                        onClick={() => toggleTool(tool)}
-                        className={`px-2 py-0.5 text-[11px] rounded-full border transition-colors ${
-                          guidedForm.tools.includes(tool)
-                            ? 'border-[var(--color-accent-primary)] text-[var(--color-accent-primary)] bg-[var(--color-accent-primary)]/10'
-                            : 'border-[var(--color-border-secondary)] text-[var(--color-text-muted)] hover:border-[var(--color-accent-primary)]'
-                        }`}
-                      >
-                        {tool}
-                      </button>
-                    ))}
-                  </div>
+                  <label className={labelClass}>Model</label>
+                  <select
+                    data-testid="guided-model"
+                    value={guidedForm.model}
+                    onChange={(e) => updateGuided('model', e.target.value)}
+                    className={`${inputClass} cursor-pointer`}
+                  >
+                    {MODELS.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
                 </div>
-              </Section>
-
-              {/* Schedules */}
-              <Section title="Schedules" defaultOpen={true}>
-                {guidedForm.schedules.map((sched, si) => (
-                  <div key={si} className="flex items-start gap-2 mb-2">
-                    <select
-                      value={sched.type}
-                      onChange={(e) => updateSchedule(si, 'type', e.target.value)}
-                      className={selectClass}
+              </div>
+              <div>
+                <label className={labelClass}>Tools</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {AVAILABLE_TOOLS.map(tool => (
+                    <button
+                      key={tool}
+                      type="button"
+                      data-testid={`guided-tool-${tool}`}
+                      onClick={() => toggleTool(tool)}
+                      className={`px-2 py-0.5 text-[11px] rounded-full border transition-colors ${
+                        guidedForm.tools.includes(tool)
+                          ? 'border-[var(--color-accent-primary)] text-[var(--color-accent-primary)] bg-[var(--color-accent-primary)]/10'
+                          : 'border-[var(--color-border-secondary)] text-[var(--color-text-muted)] hover:border-[var(--color-accent-primary)]'
+                      }`}
                     >
-                      <option value="heartbeat">heartbeat</option>
-                      <option value="daily">daily</option>
-                      <option value="weekly">weekly</option>
-                      <option value="custom">custom</option>
-                    </select>
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        value={sched.cron}
-                        onChange={(e) => updateSchedule(si, 'cron', e.target.value)}
-                        placeholder="*/30 * * * *"
-                        spellCheck={false}
-                        className={`${inputClass} text-xs`}
-                      />
-                      <CronHelper value={sched.cron} onChange={(c) => updateSchedule(si, 'cron', c)} />
-                    </div>
-                    <label className="flex items-center gap-1 text-[11px] text-[var(--color-text-muted)] mt-2">
-                      <input
-                        type="checkbox"
-                        checked={sched.enabled}
-                        onChange={(e) => updateSchedule(si, 'enabled', e.target.checked)}
-                      />
-                      On
-                    </label>
+                      {tool}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </Section>
+
+            {/* Schedules */}
+            <Section title="Schedules" defaultOpen={true}>
+              {guidedForm.schedules.map((sched, si) => (
+                <div key={si} className="flex items-start gap-2 mb-2">
+                  <select
+                    value={sched.type}
+                    onChange={(e) => updateSchedule(si, 'type', e.target.value)}
+                    className={selectClass}
+                  >
+                    <option value="heartbeat">heartbeat</option>
+                    <option value="daily">daily</option>
+                    <option value="weekly">weekly</option>
+                    <option value="custom">custom</option>
+                  </select>
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={sched.cron}
+                      onChange={(e) => updateSchedule(si, 'cron', e.target.value)}
+                      placeholder="*/30 * * * *"
+                      spellCheck={false}
+                      className={`${inputClass} text-xs`}
+                    />
+                    <CronHelper value={sched.cron} onChange={(c) => updateSchedule(si, 'cron', c)} />
+                  </div>
+                  <label className="flex items-center gap-1 text-[11px] text-[var(--color-text-muted)] mt-2">
+                    <input
+                      type="checkbox"
+                      checked={sched.enabled}
+                      onChange={(e) => updateSchedule(si, 'enabled', e.target.checked)}
+                    />
+                    On
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => removeSchedule(si)}
+                    className="text-[var(--color-text-muted)] hover:text-[var(--color-status-error)] text-sm mt-1.5"
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addSchedule}
+                className="text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent-primary)]"
+              >
+                + Add schedule
+              </button>
+            </Section>
+
+            {/* Memory */}
+            <Section title="Memory">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className={labelClass}>Strategy</label>
+                  <select
+                    value={guidedForm.memory.strategy}
+                    onChange={(e) => updateGuided('memory', { ...guidedForm.memory, strategy: e.target.value as MemoryStrategy })}
+                    className={`${inputClass} cursor-pointer`}
+                  >
+                    {MEMORY_STRATEGIES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>Max Entries</label>
+                  <input
+                    type="number"
+                    value={guidedForm.memory.maxEntries}
+                    onChange={(e) => updateGuided('memory', { ...guidedForm.memory, maxEntries: parseInt(e.target.value, 10) || 0 })}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Retention Days</label>
+                  <input
+                    type="number"
+                    value={guidedForm.memory.retentionDays}
+                    onChange={(e) => updateGuided('memory', { ...guidedForm.memory, retentionDays: parseInt(e.target.value, 10) || 0 })}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+            </Section>
+
+            {/* Escalation */}
+            <Section title="Escalation">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>On Failure</label>
+                  <select
+                    value={guidedForm.escalation.onFailure || ''}
+                    onChange={(e) => updateGuided('escalation', { ...guidedForm.escalation, onFailure: e.target.value as EscalationAction })}
+                    className={`${inputClass} cursor-pointer`}
+                  >
+                    <option value="">None</option>
+                    {ESCALATION_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>On Pattern</label>
+                  <select
+                    value={guidedForm.escalation.onPattern || ''}
+                    onChange={(e) => updateGuided('escalation', { ...guidedForm.escalation, onPattern: e.target.value as EscalationAction })}
+                    className={`${inputClass} cursor-pointer`}
+                  >
+                    <option value="">None</option>
+                    {ESCALATION_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                </div>
+              </div>
+            </Section>
+
+            {/* Prompt Templates */}
+            <Section title="Prompt Templates">
+              {Array.from(new Set(guidedForm.schedules.map(s => s.type))).map((type) => (
+                <div key={type}>
+                  <label className={labelClass}>{type}</label>
+                  <textarea
+                    value={guidedForm.promptTemplates[type] || ''}
+                    onChange={(e) => updateGuided('promptTemplates', { ...guidedForm.promptTemplates, [type]: e.target.value })}
+                    placeholder={`Prompt template for ${type} runs...`}
+                    className={`${inputClass} text-xs resize-y`}
+                    style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace", minHeight: '80px', lineHeight: '1.5' }}
+                  />
+                </div>
+              ))}
+            </Section>
+
+            {/* Integrations */}
+            <Section title="Integrations">
+              {guidedForm.integrations.map((int, ii) => (
+                <div key={ii} className="rounded-md border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] p-3 mb-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <input
+                      type="text"
+                      value={int.service}
+                      onChange={(e) => {
+                        const updated = [...guidedForm.integrations];
+                        updated[ii] = { ...updated[ii], service: e.target.value };
+                        updateGuided('integrations', updated);
+                      }}
+                      placeholder="Service name"
+                      className="bg-transparent border-b border-[var(--color-border-secondary)] py-0.5 text-xs font-medium text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)] w-[150px]"
+                    />
                     <button
                       type="button"
-                      onClick={() => removeSchedule(si)}
-                      className="text-[var(--color-text-muted)] hover:text-[var(--color-status-error)] text-sm mt-1.5"
+                      onClick={() => removeGuidedIntegration(ii)}
+                      className="text-[var(--color-text-muted)] hover:text-[var(--color-status-error)] text-sm px-1.5"
                     >
                       &times;
                     </button>
                   </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addSchedule}
-                  className="text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent-primary)]"
-                >
-                  + Add schedule
-                </button>
-              </Section>
-
-              {/* Memory */}
-              <Section title="Memory">
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className={labelClass}>Strategy</label>
-                    <select
-                      value={guidedForm.memory.strategy}
-                      onChange={(e) => updateGuided('memory', { ...guidedForm.memory, strategy: e.target.value as MemoryStrategy })}
-                      className={`${inputClass} cursor-pointer`}
-                    >
-                      {MEMORY_STRATEGIES.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Max Entries</label>
-                    <input
-                      type="number"
-                      value={guidedForm.memory.maxEntries}
-                      onChange={(e) => updateGuided('memory', { ...guidedForm.memory, maxEntries: parseInt(e.target.value, 10) || 0 })}
-                      className={inputClass}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelClass}>Retention Days</label>
-                    <input
-                      type="number"
-                      value={guidedForm.memory.retentionDays}
-                      onChange={(e) => updateGuided('memory', { ...guidedForm.memory, retentionDays: parseInt(e.target.value, 10) || 0 })}
-                      className={inputClass}
-                    />
-                  </div>
-                </div>
-              </Section>
-
-              {/* Escalation */}
-              <Section title="Escalation">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={labelClass}>On Failure</label>
-                    <select
-                      value={guidedForm.escalation.onFailure || ''}
-                      onChange={(e) => updateGuided('escalation', { ...guidedForm.escalation, onFailure: e.target.value as EscalationAction })}
-                      className={`${inputClass} cursor-pointer`}
-                    >
-                      <option value="">None</option>
-                      {ESCALATION_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelClass}>On Pattern</label>
-                    <select
-                      value={guidedForm.escalation.onPattern || ''}
-                      onChange={(e) => updateGuided('escalation', { ...guidedForm.escalation, onPattern: e.target.value as EscalationAction })}
-                      className={`${inputClass} cursor-pointer`}
-                    >
-                      <option value="">None</option>
-                      {ESCALATION_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
-                    </select>
-                  </div>
-                </div>
-              </Section>
-
-              {/* Prompt Templates */}
-              <Section title="Prompt Templates">
-                {Array.from(new Set(guidedForm.schedules.map(s => s.type))).map((type) => (
-                  <div key={type}>
-                    <label className={labelClass}>{type}</label>
-                    <textarea
-                      value={guidedForm.promptTemplates[type] || ''}
-                      onChange={(e) => updateGuided('promptTemplates', { ...guidedForm.promptTemplates, [type]: e.target.value })}
-                      placeholder={`Prompt template for ${type} runs...`}
-                      className={`${inputClass} text-xs resize-y`}
-                      style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace", minHeight: '80px', lineHeight: '1.5' }}
-                    />
-                  </div>
-                ))}
-              </Section>
-
-              {/* Integrations */}
-              <Section title="Integrations">
-                {guidedForm.integrations.map((int, ii) => (
-                  <div key={ii} className="rounded-md border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] p-3 mb-2">
-                    <div className="flex items-center justify-between mb-2">
+                  {Object.entries(int.env).map(([key, val]) => (
+                    <div key={key} className="flex gap-2 items-center mb-1">
                       <input
                         type="text"
-                        value={int.service}
+                        value={key}
                         onChange={(e) => {
+                          const newKey = e.target.value;
                           const updated = [...guidedForm.integrations];
-                          updated[ii] = { ...updated[ii], service: e.target.value };
+                          const oldEnv = { ...updated[ii].env };
+                          const newEnv: Record<string, string> = {};
+                          for (const [k, v] of Object.entries(oldEnv)) {
+                            newEnv[k === key ? newKey : k] = v;
+                          }
+                          updated[ii] = { ...updated[ii], env: newEnv };
                           updateGuided('integrations', updated);
                         }}
-                        placeholder="Service name"
-                        className="bg-transparent border-b border-[var(--color-border-secondary)] py-0.5 text-xs font-medium text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)] w-[150px]"
+                        className="text-[11px] text-[var(--color-text-muted)] w-[120px] bg-transparent border-b border-[var(--color-border-secondary)] outline-none focus:border-[var(--color-accent-primary)] font-mono"
+                        spellCheck={false}
+                      />
+                      <input
+                        type="password"
+                        value={val}
+                        onChange={(e) => {
+                          const updated = [...guidedForm.integrations];
+                          updated[ii] = { ...updated[ii], env: { ...updated[ii].env, [key]: e.target.value } };
+                          updateGuided('integrations', updated);
+                        }}
+                        placeholder="Value"
+                        spellCheck={false}
+                        className={`flex-1 ${inputClass} text-xs`}
                       />
                       <button
                         type="button"
-                        onClick={() => removeGuidedIntegration(ii)}
-                        className="text-[var(--color-text-muted)] hover:text-[var(--color-status-error)] text-sm px-1.5"
+                        onClick={() => {
+                          const updated = [...guidedForm.integrations];
+                          const { [key]: _, ...rest } = updated[ii].env;
+                          updated[ii] = { ...updated[ii], env: rest };
+                          updateGuided('integrations', updated);
+                        }}
+                        className="text-[var(--color-text-muted)] hover:text-[var(--color-status-error)] text-sm px-1"
+                        title="Remove env key"
                       >
                         &times;
                       </button>
                     </div>
-                    {Object.entries(int.env).map(([key, val]) => (
-                      <div key={key} className="flex gap-2 items-center mb-1">
-                        <input
-                          type="text"
-                          value={key}
-                          onChange={(e) => {
-                            const newKey = e.target.value;
-                            const updated = [...guidedForm.integrations];
-                            const oldEnv = { ...updated[ii].env };
-                            const newEnv: Record<string, string> = {};
-                            for (const [k, v] of Object.entries(oldEnv)) {
-                              newEnv[k === key ? newKey : k] = v;
-                            }
-                            updated[ii] = { ...updated[ii], env: newEnv };
-                            updateGuided('integrations', updated);
-                          }}
-                          className="text-[11px] text-[var(--color-text-muted)] w-[120px] bg-transparent border-b border-[var(--color-border-secondary)] outline-none focus:border-[var(--color-accent-primary)] font-mono"
-                          spellCheck={false}
-                        />
-                        <input
-                          type="password"
-                          value={val}
-                          onChange={(e) => {
-                            const updated = [...guidedForm.integrations];
-                            updated[ii] = { ...updated[ii], env: { ...updated[ii].env, [key]: e.target.value } };
-                            updateGuided('integrations', updated);
-                          }}
-                          placeholder="Value"
-                          spellCheck={false}
-                          className={`flex-1 ${inputClass} text-xs`}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updated = [...guidedForm.integrations];
-                            const { [key]: _, ...rest } = updated[ii].env;
-                            updated[ii] = { ...updated[ii], env: rest };
-                            updateGuided('integrations', updated);
-                          }}
-                          className="text-[var(--color-text-muted)] hover:text-[var(--color-status-error)] text-sm px-1"
-                          title="Remove env key"
-                        >
-                          &times;
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const keyName = `NEW_KEY_${Object.keys(int.env).length}`;
-                        const updated = [...guidedForm.integrations];
-                        updated[ii] = { ...updated[ii], env: { ...updated[ii].env, [keyName]: '' } };
-                        updateGuided('integrations', updated);
-                      }}
-                      className="text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent-primary)] mt-1"
-                    >
-                      + Add env key
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addGuidedIntegration}
-                  className="text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent-primary)]"
-                >
-                  + Add service
-                </button>
-              </Section>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const keyName = `NEW_KEY_${Object.keys(int.env).length}`;
+                      const updated = [...guidedForm.integrations];
+                      updated[ii] = { ...updated[ii], env: { ...updated[ii].env, [keyName]: '' } };
+                      updateGuided('integrations', updated);
+                    }}
+                    className="text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent-primary)] mt-1"
+                  >
+                    + Add env key
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addGuidedIntegration}
+                className="text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent-primary)]"
+              >
+                + Add service
+              </button>
+            </Section>
 
-              {/* System Prompt */}
-              <div>
-                <label className={labelClass}>System Prompt</label>
-                <textarea
-                  data-testid="guided-system-prompt"
-                  value={guidedForm.systemPrompt}
-                  onChange={(e) => updateGuided('systemPrompt', e.target.value)}
-                  placeholder="# Specialist Name\n\nYou are a specialist agent..."
-                  spellCheck={false}
-                  className={`w-full rounded border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] px-3 py-2.5 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)] resize-y`}
-                  style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace", minHeight: '200px', lineHeight: '1.5' }}
-                />
-              </div>
+            {/* System Prompt */}
+            <div>
+              <label className={labelClass}>System Prompt</label>
+              <textarea
+                data-testid="guided-system-prompt"
+                value={guidedForm.systemPrompt}
+                onChange={(e) => updateGuided('systemPrompt', e.target.value)}
+                placeholder="# Specialist Name\n\nYou are a specialist agent..."
+                spellCheck={false}
+                className={`w-full rounded border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] px-3 py-2.5 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)] resize-y`}
+                style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace", minHeight: '200px', lineHeight: '1.5' }}
+              />
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Service Credentials (shown in both modes) */}
+        {/* Service Credentials */}
         <hr className="border-[var(--color-border-primary)] my-5" />
 
         <div className="flex items-center justify-between mb-3">
@@ -1176,7 +949,7 @@ export function AddSpecialistDialog({
 
         {services.length === 0 && (
           <p className="text-center py-3 text-[11px] text-[var(--color-text-muted)]">
-            No services configured. Add services manually or paste a definition with integrations above.
+            No services configured. Add services or use the Integrations section above.
           </p>
         )}
 

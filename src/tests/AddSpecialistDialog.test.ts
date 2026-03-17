@@ -4,7 +4,6 @@ import {
   serializeGuidedFormToMarkdown,
   parseMarkdownToGuidedForm,
   sanitizeSpecialistName,
-  tryParseIntegrations,
 } from '@renderer/components/schedule/AddSpecialistDialog';
 
 describe('sanitizeSpecialistName', () => {
@@ -133,94 +132,18 @@ describe('parseMarkdownToGuidedForm', () => {
     expect(parsed.integrations).toEqual([{ service: 'slack', env: { SLACK_TOKEN: '' } }]);
     expect(parsed.systemPrompt).toContain('Windows Agent');
   });
-});
 
-describe('tryParseIntegrations', () => {
-  it('should parse service blocks from frontmatter', () => {
-    const markdown = `---
-name: test
-description: test
-model: sonnet
-tools:
-  - Read
-schedules:
-  - type: daily
-    cron: "0 0 * * *"
-    enabled: true
-integrations:
-  - service: github
-    env:
-      GITHUB_TOKEN: ""
-      GITHUB_ORG: ""
-  - service: slack
-    env:
-      SLACK_WEBHOOK: ""
----
+  it('should return defaults when given empty or invalid markdown', () => {
+    const emptyResult = parseMarkdownToGuidedForm('');
+    expect(emptyResult.name).toBe('');
+    expect(emptyResult.description).toBe('');
+    expect(emptyResult.model).toBe('haiku');
+    expect(emptyResult.tools).toEqual(['Read', 'Glob', 'Grep', 'Bash']);
+    expect(emptyResult.schedules).toEqual([]);
+    expect(emptyResult.integrations).toEqual([]);
 
-# Test`;
-
-    const result = tryParseIntegrations(markdown);
-    expect(result).toHaveLength(2);
-    expect(result[0].name).toBe('github');
-    expect(result[0].credentials).toHaveLength(2);
-    expect(result[0].credentials[0].key).toBe('GITHUB_TOKEN');
-    expect(result[0].credentials[1].key).toBe('GITHUB_ORG');
-    expect(result[1].name).toBe('slack');
-    expect(result[1].credentials).toHaveLength(1);
-    expect(result[1].credentials[0].key).toBe('SLACK_WEBHOOK');
-  });
-
-  it('should return empty array for markdown without integrations', () => {
-    const markdown = `---
-name: test
-description: test
-model: sonnet
-tools:
-  - Read
-schedules:
-  - type: daily
-    cron: "0 0 * * *"
-    enabled: true
----
-
-# Test`;
-
-    const result = tryParseIntegrations(markdown);
-    expect(result).toEqual([]);
-  });
-
-  it('should parse integrations from CRLF frontmatter', () => {
-    const markdown = [
-      '---',
-      'name: test',
-      'description: test',
-      'model: sonnet',
-      'tools:',
-      '  - Read',
-      'schedules:',
-      '  - type: daily',
-      '    cron: "0 0 * * *"',
-      '    enabled: true',
-      'integrations:',
-      '  - service: github',
-      '    env:',
-      '      GITHUB_TOKEN: ""',
-      '      GITHUB_ORG: ""',
-      '---',
-      '',
-      '# Test',
-    ].join('\r\n');
-
-    const result = tryParseIntegrations(markdown);
-
-    expect(result).toEqual([
-      {
-        name: 'github',
-        credentials: [
-          { key: 'GITHUB_TOKEN', value: '' },
-          { key: 'GITHUB_ORG', value: '' },
-        ],
-      },
-    ]);
+    const invalidResult = parseMarkdownToGuidedForm('no frontmatter here');
+    expect(invalidResult.name).toBe('');
+    expect(invalidResult.model).toBe('haiku');
   });
 });
