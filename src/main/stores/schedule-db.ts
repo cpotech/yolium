@@ -17,6 +17,9 @@ import type {
   ActionStats,
   ServiceCredentials,
 } from '@shared/types/schedule';
+import { createLogger } from '@main/lib/logger';
+
+const logger = createLogger('schedule-db');
 
 let db: Database.Database | null = null;
 
@@ -70,6 +73,14 @@ function createSchema(database: Database.Database): void {
   `);
 }
 
+function safeJsonParse<T>(value: string, fallback: T): T {
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 // ─── Migration ────────────────────────────────────────────────────────────
 
 function migrateLegacyData(database: Database.Database): void {
@@ -93,8 +104,8 @@ function migrateLegacyConfig(database: Database.Database): void {
     upsert.run('state', JSON.stringify(state));
 
     fs.renameSync(configPath, configPath + '.migrated');
-  } catch {
-    // Skip corrupted config
+  } catch (err) {
+    logger.warn('Failed to migrate legacy config', { error: String(err) });
   }
 }
 
@@ -128,13 +139,13 @@ function migrateLegacyRunHistory(database: Database.Database): void {
             run.startedAt, run.completedAt, run.status,
             run.tokensUsed, run.costUsd, run.summary, run.outcome
           );
-        } catch {
-          // Skip corrupted lines
+        } catch (err) {
+          logger.warn('Failed to parse run history line', { entry, error: String(err) });
         }
       }
       fs.renameSync(historyPath, historyPath + '.migrated');
-    } catch {
-      // Skip unreadable files
+    } catch (err) {
+      logger.warn('Failed to migrate run history file', { entry, error: String(err) });
     }
   }
 }
@@ -168,13 +179,13 @@ function migrateLegacyActionLogs(database: Database.Database): void {
             action.id, action.runId, action.specialistId,
             action.action, JSON.stringify(action.data), action.timestamp
           );
-        } catch {
-          // Skip corrupted lines
+        } catch (err) {
+          logger.warn('Failed to parse action log line', { entry, error: String(err) });
         }
       }
       fs.renameSync(actionsPath, actionsPath + '.migrated');
-    } catch {
-      // Skip unreadable files
+    } catch (err) {
+      logger.warn('Failed to migrate action log file', { entry, error: String(err) });
     }
   }
 }
@@ -200,8 +211,8 @@ function migrateLegacyCredentials(database: Database.Database): void {
     }
 
     fs.renameSync(credPath, credPath + '.migrated');
-  } catch {
-    // Skip corrupted credentials
+  } catch (err) {
+    logger.warn('Failed to migrate legacy credentials', { error: String(err) });
   }
 }
 
@@ -218,9 +229,15 @@ export function getDb(): Database.Database {
 
   db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
+  db.pragma('busy_timeout = 5000');
 
   createSchema(db);
   migrateLegacyData(db);
+
+  const version = db.pragma('user_version', { simple: true }) as number;
+  if (version < 1) {
+    db.pragma('user_version = 1');
+  }
 
   // Set file permissions to 0o600
   try {
@@ -658,7 +675,7 @@ function rowToAction(row: any): ActionLogEntry {
     runId: row.run_id,
     specialistId: row.specialist_id,
     action: row.action,
-    data: JSON.parse(row.data),
+    data: safeJsonParse(row.data, {}),
     timestamp: row.timestamp,
   };
 }

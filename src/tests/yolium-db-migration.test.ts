@@ -23,6 +23,15 @@ vi.mock('node:path', async () => {
   };
 });
 
+vi.mock('@main/lib/logger', () => ({
+  createLogger: vi.fn(() => ({
+    info: vi.fn(),
+    debug: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  })),
+}));
+
 let yoliumDb: typeof import('@main/stores/yolium-db');
 
 describe('yolium-db migration', () => {

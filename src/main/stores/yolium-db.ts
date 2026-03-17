@@ -17,6 +17,9 @@ import type {
   CommentSource,
 } from '@shared/types/kanban';
 import type { KanbanAgentProvider } from '@shared/types/agent';
+import { createLogger } from '@main/lib/logger';
+
+const logger = createLogger('yolium-db');
 
 let db: Database.Database | null = null;
 
@@ -41,6 +44,14 @@ export function normalizeForHash(projectPath: string): string {
     normalized = normalized.slice(0, -1);
   }
   return normalized;
+}
+
+function safeJsonParse<T>(value: string, fallback: T): T {
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
 }
 
 // ─── Schema ───────────────────────────────────────────────────────────────
@@ -192,8 +203,8 @@ function migrateLegacyBoards(database: Database.Database): void {
         }
 
         fs.renameSync(filePath, filePath + '.migrated');
-      } catch {
-        // Skip corrupted board files — leave them in place for debugging
+      } catch (err) {
+        logger.warn('Failed to migrate board file', { file, error: String(err) });
       }
     }
   });
@@ -222,8 +233,8 @@ function migrateLegacyProjectRegistry(database: Database.Database): void {
     }
 
     fs.renameSync(registryPath, registryPath + '.migrated');
-  } catch {
-    // Skip corrupted registry
+  } catch (err) {
+    logger.warn('Failed to migrate project registry', { error: String(err) });
   }
 }
 
@@ -240,11 +251,17 @@ export function getDb(): Database.Database {
 
   db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
+  db.pragma('busy_timeout = 5000');
   db.pragma('foreign_keys = ON');
 
   createSchema(db);
   migrateLegacyBoards(db);
   migrateLegacyProjectRegistry(db);
+
+  const version = db.pragma('user_version', { simple: true }) as number;
+  if (version < 1) {
+    db.pragma('user_version = 1');
+  }
 
   try {
     fs.chmodSync(dbPath, 0o600);
@@ -272,7 +289,7 @@ function rowToComment(row: any): KanbanComment {
     timestamp: row.timestamp,
   };
   if (row.options) {
-    comment.options = JSON.parse(row.options);
+    comment.options = safeJsonParse(row.options, []);
   }
   return comment;
 }
@@ -297,8 +314,8 @@ function rowToItem(row: any, comments: KanbanComment[]): KanbanItem {
   if (row.active_agent_name != null) item.activeAgentName = row.active_agent_name;
   if (row.last_agent_name != null) item.lastAgentName = row.last_agent_name;
   if (row.agent_question != null) item.agentQuestion = row.agent_question;
-  if (row.agent_question_options != null) item.agentQuestionOptions = JSON.parse(row.agent_question_options);
-  if (row.test_specs != null) item.testSpecs = JSON.parse(row.test_specs);
+  if (row.agent_question_options != null) item.agentQuestionOptions = safeJsonParse(row.agent_question_options, []);
+  if (row.test_specs != null) item.testSpecs = safeJsonParse(row.test_specs, []);
   if (row.worktree_path != null) item.worktreePath = row.worktree_path;
   if (row.merge_status != null) item.mergeStatus = row.merge_status;
   if (row.pr_url != null) item.prUrl = row.pr_url;
@@ -474,7 +491,7 @@ export function addItem(board: KanbanBoard, params: NewItemParams): KanbanItem {
 export function updateItem(
   board: KanbanBoard,
   itemId: string,
-  updates: Partial<Pick<KanbanItem, 'title' | 'description' | 'column' | 'branch' | 'model' | 'agentType' | 'agentStatus' | 'activeAgentName' | 'lastAgentName' | 'agentQuestion' | 'agentQuestionOptions' | 'testSpecs' | 'worktreePath' | 'mergeStatus' | 'agentProvider' | 'verified'>>
+  updates: Partial<Pick<KanbanItem, 'title' | 'description' | 'column' | 'branch' | 'model' | 'agentType' | 'agentStatus' | 'activeAgentName' | 'lastAgentName' | 'agentQuestion' | 'agentQuestionOptions' | 'testSpecs' | 'worktreePath' | 'mergeStatus' | 'agentProvider' | 'prUrl' | 'order' | 'verified'>>
 ): KanbanItem | null {
   const item = board.items.find(i => i.id === itemId);
   if (!item) return null;
@@ -507,6 +524,7 @@ export function updateItem(
     mergeStatus: 'merge_status',
     agentProvider: 'agent_provider',
     prUrl: 'pr_url',
+    order: '"order"',
   };
 
   for (const [key, col] of Object.entries(fieldMap)) {
@@ -559,13 +577,15 @@ export function addComment(
   const timestamp = new Date().toISOString();
   const hasOptions = options && options.length > 0;
 
-  database.prepare(`
-    INSERT INTO kanban_comments (id, item_id, source, text, timestamp, options)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(id, itemId, source, text, timestamp, hasOptions ? JSON.stringify(options) : null);
+  const insertAndTouch = database.transaction(() => {
+    database.prepare(`
+      INSERT INTO kanban_comments (id, item_id, source, text, timestamp, options)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(id, itemId, source, text, timestamp, hasOptions ? JSON.stringify(options) : null);
 
-  // Update item's updatedAt
-  database.prepare('UPDATE kanban_items SET updated_at = ? WHERE id = ?').run(timestamp, itemId);
+    database.prepare('UPDATE kanban_items SET updated_at = ? WHERE id = ?').run(timestamp, itemId);
+  });
+  insertAndTouch();
 
   const comment: KanbanComment = {
     id,

@@ -83,7 +83,7 @@ Full API reference with types: [docs/IPC.md](docs/IPC.md).
 - `shared.ts` — Shared Docker client instance (dockerode)
 
 #### Stores (`src/main/stores/`)
-- `kanban-store.ts` — Persist kanban boards (JSON via electron-store)
+- `yolium-db.ts` — Unified SQLite store for kanban boards and project registry
 - `session-store.ts` — Persist tab/session state across restarts
 - `sidebar-store.ts` — Persist sidebar project list
 
@@ -157,7 +157,7 @@ Full API reference with types: [docs/IPC.md](docs/IPC.md).
 - **Namespaced IPC**: All IPC channels follow `domain:action` naming (e.g., `kanban:add-item`) to avoid collisions and improve discoverability
 - **Agent protocol**: Agents communicate via `@@YOLIUM:{type,data}` JSON messages embedded in stdout — no separate control channel needed
 - **Stream-json output**: Agent containers use `--output-format stream-json` with Claude CLI so events stream incrementally (Claude's `-p` mode alone buffers all output until completion). The main process parses JSON events into readable display text (assistant messages, tool use summaries, results with cost) and extracts protocol messages from text content
-- **electron-store for persistence**: Kanban boards, session state, and settings use JSON files via electron-store — no database needed at this scale
+- **SQLite for persistence**: Kanban boards and project registry use SQLite via better-sqlite3; session state and settings use JSON files via electron-store
 
 ## Common Patterns
 

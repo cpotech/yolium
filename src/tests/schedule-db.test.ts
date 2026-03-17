@@ -15,6 +15,16 @@ vi.mock('node:os', async () => {
   return { ...actual, homedir: homedirMock };
 });
 
+const loggerWarnMock = vi.fn();
+vi.mock('@main/lib/logger', () => ({
+  createLogger: vi.fn(() => ({
+    info: vi.fn(),
+    debug: vi.fn(),
+    warn: loggerWarnMock,
+    error: vi.fn(),
+  })),
+}));
+
 import type { ScheduledRun, ActionLogEntry } from '@shared/types/schedule';
 
 // We need to import fresh for each test to get clean DB state.
@@ -631,6 +641,109 @@ describe('schedule-db', () => {
 
       expect(updated.specialists['empty-specialist'].totalRuns).toBe(0);
       expect(updated.specialists['empty-specialist'].consecutiveFailures).toBe(0);
+    });
+  });
+
+  describe('database hardening', () => {
+    it('should set busy_timeout pragma on database initialization', () => {
+      const database = scheduleDb.getDb();
+      const timeout = database.pragma('busy_timeout', { simple: true });
+      expect(timeout).toBe(5000);
+    });
+
+    it('should set user_version pragma to 1 on fresh database', () => {
+      const database = scheduleDb.getDb();
+      const version = database.pragma('user_version', { simple: true });
+      expect(version).toBe(1);
+    });
+
+    it('should preserve user_version 1 on subsequent opens', async () => {
+      scheduleDb.getDb();
+      scheduleDb.closeDb();
+
+      vi.resetModules();
+      scheduleDb = await import('@main/stores/schedule-db');
+
+      const database = scheduleDb.getDb();
+      const version = database.pragma('user_version', { simple: true });
+      expect(version).toBe(1);
+    });
+
+    it('should handle malformed JSON in action data gracefully', () => {
+      const action = makeAction({ id: 'bad-json-action', specialistId: 'test-specialist' });
+      scheduleDb.appendAction('test-specialist', action);
+
+      // Corrupt the data column
+      const database = scheduleDb.getDb();
+      database.prepare('UPDATE actions SET data = ? WHERE id = ?')
+        .run('{not valid json', 'bad-json-action');
+
+      const actions = scheduleDb.getRecentActions('test-specialist', 10);
+      expect(actions).toHaveLength(1);
+      expect(actions[0].data).toEqual({});
+    });
+
+    it('should log a warning when legacy config migration fails', async () => {
+      scheduleDb.closeDb();
+      loggerWarnMock.mockClear();
+
+      const schedulesDir = path.join(tempDir, '.yolium', 'schedules');
+      fs.mkdirSync(schedulesDir, { recursive: true });
+      fs.writeFileSync(path.join(schedulesDir, 'config.json'), '{corrupted json');
+
+      vi.resetModules();
+      scheduleDb = await import('@main/stores/schedule-db');
+      scheduleDb.getDb();
+
+      expect(loggerWarnMock).toHaveBeenCalled();
+    });
+
+    it('should log a warning when legacy run history migration fails', async () => {
+      scheduleDb.closeDb();
+      loggerWarnMock.mockClear();
+
+      const specialistDir = path.join(tempDir, '.yolium', 'schedules', 'test-specialist');
+      fs.mkdirSync(specialistDir, { recursive: true });
+      // Write a file that will cause the outer try to fail (make it unreadable by writing then removing read perms)
+      // Instead, use a simpler approach: write JSONL with only corrupted lines
+      fs.writeFileSync(path.join(specialistDir, 'run_history.jsonl'), '{bad\n{also bad\n');
+
+      vi.resetModules();
+      scheduleDb = await import('@main/stores/schedule-db');
+      scheduleDb.getDb();
+
+      // The inner catch for individual lines should log warnings
+      expect(loggerWarnMock).toHaveBeenCalled();
+    });
+
+    it('should log a warning when legacy action log migration fails', async () => {
+      scheduleDb.closeDb();
+      loggerWarnMock.mockClear();
+
+      const specialistDir = path.join(tempDir, '.yolium', 'schedules', 'test-specialist');
+      fs.mkdirSync(specialistDir, { recursive: true });
+      fs.writeFileSync(path.join(specialistDir, 'actions.jsonl'), '{corrupted\n');
+
+      vi.resetModules();
+      scheduleDb = await import('@main/stores/schedule-db');
+      scheduleDb.getDb();
+
+      expect(loggerWarnMock).toHaveBeenCalled();
+    });
+
+    it('should log a warning when legacy credentials migration fails', async () => {
+      scheduleDb.closeDb();
+      loggerWarnMock.mockClear();
+
+      const yoliumDir = path.join(tempDir, '.yolium');
+      fs.mkdirSync(yoliumDir, { recursive: true });
+      fs.writeFileSync(path.join(yoliumDir, 'specialist-credentials.json'), 'not json');
+
+      vi.resetModules();
+      scheduleDb = await import('@main/stores/schedule-db');
+      scheduleDb.getDb();
+
+      expect(loggerWarnMock).toHaveBeenCalled();
     });
   });
 
