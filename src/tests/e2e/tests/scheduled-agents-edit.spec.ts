@@ -15,7 +15,7 @@ test.describe('Scheduled Agents Edit Flow', () => {
     }
   });
 
-  test('should open the edit definition dialog from the configure flow for an existing scheduled agent', async () => {
+  test('should open the edit definition dialog directly when Configure is clicked on a specialist card', async () => {
     ctx = await launchApp({ skipDockerWait: true });
     const page = ctx.window;
 
@@ -32,9 +32,6 @@ test.describe('Scheduled Agents Edit Flow', () => {
 
     await expect(page.locator('[data-testid="configure-security-monitor"]')).toBeVisible();
     await page.click('[data-testid="configure-security-monitor"]');
-
-    await expect(page.locator('[data-testid="specialist-config-dialog"]')).toBeVisible();
-    await page.click('[data-testid="specialist-config-edit"]');
 
     await expect(page.locator('[data-testid="add-specialist-dialog"]')).toBeVisible();
     await expect(page.locator('[data-testid="specialist-name-input"]')).toHaveValue('security-monitor');

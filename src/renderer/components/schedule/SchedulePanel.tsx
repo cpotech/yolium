@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Clock, Play, History, Settings, Power, PowerOff, RefreshCw, AlertTriangle, ChevronDown, Plus, RotateCcw } from 'lucide-react';
 import { RunHistoryTable } from './RunHistoryTable';
 import { ActionsView } from './ActionsView';
-import { SpecialistConfigDialog } from './SpecialistConfigDialog';
 import { AddSpecialistDialog } from './AddSpecialistDialog';
 import type { ActionStats, ScheduleType } from '@shared/types/schedule';
 
@@ -36,7 +35,6 @@ export function SchedulePanel(): React.ReactElement {
   const [specialists, setSpecialists] = useState<Record<string, SpecialistInfo>>({});
   const [actionStats, setActionStats] = useState<Record<string, ActionStats>>({});
   const [selectedSpecialist, setSelectedSpecialist] = useState<string | null>(null);
-  const [configSpecialist, setConfigSpecialist] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingSpecialistId, setEditingSpecialistId] = useState<string | null>(null);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
@@ -129,20 +127,12 @@ export function SchedulePanel(): React.ReactElement {
     loadState();
     setShowAddDialog(false);
     setEditingSpecialistId(null);
-    setConfigSpecialist(null);
   }, [loadState]);
 
   const handleCloseEditor = useCallback(() => {
     setShowAddDialog(false);
     setEditingSpecialistId(null);
   }, []);
-
-  const handleEditSpecialist = useCallback(() => {
-    if (!configSpecialist) return;
-    setEditingSpecialistId(configSpecialist);
-    setShowAddDialog(false);
-    setConfigSpecialist(null);
-  }, [configSpecialist]);
 
   const handleResetSpecialist = useCallback(async (id: string) => {
     const confirmed = await window.electronAPI.dialog.confirmOkCancel(
@@ -460,7 +450,7 @@ export function SchedulePanel(): React.ReactElement {
                     </button>
                     <button
                       data-testid={`configure-${id}`}
-                      onClick={() => setConfigSpecialist(id)}
+                      onClick={() => setEditingSpecialistId(id)}
                       className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-border-primary)] transition-colors"
                     >
                       <Settings size={10} />
@@ -489,13 +479,6 @@ export function SchedulePanel(): React.ReactElement {
       </div>
       )}
 
-      {/* Specialist Config Dialog */}
-      <SpecialistConfigDialog
-        isOpen={configSpecialist !== null}
-        specialistId={configSpecialist}
-        onClose={() => setConfigSpecialist(null)}
-        onEdit={handleEditSpecialist}
-      />
       <AddSpecialistDialog
         isOpen={showAddDialog || editingSpecialistId !== null}
         editingSpecialistId={editingSpecialistId}
