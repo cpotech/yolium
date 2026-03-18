@@ -119,6 +119,20 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: 'Ctrl+Shift+M', description: 'Marketing Agent' },
     ],
   },
+  {
+    title: 'Sidebar Focus (Work Item)',
+    shortcuts: [
+      { keys: 'Tab', description: 'Toggle Editor/Sidebar focus' },
+      { keys: 'p', description: 'Plan Agent (sidebar)' },
+      { keys: 'c', description: 'Code Agent (sidebar)' },
+      { keys: 'v', description: 'Verify Agent (sidebar)' },
+      { keys: 's', description: 'Scout Agent (sidebar)' },
+      { keys: 'D', description: 'Design Agent (sidebar)' },
+      { keys: 'm', description: 'Marketing Agent (sidebar)' },
+      { keys: 'x', description: 'Stop Agent (sidebar)' },
+      { keys: 'd', description: 'Delete Item (sidebar)' },
+    ],
+  },
 ];
 
 export function KeyboardShortcutsDialog({

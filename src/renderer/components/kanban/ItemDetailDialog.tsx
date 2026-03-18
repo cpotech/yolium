@@ -62,6 +62,7 @@ export function ItemDetailDialog({
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDiffViewer, setShowDiffViewer] = useState(false)
   const [focusedFieldIndex, setFocusedFieldIndex] = useState(0)
+  const [focusZone, setFocusZone] = useState<'editor' | 'sidebar'>('editor')
   const answerInputRef = useRef<HTMLTextAreaElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const gPendingRef = useRef(false)
@@ -113,6 +114,7 @@ export function ItemDetailDialog({
     if (isOpen) {
       dialogRef.current?.focus()
       setFocusedFieldIndex(0)
+      setFocusZone('editor')
     }
   }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -209,61 +211,105 @@ export function ItemDetailDialog({
         vim.exitToNormal()
         ;(document.activeElement as HTMLElement)?.blur()
         dialogRef.current?.focus()
+      } else if (focusZone === 'sidebar') {
+        // Sidebar zone Escape -> return to editor zone
+        setFocusZone('editor')
+        dialogRef.current?.focus()
       } else {
-        // NORMAL mode Escape -> close dialog
+        // NORMAL mode Escape in editor zone -> close dialog
         handleClose()
       }
       return
     }
 
-    // NORMAL mode field navigation (only when not focused on an input)
+    // NORMAL mode navigation and sidebar shortcuts
     if (vim.mode === 'NORMAL') {
       const target = event.target as HTMLElement
       const tagName = target.tagName.toLowerCase()
       const isEditable = tagName === 'input' || tagName === 'textarea' || tagName === 'select' || target.isContentEditable
       if (isEditable) return
 
-      if (event.key === 'j' || event.key === 'ArrowDown') {
+      // Tab toggles focus zone between editor and sidebar
+      if (event.key === 'Tab' && !event.shiftKey) {
         event.preventDefault()
-        const next = Math.min(focusedFieldIndex + 1, FIELD_IDS.length - 1)
-        setFocusedFieldIndex(next)
-        document.getElementById(FIELD_IDS[next])?.scrollIntoView({ block: 'nearest' })
-        gPendingRef.current = false
-      } else if (event.key === 'k' || event.key === 'ArrowUp') {
-        event.preventDefault()
-        const prev = Math.max(focusedFieldIndex - 1, 0)
-        setFocusedFieldIndex(prev)
-        document.getElementById(FIELD_IDS[prev])?.scrollIntoView({ block: 'nearest' })
-        gPendingRef.current = false
-      } else if (event.key === 'g') {
-        if (gPendingRef.current) {
-          // gg — jump to first field
+        setFocusZone(prev => prev === 'editor' ? 'sidebar' : 'editor')
+        ;(document.activeElement as HTMLElement)?.blur()
+        dialogRef.current?.focus()
+        return
+      }
+
+      // Single-key sidebar shortcuts
+      if (focusZone === 'sidebar' && item) {
+        const canStart = (item.agentStatus === 'idle' || item.agentStatus === 'completed' || item.agentStatus === 'failed') && !lifecycle.isStartingAgent
+        const sidebarAgentKeyMap: Record<string, string> = {
+          p: 'plan-agent',
+          c: 'code-agent',
+          v: 'verify-agent',
+          s: 'scout-agent',
+          D: 'design-agent',
+          m: 'marketing-agent',
+        }
+        const agentName = sidebarAgentKeyMap[event.key]
+        if (agentName && canStart) {
           event.preventDefault()
-          setFocusedFieldIndex(0)
-          document.getElementById(FIELD_IDS[0])?.scrollIntoView({ block: 'nearest' })
+          void lifecycle.startAgent(agentName)
+          return
+        }
+        if (event.key === 'x' && item.agentStatus === 'running' && agentSession.currentSessionId) {
+          event.preventDefault()
+          void lifecycle.stopAgent()
+          return
+        }
+        if (event.key === 'd' && !event.shiftKey && !isDeleting) {
+          event.preventDefault()
+          void handleDelete()
+          return
+        }
+      }
+
+      // Editor zone field navigation
+      if (focusZone === 'editor') {
+        if (event.key === 'j' || event.key === 'ArrowDown') {
+          event.preventDefault()
+          const next = Math.min(focusedFieldIndex + 1, FIELD_IDS.length - 1)
+          setFocusedFieldIndex(next)
+          document.getElementById(FIELD_IDS[next])?.scrollIntoView({ block: 'nearest' })
+          gPendingRef.current = false
+        } else if (event.key === 'k' || event.key === 'ArrowUp') {
+          event.preventDefault()
+          const prev = Math.max(focusedFieldIndex - 1, 0)
+          setFocusedFieldIndex(prev)
+          document.getElementById(FIELD_IDS[prev])?.scrollIntoView({ block: 'nearest' })
+          gPendingRef.current = false
+        } else if (event.key === 'g') {
+          if (gPendingRef.current) {
+            event.preventDefault()
+            setFocusedFieldIndex(0)
+            document.getElementById(FIELD_IDS[0])?.scrollIntoView({ block: 'nearest' })
+            gPendingRef.current = false
+          } else {
+            gPendingRef.current = true
+          }
+        } else if (event.key === 'G') {
+          event.preventDefault()
+          const last = FIELD_IDS.length - 1
+          setFocusedFieldIndex(last)
+          document.getElementById(FIELD_IDS[last])?.scrollIntoView({ block: 'nearest' })
+          gPendingRef.current = false
+        } else if (event.key === 'i' || event.key === 'Enter') {
+          event.preventDefault()
+          focusField(focusedFieldIndex)
           gPendingRef.current = false
         } else {
-          gPendingRef.current = true
+          gPendingRef.current = false
         }
-      } else if (event.key === 'G') {
-        event.preventDefault()
-        const last = FIELD_IDS.length - 1
-        setFocusedFieldIndex(last)
-        document.getElementById(FIELD_IDS[last])?.scrollIntoView({ block: 'nearest' })
-        gPendingRef.current = false
-      } else if (event.key === 'i' || event.key === 'Enter') {
-        event.preventDefault()
-        focusField(focusedFieldIndex)
-        gPendingRef.current = false
-      } else {
-        gPendingRef.current = false
       }
     }
 
     if (dialogRef.current) {
       trapFocus(event, dialogRef.current)
     }
-  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedFieldIndex, focusField])
+  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedFieldIndex, focusField, focusZone, agentSession.currentSessionId])
 
   if (!isOpen || !item) return null
 
@@ -309,6 +355,10 @@ export function ItemDetailDialog({
         )}
 
         <div className="flex flex-1 overflow-hidden">
+          <div
+            data-testid="editor-zone"
+            className={`flex-1 min-w-0 flex flex-col overflow-hidden${focusZone === 'editor' ? ' ring-1 ring-[var(--color-accent-primary)]' : ''}`}
+          >
           <ItemDetailEditorPane
             title={draft.title}
             description={draft.description}
@@ -324,8 +374,10 @@ export function ItemDetailDialog({
             focusedFieldIndex={focusedFieldIndex}
             onFieldFocus={handleFieldFocus}
           />
+          </div>
 
           <ItemDetailSidebar
+            focusZone={focusZone}
             item={item}
             agentProvider={draft.agentProvider}
             model={draft.model}
@@ -392,25 +444,43 @@ export function ItemDetailDialog({
           className="flex items-center gap-3 px-4 py-1.5 bg-[var(--color-bg-tertiary)] border-t border-[var(--color-border-primary)] text-xs text-[var(--color-text-muted)]"
         >
           {vim.mode === 'NORMAL' ? (
-            <>
-              <span><kbd className={kbdClass}>j/k</kbd> Navigate</span>
-              <span><kbd className={kbdClass}>gg</kbd> First</span>
-              <span><kbd className={kbdClass}>G</kbd> Last</span>
-              <span><kbd className={kbdClass}>i</kbd> Edit field</span>
-              <span><kbd className={kbdClass}>Esc</kbd> Close</span>
-            </>
+            focusZone === 'editor' ? (
+              <>
+                <span><kbd className={kbdClass}>j/k</kbd> Navigate</span>
+                <span><kbd className={kbdClass}>gg</kbd> First</span>
+                <span><kbd className={kbdClass}>G</kbd> Last</span>
+                <span><kbd className={kbdClass}>i</kbd> Edit field</span>
+                <span><kbd className={kbdClass}>Tab</kbd> Sidebar</span>
+                <span><kbd className={kbdClass}>Esc</kbd> Close</span>
+                <span className="ml-auto flex items-center gap-3">
+                  <span><kbd className={kbdClass}>Ctrl+Shift+P</kbd> Plan</span>
+                  <span><kbd className={kbdClass}>Ctrl+Shift+C</kbd> Code</span>
+                  <span><kbd className={kbdClass}>Ctrl+Shift+V</kbd> Verify</span>
+                </span>
+              </>
+            ) : (
+              <>
+                <span><kbd className={kbdClass}>Tab</kbd> Editor</span>
+                <span><kbd className={kbdClass}>p</kbd> Plan</span>
+                <span><kbd className={kbdClass}>c</kbd> Code</span>
+                <span><kbd className={kbdClass}>v</kbd> Verify</span>
+                <span><kbd className={kbdClass}>x</kbd> Stop</span>
+                <span><kbd className={kbdClass}>d</kbd> Delete</span>
+                <span><kbd className={kbdClass}>Esc</kbd> Back</span>
+              </>
+            )
           ) : (
             <>
               <span><kbd className={kbdClass}>Esc</kbd> Normal mode</span>
               <span><kbd className={kbdClass}>Ctrl+Enter</kbd> Save</span>
               <span><kbd className={kbdClass}>Ctrl+Del</kbd> Delete</span>
+              <span className="ml-auto flex items-center gap-3">
+                <span><kbd className={kbdClass}>Ctrl+Shift+P</kbd> Plan</span>
+                <span><kbd className={kbdClass}>Ctrl+Shift+C</kbd> Code</span>
+                <span><kbd className={kbdClass}>Ctrl+Shift+V</kbd> Verify</span>
+              </span>
             </>
           )}
-          <span className="ml-auto flex items-center gap-3">
-            <span><kbd className={kbdClass}>Ctrl+Shift+P</kbd> Plan</span>
-            <span><kbd className={kbdClass}>Ctrl+Shift+C</kbd> Code</span>
-            <span><kbd className={kbdClass}>Ctrl+Shift+V</kbd> Verify</span>
-          </span>
         </div>
 
         {/* StatusBar at the bottom of the dialog */}
