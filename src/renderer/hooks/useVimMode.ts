@@ -6,7 +6,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 
-export type VimMode = 'NORMAL' | 'INSERT';
+export type VimMode = 'NORMAL' | 'INSERT' | 'VISUAL';
 export type VimZone = 'sidebar' | 'tabs' | 'content' | 'status-bar';
 
 const ZONE_ORDER: VimZone[] = ['sidebar', 'tabs', 'content', 'status-bar'];
@@ -33,6 +33,7 @@ export interface UseVimModeResult {
   handleKeyDown: (event: KeyboardEvent) => void;
   setActiveZone: (zone: VimZone) => void;
   enterInsertMode: () => void;
+  enterVisualMode: () => void;
   exitToNormal: () => void;
 }
 
@@ -50,6 +51,10 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
 
   const enterInsertMode = useCallback(() => {
     setMode('INSERT');
+  }, []);
+
+  const enterVisualMode = useCallback(() => {
+    setMode('VISUAL');
   }, []);
 
   const exitToNormal = useCallback(() => {
@@ -76,6 +81,37 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
       return;
     }
 
+    // VISUAL mode key handling
+    if (mode === 'VISUAL') {
+      const key = event.key;
+
+      if (key === 'Escape') {
+        event.preventDefault();
+        setMode('NORMAL');
+        return;
+      }
+      if (key === 'v') {
+        event.preventDefault();
+        setMode('NORMAL');
+        return;
+      }
+      if (key === 'i') {
+        event.preventDefault();
+        setMode('INSERT');
+        return;
+      }
+      // Zone keys exit visual and switch zone
+      if (key in ZONE_KEYS) {
+        event.preventDefault();
+        setMode('NORMAL');
+        setActiveZone(ZONE_KEYS[key]);
+        return;
+      }
+      // All other keys (j, k, h, l, g, G, Enter, Delete, etc.) pass through
+      // to the component's own keyDown handler
+      return;
+    }
+
     // NORMAL mode key handling
     const key = event.key;
 
@@ -88,6 +124,13 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
 
     // Block zone switching and Tab cycling when dialogs are open
     if (dialogOpen) return;
+
+    // Enter visual mode with v
+    if (key === 'v') {
+      event.preventDefault();
+      setMode('VISUAL');
+      return;
+    }
 
     // Zone switching with single keys
     if (key in ZONE_KEYS) {
@@ -118,6 +161,7 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
     handleKeyDown,
     setActiveZone,
     enterInsertMode,
+    enterVisualMode,
     exitToNormal,
   };
 }

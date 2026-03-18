@@ -41,6 +41,7 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'help', key: '?', zone: 'content', mode: 'NORMAL', description: 'Keyboard shortcuts' },
   { id: 'select-all', key: 'Ctrl+A', zone: 'content', mode: 'NORMAL', description: 'Select all items' },
   { id: 'delete-selected', key: 'Delete', zone: 'content', mode: 'NORMAL', description: 'Delete selected items' },
+  { id: 'visual-select', key: 'v', zone: 'content', mode: 'NORMAL', description: 'Visual select' },
   { id: 'clear-selection', key: 'Escape', zone: 'content', mode: 'NORMAL', description: 'Clear selection / close search' },
 
   // Tab bar zone
