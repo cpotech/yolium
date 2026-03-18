@@ -487,17 +487,17 @@ Content`;
       const result = parseSpecialistDefinition(twitterGrowthMarkdown);
       const templates = result.promptTemplates!;
 
-      // Heartbeat should reference tweet mix, response time targets, crisis detection
-      expect(templates.heartbeat).toMatch(/tweet mix|engagement/i);
-      expect(templates.heartbeat).toMatch(/crisis|reputation/i);
+      // Heartbeat should reference reply workflow, mentions, search
+      expect(templates.heartbeat).toMatch(/reply|mentions/i);
+      expect(templates.heartbeat).toMatch(/search_tweets|crisis|reputation/i);
 
-      // Daily should reference thread strategy, performance targets, engagement rate
-      expect(templates.daily).toMatch(/thread/i);
-      expect(templates.daily).toMatch(/engagement rate|2\.5%/i);
+      // Daily should reference reply strategy, search queries, reply categories
+      expect(templates.daily).toMatch(/reply/i);
+      expect(templates.daily).toMatch(/search queries|reply categories/i);
 
-      // Weekly should reference Twitter Spaces, follower growth, KPI
-      expect(templates.weekly).toMatch(/Twitter Spaces|Spaces/i);
-      expect(templates.weekly).toMatch(/follower growth|10%/i);
+      // Weekly should reference reply engagement, conversation participation, KPI
+      expect(templates.weekly).toMatch(/reply|engagement/i);
+      expect(templates.weekly).toMatch(/conversation participation|follow-back/i);
     });
 
     it('should include tools field in parsed ServiceIntegration for twitter-growth.md', () => {
