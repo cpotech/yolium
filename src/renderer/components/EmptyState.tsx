@@ -275,7 +275,7 @@ export function EmptyState({ onNewTab, onCreateProject, projects, onProjectClick
               <FolderPlus size={18} />
               Create Project
             </span>
-            <kbd className="text-[10px] opacity-70 font-mono">Ctrl+Shift+P</kbd>
+            <kbd className="text-[10px] opacity-70 font-mono">Ctrl+Shift+N</kbd>
           </button>
         )}
         <button

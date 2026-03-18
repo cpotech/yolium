@@ -192,12 +192,9 @@ export function ItemDetailDialog({
       void handleDelete()
       return
     }
-    // Agent shortcuts: Ctrl+Shift+{P,C,V,S,D,M}
+    // Agent shortcuts: Ctrl+Shift+{S,D,M}
     if (event.ctrlKey && event.shiftKey && item) {
       const agentKeyMap: Record<string, string> = {
-        P: 'plan-agent',
-        C: 'code-agent',
-        V: 'verify-agent',
         S: 'scout-agent',
         D: 'design-agent',
         M: 'marketing-agent',
@@ -508,11 +505,6 @@ export function ItemDetailDialog({
                 <span><kbd className={kbdClass}>i</kbd> Edit field</span>
                 <span><kbd className={kbdClass}>Tab</kbd> Sidebar</span>
                 <span><kbd className={kbdClass}>Ctrl+Q</kbd> Close</span>
-                <span className="ml-auto flex items-center gap-3">
-                  <span><kbd className={kbdClass}>Ctrl+Shift+P</kbd> Plan</span>
-                  <span><kbd className={kbdClass}>Ctrl+Shift+C</kbd> Code</span>
-                  <span><kbd className={kbdClass}>Ctrl+Shift+V</kbd> Verify</span>
-                </span>
               </>
             ) : (
               <>
@@ -532,11 +524,6 @@ export function ItemDetailDialog({
               <span><kbd className={kbdClass}>Esc</kbd> Normal mode</span>
               <span><kbd className={kbdClass}>Ctrl+Enter</kbd> Save</span>
               <span><kbd className={kbdClass}>Ctrl+Del</kbd> Delete</span>
-              <span className="ml-auto flex items-center gap-3">
-                <span><kbd className={kbdClass}>Ctrl+Shift+P</kbd> Plan</span>
-                <span><kbd className={kbdClass}>Ctrl+Shift+C</kbd> Code</span>
-                <span><kbd className={kbdClass}>Ctrl+Shift+V</kbd> Verify</span>
-              </span>
             </>
           )}
         </div>

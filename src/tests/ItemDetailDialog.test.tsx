@@ -293,9 +293,6 @@ describe('ItemDetailDialog', () => {
 
   describe('agent keyboard shortcuts', () => {
     const agentShortcuts: Array<{ key: string; agentName: string }> = [
-      { key: 'p', agentName: 'plan-agent' },
-      { key: 'c', agentName: 'code-agent' },
-      { key: 'v', agentName: 'verify-agent' },
       { key: 's', agentName: 'scout-agent' },
       { key: 'd', agentName: 'design-agent' },
       { key: 'm', agentName: 'marketing-agent' },
@@ -330,14 +327,14 @@ describe('ItemDetailDialog', () => {
       })
     }
 
-    it('should not start an agent when Ctrl+Shift+P is pressed while an agent is running', async () => {
+    it('should NOT start plan-agent when Ctrl+Shift+P is pressed', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
 
       render(
         <ItemDetailDialog
           isOpen={true}
-          item={createMockItem({ agentStatus: 'running' })}
+          item={createMockItem({ agentStatus: 'idle' })}
           projectPath="/test/project"
           onClose={vi.fn()}
           onUpdated={vi.fn()}
@@ -355,7 +352,82 @@ describe('ItemDetailDialog', () => {
       expect(mockStart).not.toHaveBeenCalled()
     })
 
-    it('should not start an agent when Ctrl+Shift+P is pressed while focus is in a textarea', async () => {
+    it('should NOT start code-agent when Ctrl+Shift+C is pressed', async () => {
+      const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+      window.electronAPI.agent.start = mockStart
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'idle' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      await act(async () => {
+        fireEvent.keyDown(screen.getByTestId('item-detail-dialog').parentElement!, {
+          key: 'C',
+          ctrlKey: true,
+          shiftKey: true,
+        })
+      })
+
+      expect(mockStart).not.toHaveBeenCalled()
+    })
+
+    it('should NOT start verify-agent when Ctrl+Shift+V is pressed', async () => {
+      const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+      window.electronAPI.agent.start = mockStart
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'idle' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      await act(async () => {
+        fireEvent.keyDown(screen.getByTestId('item-detail-dialog').parentElement!, {
+          key: 'V',
+          ctrlKey: true,
+          shiftKey: true,
+        })
+      })
+
+      expect(mockStart).not.toHaveBeenCalled()
+    })
+
+    it('should not start an agent when Ctrl+Shift+S is pressed while an agent is running', async () => {
+      const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+      window.electronAPI.agent.start = mockStart
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'running' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      await act(async () => {
+        fireEvent.keyDown(screen.getByTestId('item-detail-dialog').parentElement!, {
+          key: 'S',
+          ctrlKey: true,
+          shiftKey: true,
+        })
+      })
+
+      expect(mockStart).not.toHaveBeenCalled()
+    })
+
+    it('should not start an agent when Ctrl+Shift+S is pressed while focus is in a textarea', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
 
@@ -374,7 +446,7 @@ describe('ItemDetailDialog', () => {
 
       await act(async () => {
         fireEvent.keyDown(textarea, {
-          key: 'P',
+          key: 'S',
           ctrlKey: true,
           shiftKey: true,
         })
@@ -792,17 +864,17 @@ describe('ItemDetailDialog', () => {
       // Switch to sidebar zone
       fireEvent.keyDown(getContainer(), { key: 'Tab' })
 
-      // Ctrl+Shift+P should still work in sidebar zone
+      // Ctrl+Shift+S should still work in sidebar zone
       await act(async () => {
         fireEvent.keyDown(getContainer(), {
-          key: 'P',
+          key: 'S',
           ctrlKey: true,
           shiftKey: true,
         })
       })
 
       expect(mockStart).toHaveBeenCalledWith(
-        expect.objectContaining({ agentName: 'plan-agent' }),
+        expect.objectContaining({ agentName: 'scout-agent' }),
       )
     })
 
