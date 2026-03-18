@@ -9,7 +9,6 @@ import { VimModeProvider, useVimModeContext } from '@renderer/context/VimModeCon
 import { KanbanColumn } from '@renderer/components/kanban/KanbanColumn';
 import type { KanbanItem } from '@shared/types/kanban';
 
-// Mock window.electronAPI
 Object.defineProperty(window, 'electronAPI', {
   writable: true,
   value: {
@@ -36,7 +35,6 @@ function renderWithVim(ui: React.ReactElement) {
   );
 }
 
-// Helper component that sets the active zone for testing
 function ZoneSetter({ zone }: { zone: string }) {
   const { setActiveZone } = useVimModeContext();
   React.useEffect(() => {
@@ -67,7 +65,6 @@ const mockItems = [
   createMockItem({ id: 'item-3', title: 'Item 3' }),
 ];
 
-// Wrapper that manages focusedCardIndex state internally so keydown events actually update it
 function StatefulKanbanColumn({
   items,
   initialFocusedIndex = 0,
@@ -130,8 +127,6 @@ describe('KanbanView spatial vim navigation', () => {
   });
 
   it('should move to next column with l or ArrowRight', () => {
-    // Column navigation is KanbanView responsibility
-    // Unit test verifies that focusedCardIndex prop renders correctly
     renderWithVim(
       <>
         <ZoneSetter zone="content" />
@@ -151,7 +146,6 @@ describe('KanbanView spatial vim navigation', () => {
   });
 
   it('should move to previous column with h or ArrowLeft', () => {
-    // Same as above - column nav is KanbanView responsibility
     renderWithVim(
       <>
         <ZoneSetter zone="content" />
@@ -179,7 +173,6 @@ describe('KanbanView spatial vim navigation', () => {
     );
 
     const column = screen.getByTestId('kanban-column-backlog');
-    // Press g twice for gg
     fireEvent.keyDown(column, { key: 'g' });
     fireEvent.keyDown(column, { key: 'g' });
 
@@ -232,7 +225,6 @@ describe('KanbanView spatial vim navigation', () => {
   });
 
   it('should preserve row position when moving between columns', () => {
-    // Verified through focusedCardIndex prop - when column changes, KanbanView preserves the card index
     renderWithVim(
       <>
         <ZoneSetter zone="content" />
@@ -279,19 +271,15 @@ describe('KanbanView spatial vim navigation', () => {
       </>
     );
 
-    // Enter INSERT mode via the document
     fireEvent.keyDown(document, { key: 'i' });
 
     const column = screen.getByTestId('kanban-column-backlog');
     fireEvent.keyDown(column, { key: 'j' });
 
-    // In INSERT mode, vim focus is hidden (isVimActive is false), so no card is vim-focused
     const cards = screen.getAllByTestId('kanban-card');
-    // No card should have vim focus in INSERT mode
     cards.forEach(card => {
       expect(card.getAttribute('data-vim-focused')).toBeNull();
     });
-    // And the second card should NOT have focus (j didn't navigate)
     expect(cards[1].getAttribute('data-vim-focused')).toBeNull();
   });
 });

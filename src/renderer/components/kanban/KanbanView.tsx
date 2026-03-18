@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { FolderOpen, RefreshCw, Plus, Loader2, X, AlertTriangle, Search, GitBranch, Trash2, CheckSquare } from 'lucide-react'
+import { FolderOpen, RefreshCw, Plus, Loader2, X, AlertTriangle, Search, GitBranch, Trash2, CheckSquare, Keyboard } from 'lucide-react'
 import { KanbanColumn } from './KanbanColumn'
 import { NewItemDialog } from './NewItemDialog'
 import { ItemDetailDialog } from './ItemDetailDialog'
@@ -69,6 +69,8 @@ export function KanbanView({
   const isVimContentActive = vim.mode === 'NORMAL' && vim.activeZone === 'content'
   const [focusedColumnIndex, setFocusedColumnIndex] = useState(0)
   const [focusedCardIndex, setFocusedCardIndex] = useState(0)
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
+  const gPendingRef = useRef(false)
   // Ref to track dialog open state without stale closures
   const dialogOpenRef = useRef(false)
   // Ref to track when user is interacting with any input (prevents focus theft)
@@ -318,6 +320,18 @@ export function KanbanView({
     lastClickedIdRef.current = null
   }, [])
 
+  const getColumnItems = useCallback((columnId: ColumnId): KanbanItem[] => {
+    if (!board) return []
+    const query = searchQuery.toLowerCase().trim()
+    return board.items
+      .filter((item) => item.column === columnId)
+      .filter((item) => {
+        if (!query) return true
+        return item.title.toLowerCase().includes(query) || item.description.toLowerCase().includes(query)
+      })
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+  }, [board, searchQuery])
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     // Only handle when no dialog is open and no input is focused
     const target = e.target as HTMLElement
@@ -326,6 +340,55 @@ export function KanbanView({
 
     // Vim spatial navigation (h/l for columns) in NORMAL mode
     if (isVimContentActive && board) {
+      const currentColumnItems = getColumnItems(columns[focusedColumnIndex].id)
+
+      if (e.key === 'j' || e.key === 'ArrowDown') {
+        e.preventDefault()
+        if (currentColumnItems.length > 0) {
+          setFocusedCardIndex((focusedCardIndex + 1) % currentColumnItems.length)
+        }
+        gPendingRef.current = false
+        return
+      }
+      if (e.key === 'k' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        if (currentColumnItems.length > 0) {
+          setFocusedCardIndex((focusedCardIndex - 1 + currentColumnItems.length) % currentColumnItems.length)
+        }
+        gPendingRef.current = false
+        return
+      }
+      if (e.key === 'g') {
+        if (gPendingRef.current) {
+          e.preventDefault()
+          if (currentColumnItems.length > 0) {
+            setFocusedCardIndex(0)
+          }
+          gPendingRef.current = false
+          return
+        } else {
+          gPendingRef.current = true
+          return
+        }
+      }
+      if (e.key === 'G') {
+        e.preventDefault()
+        if (currentColumnItems.length > 0) {
+          setFocusedCardIndex(currentColumnItems.length - 1)
+        }
+        gPendingRef.current = false
+        return
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        const idx = Math.min(focusedCardIndex, currentColumnItems.length - 1)
+        if (currentColumnItems[idx]) {
+          handleCardClick(currentColumnItems[idx], e)
+        }
+        gPendingRef.current = false
+        return
+      }
+
       if (e.key === 'h' || e.key === 'ArrowLeft') {
         e.preventDefault()
         setFocusedColumnIndex(prev => Math.max(prev - 1, 0))
@@ -353,7 +416,7 @@ export function KanbanView({
     }
     if (e.key === '?') {
       e.preventDefault()
-      onShowShortcuts?.()
+      setShowShortcutsHelp(prev => !prev)
     }
     if (e.key === 'Delete' || e.key === 'Backspace') {
       if (selectedIds.size > 0) {
@@ -377,7 +440,7 @@ export function KanbanView({
         viewRef.current?.focus()
       }
     }
-  }, [newItemDialogOpen, selectedItem, loadBoard, onShowShortcuts, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, board, vim])
+  }, [newItemDialogOpen, selectedItem, loadBoard, showShortcutsHelp, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, board, vim, columns, focusedColumnIndex, getColumnItems, handleCardClick])
 
   const handleCardDrop = useCallback(async (itemId: string, targetColumn: ColumnId) => {
     if (!projectPath || !board) return
@@ -529,19 +592,6 @@ export function KanbanView({
   // Compute board summary stats
   const totalItems = board?.items.length ?? 0
   const runningCount = board?.items.filter(i => i.agentStatus === 'running').length ?? 0
-
-  // Get items for each column (filtered by search query)
-  const getColumnItems = (columnId: ColumnId): KanbanItem[] => {
-    if (!board) return []
-    const query = searchQuery.toLowerCase().trim()
-    return board.items
-      .filter((item) => item.column === columnId)
-      .filter((item) => {
-        if (!query) return true
-        return item.title.toLowerCase().includes(query) || item.description.toLowerCase().includes(query)
-      })
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-  }
 
   return (
     <div ref={viewRef} data-testid="kanban-view" data-vim-zone="content" tabIndex={0} onKeyDown={handleKeyDown} className={`flex-1 min-h-0 flex flex-col bg-[var(--color-bg-primary)] outline-none ${isVimContentActive ? 'ring-1 ring-[var(--color-accent-primary)]' : ''}`}>
@@ -722,6 +772,38 @@ export function KanbanView({
         </div>
       )}
 
+      {/* Shortcuts help overlay */}
+      {showShortcutsHelp && (
+        <div
+          data-testid="shortcuts-help"
+          className="px-4 py-3 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border-primary)] text-sm"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-medium text-[var(--color-text-primary)] flex items-center gap-2">
+              <Keyboard size={14} />
+              Keyboard Shortcuts
+            </h3>
+            <button onClick={() => setShowShortcutsHelp(false)} className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">
+              <X size={14} />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-[var(--color-text-secondary)]">
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">N</kbd> New item</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">R</kbd> Refresh board</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">/</kbd> Search items</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">?</kbd> Toggle shortcuts</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Ctrl+Click</kbd> Multi-select</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Shift+Click</kbd> Range select</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Ctrl+A</kbd> Select all</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Delete</kbd> Delete selected</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Esc</kbd> Clear selection / close</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">h</kbd>/<kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">l</kbd> Navigate columns</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">j</kbd>/<kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">k</kbd> Navigate cards</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">gg</kbd>/<kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">G</kbd> First/Last card</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Enter</kbd> Open focused card</div>
+          </div>
+        </div>
+      )}
       {/* Empty board welcome message */}
       {board && totalItems === 0 && (
         <div
