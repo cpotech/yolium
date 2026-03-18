@@ -59,6 +59,8 @@ export interface SpecialistDefinition {
   escalation: EscalationConfig;
   promptTemplates: Record<string, string>;
   integrations?: ServiceIntegration[];
+  /** Whether this specialist is a built-in default or user-created custom agent */
+  source?: 'default' | 'custom';
 }
 
 /** Outcome of a scheduled run */

@@ -233,6 +233,7 @@ export interface ScheduleSpecialistSummary {
   memory: SpecialistDefinition['memory'];
   escalation: SpecialistDefinition['escalation'];
   integrations?: SpecialistDefinition['integrations'];
+  source?: SpecialistDefinition['source'];
 }
 
 export type ScheduleSpecialistMap = Record<string, ScheduleSpecialistSummary>;

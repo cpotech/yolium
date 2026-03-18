@@ -1,25 +1,39 @@
 import { describe, it, expect } from 'vitest';
-import { execFile, execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import Database from 'better-sqlite3';
 
 const SCRIPT = path.resolve(__dirname, '..', 'tools', 'twitter', 'post_tweet.py');
 const DB_PATH = path.join(os.homedir(), '.yolium', 'yolium.db');
 const SPECIALIST_ID = 'reply-focused-privacybooks';
 
 function loadCredentialsEnv(): Record<string, string> {
-  const output = execFileSync('sqlite3', [
-    DB_PATH,
-    '-json',
-    `SELECT key, value FROM credentials WHERE specialist_id = '${SPECIALIST_ID}'`,
-  ], { encoding: 'utf-8' });
-
-  const rows = JSON.parse(output) as { key: string; value: string }[];
+  const db = new Database(DB_PATH, { readonly: true });
+  const rows = db.prepare(
+    'SELECT key, value FROM credentials WHERE specialist_id = ?'
+  ).all(SPECIALIST_ID) as { key: string; value: string }[];
   const env: Record<string, string> = {};
   for (const row of rows) {
     env[row.key] = row.value;
   }
+  db.close();
   return env;
+}
+
+function hasRealTwitterCredentials(): boolean {
+  if (!fs.existsSync(DB_PATH)) {
+    return false;
+  }
+
+  const env = loadCredentialsEnv();
+  return Boolean(
+    env.TWITTER_API_KEY &&
+    env.TWITTER_API_SECRET &&
+    env.TWITTER_ACCESS_TOKEN &&
+    env.TWITTER_ACCESS_TOKEN_SECRET
+  );
 }
 
 function run(
@@ -45,7 +59,7 @@ function run(
   });
 }
 
-describe('post_tweet.py with real credentials', () => {
+describe.runIf(hasRealTwitterCredentials())('post_tweet.py with real credentials', () => {
   it('should load credentials for reply-focused-privacybooks from the database', () => {
     const env = loadCredentialsEnv();
     expect(env.TWITTER_API_KEY).toBeDefined();

@@ -10,7 +10,7 @@ import * as os from 'node:os';
 import cron from 'node-cron';
 import { BrowserWindow } from 'electron';
 import { createLogger } from '@main/lib/logger';
-import { listSpecialists, loadSpecialist, getSpecialistsDir } from '@main/services/specialist-loader';
+import { listSpecialists, loadSpecialist, getSpecialistsDir, getCustomSpecialistsDir } from '@main/services/specialist-loader';
 import { startScheduledAgent } from '@main/services/agent-runner';
 import {
   getScheduleState,
@@ -78,7 +78,7 @@ export class CronScheduler {
   private state: ScheduleState;
   private distillationJob: CronJob | null = null;
   private triggerCounts: Map<string, number> = new Map();
-  private fileWatcher: fs.FSWatcher | null = null;
+  private fileWatchers: fs.FSWatcher[] = [];
   private fileWatcherDebounce: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
@@ -267,23 +267,27 @@ export class CronScheduler {
   private watchSpecialistFiles(): void {
     this.unwatchSpecialistFiles();
 
-    const dir = getSpecialistsDir();
-    if (!fs.existsSync(dir)) return;
+    const dirs = [getSpecialistsDir(), getCustomSpecialistsDir()];
 
-    try {
-      this.fileWatcher = fs.watch(dir, (eventType, filename) => {
-        if (!filename || !filename.endsWith('.md') || filename.startsWith('_')) return;
+    for (const dir of dirs) {
+      if (!fs.existsSync(dir)) continue;
 
-        // Debounce: editors often fire multiple events per save
-        if (this.fileWatcherDebounce) clearTimeout(this.fileWatcherDebounce);
-        this.fileWatcherDebounce = setTimeout(() => {
-          this.fileWatcherDebounce = null;
-          logger.info('Specialist file changed, reloading', { filename });
-          this.reload();
-        }, 500);
-      });
-    } catch (err) {
-      logger.error('Failed to watch specialist directory', { dir, error: err instanceof Error ? err.message : String(err) });
+      try {
+        const watcher = fs.watch(dir, (eventType, filename) => {
+          if (!filename || !filename.endsWith('.md') || filename.startsWith('_')) return;
+
+          // Debounce: editors often fire multiple events per save
+          if (this.fileWatcherDebounce) clearTimeout(this.fileWatcherDebounce);
+          this.fileWatcherDebounce = setTimeout(() => {
+            this.fileWatcherDebounce = null;
+            logger.info('Specialist file changed, reloading', { filename });
+            this.reload();
+          }, 500);
+        });
+        this.fileWatchers.push(watcher);
+      } catch (err) {
+        logger.error('Failed to watch specialist directory', { dir, error: err instanceof Error ? err.message : String(err) });
+      }
     }
   }
 
@@ -292,10 +296,10 @@ export class CronScheduler {
       clearTimeout(this.fileWatcherDebounce);
       this.fileWatcherDebounce = null;
     }
-    if (this.fileWatcher) {
-      this.fileWatcher.close();
-      this.fileWatcher = null;
+    for (const watcher of this.fileWatchers) {
+      watcher.close();
     }
+    this.fileWatchers = [];
   }
 
   // ─── Private: Core Scheduling ──────────────────────────────────────────

@@ -32,8 +32,55 @@ import {
   listSpecialists,
   validateSchedules,
   loadSpecialistRaw,
+  loadSpecialist,
   getSpecialistsDir,
+  getCustomSpecialistsDir,
 } from '@main/services/specialist-loader';
+
+const blueskyMarkdown = `---
+name: bluesky-privacybooks
+description: Grow a Bluesky account focused on UK tax and small business content
+model: sonnet
+tools:
+  - Read
+  - WebSearch
+  - WebFetch
+schedules:
+  - type: heartbeat
+    cron: "*/20 * * * *"
+    enabled: false
+  - type: daily
+    cron: "0 8 * * *"
+    enabled: false
+  - type: weekly
+    cron: "0 9 * * 1"
+    enabled: false
+memory:
+  strategy: distill_daily
+  maxEntries: 500
+  retentionDays: 90
+escalation:
+  onFailure: notify_slack
+  onPattern: reduce_frequency
+integrations:
+  - service: bluesky-api
+    env:
+      BLUESKY_IDENTIFIER: ""
+      BLUESKY_APP_PASSWORD: ""
+    tools:
+      - bluesky
+promptTemplates:
+  heartbeat: |
+    Review original posts, replies, and engagement. Use search_posts and get_notifications.
+  daily: |
+    Review strategy, search queries, HMRC updates, tax themes, and content mix.
+  weekly: |
+    Weekly audit of engagement, follower growth, and KPI trends.
+---
+
+# Bluesky Privacybooks Specialist
+
+You are a specialist agent for PrivacyBooks on Bluesky.`;
 
 describe('specialist-loader', () => {
   beforeEach(() => {
@@ -609,13 +656,6 @@ System prompt here.`;
   });
 
   describe('bluesky-privacybooks specialist', () => {
-    const blueskyMarkdown = (() => {
-      const realFs = require('node:fs');
-      const realPath = require('node:path');
-      const filePath = realPath.join(__dirname, '..', 'agents', 'cron', 'bluesky-privacybooks.md');
-      return realFs.readFileSync(filePath, 'utf-8');
-    })();
-
     it('should parse bluesky-privacybooks.md frontmatter with all required fields (name, description, model, tools, schedules, memory, escalation, integrations, promptTemplates)', () => {
       const result = parseSpecialistDefinition(blueskyMarkdown);
 
@@ -727,6 +767,19 @@ System prompt here.`;
       Object.defineProperty(process, 'resourcesPath', { value: originalResourcesPath, writable: true, configurable: true });
     });
 
+    it('should resolve to the repo src/agents/cron path when running from a standalone .vite build', async () => {
+      const fs = await import('node:fs');
+      const originalResourcesPath = process.resourcesPath;
+      Object.defineProperty(process, 'resourcesPath', { value: '', writable: true, configurable: true });
+
+      const repoCronPath = path.join(process.cwd(), 'src', 'agents', 'cron');
+      vi.mocked(fs.existsSync).mockImplementation((candidate) => candidate === repoCronPath);
+
+      expect(getSpecialistsDir()).toBe(repoCronPath);
+
+      Object.defineProperty(process, 'resourcesPath', { value: originalResourcesPath, writable: true, configurable: true });
+    });
+
     it('should return cron directory path that contains .md files when pointed at real src/agents/cron', () => {
       const realFs = require('node:fs');
       const realPath = require('node:path');
@@ -755,6 +808,134 @@ System prompt here.`;
       vi.mocked(fs.existsSync).mockReturnValue(false);
 
       expect(() => loadSpecialistRaw('nonexistent')).toThrow();
+    });
+  });
+
+  describe('dual-directory loading', () => {
+    const validMarkdown = `---
+name: custom-agent
+description: A custom agent
+model: haiku
+tools:
+  - Read
+schedules:
+  - { type: daily, cron: "0 0 * * *", enabled: true }
+memory:
+  strategy: raw
+  maxEntries: 100
+  retentionDays: 30
+escalation:
+  onFailure: alert_user
+---
+
+# Custom Agent`;
+
+    it('should return custom specialists dir as ~/.yolium/agents/cron/custom/', () => {
+      const result = getCustomSpecialistsDir();
+      expect(result).toBe(path.join('/home/test', '.yolium', 'agents', 'cron', 'custom'));
+    });
+
+    it('should list specialists from both default and custom directories', async () => {
+      const fs = await import('node:fs');
+      const defaultDir = getSpecialistsDir();
+      const customDir = getCustomSpecialistsDir();
+
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        return p === defaultDir || p === customDir;
+      });
+      vi.mocked(fs.readdirSync as unknown as (p: string) => string[]).mockImplementation((p) => {
+        if (p === defaultDir) return ['security-monitor.md', 'codebase-health.md'];
+        if (p === customDir) return ['my-custom-agent.md'];
+        return [];
+      });
+
+      const specialists = listSpecialists();
+      expect(specialists).toContain('security-monitor');
+      expect(specialists).toContain('codebase-health');
+      expect(specialists).toContain('my-custom-agent');
+    });
+
+    it('should set source to default for specialists in the default directory', async () => {
+      const fs = await import('node:fs');
+      const defaultDir = getSpecialistsDir();
+
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        return p === path.join(defaultDir, 'security-monitor.md') || p === defaultDir;
+      });
+      vi.mocked(fs.readFileSync).mockReturnValue(validMarkdown.replace('custom-agent', 'security-monitor'));
+
+      const result = loadSpecialist('security-monitor');
+      expect(result.source).toBe('default');
+    });
+
+    it('should set source to custom for specialists in the custom directory', async () => {
+      const fs = await import('node:fs');
+      const defaultDir = getSpecialistsDir();
+      const customDir = getCustomSpecialistsDir();
+
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        if (p === path.join(defaultDir, 'my-custom.md')) return false;
+        if (p === path.join(customDir, 'my-custom.md')) return true;
+        return false;
+      });
+      vi.mocked(fs.readFileSync).mockReturnValue(validMarkdown.replace('custom-agent', 'my-custom'));
+
+      const result = loadSpecialist('my-custom');
+      expect(result.source).toBe('custom');
+    });
+
+    it('should prefer default over custom when same name exists in both directories', async () => {
+      const fs = await import('node:fs');
+      const defaultDir = getSpecialistsDir();
+      const customDir = getCustomSpecialistsDir();
+
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        return p === defaultDir || p === customDir;
+      });
+      vi.mocked(fs.readdirSync as unknown as (p: string) => string[]).mockImplementation((p) => {
+        if (p === defaultDir) return ['shared-agent.md'];
+        if (p === customDir) return ['shared-agent.md', 'unique-custom.md'];
+        return [];
+      });
+
+      const specialists = listSpecialists();
+      // shared-agent should appear only once (from default), plus unique-custom
+      const sharedCount = specialists.filter(s => s === 'shared-agent').length;
+      expect(sharedCount).toBe(1);
+      expect(specialists).toContain('unique-custom');
+    });
+
+    it('should load specialist from custom dir when not found in default dir', async () => {
+      const fs = await import('node:fs');
+      const defaultDir = getSpecialistsDir();
+      const customDir = getCustomSpecialistsDir();
+
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        if (p === path.join(defaultDir, 'custom-only.md')) return false;
+        if (p === path.join(customDir, 'custom-only.md')) return true;
+        return false;
+      });
+      vi.mocked(fs.readFileSync).mockReturnValue(validMarkdown.replace('custom-agent', 'custom-only'));
+
+      const result = loadSpecialist('custom-only');
+      expect(result.name).toBe('custom-only');
+      expect(result.source).toBe('custom');
+    });
+
+    it('should load raw specialist from custom dir when not found in default dir', async () => {
+      const fs = await import('node:fs');
+      const defaultDir = getSpecialistsDir();
+      const customDir = getCustomSpecialistsDir();
+
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        if (p === path.join(defaultDir, 'custom-only.md')) return false;
+        if (p === path.join(customDir, 'custom-only.md')) return true;
+        return false;
+      });
+      vi.mocked(fs.readFileSync).mockReturnValue(validMarkdown);
+
+      const result = loadSpecialistRaw('custom-only');
+      expect(result).toBe(validMarkdown);
     });
   });
 });

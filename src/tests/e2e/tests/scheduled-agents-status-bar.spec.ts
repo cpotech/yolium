@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import Database from 'better-sqlite3';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,7 +12,6 @@ test.describe('Scheduled Agents Status Bar', () => {
 
   async function seedRunHistory(): Promise<void> {
     const specialistDir = path.join(os.homedir(), '.yolium', 'schedules', 'twitter-growth');
-    const dbPath = path.join(os.homedir(), '.yolium', 'schedules.db');
     const runId = `status-bar-layout-${Date.now()}`;
     const completedAt = new Date().toISOString();
     const startedAt = new Date(Date.now() - 5 * 60 * 1000).toISOString();
@@ -31,43 +29,80 @@ test.describe('Scheduled Agents Status Bar', () => {
       outcome: 'completed',
     };
 
-    await fs.mkdir(path.dirname(dbPath), { recursive: true });
-    await fs.mkdir(path.join(specialistDir, 'runs'), { recursive: true });
-    const db = new Database(dbPath);
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS runs (
-        id TEXT PRIMARY KEY,
-        specialist_id TEXT NOT NULL,
-        schedule_type TEXT NOT NULL,
-        started_at TEXT NOT NULL,
-        completed_at TEXT NOT NULL,
-        status TEXT NOT NULL,
-        tokens_used INTEGER NOT NULL DEFAULT 0,
-        cost_usd REAL NOT NULL DEFAULT 0,
-        summary TEXT NOT NULL DEFAULT '',
-        outcome TEXT NOT NULL
-      );
-      CREATE INDEX IF NOT EXISTS idx_runs_specialist ON runs(specialist_id, started_at);
-    `);
-    db.prepare(`
-      INSERT OR REPLACE INTO runs (id, specialist_id, schedule_type, started_at, completed_at, status, tokens_used, cost_usd, summary, outcome)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      run.id,
-      run.specialistId,
-      run.scheduleType,
-      run.startedAt,
-      run.completedAt,
-      run.status,
-      run.tokensUsed,
-      run.costUsd,
-      run.summary,
-      run.outcome,
-    );
-    db.close();
-
     seededRunId = runId;
     seededLogPath = path.join(specialistDir, 'runs', `${runId}.log`);
+
+    await ctx.app.evaluate((_electron, seededRun) => {
+      const moduleApi = process.getBuiltinModule('node:module');
+      const fs = process.getBuiltinModule('node:fs');
+      const os = process.getBuiltinModule('node:os');
+      const path = process.getBuiltinModule('node:path');
+      if (!moduleApi || !fs || !os || !path) {
+        throw new Error('Required Node builtins are unavailable in Electron evaluate context');
+      }
+      const require = moduleApi.createRequire(path.join(process.cwd(), 'package.json'));
+      const Database = require('better-sqlite3');
+
+      const dbPath = path.join(os.homedir(), '.yolium', 'yolium.db');
+      const runDir = path.join(os.homedir(), '.yolium', 'schedules', seededRun.specialistId, 'runs');
+      fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+      fs.mkdirSync(runDir, { recursive: true });
+
+      const db = new Database(dbPath);
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS runs (
+          id TEXT PRIMARY KEY,
+          specialist_id TEXT NOT NULL,
+          schedule_type TEXT NOT NULL,
+          started_at TEXT NOT NULL,
+          completed_at TEXT NOT NULL,
+          status TEXT NOT NULL,
+          tokens_used INTEGER NOT NULL DEFAULT 0,
+          cost_usd REAL NOT NULL DEFAULT 0,
+          summary TEXT NOT NULL DEFAULT '',
+          outcome TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_runs_specialist ON runs(specialist_id, started_at);
+      `);
+      db.prepare(`
+        INSERT OR REPLACE INTO runs (id, specialist_id, schedule_type, started_at, completed_at, status, tokens_used, cost_usd, summary, outcome)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        seededRun.id,
+        seededRun.specialistId,
+        seededRun.scheduleType,
+        seededRun.startedAt,
+        seededRun.completedAt,
+        seededRun.status,
+        seededRun.tokensUsed,
+        seededRun.costUsd,
+        seededRun.summary,
+        seededRun.outcome,
+      );
+
+      const stateRow = db.prepare('SELECT value FROM schedule_state WHERE key = ?').get('state');
+      const state = stateRow?.value
+        ? JSON.parse(stateRow.value)
+        : { specialists: {}, globalEnabled: false };
+      const existingStatus = state.specialists[seededRun.specialistId] ?? {
+        id: seededRun.specialistId,
+        enabled: true,
+        consecutiveNoAction: 0,
+        consecutiveFailures: 0,
+        totalRuns: 0,
+        successRate: 0,
+        weeklyCost: 0,
+      };
+      state.specialists[seededRun.specialistId] = {
+        ...existingStatus,
+        totalRuns: Math.max(existingStatus.totalRuns, 1),
+        successRate: 100,
+        weeklyCost: Math.max(existingStatus.weeklyCost, seededRun.costUsd),
+      };
+      db.prepare('INSERT OR REPLACE INTO schedule_state (key, value) VALUES (?, ?)').run('state', JSON.stringify(state));
+      db.close();
+    }, run);
+
     await fs.writeFile(
       seededLogPath,
       Array.from({ length: 120 }, (_, index) => `[${completedAt}] Log line ${index + 1}`).join('\n'),
@@ -99,11 +134,36 @@ test.describe('Scheduled Agents Status Bar', () => {
       ctx = undefined as unknown as AppContext;
     }
     if (seededRunId) {
-      const dbPath = path.join(os.homedir(), '.yolium', 'schedules.db');
-      if (await fs.stat(dbPath).then(() => true).catch(() => false)) {
-        const db = new Database(dbPath);
-        db.prepare('DELETE FROM runs WHERE id = ?').run(seededRunId);
-        db.close();
+      if (ctx) {
+        await ctx.app.evaluate((_electron, runId: string) => {
+          const moduleApi = process.getBuiltinModule('node:module');
+          const os = process.getBuiltinModule('node:os');
+          const path = process.getBuiltinModule('node:path');
+          if (!moduleApi || !os || !path) {
+            throw new Error('Required Node builtins are unavailable in Electron evaluate context');
+          }
+          const require = moduleApi.createRequire(path.join(process.cwd(), 'package.json'));
+          const Database = require('better-sqlite3');
+
+          const dbPath = path.join(os.homedir(), '.yolium', 'yolium.db');
+          const db = new Database(dbPath);
+          db.prepare('DELETE FROM runs WHERE id = ?').run(runId);
+          const stateRow = db.prepare('SELECT value FROM schedule_state WHERE key = ?').get('state');
+          if (stateRow?.value) {
+            const state = JSON.parse(stateRow.value);
+            const status = state.specialists?.['twitter-growth'];
+            if (status) {
+              state.specialists['twitter-growth'] = {
+                ...status,
+                totalRuns: 0,
+                successRate: 0,
+                weeklyCost: 0,
+              };
+              db.prepare('INSERT OR REPLACE INTO schedule_state (key, value) VALUES (?, ?)').run('state', JSON.stringify(state));
+            }
+          }
+          db.close();
+        }, seededRunId);
       }
       seededRunId = null;
     }
@@ -154,12 +214,13 @@ test.describe('Scheduled Agents Status Bar', () => {
   });
 
   test('should keep scheduled run history detail above the shared status bar', async () => {
-    await seedRunHistory();
     await openScheduledAgents();
+    await seedRunHistory();
 
     const { window } = ctx;
     expect(seededRunId).not.toBeNull();
 
+    await window.click('[data-testid="schedule-reload-btn"]');
     await window.click('[data-testid="history-twitter-growth"]');
     await expect(window.locator('[data-testid="schedule-panel-history"]')).toBeVisible();
     await window.click(`[data-testid="run-row-${seededRunId!}"]`);

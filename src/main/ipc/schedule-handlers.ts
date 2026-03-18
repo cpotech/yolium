@@ -88,6 +88,7 @@ export function registerScheduleHandlers(ipcMain: IpcMain): void {
         memory: def.memory,
         escalation: def.escalation,
         integrations: def.integrations || [],
+        source: def.source || 'default',
       };
     }
     return result;

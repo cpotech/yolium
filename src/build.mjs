@@ -35,6 +35,8 @@ const externalModules = [
   'node-pty',
   'dockerode',
   'ssh2',
+  'gray-matter',
+  'better-sqlite3',
   'electron-log',
   'sudo-prompt-alt',
 ];

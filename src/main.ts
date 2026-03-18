@@ -25,6 +25,8 @@ declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
 declare const MAIN_WINDOW_VITE_NAME: string;
 
 let mainWindow: BrowserWindow | null = null;
+const DEV_SERVER_LOAD_RETRY_MS = 500;
+const DEV_SERVER_MAX_LOAD_ATTEMPTS = 60;
 
 /**
  * Create the application menu with keyboard shortcuts.
@@ -137,9 +139,33 @@ function createAppMenu(window: BrowserWindow): void {
   Menu.setApplicationMenu(menu);
 }
 
-/**
- * Create the main application window.
- */
+function loadRenderer(window: BrowserWindow, attempt = 0): void {
+  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    const devServerUrl = MAIN_WINDOW_VITE_DEV_SERVER_URL.replace('://localhost', '://127.0.0.1');
+
+    void window.loadURL(devServerUrl).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      const shouldRetry = message.includes('ERR_CONNECTION_REFUSED') && attempt < DEV_SERVER_MAX_LOAD_ATTEMPTS;
+
+      if (!shouldRetry) {
+        logger.error('Failed to load renderer URL', { message, attempt });
+        return;
+      }
+
+      setTimeout(() => {
+        if (!window.isDestroyed()) {
+          loadRenderer(window, attempt + 1);
+        }
+      }, DEV_SERVER_LOAD_RETRY_MS);
+    });
+    return;
+  }
+
+  void window.loadFile(
+    path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
+  );
+}
+
 function createWindow(): void {
   // Resolve icon path for both development and production
   // Use PNG for Linux, ICO for Windows/macOS
@@ -168,14 +194,7 @@ function createWindow(): void {
     mainWindow.maximize();
   }
 
-  // Load the renderer
-  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-  } else {
-    mainWindow.loadFile(
-      path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
-    );
-  }
+  loadRenderer(mainWindow);
 
   // Native right-click context menu (Copy, Cut, Paste, Select All, Spell Check)
   mainWindow.webContents.on('context-menu', (_event, params) => {
