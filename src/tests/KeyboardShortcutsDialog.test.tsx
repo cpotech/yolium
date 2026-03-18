@@ -75,42 +75,47 @@ describe('KeyboardShortcutsDialog', () => {
     expect(text).toContain('Select all items')
     expect(text).toContain('Delete')
     expect(text).toContain('Delete selected items')
-    expect(text).toContain('Clear selection / close')
+    expect(text).toContain('Clear selection / close search')
   })
 
-  it('should display a Vim Actions shortcut group', () => {
+  it('should display manifest-derived zone groups (Status Bar, Content, etc.)', () => {
     render(<KeyboardShortcutsDialog isOpen={true} onClose={() => {}} />)
 
     const dialog = screen.getByTestId('shortcuts-dialog')
     const text = dialog.textContent ?? ''
 
-    expect(text).toContain('Vim Actions')
+    expect(text).toContain('Status Bar')
+    expect(text).toContain('Content (Kanban)')
+    expect(text).toContain('Zone Switching')
   })
 
-  it('should list L, P, comma, Q, W, H, D, X shortcuts in the Vim Actions group', () => {
+  it('should list vim action shortcuts from manifest in their zone groups', () => {
     render(<KeyboardShortcutsDialog isOpen={true} onClose={() => {}} />)
 
     const dialog = screen.getByTestId('shortcuts-dialog')
     const text = dialog.textContent ?? ''
 
-    // These shortcuts should all be present in the dialog
+    // Status bar shortcuts should be present
     expect(text).toContain('Toggle theme')
     expect(text).toContain('Project settings')
     expect(text).toContain('Stop container')
     expect(text).toContain('Toggle recording')
+
+    // Content shortcuts should be present
+    expect(text).toContain('Delete focused card')
+    expect(text).toContain('New item')
+
+    // Sidebar shortcuts should be present
     expect(text).toContain('Scheduled agents')
-    expect(text).toContain('Delete item')
-    expect(text).toContain('Stop agent')
 
     // Verify the kbd elements for these shortcuts exist
     const kbds = Array.from(dialog.querySelectorAll('kbd')).map(k => k.textContent)
     expect(kbds).toContain('L')
-    expect(kbds).toContain('P')
+    expect(kbds).toContain('p')
     expect(kbds).toContain(',')
-    expect(kbds).toContain('Q')
-    expect(kbds).toContain('W')
-    expect(kbds).toContain('H')
-    expect(kbds).toContain('D')
-    expect(kbds).toContain('X')
+    expect(kbds).toContain('q')
+    expect(kbds).toContain('w')
+    expect(kbds).toContain('h')
+    expect(kbds).toContain('x')
   })
 })

@@ -289,6 +289,7 @@ export function ItemDetailDialog({
           </h2>
           <button
             data-testid="close-button"
+            data-vim-key="Escape"
             onClick={handleClose}
             className="p-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded transition-colors flex-shrink-0"
           >

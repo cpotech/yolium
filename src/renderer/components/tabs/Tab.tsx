@@ -43,6 +43,7 @@ export function Tab({ tab, isActive, isVimFocused, onClick, onClose, onContextMe
       data-active={isActive}
       data-tab-type={tab.type}
       data-vim-focused={isVimFocused ? 'true' : undefined}
+      data-vim-key="Enter"
       onClick={onClick}
       onContextMenu={onContextMenu}
       className={`

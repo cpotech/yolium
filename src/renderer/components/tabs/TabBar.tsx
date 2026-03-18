@@ -157,6 +157,7 @@ export function TabBar({
       {/* New Yolium button */}
       <button
         data-testid="new-tab-button"
+        data-vim-key="+"
         onClick={onNewTab}
         className="flex items-center gap-1 px-3 h-full hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] border-l border-[var(--color-border-primary)]"
         aria-label="New Yolium"
