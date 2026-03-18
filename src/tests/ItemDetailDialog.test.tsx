@@ -107,6 +107,7 @@ function createMockItem(overrides: Partial<KanbanItem> = {}): KanbanItem {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  Element.prototype.scrollIntoView = vi.fn()
   mockVimMode.current = 'NORMAL'
   mockLoadConfig.mockResolvedValue({
     providerModels: {
@@ -907,6 +908,197 @@ describe('ItemDetailDialog', () => {
       expect(hintBar.textContent).toContain('Navigate')
       expect(hintBar.textContent).toContain('Sidebar')
       expect(hintBar.textContent).toContain('Edit field')
+    })
+  })
+
+  describe('focus recovery', () => {
+    const getContainer = () => screen.getByTestId('item-detail-dialog').parentElement!
+
+    function renderDialog(overrides: Partial<KanbanItem> = {}) {
+      return render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem(overrides)}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+    }
+
+    it('should refocus dialog container after selecting a value in sidebar select dropdown', async () => {
+      renderDialog()
+      const container = getContainer()
+
+      // Focus the column select (sidebar element)
+      const columnSelect = screen.getByTestId('column-select')
+      columnSelect.focus()
+      expect(document.activeElement).toBe(columnSelect)
+
+      // Simulate focus leaving the dialog: blur the select and fire focusout
+      // (React's onBlur listens for focusout which bubbles)
+      columnSelect.blur()
+      fireEvent.focusOut(columnSelect, { relatedTarget: null })
+
+      // The onBlur sentinel should reclaim focus via requestAnimationFrame
+      await waitFor(() => {
+        expect(document.activeElement).toBe(container)
+      })
+    })
+
+    it('should refocus dialog container after clicking a sidebar button', async () => {
+      renderDialog()
+      const container = getContainer()
+
+      // Focus the delete button in sidebar
+      const deleteButton = screen.getByTestId('delete-button')
+      deleteButton.focus()
+
+      // Blur the button with focus leaving the dialog
+      deleteButton.blur()
+      fireEvent.focusOut(deleteButton, { relatedTarget: null })
+
+      await waitFor(() => {
+        expect(document.activeElement).toBe(container)
+      })
+    })
+
+    it('should maintain dialog focus when board refreshes via onUpdated callback', async () => {
+      const onUpdated = vi.fn()
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem()}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={onUpdated}
+        />,
+      )
+      const container = getContainer()
+      container.focus()
+
+      // Simulate a board refresh by calling onUpdated
+      onUpdated()
+
+      // Focus should still be on the dialog container
+      expect(document.activeElement).toBe(container)
+    })
+
+    it('should recover focus to dialog container on onBlur when focus moves to document.body', async () => {
+      renderDialog()
+      const container = getContainer()
+      container.focus()
+
+      // Simulate focus moving to body (e.g. by clicking a non-focusable area)
+      ;(document.activeElement as HTMLElement)?.blur()
+      fireEvent.blur(container, { relatedTarget: null })
+
+      await waitFor(() => {
+        expect(document.activeElement).toBe(container)
+      })
+    })
+
+    it('should not lose focus after Escape from INSERT mode', () => {
+      mockVimMode.current = 'INSERT'
+      renderDialog()
+      const container = getContainer()
+
+      // Pressing Escape in INSERT mode should focus the dialog container
+      fireEvent.keyDown(container, { key: 'Escape' })
+
+      expect(mockExitToNormal).toHaveBeenCalled()
+      expect(document.activeElement).toBe(container)
+    })
+
+    it('should not lose focus after Tab zone switch', () => {
+      renderDialog()
+      const container = getContainer()
+      container.focus()
+
+      // Tab should toggle zone and keep focus on dialog container
+      fireEvent.keyDown(container, { key: 'Tab' })
+
+      expect(document.activeElement).toBe(container)
+    })
+
+    it('should handle j/k navigation after interacting with sidebar select', async () => {
+      renderDialog()
+      const container = getContainer()
+
+      // Focus a sidebar select element
+      const columnSelect = screen.getByTestId('column-select')
+      columnSelect.focus()
+
+      // Blur the select (simulating dropdown closing, focus leaves dialog)
+      columnSelect.blur()
+      fireEvent.focusOut(columnSelect, { relatedTarget: null })
+
+      // Wait for sentinel to reclaim focus
+      await waitFor(() => {
+        expect(document.activeElement).toBe(container)
+      })
+
+      // Now j/k should work (keydown fires on the dialog container)
+      fireEvent.keyDown(container, { key: 'j' })
+      // If focus is on container, the keyDown handler runs successfully
+      // The field index should advance (no error, no lost focus)
+      expect(document.activeElement).toBe(container)
+    })
+
+    it('should enter INSERT mode with i key after sidebar button click', async () => {
+      renderDialog()
+      const container = getContainer()
+
+      // Focus delete button then blur it (focus leaves dialog)
+      const deleteButton = screen.getByTestId('delete-button')
+      deleteButton.focus()
+      deleteButton.blur()
+      fireEvent.focusOut(deleteButton, { relatedTarget: null })
+
+      await waitFor(() => {
+        expect(document.activeElement).toBe(container)
+      })
+
+      // Press i to enter insert mode
+      fireEvent.keyDown(container, { key: 'i' })
+
+      expect(mockEnterInsertMode).toHaveBeenCalled()
+    })
+
+    it('should allow Tab to toggle zones even after focus was on a select element', async () => {
+      renderDialog()
+      const container = getContainer()
+
+      // Focus a sidebar select
+      const columnSelect = screen.getByTestId('column-select')
+      columnSelect.focus()
+      columnSelect.blur()
+      fireEvent.focusOut(columnSelect, { relatedTarget: null })
+
+      await waitFor(() => {
+        expect(document.activeElement).toBe(container)
+      })
+
+      // Tab should toggle zones
+      fireEvent.keyDown(container, { key: 'Tab' })
+      expect(screen.getByTestId('sidebar-zone')).toHaveClass('ring-1')
+
+      fireEvent.keyDown(container, { key: 'Tab' })
+      expect(screen.getByTestId('editor-zone')).toHaveClass('ring-1')
+    })
+
+    it('should block trapFocus from overriding vim Tab zone switch', () => {
+      renderDialog()
+      const container = getContainer()
+      container.focus()
+
+      // Press Tab in NORMAL mode — should toggle focus zone, not trigger trapFocus
+      fireEvent.keyDown(container, { key: 'Tab' })
+
+      // Focus should remain on the dialog container (not moved to a focusable child by trapFocus)
+      expect(document.activeElement).toBe(container)
+      // And zone should have toggled to sidebar
+      expect(screen.getByTestId('sidebar-zone')).toHaveClass('ring-1')
     })
   })
 

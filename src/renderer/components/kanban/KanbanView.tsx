@@ -156,6 +156,8 @@ export function KanbanView({
   // Auto-focus view after board loads so keyboard shortcuts work immediately
   useEffect(() => {
     if (board && !isLoading && viewRef.current) {
+      // Don't steal focus from open dialogs
+      if (dialogOpenRef.current) return
       // Don't steal focus from active input elements
       const active = document.activeElement
       const tag = active?.tagName

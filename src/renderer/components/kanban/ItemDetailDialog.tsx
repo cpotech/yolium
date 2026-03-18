@@ -110,6 +110,17 @@ export function ItemDetailDialog({
     setErrorMessage,
   })
 
+  // Focus sentinel: reclaim focus when it escapes the dialog container
+  const handleBlur = useCallback((event: React.FocusEvent) => {
+    if (!event.relatedTarget || !dialogRef.current?.contains(event.relatedTarget as Node)) {
+      requestAnimationFrame(() => {
+        if (isOpen && dialogRef.current && !dialogRef.current.contains(document.activeElement)) {
+          dialogRef.current.focus()
+        }
+      })
+    }
+  }, [isOpen])
+
   // Focus dialog container when dialog opens so keyboard navigation works immediately
   useEffect(() => {
     if (isOpen) {
@@ -216,7 +227,6 @@ export function ItemDetailDialog({
       event.preventDefault()
       if (vim.mode === 'INSERT') {
         vim.exitToNormal()
-        ;(document.activeElement as HTMLElement)?.blur()
         dialogRef.current?.focus()
       } else if (focusZone === 'sidebar') {
         // Sidebar zone Escape -> return to editor zone
@@ -237,7 +247,6 @@ export function ItemDetailDialog({
       if (event.key === 'Tab' && !event.shiftKey) {
         event.preventDefault()
         setFocusZone(prev => prev === 'editor' ? 'sidebar' : 'editor')
-        ;(document.activeElement as HTMLElement)?.blur()
         dialogRef.current?.focus()
         return
       }
@@ -310,7 +319,8 @@ export function ItemDetailDialog({
       }
     }
 
-    if (dialogRef.current) {
+    // Only run trapFocus for Tab in INSERT mode (NORMAL mode Tab is handled above)
+    if (dialogRef.current && !(vim.mode === 'NORMAL' && event.key === 'Tab')) {
       trapFocus(event, dialogRef.current)
     }
   }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedFieldIndex, focusField, focusZone, agentSession.currentSessionId])
@@ -325,6 +335,7 @@ export function ItemDetailDialog({
       tabIndex={-1}
       className="fixed inset-0 z-50 flex flex-col bg-[var(--color-bg-secondary)] outline-none"
       onKeyDown={handleKeyDown}
+      onBlur={handleBlur}
     >
       <div
         data-testid="item-detail-dialog"
