@@ -33,6 +33,7 @@ import {
 import { KanbanView } from '@renderer/components/kanban/KanbanView';
 import { SchedulePanel } from '@renderer/components/schedule/SchedulePanel';
 import { ErrorBoundary } from '@renderer/components/ErrorBoundary';
+import { VimModeProvider } from '@renderer/context/VimModeContext';
 
 function App(): React.ReactElement {
   // Restore kanban tabs that were open in the previous session
@@ -246,6 +247,29 @@ function App(): React.ReactElement {
     setActiveTab(tabs[prevIndex].id);
   }, [tabs, activeTabId, setActiveTab]);
 
+  // Go to kanban board (vim 'b' key)
+  const handleGoToKanban = useCallback(() => {
+    const kanbanTabs = tabs.filter(t => t.type === 'kanban');
+    if (kanbanTabs.length === 0) {
+      // No kanban tabs — open first sidebar project's kanban
+      if (sidebarProjects.length > 0) {
+        addKanbanTab(sidebarProjects[0].path);
+      }
+      return;
+    }
+
+    const activeTab = tabs.find(t => t.id === activeTabId);
+    if (activeTab?.type === 'kanban' && kanbanTabs.length > 1) {
+      // Cycle to next kanban tab
+      const currentIndex = kanbanTabs.findIndex(t => t.id === activeTabId);
+      const nextIndex = (currentIndex + 1) % kanbanTabs.length;
+      setActiveTab(kanbanTabs[nextIndex].id);
+    } else {
+      // Switch to first kanban tab
+      setActiveTab(kanbanTabs[0].id);
+    }
+  }, [tabs, activeTabId, sidebarProjects, addKanbanTab, setActiveTab]);
+
   // Close all tabs - instant UI update, cleanup in background
   const handleCloseAllTabs = useCallback(() => {
     // Store session IDs before clearing tabs
@@ -401,6 +425,7 @@ function App(): React.ReactElement {
 
   // Normal app UI when Docker is ready
   return (
+    <VimModeProvider onGoToKanban={handleGoToKanban}>
     <div className="flex flex-col h-screen bg-[var(--color-bg-primary)]">
       {/* Path input dialog */}
       <PathInputDialog
@@ -727,6 +752,7 @@ function App(): React.ReactElement {
         </div>
       )}
     </div>
+    </VimModeProvider>
   );
 }
 
