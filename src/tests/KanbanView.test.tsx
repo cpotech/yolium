@@ -652,7 +652,24 @@ describe('KanbanView', () => {
     expect(screen.getByTestId('empty-board-message')).toHaveTextContent(/press N/i)
   })
 
-  it('should show keyboard shortcuts help when pressing ? key', async () => {
+  it('should call onShowShortcuts when ? key is pressed', async () => {
+    const board = createMockBoard([])
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    const onShowShortcuts = vi.fn()
+    render(<KanbanView projectPath="/test/project" onShowShortcuts={onShowShortcuts} />)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
+
+    // Press ? key
+    fireEvent.keyDown(screen.getByTestId('kanban-view'), { key: '?' })
+
+    expect(onShowShortcuts).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not render inline shortcuts help overlay', async () => {
     const board = createMockBoard([])
     mockKanbanGetBoard.mockResolvedValueOnce(board)
 
@@ -662,13 +679,8 @@ describe('KanbanView', () => {
       expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
     })
 
-    // Press ? key
+    // Press ? key — should not show inline overlay
     fireEvent.keyDown(screen.getByTestId('kanban-view'), { key: '?' })
-
-    expect(screen.getByTestId('shortcuts-help')).toBeInTheDocument()
-
-    // Press ? again or Escape to dismiss
-    fireEvent.keyDown(screen.getByTestId('kanban-view'), { key: 'Escape' })
 
     expect(screen.queryByTestId('shortcuts-help')).not.toBeInTheDocument()
   })
@@ -1000,23 +1012,4 @@ describe('KanbanView', () => {
     expect(badge).toHaveTextContent('N')
   })
 
-  it('should display ? shortcut badge next to shortcuts help toggle area', async () => {
-    const board = createMockBoard([])
-    mockKanbanGetBoard.mockResolvedValueOnce(board)
-
-    render(<KanbanView projectPath="/test/project" />)
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
-    })
-
-    // Toggle shortcuts overlay
-    fireEvent.keyDown(screen.getByTestId('kanban-view'), { key: '?' })
-
-    const shortcutsHelp = screen.getByTestId('shortcuts-help')
-    // The ? badge text should be present in the shortcuts overlay
-    const kbdElements = shortcutsHelp.querySelectorAll('kbd')
-    const questionBadge = Array.from(kbdElements).find(el => el.textContent === '?')
-    expect(questionBadge).toBeTruthy()
-  })
 })
