@@ -34,8 +34,7 @@ export function getSpecialistsDir(): string {
     if (fs.existsSync(devPath)) {
       return devPath;
     }
-  } catch {
-    // Electron not available (test environment)
+  } catch { /* Electron not available (test environment) */
   }
 
   // Try production path (process.resourcesPath)

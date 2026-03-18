@@ -28,8 +28,7 @@ export function fixWorktreeGitFile(worktreePath: string): void {
     } else if (content.startsWith('gitdir: ')) {
       resolvedGitdir = content.replace('gitdir: ', '')
     }
-  } catch {
-    // Best effort.
+  } catch { /* Best effort. */
   }
 
   if (!resolvedGitdir) {
@@ -45,8 +44,7 @@ export function fixWorktreeGitFile(worktreePath: string): void {
         fs.writeFileSync(backRefFile, `${fixed}\n`)
       }
     }
-  } catch {
-    // Best effort.
+  } catch { /* Best effort. */
   }
 }
 

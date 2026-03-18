@@ -12,7 +12,7 @@ function getBranchNameValidationError(branchName: string): string | null {
   try {
     execFileSync('git', ['check-ref-format', '--branch', branchName], { stdio: 'ignore' })
     return null
-  } catch {
+  } catch { /* git check-ref-format exits non-zero when the name is invalid. */
     return 'Invalid branch name: does not match git branch naming rules'
   }
 }
@@ -47,7 +47,7 @@ export function initGitRepo(folderPath: string): boolean {
       stdio: 'pipe',
     })
     return true
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     const error = err as { stderr?: Buffer; message?: string }
     const stderr = error.stderr?.toString() || error.message || 'Unknown error'
     throw new Error(`Failed to initialize git repository: ${stderr}`)
@@ -65,7 +65,7 @@ function ensureGitIdentity(folderPath: string): void {
       cwd: folderPath,
       stdio: 'ignore',
     })
-  } catch {
+  } catch { /* user.name is not configured — set a default so commits succeed. */
     execFileSync('git', ['config', 'user.name', 'Developer'], {
       cwd: folderPath,
       stdio: 'ignore',
@@ -77,7 +77,7 @@ function ensureGitIdentity(folderPath: string): void {
       cwd: folderPath,
       stdio: 'ignore',
     })
-  } catch {
+  } catch { /* user.email is not configured — set a default so commits succeed. */
     execFileSync('git', ['config', 'user.email', 'developer@localhost'], {
       cwd: folderPath,
       stdio: 'ignore',
@@ -108,8 +108,7 @@ export function initGitRepoWithDefaults(
       cwd: folderPath,
       stdio: 'ignore',
     })
-  } catch {
-    // Best effort.
+  } catch { /* Best effort. */
   }
 
   ensureGitIdentity(folderPath)
@@ -132,7 +131,7 @@ export function isGitRepo(folderPath: string): boolean {
       stdio: 'ignore',
     })
     return true
-  } catch {
+  } catch { /* Path is not inside a git work tree — expected for non-git directories. */
     return false
   }
 }
@@ -144,7 +143,7 @@ export function hasCommits(folderPath: string): boolean {
       stdio: 'ignore',
     })
     return true
-  } catch {
+  } catch { /* HEAD does not resolve — repository has no commits yet. */
     return false
   }
 }
@@ -158,8 +157,7 @@ export function getDefaultBranch(projectPath: string): string {
     })
     const parts = output.trim().split('/')
     return parts[parts.length - 1]
-  } catch {
-    // Fall through.
+  } catch { /* Fall through. */
   }
 
   try {
@@ -168,8 +166,7 @@ export function getDefaultBranch(projectPath: string): string {
       stdio: 'ignore',
     })
     return 'main'
-  } catch {
-    // Fall through.
+  } catch { /* Fall through. */
   }
 
   try {
@@ -178,7 +175,7 @@ export function getDefaultBranch(projectPath: string): string {
       stdio: 'ignore',
     })
     return 'master'
-  } catch {
+  } catch { /* Neither 'main' nor 'master' exists — default to 'main' as the modern convention. */
     return 'main'
   }
 }

@@ -17,7 +17,7 @@ describe('design-agent', () => {
       expect(result.name).toBe('design-agent');
       expect(result.model).toBe('opus');
       expect(result.timeout).toBe(60);
-      expect(result.order).toBe(4);
+      expect(result.order).toBe(5);
       expect(result.tools).toEqual([
         'Read', 'Glob', 'Grep', 'Bash', 'Write', 'Edit',
       ]);

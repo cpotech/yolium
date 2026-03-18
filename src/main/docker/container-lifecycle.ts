@@ -63,7 +63,7 @@ export async function createYolium(
       worktreePath = createWorktree(resolvedFolderPath, actualBranchName);
       mountPath = worktreePath;
       logger.info('Worktree created', { sessionId, worktreePath, elapsedMs: Math.round(performance.now() - phaseStart) });
-    } catch (err) {
+    } catch (err) { /* intentionally ignored */
       logger.error('Failed to create worktree', { sessionId, error: err instanceof Error ? err.message : String(err) });
       throw err;
     }
@@ -174,7 +174,7 @@ export async function createYolium(
         Binds: binds,
       },
     });
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     logger.error('Failed to create container', {
       sessionId,
       error: err instanceof Error ? err.message : String(err),
@@ -188,7 +188,7 @@ export async function createYolium(
   phaseStart = performance.now();
   try {
     await container.start();
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     logger.error('Failed to start container', {
       sessionId,
       containerId: container.id,
@@ -198,8 +198,7 @@ export async function createYolium(
     // Clean up the created but not started container
     try {
       await container.remove();
-    } catch {
-      // Ignore cleanup errors
+    } catch { /* Ignore cleanup errors */
     }
     throw err;
   }
@@ -261,8 +260,7 @@ export async function createYolium(
       try {
         const info = await container.inspect();
         exitCode = info.State.ExitCode;
-      } catch {
-        // Container may already be removed
+      } catch { /* Container may already be removed */
       }
 
       const webContents = BrowserWindow.getAllWindows().find(
@@ -321,7 +319,7 @@ export async function resizeContainer(
   try {
     const container = docker.getContainer(session.containerId);
     await container.resize({ h: rows, w: cols });
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     logger.error('Error resizing container', { sessionId, error: err instanceof Error ? err.message : String(err) });
   }
 }
@@ -344,8 +342,7 @@ export async function stopYolium(sessionId: string): Promise<void> {
 
     // Remove container
     await container.remove();
-  } catch (err) {
-    // Container may already be stopped or removed
+  } catch (err) { /* Container may already be stopped or removed */
     logger.error('Error stopping container', { sessionId, error: err instanceof Error ? err.message : String(err) });
   }
 
@@ -375,7 +372,7 @@ export async function closeAllContainers(): Promise<void> {
         try {
           deleteWorktree(session.originalPath, session.worktreePath);
           logger.info('Worktree deleted on shutdown', { sessionId, worktreePath: session.worktreePath });
-        } catch (err) {
+        } catch (err) { /* intentionally ignored */
           logger.error('Failed to delete worktree on shutdown', {
             sessionId,
             worktreePath: session.worktreePath,
@@ -388,15 +385,13 @@ export async function closeAllContainers(): Promise<void> {
       const container = docker.getContainer(session.containerId);
       try {
         await container.stop({ t: 2 });
-      } catch {
-        // Container may already be stopped
+      } catch { /* Container may already be stopped */
       }
       try {
         await container.remove();
-      } catch {
-        // Container may already be removed
+      } catch { /* Container may already be removed */
       }
-    } catch (err) {
+    } catch (err) { /* intentionally ignored */
       logger.error('Error during container cleanup', {
         sessionId,
         error: err instanceof Error ? err.message : String(err)
@@ -422,20 +417,18 @@ export async function closeAllContainers(): Promise<void> {
       const container = docker.getContainer(session.containerId);
       try {
         await container.stop({ t: 2 });
-      } catch {
-        // Container may already be stopped
+      } catch { /* Container may already be stopped */
       }
       try {
         await container.remove();
-      } catch {
-        // Container may already be removed
+      } catch { /* Container may already be removed */
       }
 
       // Re-fix worktree .git paths — the Linux container rewrites them to /c/ style
       if (process.platform === 'win32' && session.worktreePath) {
         fixWorktreeGitFile(session.worktreePath);
       }
-    } catch (err) {
+    } catch (err) { /* intentionally ignored */
       logger.error('Error during agent container cleanup', {
         sessionId,
         error: err instanceof Error ? err.message : String(err),
@@ -462,8 +455,7 @@ export async function removeAllYoliumContainers(): Promise<number> {
     const container = docker.getContainer(containerInfo.Id);
     try {
       await container.stop({ t: 5 });
-    } catch {
-      // Container may already be stopped
+    } catch { /* Container may already be stopped */
     }
     await container.remove({ force: true });
   }
@@ -516,7 +508,7 @@ export function deleteSessionWorktree(sessionId: string): void {
   try {
     deleteWorktree(session.originalPath, session.worktreePath);
     logger.info('Worktree deleted', { sessionId, worktreePath: session.worktreePath });
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     logger.error('Failed to delete worktree', {
       sessionId,
       worktreePath: session.worktreePath,

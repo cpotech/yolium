@@ -54,7 +54,7 @@ export function readLog(projectPath: string, itemId: string): string {
   }
   try {
     return fs.readFileSync(logPath, 'utf-8');
-  } catch {
+  } catch { /* file may have been deleted between existsSync check and readFileSync */
     return '';
   }
 }

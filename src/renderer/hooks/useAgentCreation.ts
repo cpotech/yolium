@@ -3,7 +3,7 @@
  * Hook for managing the agent creation flow (path selection → agent selection → container creation).
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import type { AgentProvider } from '@renderer/components/agent/AgentSelectDialog'
 import type { GitConfigWithPat } from '@renderer/components/settings/GitConfigDialog'
 import type { PathDialogMode } from './useDialogState'
@@ -54,6 +54,10 @@ export interface UseAgentCreationResult {
   handleAgentDialogBack: () => void
   /** Refresh git status for the pending folder */
   refreshGitStatus: () => Promise<void>
+  /** Error from agent creation flow (replaces alert()) */
+  creationError: string | null
+  /** Clear the creation error */
+  clearCreationError: () => void
 }
 
 /**
@@ -78,6 +82,7 @@ export function useAgentCreation({
   const [agentDialogOpen, setAgentDialogOpen] = useState(false)
   const [pendingFolderPath, setPendingFolderPath] = useState<string | null>(null)
   const [pendingFolderGitStatus, setPendingFolderGitStatus] = useState<{ isRepo: boolean; hasCommits: boolean } | null>(null)
+  const [creationError, setCreationError] = useState<string | null>(null)
 
   // Create yolium with selected agent
   const createYoliumWithAgent = useCallback(async (
@@ -93,12 +98,12 @@ export function useAgentCreation({
     try {
       const preFlightResult = await window.electronAPI.onboarding.validate(folderPath)
       if (!preFlightResult.success) {
-        alert(`Pre-flight validation failed:\n${preFlightResult.errors.join('\n')}`)
+        setCreationError(`Pre-flight validation failed: ${preFlightResult.errors.join(', ')}`)
         return
       }
     } catch (err) {
       console.error('Pre-flight validation failed:', err)
-      alert('Unable to validate project path before container startup.')
+      setCreationError('Unable to validate project path before container startup.')
       return
     }
 
@@ -154,7 +159,7 @@ export function useAgentCreation({
       }, 1000)
     } catch (err) {
       console.error('Failed to create yolium:', err)
-      alert('Failed to start yolium. Check Docker is running.')
+      setCreationError('Failed to start yolium. Check Docker is running.')
     }
   }, [addTab, updateContainerState, gitConfig, buildCancelledRef, setBuildProgress, setBuildError, setImageRemoved, setSidebarProjects])
 
@@ -227,6 +232,8 @@ export function useAgentCreation({
     }
   }, [pendingFolderPath])
 
+  const clearCreationError = useCallback(() => setCreationError(null), [])
+
   return {
     agentDialogOpen,
     pendingFolderPath,
@@ -236,5 +243,7 @@ export function useAgentCreation({
     handleAgentDialogCancel,
     handleAgentDialogBack,
     refreshGitStatus,
+    creationError,
+    clearCreationError,
   }
 }

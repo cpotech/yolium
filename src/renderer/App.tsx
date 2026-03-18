@@ -32,6 +32,7 @@ import {
 } from '@renderer/stores/sidebar-store';
 import { KanbanView } from '@renderer/components/kanban/KanbanView';
 import { SchedulePanel } from '@renderer/components/schedule/SchedulePanel';
+import { ErrorBoundary } from '@renderer/components/ErrorBoundary';
 
 function App(): React.ReactElement {
   // Restore kanban tabs that were open in the previous session
@@ -101,15 +102,18 @@ function App(): React.ReactElement {
     saveOpenKanbanPaths(kanbanPaths);
   }, [tabs]);
 
+  // Docker unavailability error shown inline instead of alert()
+  const [dockerError, setDockerError] = useState<string | null>(null);
+
   // Create a new yolium tab
   const handleNewYolium = useCallback(async () => {
     // Check Docker availability first
     const dockerOk = await window.electronAPI.docker.isAvailable();
     if (!dockerOk) {
-      // TODO: Show inline error in UI (for now, alert)
-      alert('Docker is not running. Please start Docker Desktop and try again.');
+      setDockerError('Docker is not running. Please start Docker Desktop and try again.');
       return;
     }
+    setDockerError(null);
 
     // Set mode and open path input dialog
     dialogs.openPathDialog('newTab');
@@ -570,20 +574,22 @@ function App(): React.ReactElement {
                       key={tab.id}
                       className={`absolute inset-0 flex flex-col ${isActive ? '' : 'hidden'}`}
                     >
-                      <KanbanView
-                        projectPath={tab.cwd}
-                        onSwitchProject={async (newPath) => {
-                          const oldPath = tab.cwd;
-                          updateCwd(tab.id, newPath);
-                          addSidebarProject(newPath);
-                          if (oldPath) {
-                            removeSidebarProject(oldPath);
-                            await window.electronAPI.kanban.deleteBoard(oldPath);
-                          }
-                          setSidebarProjects(getSidebarProjects());
-                        }}
-                        onDeleteProject={handleDeleteProject}
-                      />
+                      <ErrorBoundary fallbackLabel="Kanban Board">
+                        <KanbanView
+                          projectPath={tab.cwd}
+                          onSwitchProject={async (newPath) => {
+                            const oldPath = tab.cwd;
+                            updateCwd(tab.id, newPath);
+                            addSidebarProject(newPath);
+                            if (oldPath) {
+                              removeSidebarProject(oldPath);
+                              await window.electronAPI.kanban.deleteBoard(oldPath);
+                            }
+                            setSidebarProjects(getSidebarProjects());
+                          }}
+                          onDeleteProject={handleDeleteProject}
+                        />
+                      </ErrorBoundary>
                       <StatusBar
                         folderPath={tab.cwd}
                         onShowShortcuts={dialogs.openShortcutsDialog}
@@ -630,17 +636,19 @@ function App(): React.ReactElement {
                     className={`absolute inset-0 flex flex-col ${isActive ? '' : 'hidden'}`}
                   >
                     <div className="flex-1 min-h-0 relative">
-                      <Terminal
-                        sessionId={tab.sessionId!}
-                        isVisible={isActive}
-                        isContainer={true}
-                        onCwdChange={(cwd) => handleCwdChange(tab.id, cwd)}
-                        onExit={(exitCode) => {
-                          const newState = exitCode === 0 ? 'stopped' : 'crashed';
-                          updateContainerState(tab.id, newState);
-                        }}
-                        className="absolute inset-0 bg-[#0a0a0a]"
-                      />
+                      <ErrorBoundary fallbackLabel="Terminal">
+                        <Terminal
+                          sessionId={tab.sessionId!}
+                          isVisible={isActive}
+                          isContainer={true}
+                          onCwdChange={(cwd) => handleCwdChange(tab.id, cwd)}
+                          onExit={(exitCode) => {
+                            const newState = exitCode === 0 ? 'stopped' : 'crashed';
+                            updateContainerState(tab.id, newState);
+                          }}
+                          className="absolute inset-0 bg-[#0a0a0a]"
+                        />
+                      </ErrorBoundary>
                     </div>
                     <StatusBar
                       folderPath={tab.cwd}
@@ -664,6 +672,36 @@ function App(): React.ReactElement {
           )}
         </div>
       </main>
+
+      {/* Agent creation error notification */}
+      {agentCreation.creationError && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 bg-[var(--color-status-error)] text-white px-4 py-2 rounded-md shadow-lg text-sm max-w-md">
+          <div className="flex items-center gap-2">
+            <span>{agentCreation.creationError}</span>
+            <button
+              onClick={agentCreation.clearCreationError}
+              className="text-white/80 hover:text-white ml-2"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Docker unavailability notification */}
+      {dockerError && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 bg-[var(--color-status-error)] text-white px-4 py-2 rounded-md shadow-lg text-sm max-w-md">
+          <div className="flex items-center gap-2">
+            <span>{dockerError}</span>
+            <button
+              onClick={() => setDockerError(null)}
+              className="text-white/80 hover:text-white ml-2"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Whisper error notification */}
       {whisper.state.error && (

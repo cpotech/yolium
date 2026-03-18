@@ -1,14 +1,10 @@
 import { useReducer, useCallback } from 'react';
 import type { Tab, TabState, TabAction, ContainerState, TabType } from '@shared/types/tabs';
+import { getFolderName } from '@renderer/lib/path-utils';
 
 // Generate unique tab ID
 function generateTabId(): string {
   return `tab-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-// Extract folder name from path, handling both / and \ separators
-function folderName(path: string): string {
-  return path.split(/[/\\]/).filter(Boolean).pop() || path;
 }
 
 function tabReducer(state: TabState, action: TabAction): TabState {
@@ -30,7 +26,7 @@ function tabReducer(state: TabState, action: TabAction): TabState {
         return { ...state, activeTabId: existingKanban.id };
       }
       // Create new kanban tab
-      const label = folderName(cwd);
+      const label = getFolderName(cwd);
       const newTab: Tab = {
         id: generateTabId(),
         type: 'kanban',
@@ -63,7 +59,7 @@ function tabReducer(state: TabState, action: TabAction): TabState {
     case 'UPDATE_CWD': {
       const { id, cwd } = action.payload;
       // Extract folder name from path for label
-      const label = folderName(cwd);
+      const label = getFolderName(cwd);
       return {
         ...state,
         tabs: state.tabs.map(t => t.id === id ? { ...t, cwd, label } : t),
@@ -155,7 +151,7 @@ function buildInitialState(kanbanPaths?: string[]): TabState {
     id: generateTabId(),
     type: 'kanban' as TabType,
     cwd,
-    label: folderName(cwd),
+    label: getFolderName(cwd),
   }));
   return { tabs, activeTabId: tabs[0]?.id ?? null };
 }
@@ -164,7 +160,7 @@ export function useTabState(initialKanbanPaths?: string[]) {
   const [state, dispatch] = useReducer(tabReducer, initialKanbanPaths, buildInitialState);
 
   const addTab = useCallback((sessionId: string, cwd: string, containerState: ContainerState = 'starting', gitBranch?: string) => {
-    const label = folderName(cwd);
+    const label = getFolderName(cwd);
     const tab: Tab = {
       id: generateTabId(),
       type: 'terminal',

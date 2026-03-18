@@ -14,7 +14,7 @@ function detectDotnetProject(projectPath: string): boolean {
   try {
     const entries = fs.readdirSync(projectPath);
     return entries.some((entry) => /\.(sln|csproj|fsproj)$/i.test(entry));
-  } catch {
+  } catch { /* directory may not be readable */
     return false;
   }
 }
@@ -163,8 +163,7 @@ export function generateProjectContext(projectPath: string): string {
       }
 
       sections.push(`## ${fileName}\n${normalized}`);
-    } catch {
-      // Ignore unreadable files and continue collecting other context.
+    } catch { /* Ignore unreadable files and continue collecting other context. */
     }
   }
 
@@ -189,7 +188,7 @@ export function validatePreFlightWithAdapters(projectPath: string, adapters: Pre
 
   try {
     adapters.accessSync(projectPath, fs.constants.W_OK);
-  } catch {
+  } catch { /* error already recorded in errors array above */
     errors.push('Project directory is not writable.');
   }
 
@@ -199,7 +198,7 @@ export function validatePreFlightWithAdapters(projectPath: string, adapters: Pre
     if (Number.isFinite(availableDiskBytes) && availableDiskBytes < MIN_DISK_SPACE_BYTES) {
       errors.push('Insufficient disk space. At least 1 GB is required.');
     }
-  } catch {
+  } catch { /* statfs not supported on this platform or path — error already recorded above */
     errors.push('Unable to determine available disk space.');
   }
 

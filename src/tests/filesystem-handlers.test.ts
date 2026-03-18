@@ -43,7 +43,7 @@ describe('filesystem-handlers fs:read-file', () => {
     mockStat.mockResolvedValue({ isFile: () => true, size: 500 })
     mockReadFile.mockResolvedValue('<html><body>Hello</body></html>')
 
-    const result = await handlers['fs:read-file']({}, '/home/user/project/.yolium/mocks/test.html')
+    const result = await handlers['fs:read-file']({}, '/home/testuser/project/.yolium/mocks/test.html')
 
     expect(result).toEqual({
       success: true,
@@ -53,7 +53,7 @@ describe('filesystem-handlers fs:read-file', () => {
   })
 
   it('should reject paths with directory traversal (..)', async () => {
-    const result = await handlers['fs:read-file']({}, '/home/user/../etc/passwd')
+    const result = await handlers['fs:read-file']({}, '/home/testuser/../etc/passwd')
 
     expect(result).toEqual({
       success: false,
@@ -67,7 +67,7 @@ describe('filesystem-handlers fs:read-file', () => {
   it('should reject paths that are not files', async () => {
     mockStat.mockResolvedValue({ isFile: () => false, size: 0 })
 
-    const result = await handlers['fs:read-file']({}, '/home/user/project')
+    const result = await handlers['fs:read-file']({}, '/home/testuser/project')
 
     expect(result).toEqual({
       success: false,
@@ -79,7 +79,7 @@ describe('filesystem-handlers fs:read-file', () => {
   it('should reject files larger than 1MB', async () => {
     mockStat.mockResolvedValue({ isFile: () => true, size: 2 * 1024 * 1024 })
 
-    const result = await handlers['fs:read-file']({}, '/home/user/project/big.html')
+    const result = await handlers['fs:read-file']({}, '/home/testuser/project/big.html')
 
     expect(result).toEqual({
       success: false,
@@ -94,7 +94,7 @@ describe('filesystem-handlers fs:read-file', () => {
     err.code = 'ENOENT'
     mockStat.mockRejectedValue(err)
 
-    const result = await handlers['fs:read-file']({}, '/home/user/project/missing.html')
+    const result = await handlers['fs:read-file']({}, '/home/testuser/project/missing.html')
 
     expect(result).toEqual({
       success: false,
@@ -108,7 +108,7 @@ describe('filesystem-handlers fs:read-file', () => {
     err.code = 'EACCES'
     mockStat.mockRejectedValue(err)
 
-    const result = await handlers['fs:read-file']({}, '/root/secret.html')
+    const result = await handlers['fs:read-file']({}, '/home/testuser/secret.html')
 
     expect(result).toEqual({
       success: false,
@@ -122,7 +122,7 @@ describe('filesystem-handlers fs:read-file', () => {
     mockStat.mockResolvedValue({ isFile: () => true, size: exactLimit })
     mockReadFile.mockResolvedValue('content')
 
-    const result = await handlers['fs:read-file']({}, '/home/user/project/exact.html')
+    const result = await handlers['fs:read-file']({}, '/home/testuser/project/exact.html')
 
     expect(result).toEqual({
       success: true,

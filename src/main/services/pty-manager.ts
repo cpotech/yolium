@@ -87,7 +87,7 @@ export function closePty(sessionId: string): void {
     logger.info('Closing PTY session', { sessionId });
     try {
       session.process.kill();
-    } catch (err) {
+    } catch (err) { /* intentionally ignored */
       logger.error('Error killing PTY', { sessionId, error: err instanceof Error ? err.message : String(err) });
     }
     sessions.delete(sessionId);
@@ -122,14 +122,14 @@ export function hasRunningChildren(sessionId: string): boolean {
         'utf8'
       ).trim();
       hasChildren = children.length > 0;
-    } catch {
+    } catch { /* /proc entry may not exist if the process has already exited */
       hasChildren = false;
     }
   } else if (process.platform === 'darwin') {
     try {
       execSync(`pgrep -P ${pid}`, { encoding: 'utf8' });
       hasChildren = true;
-    } catch {
+    } catch { /* intentionally ignored */
       hasChildren = false; // pgrep exits non-zero if no children
     }
   }

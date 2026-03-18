@@ -28,8 +28,7 @@ export function getAgentsDir(): string {
     if (fs.existsSync(devPath)) {
       return devPath;
     }
-  } catch {
-    // Electron not available (test environment or non-Electron context)
+  } catch { /* Electron not available (test environment or non-Electron context) */
   }
 
   // Try production path (process.resourcesPath)

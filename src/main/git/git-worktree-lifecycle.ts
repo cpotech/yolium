@@ -17,8 +17,7 @@ export function createWorktree(projectPath: string, branchName: string): string 
       cwd: projectPath,
       stdio: 'ignore',
     })
-  } catch {
-    // Ignore prune errors.
+  } catch { /* Ignore prune errors. */
   }
 
   const worktreePath = getWorktreePath(projectPath, branchName)
@@ -43,8 +42,7 @@ export function createWorktree(projectPath: string, branchName: string): string 
         }
         return worktreePath
       }
-    } catch {
-      // Fall through to remove and recreate.
+    } catch { /* Fall through to remove and recreate. */
     }
 
     fs.rmSync(worktreePath, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 })
@@ -57,7 +55,7 @@ export function createWorktree(projectPath: string, branchName: string): string 
       stdio: 'ignore',
     })
     branchExists = true
-  } catch {
+  } catch { /* Branch does not exist yet — will be created with git worktree add -b. */
     branchExists = false
   }
 
@@ -73,7 +71,7 @@ export function createWorktree(projectPath: string, branchName: string): string 
         stdio: 'pipe',
       })
     }
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     const error = err as { stderr?: Buffer; message?: string }
     const stderr = error.stderr?.toString() || error.message || 'Unknown error'
 
@@ -113,7 +111,7 @@ export function hasUncommittedChanges(worktreePath: string): boolean {
       stdio: ['pipe', 'pipe', 'ignore'],
     })
     return output.trim().length > 0
-  } catch {
+  } catch { /* Worktree path is inaccessible or not a git repo — treat as no uncommitted changes. */
     return false
   }
 }
@@ -126,7 +124,7 @@ export function getWorktreeBranch(worktreePath: string): string | null {
       stdio: ['pipe', 'pipe', 'ignore'],
     })
     return output.trim()
-  } catch {
+  } catch { /* Worktree path is inaccessible or not a git repo — branch name unavailable. */
     return null
   }
 }

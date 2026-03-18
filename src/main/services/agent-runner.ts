@@ -99,7 +99,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
   let agent;
   try {
     agent = loadAgentDefinition(agentName);
-  } catch {
+  } catch { /* agent definition not found or invalid — return error to caller */
     return { sessionId: '', error: `Unknown agent: ${agentName}. Valid agents: code-agent, plan-agent` };
   }
 
@@ -164,7 +164,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
         updateItem(board, itemId, { worktreePath, mergeStatus: 'unmerged' });
       }
     }
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     logger.warn('Failed to create worktree, running without isolation', {
       agentName, projectPath, error: err instanceof Error ? err.message : String(err),
     });
@@ -181,8 +181,8 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     const writePath = worktreePath || resolvedProjectPath;
     try {
       fs.writeFileSync(path.join(writePath, instructionsFile), agent.systemPrompt);
-    } catch {
-      logger.warn('Failed to write agent instructions file', { instructionsFile });
+    } catch (err) { /* intentionally ignored */
+      logger.warn('Failed to write agent instructions file', { instructionsFile, error: err instanceof Error ? err.message : String(err) });
     }
   }
 
@@ -247,13 +247,13 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     outputBuffer = [];
 
     return { sessionId };
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     const errorMessage = err instanceof Error ? err.message : String(err);
     logger.error('Failed to create agent container', { agentName, projectPath, error: errorMessage });
     if (worktreePath && worktreeOriginalPath) {
       try {
         deleteWorktree(worktreeOriginalPath, worktreePath);
-      } catch (cleanupErr) {
+      } catch (cleanupErr) { /* intentionally ignored */
         logger.error('Failed to clean up worktree', {
           worktreePath, error: cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr),
         });
@@ -372,8 +372,7 @@ export function backfillWorktreePaths(projectPath: string): number {
           updateItem(board, item.id, { worktreePath: expectedPath, mergeStatus: 'unmerged' });
           backfilled++;
         }
-      } catch {
-        // Skip items with invalid branch names
+      } catch { /* Skip items with invalid branch names */
       }
     }
   }

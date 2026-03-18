@@ -9,6 +9,7 @@ import * as os from 'node:os';
 import { execFile } from 'node:child_process';
 import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 import { createLogger } from '@main/lib/logger';
+import { getErrorMessage } from '@main/lib/error-utils';
 import { loadGitConfig, loadDetectedGitConfig, saveGitConfig, fetchGitHubUser, hasHostClaudeOAuth, hasHostCodexOAuth, generateGitCredentials, fetchClaudeUsage } from '@main/git/git-config';
 import {
   isGitRepo,
@@ -57,20 +58,14 @@ const GIT_CHANNELS = {
 
 export const GIT_IPC_CHANNELS = Object.values(GIT_CHANNELS);
 type GitIpcChannel = typeof GIT_IPC_CHANNELS[number];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- handler args vary per channel
 type GitIpcHandler = (event: IpcMainInvokeEvent, ...args: any[]) => unknown;
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
-}
 
 function registerGitChannel(ipcMain: IpcMain, channel: GitIpcChannel, handler: GitIpcHandler): void {
   try {
     ipcMain.handle(channel, handler);
     logger.debug('Registered git IPC handler', { channel });
-  } catch (error) {
+  } catch (error) { /* intentionally ignored */
     logger.error('Failed to register git IPC handler', {
       channel,
       error: getErrorMessage(error),
@@ -115,7 +110,7 @@ export function extractRepoNameFromUrl(repoUrl: string): string | null {
     const pathname = parsed.pathname.replace(/^\/+/, '');
     const repoName = path.posix.basename(pathname);
     return repoName && repoName !== '.' ? repoName : null;
-  } catch {
+  } catch { /* not a valid URL — fall back to path-segment extraction */
     const segments = withoutDotGit.split(/[\\/]/).filter(Boolean);
     if (segments.length < 2) return null;
     return segments[segments.length - 1] ?? null;
@@ -154,8 +149,7 @@ function resolveCloneTargetPath(targetDir: string, repoName: string): string {
     if (fs.statSync(expanded).isDirectory()) {
       return path.join(expanded, repoName);
     }
-  } catch {
-    // Path does not exist yet, treat as explicit target path.
+  } catch { /* Path does not exist yet, treat as explicit target path. */
   }
 
   return expanded;
@@ -348,7 +342,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     try {
       const result = initGitRepoWithDefaults(folderPath, projectTypes || []);
       return { success: true, initialized: result.initialized, hasCommits: result.hasCommits };
-    } catch (err) {
+    } catch (err) { /* intentionally ignored */
       const message = err instanceof Error ? err.message : 'Unknown error';
       logger.error('Failed to init git repo:', { error: message });
       return { success: false, error: message };
@@ -379,7 +373,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
       const env = buildGitCloneEnv();
       await runGitClone(url.trim(), targetPath, env);
       return { success: true, clonedPath: targetPath, error: null };
-    } catch (err) {
+    } catch (err) { /* intentionally ignored */
       const message = err instanceof Error ? err.message : 'Failed to clone repository';
       logger.error('Failed to clone repository', { url, targetPath, error: message });
       return { success: false, clonedPath: null, error: message };
@@ -398,7 +392,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
       try {
         mergeWorktreeBranch(projectPath, branchName);
         return { success: true };
-      } catch (err) {
+      } catch (err) { /* intentionally ignored */
         const message = err instanceof Error ? err.message : 'Unknown error';
         const conflict = message.startsWith('conflict:');
         logger.error('Failed to merge branch', { projectPath, branchName, error: message });
@@ -412,7 +406,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     logger.info('IPC: git:worktree-diff-stats', { projectPath, branchName });
     try {
       return await getWorktreeDiffStats(projectPath, branchName);
-    } catch (err) {
+    } catch (err) { /* intentionally ignored */
       const message = err instanceof Error ? err.message : 'Unknown error';
       logger.error('Failed to get diff stats', { projectPath, branchName, error: message });
       return { filesChanged: 0, insertions: 0, deletions: 0 };
@@ -424,7 +418,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     logger.info('IPC: git:worktree-changed-files', { projectPath, branchName });
     try {
       return { files: getWorktreeChangedFiles(projectPath, branchName) };
-    } catch (err) {
+    } catch (err) { /* intentionally ignored */
       const message = err instanceof Error ? err.message : 'Unknown error';
       logger.error('Failed to get changed files', { projectPath, branchName, error: message });
       return { files: [], error: message };
@@ -436,7 +430,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     logger.info('IPC: git:worktree-file-diff', { projectPath, branchName, filePath });
     try {
       return { diff: getWorktreeFileDiff(projectPath, branchName, filePath) };
-    } catch (err) {
+    } catch (err) { /* intentionally ignored */
       const message = err instanceof Error ? err.message : 'Unknown error';
       logger.error('Failed to get file diff', { projectPath, branchName, filePath, error: message });
       return { diff: '', error: message };
@@ -448,7 +442,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     logger.info('IPC: git:check-merge-conflicts', { projectPath, branchName });
     try {
       return checkMergeConflicts(projectPath, branchName);
-    } catch (err) {
+    } catch (err) { /* intentionally ignored */
       const message = err instanceof Error ? err.message : 'Unknown error';
       logger.error('Failed to check merge conflicts', { projectPath, branchName, error: message });
       return { clean: false, conflictingFiles: [`(check failed: ${message})`] };
@@ -460,7 +454,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     logger.info('IPC: git:cleanup-worktree', { projectPath, worktreePath, branchName });
     try {
       await cleanupWorktreeAndBranch(projectPath, worktreePath, branchName);
-    } catch (err) {
+    } catch (err) { /* intentionally ignored */
       const message = err instanceof Error ? err.message : 'Unknown error';
       logger.error('Failed to cleanup worktree', { projectPath, worktreePath, branchName, error: message });
     }
@@ -530,8 +524,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
           }
         }
       }
-    } catch {
-      // Folder may not be readable
+    } catch { /* Folder may not be readable */
     }
 
     return { isRepo: false, nestedRepos };

@@ -11,7 +11,7 @@ export function gitRefExists(projectPath: string, refName: string): boolean {
       stdio: 'ignore',
     })
     return true
-  } catch {
+  } catch { /* Ref does not exist — expected for branch existence checks. */
     return false
   }
 }
@@ -39,7 +39,7 @@ export function getCurrentBranch(cwd: string): string | null {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
     }).trim()
-  } catch {
+  } catch { /* Detached HEAD, not inside a git repo, or symbolic-ref unavailable. */
     return null
   }
 }
@@ -68,14 +68,13 @@ export function removeWorktreeBestEffortSync(projectPath: string, worktreePath: 
       stdio: 'pipe',
     })
     return
-  } catch {
+  } catch { /* Worktree remove failed (already gone or locked) — prune stale refs and fall through to rmSync. */
     try {
       execFileSync('git', ['worktree', 'prune'], {
         cwd: projectPath,
         stdio: 'ignore',
       })
-    } catch {
-      // Ignore prune errors.
+    } catch { /* Ignore prune errors. */
     }
   }
 
@@ -85,8 +84,7 @@ export function removeWorktreeBestEffortSync(projectPath: string, worktreePath: 
 
   try {
     fs.rmSync(worktreePath, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 })
-  } catch {
-    // Best-effort fallback.
+  } catch { /* Best-effort fallback. */
   }
 }
 
@@ -96,13 +94,12 @@ export async function removeWorktreeBestEffortAsync(projectPath: string, worktre
       cwd: projectPath,
     })
     return
-  } catch {
+  } catch { /* Worktree remove failed (already gone or locked) — prune stale refs and fall through to rmSync. */
     try {
       await execFileAsync('git', ['worktree', 'prune'], {
         cwd: projectPath,
       })
-    } catch {
-      // Ignore prune errors.
+    } catch { /* Ignore prune errors. */
     }
   }
 
@@ -112,8 +109,7 @@ export async function removeWorktreeBestEffortAsync(projectPath: string, worktre
 
   try {
     fs.rmSync(worktreePath, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 })
-  } catch {
-    // Best-effort fallback.
+  } catch { /* Best-effort fallback. */
   }
 }
 
@@ -123,13 +119,12 @@ export async function deleteBranchBestEffortAsync(projectPath: string, branchNam
       cwd: projectPath,
     })
     return
-  } catch {
+  } catch { /* -d failed because the branch is not fully merged — retry with -D (force delete). */
     try {
       await execFileAsync('git', ['branch', '-D', branchName], {
         cwd: projectPath,
       })
-    } catch {
-      // Ignore branch cleanup errors.
+    } catch { /* Ignore branch cleanup errors. */
     }
   }
 }

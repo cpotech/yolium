@@ -27,7 +27,7 @@ export function loadProjectConfig(projectPath: string): ProjectConfig | null {
       return null;
     }
     return parsed as ProjectConfig;
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
       logger.warn('Failed to read .yolium.json', {
         projectPath,
@@ -70,8 +70,7 @@ export function saveProjectConfig(projectPath: string, config: ProjectConfig): v
     if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
       existing = parsed;
     }
-  } catch {
-    // File doesn't exist or invalid — start fresh
+  } catch { /* File doesn't exist or invalid — start fresh */
   }
 
   const merged = { ...existing, sharedDirs: config.sharedDirs };
@@ -86,7 +85,7 @@ export function checkSharedDirExists(projectPath: string, dir: string): boolean 
   const fullPath = path.join(projectPath, dir);
   try {
     return fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory();
-  } catch {
+  } catch { /* path may not be stat-able (e.g. broken symlink) */
     return false;
   }
 }

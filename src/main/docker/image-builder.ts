@@ -22,7 +22,7 @@ export async function isDockerAvailable(): Promise<boolean> {
   try {
     await docker.ping();
     return true;
-  } catch {
+  } catch { /* Docker daemon is not reachable */
     return false;
   }
 }
@@ -204,7 +204,7 @@ export async function ensureImage(
           onProgress?.('Docker files changed (Dockerfile, entrypoint scripts, or agent skills), rebuilding image...');
           await buildLocalImage(onProgress);
         }
-      } catch (err) {
+      } catch (err) { /* intentionally ignored */
         logger.warn('Failed to inspect existing image, rebuilding', {
           imageName,
           error: err instanceof Error ? err.message : String(err),
@@ -262,8 +262,7 @@ export async function getYoliumImageInfo(): Promise<{
       try {
         const currentHash = computeDockerImageHash();
         stale = imageHash !== currentHash;
-      } catch {
-        // Can't compute hash (e.g., Dockerfile not found) — skip staleness check
+      } catch { /* Can't compute hash (e.g., Dockerfile not found) — skip staleness check */
       }
     }
 
@@ -280,8 +279,7 @@ export async function getYoliumImageInfo(): Promise<{
       created: inspect.Created,
       stale,
     };
-  } catch (err) {
-    // 404 means the image doesn't exist — return null
+  } catch (err) { /* 404 means the image doesn't exist — return null */
     if (err && typeof err === 'object' && 'statusCode' in err && (err as { statusCode: number }).statusCode === 404) {
       logger.debug('Image not found');
       return null;

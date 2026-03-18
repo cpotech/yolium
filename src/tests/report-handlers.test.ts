@@ -11,6 +11,11 @@ vi.mock('node:fs/promises', () => ({
   stat: (...args: unknown[]) => mockStat(...args),
 }))
 
+vi.mock('node:os', () => ({
+  default: { homedir: () => '/home/user' },
+  homedir: () => '/home/user',
+}))
+
 vi.mock('electron', () => ({
   BrowserWindow: MockBrowserWindow,
 }))
@@ -46,7 +51,7 @@ describe('report-handlers report:open-file', () => {
   })
 
   it('should reject path traversal (..)', async () => {
-    const result = await handlers['report:open-file']({}, '/home/user/../etc/passwd.html')
+    const result = await handlers['report:open-file']({}, '/etc/passwd.html')
     expect(result).toEqual({ success: false, error: 'Path traversal is not allowed' })
   })
 
