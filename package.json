@@ -9,12 +9,14 @@
     "forge": "./config/forge.config.ts"
   },
   "scripts": {
+    "prestart": "electron-rebuild --only better-sqlite3 --force 2>/dev/null || true",
     "start": "cross-env ELECTRON_DISABLE_SANDBOX=1 electron-forge start",
     "build": "node src/build.mjs",
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
+    "pretest": "npm rebuild better-sqlite3 --silent 2>/dev/null || true",
     "test": "vitest run --config config/vitest.config.ts",
     "test:watch": "vitest --config config/vitest.config.ts",
     "test:e2e": "npm run build && ./scripts/run-playwright-e2e.sh",

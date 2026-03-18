@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ThemeProvider } from '@renderer/theme';
 import { StatusBar } from '@renderer/components/StatusBar';
@@ -23,10 +23,6 @@ function renderStatusBar(overrides: Partial<React.ComponentProps<typeof StatusBa
 }
 
 describe('StatusBar', () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
-
   it('should render a generic status label when provided without git or container metadata', () => {
     renderStatusBar();
 

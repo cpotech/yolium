@@ -481,8 +481,10 @@ describe.skipIf(!dockerAvailable || !imageExists)('entrypoint.sh integration', (
   });
 
   it('should create CLAUDE.md in container', () => {
+    // Override entrypoint so the tool-dispatch step is skipped and we can
+    // inspect the file that the numbered scripts created.
     const result = execSync(
-      `docker run --rm -e TOOL=shell yolium:latest bash -c "cat /home/agent/CLAUDE.md 2>/dev/null || echo 'FILE_NOT_FOUND'"`,
+      `docker run --rm --entrypoint bash yolium:latest -c "source /usr/local/bin/entrypoint.d/00-utils.sh; for s in /usr/local/bin/entrypoint.d/[0-9]*.sh; do source \\\"\\$s\\\"; done; cat /home/agent/CLAUDE.md 2>/dev/null || echo FILE_NOT_FOUND"`,
       { encoding: 'utf-8', timeout: 30000 }
     );
 
@@ -490,16 +492,17 @@ describe.skipIf(!dockerAvailable || !imageExists)('entrypoint.sh integration', (
     expect(result).toContain('Yolium');
   });
 
-  it('should attempt gh auth when git-credentials mounted', () => {
+  it('should configure git credential store when git-credentials mounted', () => {
     const mockCredentials = 'https://git:github_pat_test123@github.com\n';
     fs.writeFileSync(gitCredentialsPath, mockCredentials, { mode: 0o600 });
 
     const result = execSync(
-      `docker run --rm -v "${gitCredentialsPath}:/home/agent/.git-credentials-mounted:ro" -e TOOL=shell yolium:latest bash -c "gh auth status 2>&1 || true"`,
+      `docker run --rm --entrypoint bash -v "${gitCredentialsPath}:/home/agent/.git-credentials-mounted:ro" yolium:latest -c "source /usr/local/bin/entrypoint.d/00-utils.sh; for s in /usr/local/bin/entrypoint.d/[0-9]*.sh; do source \\\"\\$s\\\"; done; git config --global credential.helper 2>&1; cat /tmp/.git-credentials 2>&1"`,
       { encoding: 'utf-8', timeout: 30000 }
     );
 
-    // gh should have attempted authentication (even if token is invalid)
-    expect(result.includes('github.com') || result.includes('Logged')).toBe(true);
+    // Verify git credential store was configured and credentials were copied
+    expect(result).toContain('store');
+    expect(result).toContain('github.com');
   });
 });
