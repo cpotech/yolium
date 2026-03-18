@@ -27,6 +27,17 @@ export function TabBar({
   const vim = useVimModeContext();
   const isZoneActive = vim.activeZone === 'tabs' && vim.mode === 'NORMAL';
   const [focusedTabIndex, setFocusedTabIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Focus container when zone becomes active
+  useEffect(() => {
+    if (isZoneActive && containerRef.current) {
+      const active = document.activeElement;
+      const tag = active?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      containerRef.current.focus();
+    }
+  }, [isZoneActive]);
 
   const updateArrowVisibility = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -105,6 +116,7 @@ export function TabBar({
 
   return (
     <div
+      ref={containerRef}
       data-testid="tab-bar"
       data-vim-zone="tabs"
       tabIndex={isZoneActive ? 0 : undefined}
