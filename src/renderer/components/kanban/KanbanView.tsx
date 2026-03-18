@@ -356,7 +356,7 @@ export function KanbanView({
       onShowShortcuts?.()
     }
     if (e.key === 'x' && isVimContentActive) {
-      // Delete focused card (single card via vim focus)
+      // Delete focused card (single card via vim focus) with confirmation
       e.preventDefault()
       if (board) {
         const colId = columns[focusedColumnIndex].id
@@ -367,7 +367,14 @@ export function KanbanView({
           .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
         const card = colItems[Math.min(focusedCardIndex, Math.max(colItems.length - 1, 0))]
         if (card && projectPath) {
-          void window.electronAPI.kanban.deleteItems(projectPath, [card.id]).then(() => loadBoard())
+          void window.electronAPI.dialog.confirmOkCancel(
+            'Delete Item',
+            `Delete "${card.title}"? This cannot be undone.`
+          ).then(confirmed => {
+            if (confirmed) {
+              void window.electronAPI.kanban.deleteItems(projectPath, [card.id]).then(() => loadBoard())
+            }
+          })
         }
       }
       return
