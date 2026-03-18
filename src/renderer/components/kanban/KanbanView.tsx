@@ -641,6 +641,7 @@ export function KanbanView({
             >
               <Trash2 size={14} />
               Delete
+              <kbd className="px-1 py-0.5 text-[10px] bg-red-600/20 rounded border border-red-600/30 font-mono">Del</kbd>
             </button>
             <button
               data-testid="clear-selection-button"
@@ -649,6 +650,7 @@ export function KanbanView({
             >
               <X size={14} />
               Clear
+              <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)] font-mono">Esc</kbd>
             </button>
           </div>
         </div>

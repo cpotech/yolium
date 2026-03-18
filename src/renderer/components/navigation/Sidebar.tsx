@@ -49,6 +49,7 @@ export function Sidebar({
           onProjectRemove={onProjectRemove}
           onAddProject={onAddProject}
           onAnswerAndResume={onAnswerAndResume}
+          onOpenSchedule={onOpenSchedule}
         />
       </div>
 
@@ -64,6 +65,7 @@ export function Sidebar({
         >
           <Clock size={16} />
           {!collapsed && <span className="text-xs truncate">Scheduled</span>}
+          <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)] font-mono">H</kbd>
         </button>
       )}
 

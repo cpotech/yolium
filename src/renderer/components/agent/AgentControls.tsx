@@ -221,6 +221,7 @@ export function AgentControls({
               >
                 <XCircle size={14} />
                 Stop Agent
+                <kbd className="px-1 py-0.5 text-[10px] bg-white/10 rounded border border-white/20 font-mono">X</kbd>
               </button>
             )}
           </div>

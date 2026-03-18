@@ -376,6 +376,39 @@ describe('Sidebar', () => {
     })
   })
 
+  describe('kbd badges', () => {
+    it('should display a <kbd>H</kbd> badge on the scheduled agents button', () => {
+      render(
+        <Sidebar
+          projects={[]}
+          collapsed={false}
+          {...defaultProps}
+          onOpenSchedule={vi.fn()}
+        />
+      )
+
+      const scheduleButton = screen.getByTestId('sidebar-schedule')
+      const kbd = scheduleButton.querySelector('kbd')
+      expect(kbd).not.toBeNull()
+      expect(kbd?.textContent).toBe('H')
+    })
+
+    it('should display a <kbd>A</kbd> badge on the add project button', () => {
+      render(
+        <Sidebar
+          projects={[]}
+          collapsed={false}
+          {...defaultProps}
+        />
+      )
+
+      const addButton = screen.getByTestId('add-project-button')
+      const kbd = addButton.querySelector('kbd')
+      expect(kbd).not.toBeNull()
+      expect(kbd?.textContent).toBe('A')
+    })
+  })
+
   describe('waiting popover', () => {
     const sidebarItems: SidebarWorkItem[] = [
       {

@@ -133,4 +133,54 @@ describe('StatusBar', () => {
     // Reset
     __setMockVimMode({ mode: 'NORMAL', activeZone: 'content' });
   });
+
+  describe('kbd badges', () => {
+    it('should display a <kbd> badge with , on the settings button', () => {
+      renderStatusBar();
+
+      const settingsButton = screen.getByTestId('settings-button');
+      const kbd = settingsButton.querySelector('kbd');
+      expect(kbd).not.toBeNull();
+      expect(kbd?.textContent).toBe(',');
+    });
+
+    it('should display a <kbd> badge with L on the theme toggle button', () => {
+      renderStatusBar();
+
+      const themeToggle = screen.getByTestId('theme-toggle');
+      const kbd = themeToggle.querySelector('kbd');
+      expect(kbd).not.toBeNull();
+      expect(kbd?.textContent).toBe('L');
+    });
+
+    it('should display a <kbd> badge with P on the project settings button when handler is provided', () => {
+      renderStatusBar({ onOpenProjectSettings: vi.fn() });
+
+      const projectSettingsButton = screen.getByTestId('project-settings-button');
+      const kbd = projectSettingsButton.querySelector('kbd');
+      expect(kbd).not.toBeNull();
+      expect(kbd?.textContent).toBe('P');
+    });
+
+    it('should display a <kbd> badge with ? on the shortcuts button', () => {
+      renderStatusBar();
+
+      const shortcutsButton = screen.getByTestId('shortcuts-button');
+      const kbd = shortcutsButton.querySelector('kbd');
+      expect(kbd).not.toBeNull();
+      expect(kbd?.textContent).toBe('?');
+    });
+
+    it('should display a <kbd> badge with Q on the stop button when container is running', () => {
+      renderStatusBar({
+        containerState: 'running',
+        onStop: vi.fn(),
+      });
+
+      const stopButton = screen.getByTestId('stop-button');
+      const kbd = stopButton.querySelector('kbd');
+      expect(kbd).not.toBeNull();
+      expect(kbd?.textContent).toBe('Q');
+    });
+  });
 });

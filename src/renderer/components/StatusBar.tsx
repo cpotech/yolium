@@ -198,8 +198,23 @@ export function StatusBar({
       e.preventDefault();
       const idx = Math.min(focusedButtonIndex, buttons.length - 1);
       buttons[idx]?.click();
+    } else if (e.key === ',') {
+      e.preventDefault();
+      onOpenSettings();
+    } else if (e.key === 'p') {
+      e.preventDefault();
+      onOpenProjectSettings?.();
+    } else if (e.key === 'q') {
+      e.preventDefault();
+      onStop?.();
+    } else if (e.key === 'w') {
+      e.preventDefault();
+      onToggleRecording?.();
+    } else if (e.key === 'L') {
+      e.preventDefault();
+      toggleTheme();
     }
-  }, [isZoneActive, focusedButtonIndex, getButtons]);
+  }, [isZoneActive, focusedButtonIndex, getButtons, onOpenSettings, onOpenProjectSettings, onStop, onToggleRecording, toggleTheme]);
 
   // Update data-vim-focused attributes on buttons
   useEffect(() => {
@@ -299,6 +314,7 @@ export function StatusBar({
           >
             <Square size={10} className="fill-current" />
             <span className="hidden sm:inline">Stop</span>
+            <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)] font-mono">Q</kbd>
           </button>
         )}
 
@@ -337,6 +353,7 @@ export function StatusBar({
             title="Project settings"
           >
             <FileJson size={12} />
+            <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)] font-mono">P</kbd>
           </button>
         )}
 
@@ -347,6 +364,7 @@ export function StatusBar({
           className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
         >
           <Settings size={12} />
+          <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)] font-mono">,</kbd>
         </button>
 
         {/* Theme toggle */}
@@ -360,6 +378,7 @@ export function StatusBar({
           ) : (
             <Moon size={12} className="lucide-moon" />
           )}
+          <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)] font-mono">L</kbd>
         </button>
 
         {/* Zone navigation shortcut hints (NORMAL mode only) */}
@@ -396,7 +415,7 @@ export function StatusBar({
           className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
         >
           <Keyboard size={12} />
-          <span className="hidden sm:inline">?</span>
+          <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)] font-mono">?</kbd>
         </button>
       </div>
     </div>

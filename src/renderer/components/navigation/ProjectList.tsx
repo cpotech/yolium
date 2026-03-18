@@ -26,6 +26,7 @@ interface ProjectListProps {
   onProjectRemove: (path: string) => void;
   onAddProject: () => void;
   onAnswerAndResume: (projectPath: string, itemId: string, answer: string, agentName: string) => Promise<void> | void;
+  onOpenSchedule?: () => void;
 }
 
 export function ProjectList({
@@ -36,6 +37,7 @@ export function ProjectList({
   onProjectRemove,
   onAddProject,
   onAnswerAndResume,
+  onOpenSchedule,
 }: ProjectListProps): React.ReactElement {
   const vim = useVimModeContext();
   const isZoneActive = vim.activeZone === 'sidebar' && vim.mode === 'NORMAL';
@@ -65,8 +67,11 @@ export function ProjectList({
     } else if (e.key === '+' || e.key === 'a') {
       e.preventDefault();
       onAddProject();
+    } else if (e.key === 'h') {
+      e.preventDefault();
+      onOpenSchedule?.();
     }
-  }, [isZoneActive, projects, focusedIndex, onProjectClick, onProjectRemove, onAddProject]);
+  }, [isZoneActive, projects, focusedIndex, onProjectClick, onProjectRemove, onAddProject, onOpenSchedule]);
 
   return (
     <div className="flex flex-col h-full" onKeyDown={handleVimKeyDown} tabIndex={isZoneActive ? 0 : undefined}>
@@ -80,9 +85,10 @@ export function ProjectList({
         <button
           data-testid="add-project-button"
           onClick={onAddProject}
-          className="p-1 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+          className="flex items-center gap-0.5 p-1 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
         >
           <Plus size={16} />
+          <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)] font-mono">A</kbd>
         </button>
       </div>
 

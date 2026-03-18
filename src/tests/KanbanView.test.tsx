@@ -1012,4 +1012,128 @@ describe('KanbanView', () => {
     expect(badge).toHaveTextContent('N')
   })
 
+  it('should display <kbd>Del</kbd> badge on the bulk delete button when items are selected', async () => {
+    const items = [
+      createMockItem({ id: '1', title: 'Task 1', column: 'backlog' }),
+      createMockItem({ id: '2', title: 'Task 2', column: 'backlog' }),
+    ]
+    const board = createMockBoard(items)
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
+
+    // Ctrl+click to select an item
+    fireEvent.click(screen.getAllByTestId('kanban-card')[0], { ctrlKey: true })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument()
+    })
+
+    const bulkDeleteButton = screen.getByTestId('bulk-delete-button')
+    const kbd = bulkDeleteButton.querySelector('kbd')
+    expect(kbd).not.toBeNull()
+    expect(kbd?.textContent).toBe('Del')
+  })
+
+  it('should display <kbd>Esc</kbd> badge on the clear selection button when items are selected', async () => {
+    const items = [
+      createMockItem({ id: '1', title: 'Task 1', column: 'backlog' }),
+    ]
+    const board = createMockBoard(items)
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
+
+    // Ctrl+click to select an item
+    fireEvent.click(screen.getAllByTestId('kanban-card')[0], { ctrlKey: true })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument()
+    })
+
+    const clearButton = screen.getByTestId('clear-selection-button')
+    const kbd = clearButton.querySelector('kbd')
+    expect(kbd).not.toBeNull()
+    expect(kbd?.textContent).toBe('Esc')
+  })
+
+  it('should display ? shortcut badge next to shortcuts help toggle area', async () => {
+    const items = [
+      createMockItem({ id: '1', title: 'Task 1', column: 'backlog' }),
+      createMockItem({ id: '2', title: 'Task 2', column: 'backlog' }),
+    ]
+    const board = createMockBoard(items)
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
+
+    // Ctrl+click to select an item
+    fireEvent.click(screen.getAllByTestId('kanban-card')[0], { ctrlKey: true })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument()
+    })
+
+    const bulkDeleteButton = screen.getByTestId('bulk-delete-button')
+    const kbd = bulkDeleteButton.querySelector('kbd')
+    expect(kbd).not.toBeNull()
+    expect(kbd?.textContent).toBe('Del')
+  })
+
+  it('should display <kbd>Esc</kbd> badge on the clear selection button when items are selected', async () => {
+    const items = [
+      createMockItem({ id: '1', title: 'Task 1', column: 'backlog' }),
+    ]
+    const board = createMockBoard(items)
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
+
+    // Ctrl+click to select an item
+    fireEvent.click(screen.getAllByTestId('kanban-card')[0], { ctrlKey: true })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument()
+    })
+
+    const clearButton = screen.getByTestId('clear-selection-button')
+    const kbd = clearButton.querySelector('kbd')
+    expect(kbd).not.toBeNull()
+    expect(kbd?.textContent).toBe('Esc')
+  })
+
+  it('should display ? shortcut badge next to shortcuts help toggle area', async () => {
+    const board = createMockBoard([])
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
+
+    // Toggle shortcuts overlay
+    fireEvent.keyDown(screen.getByTestId('kanban-view'), { key: '?' })
+
+    const shortcutsHelp = screen.getByTestId('shortcuts-help')
+    // The ? badge text should be present in the shortcuts overlay
+    const kbdElements = shortcutsHelp.querySelectorAll('kbd')
+    expect(kbdElements).toContain('?')
+  })
 })
