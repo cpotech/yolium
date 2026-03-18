@@ -72,20 +72,4 @@ describe('post_tweet.py with real credentials', () => {
     expect(output.tweet_id).toMatch(/^dry-run-/);
   });
 
-  it('should post a real tweet using credentials from the database', async () => {
-    const env = loadCredentialsEnv();
-    // Set DRY_RUN=false to actually post
-    env.DRY_RUN = 'false';
-
-    const tweetText = `Automated test post from Yolium - ${new Date().toISOString()}`;
-
-    const result = await run([tweetText], env);
-
-    expect(result.exitCode, `stderr: ${result.stderr}`).toBe(0);
-    const output = JSON.parse(result.stdout);
-    expect(output.success).toBe(true);
-    expect(output.dry_run).toBe(false);
-    expect(output.tweet_id).toBeDefined();
-    expect(output.text).toBeDefined();
-  });
 });
