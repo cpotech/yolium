@@ -134,9 +134,6 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'dialog-open-pr', key: 'o', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Open PR (external)' },
 
   // --- Agent Controls — Ctrl+Shift shortcuts ---
-  { id: 'agent-plan', key: 'Ctrl+Shift+P', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Agent Controls (Work Item)', description: 'Plan Agent' },
-  { id: 'agent-code', key: 'Ctrl+Shift+C', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Agent Controls (Work Item)', description: 'Code Agent' },
-  { id: 'agent-verify', key: 'Ctrl+Shift+V', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Agent Controls (Work Item)', description: 'Verify Agent' },
   { id: 'agent-scout', key: 'Ctrl+Shift+S', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Agent Controls (Work Item)', description: 'Scout Agent' },
   { id: 'agent-design', key: 'Ctrl+Shift+D', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Agent Controls (Work Item)', description: 'Design Agent' },
   { id: 'agent-marketing', key: 'Ctrl+Shift+M', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Agent Controls (Work Item)', description: 'Marketing Agent' },

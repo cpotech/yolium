@@ -332,7 +332,7 @@ test.describe('Dialog Shortcuts', () => {
       expect(dialogText).toContain('New project');
     });
 
-    test('should show Agent Controls section with Ctrl+Shift+P for Plan Agent', async () => {
+    test('should show Agent Controls section with Ctrl+Shift+S for Scout Agent', async () => {
       ctx = await launchApp();
       const { window } = ctx;
 
@@ -340,11 +340,15 @@ test.describe('Dialog Shortcuts', () => {
       await window.click(selectors.shortcutsButton);
       await expect(window.locator(selectors.shortcutsDialog)).toBeVisible();
 
-      // Should contain Agent Controls group
+      // Should contain Agent Controls group with remaining shortcuts
       const dialogText = await window.locator(selectors.shortcutsDialog).textContent();
       expect(dialogText).toContain('Agent Controls');
-      expect(dialogText).toContain('Plan Agent');
-      expect(dialogText).toContain('Ctrl+Shift+P');
+      expect(dialogText).toContain('Scout Agent');
+      expect(dialogText).toContain('Ctrl+Shift+S');
+      // Plan/Code/Verify Ctrl+Shift shortcuts should be gone
+      expect(dialogText).not.toContain('Ctrl+Shift+P');
+      expect(dialogText).not.toContain('Ctrl+Shift+C');
+      expect(dialogText).not.toContain('Ctrl+Shift+V');
     });
   });
 });

@@ -8,33 +8,42 @@ import { KeyboardShortcutsDialog } from '@renderer/components/settings/KeyboardS
 import { VIM_ACTIONS, SHORTCUT_GROUP_ORDER } from '@shared/vim-actions'
 
 describe('KeyboardShortcutsDialog', () => {
-  it('should render the Agent Controls shortcut group with Ctrl+Shift+P for Plan Agent', () => {
+  it('should NOT render Ctrl+Shift+P in Agent Controls group', () => {
+    render(<KeyboardShortcutsDialog isOpen={true} onClose={() => {}} />)
+
+    const dialog = screen.getByTestId('shortcuts-dialog')
+    const kbds = Array.from(dialog.querySelectorAll('kbd')).map(k => k.textContent)
+    expect(kbds).not.toContain('Ctrl+Shift+P')
+    expect(kbds).not.toContain('Ctrl+Shift+C')
+    expect(kbds).not.toContain('Ctrl+Shift+V')
+  })
+
+  it('should still render Agent Controls group with Scout/Design/Marketing', () => {
     render(<KeyboardShortcutsDialog isOpen={true} onClose={() => {}} />)
 
     const dialog = screen.getByTestId('shortcuts-dialog')
     const text = dialog.textContent ?? ''
     expect(text).toContain('Agent Controls')
-    expect(text).toContain('Plan Agent')
-    expect(text).toContain('Ctrl+Shift+P')
+    expect(text).toContain('Scout Agent')
+    expect(text).toContain('Ctrl+Shift+S')
+    expect(text).toContain('Design Agent')
+    expect(text).toContain('Ctrl+Shift+D')
+    expect(text).toContain('Marketing Agent')
+    expect(text).toContain('Ctrl+Shift+M')
   })
 
-  it('should render New Project as Ctrl+Shift+N instead of Ctrl+Shift+P', () => {
+  it('should render New Project as Ctrl+Shift+N', () => {
     render(<KeyboardShortcutsDialog isOpen={true} onClose={() => {}} />)
 
     const dialog = screen.getByTestId('shortcuts-dialog')
     const text = dialog.textContent ?? ''
 
-    // Find the New project entry — it should use Ctrl+Shift+N
     expect(text).toContain('New project')
     expect(text).toContain('Ctrl+Shift+N')
 
-    // Ctrl+Shift+P should only appear in the Agent Controls group (for Plan Agent), not in Application
-    const kbds = dialog.querySelectorAll('kbd')
-    const applicationSection = Array.from(kbds).filter(
-      kbd => kbd.textContent === 'Ctrl+Shift+P'
-    )
-    // Should exist (for Plan Agent) but not be associated with "New project"
-    expect(applicationSection.length).toBeGreaterThan(0)
+    // Ctrl+Shift+P should NOT appear anywhere
+    const kbds = Array.from(dialog.querySelectorAll('kbd')).map(k => k.textContent)
+    expect(kbds).not.toContain('Ctrl+Shift+P')
   })
 
   it('should render Settings as Ctrl+Shift+, instead of Ctrl+Shift+S', () => {

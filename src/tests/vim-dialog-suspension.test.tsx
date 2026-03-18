@@ -470,26 +470,23 @@ describe('ItemDetailDialog shortcuts hint bar', () => {
     expect(hintsBar).toHaveTextContent('Delete')
   })
 
-  it('should always show agent shortcuts in the hints bar', async () => {
+  it('should not show Plan/Code/Verify Ctrl+Shift shortcuts in hints bar', async () => {
     renderItemDetailDialog()
 
     // Dialog opens in NORMAL mode
     expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
 
-    // Check agent shortcuts in NORMAL mode
+    // Check agent shortcuts are NOT in NORMAL mode editor hints
     const hintsBar = screen.getByTestId('shortcuts-hint-bar')
-    expect(hintsBar).toHaveTextContent('Ctrl+Shift+P')
-    expect(hintsBar).toHaveTextContent('Plan')
-    expect(hintsBar).toHaveTextContent('Ctrl+Shift+C')
-    expect(hintsBar).toHaveTextContent('Code')
-    expect(hintsBar).toHaveTextContent('Ctrl+Shift+V')
-    expect(hintsBar).toHaveTextContent('Verify')
+    expect(hintsBar).not.toHaveTextContent('Ctrl+Shift+P')
+    expect(hintsBar).not.toHaveTextContent('Ctrl+Shift+C')
+    expect(hintsBar).not.toHaveTextContent('Ctrl+Shift+V')
 
-    // Switch to INSERT mode and verify agent shortcuts still there
+    // Switch to INSERT mode and verify agent shortcuts still absent
     fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, { key: 'i' })
 
-    expect(hintsBar).toHaveTextContent('Ctrl+Shift+P')
-    expect(hintsBar).toHaveTextContent('Ctrl+Shift+C')
-    expect(hintsBar).toHaveTextContent('Ctrl+Shift+V')
+    expect(hintsBar).not.toHaveTextContent('Ctrl+Shift+P')
+    expect(hintsBar).not.toHaveTextContent('Ctrl+Shift+C')
+    expect(hintsBar).not.toHaveTextContent('Ctrl+Shift+V')
   })
 })
