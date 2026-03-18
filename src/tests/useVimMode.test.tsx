@@ -121,7 +121,7 @@ describe('useVimMode', () => {
       const event = new KeyboardEvent('keydown', { key: 'Tab' });
       result.current.handleKeyDown(event);
     });
-    expect(result.current.activeZone).toBe('sidebar');
+    expect(result.current.activeZone).toBe('schedule');
   });
 
   it('should reverse-cycle zones with Shift+Tab in NORMAL mode', () => {

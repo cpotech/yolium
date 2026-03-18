@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Clock, Play, History, Settings, Power, PowerOff, RefreshCw, AlertTriangle, ChevronDown, Plus, RotateCcw } from 'lucide-react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Clock, Play, History, Settings, Power, PowerOff, RefreshCw, AlertTriangle, ChevronDown, Plus, RotateCcw, Keyboard, X } from 'lucide-react';
 import { RunHistoryTable } from './RunHistoryTable';
 import { ActionsView } from './ActionsView';
 import { AddSpecialistDialog } from './AddSpecialistDialog';
 import type { ActionStats, ScheduleType } from '@shared/types/schedule';
+import { useVimModeContext } from '@renderer/context/VimModeContext';
 
 interface SpecialistInfo {
   name: string;
@@ -43,6 +44,12 @@ export function SchedulePanel(): React.ReactElement {
   const [runningIds, setRunningIds] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'specialists' | 'actions'>('specialists');
   const [actionsFilterSpecialist, setActionsFilterSpecialist] = useState<string | null>(null);
+  const [focusedSpecialistIndex, setFocusedSpecialistIndex] = useState(0);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const viewRef = useRef<HTMLDivElement>(null);
+  const gPendingRef = useRef(false);
+  const vim = useVimModeContext();
+  const isVimScheduleActive = vim.mode === 'NORMAL' && vim.activeZone === 'schedule';
 
   const loadState = useCallback(async () => {
     try {
@@ -87,6 +94,15 @@ export function SchedulePanel(): React.ReactElement {
       cleanupState();
     };
   }, [loadState]);
+
+  useEffect(() => {
+    if (vim.activeZone === 'schedule' && !isLoading && viewRef.current) {
+      const active = document.activeElement;
+      const tag = active?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      viewRef.current.focus();
+    }
+  }, [vim.activeZone, isLoading]);
 
   // Close run type menu when clicking outside
   useEffect(() => {
@@ -144,6 +160,96 @@ export function SchedulePanel(): React.ReactElement {
     loadState();
   }, [loadState]);
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
+    if (showAddDialog || editingSpecialistId !== null || selectedSpecialist) return;
+
+    const specialistIds = Object.keys(specialists);
+    const currentIndex = Math.min(focusedSpecialistIndex, Math.max(specialistIds.length - 1, 0));
+    const currentId = specialistIds[currentIndex];
+    const spec = specialists[currentId];
+    const status = state?.specialists[currentId];
+    const enabledSchedules = spec?.schedules.filter(s => s.enabled) ?? [];
+    const isRunning = runningIds.includes(currentId ?? '');
+
+    if (isVimScheduleActive && specialistIds.length > 0) {
+      if (e.key === 'j' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        setFocusedSpecialistIndex((focusedSpecialistIndex + 1) % specialistIds.length);
+        gPendingRef.current = false;
+        return;
+      }
+      if (e.key === 'k' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        setFocusedSpecialistIndex((focusedSpecialistIndex - 1 + specialistIds.length) % specialistIds.length);
+        gPendingRef.current = false;
+        return;
+      }
+      if (e.key === 'g') {
+        if (gPendingRef.current) {
+          e.preventDefault();
+          setFocusedSpecialistIndex(0);
+          gPendingRef.current = false;
+          return;
+        } else {
+          gPendingRef.current = true;
+          return;
+        }
+      }
+      if (e.key === 'G') {
+        e.preventDefault();
+        setFocusedSpecialistIndex(specialistIds.length - 1);
+        gPendingRef.current = false;
+        return;
+      }
+      if (e.key === 'r' && !isRunning && currentId) {
+        e.preventDefault();
+        handleTriggerRun(currentId, enabledSchedules[0]?.type || 'daily');
+        gPendingRef.current = false;
+        return;
+      }
+      if (e.key === 't' && currentId) {
+        e.preventDefault();
+        handleToggleSpecialist(currentId, !(status?.enabled ?? true));
+        gPendingRef.current = false;
+        return;
+      }
+      if (e.key === 'Enter' && currentId) {
+        e.preventDefault();
+        setSelectedSpecialist(currentId);
+        gPendingRef.current = false;
+        return;
+      }
+      if (e.key === 'c' && currentId) {
+        e.preventDefault();
+        setEditingSpecialistId(currentId);
+        gPendingRef.current = false;
+        return;
+      }
+    }
+
+    if (e.key === 'n') {
+      e.preventDefault();
+      setEditingSpecialistId(null);
+      setShowAddDialog(true);
+    }
+    if (e.key === '1') {
+      e.preventDefault();
+      setViewMode('specialists');
+      setActionsFilterSpecialist(null);
+    }
+    if (e.key === '2') {
+      e.preventDefault();
+      setViewMode('actions');
+      setActionsFilterSpecialist(null);
+    }
+    if (e.key === '?') {
+      e.preventDefault();
+      setShowShortcutsHelp(prev => !prev);
+    }
+  }, [isVimScheduleActive, specialists, focusedSpecialistIndex, state, runningIds, showAddDialog, editingSpecialistId, selectedSpecialist, handleTriggerRun, handleToggleSpecialist]);
+
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center" data-testid="schedule-panel-loading">
@@ -174,7 +280,38 @@ export function SchedulePanel(): React.ReactElement {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden" data-testid="schedule-panel">
+    <div ref={viewRef} data-testid="schedule-panel" data-vim-zone="schedule" tabIndex={0} onKeyDown={handleKeyDown} className="h-full flex flex-col overflow-hidden outline-none">
+      {/* Shortcuts help overlay */}
+      {showShortcutsHelp && (
+        <div
+          data-testid="schedule-shortcuts-help"
+          className="px-4 py-3 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border-primary)] text-sm"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-medium text-[var(--color-text-primary)] flex items-center gap-2">
+              <Keyboard size={14} />
+              Keyboard Shortcuts
+            </h3>
+            <button onClick={() => setShowShortcutsHelp(false)} className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">
+              <X size={14} />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-[var(--color-text-secondary)]">
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">J</kbd> Next specialist</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">K</kbd> Previous specialist</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">gg</kbd> First specialist</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">G</kbd> Last specialist</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">R</kbd> Trigger run</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">T</kbd> Toggle enabled</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Enter</kbd> Open history</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">C</kbd> Configure specialist</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">N</kbd> Add specialist</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">1</kbd> Specialists view</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">2</kbd> Actions view</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">?</kbd> Toggle shortcuts</div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-[var(--color-border-primary)]">
         <div className="flex items-center gap-2">
@@ -284,18 +421,22 @@ export function SchedulePanel(): React.ReactElement {
           </div>
         ) : (
           <div className="grid gap-3 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
-            {Object.entries(specialists).map(([id, spec]) => {
+            {Object.entries(specialists).map(([id, spec], index) => {
               const status = state?.specialists[id];
               const enabledSchedules = spec.schedules.filter(s => s.enabled);
               const isRunning = runningIds.includes(id);
+              const isFocused = isVimScheduleActive && focusedSpecialistIndex === index;
               return (
                 <div
                   key={id}
                   data-testid={`specialist-card-${id}`}
+                  data-vim-focused={isFocused ? 'true' : undefined}
                   className={`rounded-lg border bg-[var(--color-bg-secondary)] p-3 ${
                     isRunning
                       ? 'border-green-500/40'
-                      : 'border-[var(--color-border-primary)]'
+                      : isFocused
+                        ? 'border-[var(--color-accent-primary)] ring-2 ring-[var(--color-accent-primary)] ring-offset-1 ring-offset-[var(--color-bg-primary)]'
+                        : 'border-[var(--color-border-primary)]'
                   }`}
                 >
                   {/* Card header */}
