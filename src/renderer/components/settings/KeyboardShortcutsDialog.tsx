@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useEffect } from 'react';
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts';
 import { getActionsByGroup, SHORTCUT_GROUP_ORDER } from '@shared/vim-actions';
+import { useSuspendVimNavigation } from '@renderer/context/VimModeContext';
 
 interface KeyboardShortcutsDialogProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ export function KeyboardShortcutsDialog({
   isOpen,
   onClose,
 }: KeyboardShortcutsDialogProps): React.ReactElement | null {
+  useSuspendVimNavigation(isOpen);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   // Auto-focus dialog when opened
