@@ -44,15 +44,19 @@ vi.mock('@main/git/git-identity', () => ({
 vi.mock('@main/git/git-credentials', () => ({
   fetchGitHubUser: vi.fn(),
   generateGitCredentials: vi.fn(),
-}))
+}));
 
 vi.mock('@main/git/claude-oauth', () => ({
   hasHostClaudeOAuth: vi.fn(),
-  fetchClaudeUsage: vi.fn(),
-}))
+}));
 
 vi.mock('@main/git/codex-oauth', () => ({
   hasHostCodexOAuth: vi.fn(),
+}));
+
+vi.mock('@main/git/git-clone', () => ({
+  cloneRepository: vi.fn(),
+  extractRepoNameFromUrl: vi.fn(),
 }));
 
 vi.mock('node:fs', () => ({

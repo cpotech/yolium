@@ -12,6 +12,7 @@ import { registerTabHandlers } from './tab-handlers';
 import { registerDialogHandlers } from './dialog-handlers';
 import { registerFilesystemHandlers } from './filesystem-handlers';
 import { registerGitHandlers, GIT_IPC_CHANNELS } from './git-handlers';
+import { registerUsageHandlers } from './usage-handlers';
 import { registerDockerHandlers } from './docker-handlers';
 import { registerContainerHandlers } from './container-handlers';
 import { registerKanbanHandlers } from './kanban-handlers';
@@ -59,6 +60,7 @@ export function registerAllHandlers(): boolean {
     { name: 'agent', register: () => registerAgentHandlers(ipcMain) },
     { name: 'cache', register: () => registerCacheHandlers(ipcMain) },
     { name: 'whisper', register: () => registerWhisperHandlers(ipcMain) },
+    { name: 'usage', register: () => registerUsageHandlers(ipcMain) },
     { name: 'onboarding', register: () => registerOnboardingHandlers(ipcMain) },
     { name: 'project-config', register: () => registerProjectConfigHandlers(ipcMain) },
     { name: 'report', register: () => registerReportHandlers(ipcMain) },
