@@ -77,4 +77,40 @@ describe('KeyboardShortcutsDialog', () => {
     expect(text).toContain('Delete selected items')
     expect(text).toContain('Clear selection / close')
   })
+
+  it('should display a Vim Actions shortcut group', () => {
+    render(<KeyboardShortcutsDialog isOpen={true} onClose={() => {}} />)
+
+    const dialog = screen.getByTestId('shortcuts-dialog')
+    const text = dialog.textContent ?? ''
+
+    expect(text).toContain('Vim Actions')
+  })
+
+  it('should list L, P, comma, Q, W, H, D, X shortcuts in the Vim Actions group', () => {
+    render(<KeyboardShortcutsDialog isOpen={true} onClose={() => {}} />)
+
+    const dialog = screen.getByTestId('shortcuts-dialog')
+    const text = dialog.textContent ?? ''
+
+    // These shortcuts should all be present in the dialog
+    expect(text).toContain('Toggle theme')
+    expect(text).toContain('Project settings')
+    expect(text).toContain('Stop container')
+    expect(text).toContain('Toggle recording')
+    expect(text).toContain('Scheduled agents')
+    expect(text).toContain('Delete item')
+    expect(text).toContain('Stop agent')
+
+    // Verify the kbd elements for these shortcuts exist
+    const kbds = Array.from(dialog.querySelectorAll('kbd')).map(k => k.textContent)
+    expect(kbds).toContain('L')
+    expect(kbds).toContain('P')
+    expect(kbds).toContain(',')
+    expect(kbds).toContain('Q')
+    expect(kbds).toContain('W')
+    expect(kbds).toContain('H')
+    expect(kbds).toContain('D')
+    expect(kbds).toContain('X')
+  })
 })

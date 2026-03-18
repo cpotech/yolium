@@ -400,6 +400,18 @@ describe('AgentControls', () => {
     })
   })
 
+  describe('kbd badges', () => {
+    it('should display a <kbd>X</kbd> badge on the stop agent button when agent is running', () => {
+      const item = createMockItem({ agentStatus: 'running' })
+      render(<AgentControls item={item} {...defaultProps} currentSessionId="sess-1" />)
+
+      const stopButton = screen.getByTestId('stop-agent-button')
+      const kbd = stopButton.querySelector('kbd')
+      expect(kbd).not.toBeNull()
+      expect(kbd?.textContent).toBe('X')
+    })
+  })
+
   describe('agent button tooltips', () => {
     it('should not show agent descriptions on hover', async () => {
       const item = createMockItem({ agentStatus: 'idle' })

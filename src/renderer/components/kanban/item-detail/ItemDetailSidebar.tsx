@@ -316,7 +316,7 @@ export function ItemDetailSidebar({
           >
             <Trash2 size={14} />
             {isDeleting ? 'Deleting...' : 'Delete'}
-            <span className="text-xs opacity-60 ml-1">(Ctrl+Del)</span>
+            <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-status-error)]/10 rounded border border-[var(--color-status-error)]/30 font-mono ml-1">D</kbd>
           </button>
         </div>
       </div>
@@ -333,7 +333,7 @@ export function ItemDetailSidebar({
           </div>
         </div>
         <p className="text-center text-[10px] text-[var(--color-text-tertiary)] mt-2">
-          Esc to close
+          <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)] font-mono">Esc</kbd> to close
         </p>
       </div>
     </div>

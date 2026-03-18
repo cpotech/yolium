@@ -44,7 +44,7 @@ export function SpeechToTextButton({
         )}
         {isRecording && <span className="text-xs">Rec</span>}
         {isTranscribing && <span className="text-xs">...</span>}
-        {isIdle && <span data-testid="recording-hint" className="text-[10px] text-[var(--color-text-disabled)] ml-0.5">Ctrl+Shift+R</span>}
+        {isIdle && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)] font-mono ml-0.5">W</kbd>}
       </button>
 
       {/* Model selector dropdown trigger */}

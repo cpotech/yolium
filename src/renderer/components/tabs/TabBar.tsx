@@ -97,8 +97,11 @@ export function TabBar({
       e.preventDefault();
       const idx = Math.min(focusedTabIndex, tabs.length - 1);
       onTabClose(tabs[idx].id);
+    } else if (e.key === '+') {
+      e.preventDefault();
+      onNewTab();
     }
-  }, [isZoneActive, tabs, focusedTabIndex, onTabClick, onTabClose]);
+  }, [isZoneActive, tabs, focusedTabIndex, onTabClick, onTabClose, onNewTab]);
 
   return (
     <div
@@ -155,10 +158,11 @@ export function TabBar({
       <button
         data-testid="new-tab-button"
         onClick={onNewTab}
-        className="px-3 h-full hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] border-l border-[var(--color-border-primary)]"
+        className="flex items-center gap-1 px-3 h-full hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] border-l border-[var(--color-border-primary)]"
         aria-label="New Yolium"
       >
         <Plus size={16} />
+        <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)] font-mono">+</kbd>
       </button>
     </div>
   );

@@ -96,6 +96,19 @@ const shortcutGroups: ShortcutGroup[] = [
     ],
   },
   {
+    title: 'Vim Actions',
+    shortcuts: [
+      { keys: 'L', description: 'Toggle theme' },
+      { keys: 'P', description: 'Project settings' },
+      { keys: ',', description: 'Settings' },
+      { keys: 'Q', description: 'Stop container' },
+      { keys: 'W', description: 'Toggle recording' },
+      { keys: 'H', description: 'Scheduled agents' },
+      { keys: 'D', description: 'Delete item' },
+      { keys: 'X', description: 'Stop agent' },
+    ],
+  },
+  {
     title: 'Agent Controls (Work Item)',
     shortcuts: [
       { keys: 'Ctrl+Shift+P', description: 'Plan Agent' },
