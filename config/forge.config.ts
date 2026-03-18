@@ -99,9 +99,9 @@ const config: ForgeConfig = {
     extraResource: ['src/docker', 'src/agents', 'assets/icon'],
   },
   rebuildConfig: {
-    // Skip rebuilding node-pty as it has prebuilt binaries for Windows
-    // This avoids the winpty build failure (missing GetCommitHash.bat)
-    onlyModules: [],
+    // Only rebuild better-sqlite3 for Electron's Node ABI.
+    // node-pty uses prebuilt binaries and doesn't need rebuilding.
+    onlyModules: ['better-sqlite3'],
   },
   hooks: {
     // Copy native modules to the packaged app

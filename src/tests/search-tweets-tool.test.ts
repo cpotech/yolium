@@ -52,15 +52,15 @@ function runWithCode(
 
 describe('search_tweets.py', () => {
   it('should print usage error when --query is not provided', async () => {
-    const result = await runWithCode([], { TWITTER_BEARER_TOKEN: 'test-token' });
+    const result = await runWithCode([], { TWITTER_API_KEY: 'k', TWITTER_API_SECRET: 's', TWITTER_ACCESS_TOKEN: 't', TWITTER_ACCESS_TOKEN_SECRET: 'ts' });
     expect(result.exitCode).not.toBe(0);
     expect(result.stderr).toMatch(/--query/i);
   });
 
-  it('should exit with error when TWITTER_BEARER_TOKEN is not set', async () => {
+  it('should exit with error when TWITTER_API_KEY is not set', async () => {
     const result = await runWithCode(['--query', 'test search'], {});
     expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toMatch(/TWITTER_BEARER_TOKEN/);
+    expect(result.stderr).toMatch(/TWITTER_API_KEY/);
   });
 
   it('should default max_results to 10 when --count is not provided', async () => {
