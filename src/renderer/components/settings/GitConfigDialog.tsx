@@ -293,7 +293,7 @@ export function GitConfigDialog({
   const showIdentity = initialConfig?.githubLogin && !patCleared;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60">
+    <div className="fixed inset-0 z-[60] bg-black/60">
       <form
         ref={dialogRef}
         onSubmit={handleSubmit}
