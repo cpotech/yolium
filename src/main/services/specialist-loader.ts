@@ -167,6 +167,16 @@ export function parseSpecialistDefinition(markdown: string): SpecialistDefinitio
         entry.env &&
         typeof entry.env === 'object'
       ) {
+        // Detect likely YAML indentation errors: integration-level keys appearing inside env
+        const INTEGRATION_KEYS = ['tools', 'service'];
+        for (const key of Object.keys(entry.env)) {
+          if (INTEGRATION_KEYS.includes(key)) {
+            console.warn(
+              `[specialist-loader] Likely YAML indentation error in "${data.name}": ` +
+              `integration for "${entry.service}" has "${key}" inside env (should be a sibling of env)`
+            );
+          }
+        }
         integrations.push({
           service: entry.service,
           env: entry.env as Record<string, string>,

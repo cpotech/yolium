@@ -518,6 +518,94 @@ Content`;
       expect(twitterIntegration!.env).toHaveProperty('TWITTER_ACCESS_TOKEN');
       expect(twitterIntegration!.env).toHaveProperty('TWITTER_ACCESS_TOKEN_SECRET');
     });
+
+    it('should warn when an integration env map contains a key named "tools" (likely YAML indentation error)', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const markdown = `---
+name: test-specialist
+description: Test specialist
+model: haiku
+tools:
+  - Read
+schedules:
+  - { type: heartbeat, cron: "*/30 * * * *", enabled: true }
+integrations:
+  - service: some-api
+    env:
+      API_KEY: some-key
+      tools:
+        - twitter
+---
+
+System prompt here.`;
+
+      parseSpecialistDefinition(markdown);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('YAML indentation error')
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('"tools"')
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('should warn when an integration env map contains a key named "service" (likely YAML indentation error)', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const markdown = `---
+name: test-specialist
+description: Test specialist
+model: haiku
+tools:
+  - Read
+schedules:
+  - { type: heartbeat, cron: "*/30 * * * *", enabled: true }
+integrations:
+  - service: some-api
+    env:
+      API_KEY: some-key
+      service: nested-service
+---
+
+System prompt here.`;
+
+      parseSpecialistDefinition(markdown);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('YAML indentation error')
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('"service"')
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('should not warn when integration env map contains only legitimate credential keys', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const markdown = `---
+name: test-specialist
+description: Test specialist
+model: haiku
+tools:
+  - Read
+schedules:
+  - { type: heartbeat, cron: "*/30 * * * *", enabled: true }
+integrations:
+  - service: some-api
+    env:
+      API_KEY: some-key
+      WEBHOOK_URL: https://example.com
+    tools:
+      - twitter
+---
+
+System prompt here.`;
+
+      parseSpecialistDefinition(markdown);
+
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
   });
 
   describe('getSpecialistsDir', () => {
