@@ -5,6 +5,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as os from 'node:os';
 import matter from 'gray-matter';
 import cron from 'node-cron';
 import type {
@@ -25,16 +26,29 @@ const VALID_MEMORY_STRATEGIES: MemoryStrategy[] = ['distill_daily', 'distill_wee
  * In prod: resources/agents/cron/
  */
 export function getSpecialistsDir(): string {
+  const devCandidates: string[] = [];
+
   // Try Electron app path first (development)
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { app } = require('electron');
     const appPath = app.getAppPath();
-    const devPath = path.join(appPath, 'src', 'agents', 'cron');
-    if (fs.existsSync(devPath)) {
-      return devPath;
+    devCandidates.push(path.join(appPath, 'src', 'agents', 'cron'));
+  } catch {
+    // Electron not available (test environment)
+  }
+
+  // Standalone `.vite/build/main.js` launches and test environments run from the
+  // repository root rather than an Electron app bundle, so try those dev paths too.
+  devCandidates.push(
+    path.join(process.cwd(), 'src', 'agents', 'cron'),
+    path.resolve(__dirname, '..', '..', 'src', 'agents', 'cron'),
+  );
+
+  for (const candidate of devCandidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
     }
-  } catch { /* Electron not available (test environment) */
   }
 
   // Try production path (process.resourcesPath)
@@ -46,7 +60,15 @@ export function getSpecialistsDir(): string {
   }
 
   // Fallback for test environment
-  return path.join(__dirname, '..', 'agents', 'cron');
+  return path.join(process.cwd(), 'src', 'agents', 'cron');
+}
+
+/**
+ * Get the directory containing custom (user-created) specialist CRON agent definitions.
+ * Always: ~/.yolium/agents/cron/custom/
+ */
+export function getCustomSpecialistsDir(): string {
+  return path.join(os.homedir(), '.yolium', 'agents', 'cron', 'custom');
 }
 
 /**
@@ -201,37 +223,72 @@ export function parseSpecialistDefinition(markdown: string): SpecialistDefinitio
 }
 
 /**
- * List all specialist names (without .md extension) in the cron directory.
+ * Read specialist names from a single directory.
  * Excludes files starting with _ and README.
  */
-export function listSpecialists(): string[] {
-  const dir = getSpecialistsDir();
+function readSpecialistNames(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
-
   return fs.readdirSync(dir)
     .filter(f => f.endsWith('.md') && !f.startsWith('_') && f !== 'README.md')
     .map(f => f.replace('.md', ''));
 }
 
 /**
+ * List all specialist names (without .md extension) from both default and custom directories.
+ * Default specialists take precedence over custom ones with the same name.
+ */
+export function listSpecialists(): string[] {
+  const defaultNames = readSpecialistNames(getSpecialistsDir());
+  const customNames = readSpecialistNames(getCustomSpecialistsDir());
+
+  const defaultSet = new Set(defaultNames);
+  const uniqueCustom = customNames.filter(name => !defaultSet.has(name));
+
+  return [...defaultNames, ...uniqueCustom];
+}
+
+/**
+ * Resolve the file path and source for a specialist by name.
+ * Searches default directory first, then custom directory.
+ */
+export function resolveSpecialistPath(name: string): { filePath: string; source: 'default' | 'custom' } | null {
+  const defaultPath = path.join(getSpecialistsDir(), `${name}.md`);
+  if (fs.existsSync(defaultPath)) {
+    return { filePath: defaultPath, source: 'default' };
+  }
+
+  const customPath = path.join(getCustomSpecialistsDir(), `${name}.md`);
+  if (fs.existsSync(customPath)) {
+    return { filePath: customPath, source: 'custom' };
+  }
+
+  return null;
+}
+
+/**
  * Load a specialist definition by name.
+ * Searches default directory first, then custom directory.
  */
 export function loadSpecialist(name: string): SpecialistDefinition {
-  const dir = getSpecialistsDir();
-  const filePath = path.join(dir, `${name}.md`);
-  const content = fs.readFileSync(filePath, 'utf-8');
-  return parseSpecialistDefinition(content);
+  const resolved = resolveSpecialistPath(name);
+  if (!resolved) {
+    throw new Error(`Specialist "${name}" not found in default or custom directories`);
+  }
+
+  const content = fs.readFileSync(resolved.filePath, 'utf-8');
+  const definition = parseSpecialistDefinition(content);
+  definition.source = resolved.source;
+  return definition;
 }
 
 /**
  * Load raw markdown content of a specialist definition by name.
- * Returns the unprocessed file contents for cloning/editing.
+ * Searches default directory first, then custom directory.
  */
 export function loadSpecialistRaw(name: string): string {
-  const dir = getSpecialistsDir();
-  const filePath = path.join(dir, `${name}.md`);
-  if (!fs.existsSync(filePath)) {
-    throw new Error(`Specialist "${name}" not found at ${filePath}`);
+  const resolved = resolveSpecialistPath(name);
+  if (!resolved) {
+    throw new Error(`Specialist "${name}" not found in default or custom directories`);
   }
-  return fs.readFileSync(filePath, 'utf-8');
+  return fs.readFileSync(resolved.filePath, 'utf-8');
 }

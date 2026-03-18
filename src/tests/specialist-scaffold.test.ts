@@ -3,8 +3,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getSpecialistsDirMock } = vi.hoisted(() => ({
+const { getSpecialistsDirMock, getCustomSpecialistsDirMock, resolveSpecialistPathMock } = vi.hoisted(() => ({
   getSpecialistsDirMock: vi.fn(),
+  getCustomSpecialistsDirMock: vi.fn(),
+  resolveSpecialistPathMock: vi.fn(),
 }));
 
 vi.mock('@main/services/specialist-loader', async (importOriginal) => {
@@ -12,6 +14,8 @@ vi.mock('@main/services/specialist-loader', async (importOriginal) => {
   return {
     ...actual,
     getSpecialistsDir: getSpecialistsDirMock,
+    getCustomSpecialistsDir: getCustomSpecialistsDirMock,
+    resolveSpecialistPath: resolveSpecialistPathMock,
   };
 });
 
@@ -58,7 +62,11 @@ describe('specialist-scaffold', () => {
   beforeEach(() => {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'specialist-scaffold-'));
     const cronDir = path.join(tempRoot, 'cron');
+    const customDir = path.join(tempRoot, 'custom');
     getSpecialistsDirMock.mockReturnValue(cronDir);
+    getCustomSpecialistsDirMock.mockReturnValue(customDir);
+    // Default: resolveSpecialistPath returns null (specialist not found in either dir)
+    resolveSpecialistPathMock.mockReturnValue(null);
   });
 
   afterEach(() => {
@@ -69,7 +77,7 @@ describe('specialist-scaffold', () => {
   it('should create a specialist file with kebab-case name', () => {
     const filePath = scaffoldSpecialist('code-quality');
 
-    expect(filePath).toBe(path.join(path.join(tempRoot, 'cron'), 'code-quality.md'));
+    expect(filePath).toBe(path.join(path.join(tempRoot, 'custom'), 'code-quality.md'));
     expect(fs.existsSync(filePath)).toBe(true);
     const content = fs.readFileSync(filePath, 'utf-8');
     expect(content).toContain('name: code-quality');
@@ -99,13 +107,13 @@ describe('specialist-scaffold', () => {
     expect(content).toContain('description: security-monitor monitoring and analysis');
   });
 
-  it('should create the cron directory if it does not exist', () => {
-    const nestedCronDir = path.join(tempRoot, 'nested', 'agents', 'cron');
-    getSpecialistsDirMock.mockReturnValue(nestedCronDir);
+  it('should create the custom directory if it does not exist', () => {
+    const nestedCustomDir = path.join(tempRoot, 'nested', 'agents', 'cron', 'custom');
+    getCustomSpecialistsDirMock.mockReturnValue(nestedCustomDir);
 
     const filePath = scaffoldSpecialist('weekly-review');
 
-    expect(fs.existsSync(nestedCronDir)).toBe(true);
+    expect(fs.existsSync(nestedCustomDir)).toBe(true);
     expect(fs.existsSync(filePath)).toBe(true);
   });
 
@@ -217,6 +225,9 @@ escalation:
 # Original Specialist`,
     });
 
+    // Mock resolveSpecialistPath to find it where it was scaffolded
+    resolveSpecialistPathMock.mockReturnValue({ filePath, source: 'custom' });
+
     const updatedFilePath = updateSpecialistDefinition('twitter-growth', `---
 name: renamed-in-markdown
 description: Updated description
@@ -267,6 +278,8 @@ escalation:
 # Security Monitor`,
     });
 
+    resolveSpecialistPathMock.mockReturnValue({ filePath, source: 'custom' });
+
     updateSpecialistDefinition('security-monitor', `---
 name: accidental-rename
 description: Updated security scanning
@@ -314,5 +327,142 @@ escalation:
 
 # Missing Specialist`)
     ).toThrow(/does not exist/i);
+  });
+
+  it('should scaffold new specialists to the custom directory', () => {
+    const customDir = getCustomSpecialistsDirMock();
+    const filePath = scaffoldSpecialist('new-custom-agent');
+
+    expect(filePath).toBe(path.join(customDir, 'new-custom-agent.md'));
+    expect(fs.existsSync(filePath)).toBe(true);
+    const content = fs.readFileSync(filePath, 'utf-8');
+    expect(content).toContain('name: new-custom-agent');
+  });
+
+  it('should create custom directory if it does not exist', () => {
+    const customDir = path.join(tempRoot, 'deeply', 'nested', 'custom');
+    getCustomSpecialistsDirMock.mockReturnValue(customDir);
+
+    const filePath = scaffoldSpecialist('nested-agent');
+
+    expect(fs.existsSync(customDir)).toBe(true);
+    expect(fs.existsSync(filePath)).toBe(true);
+  });
+
+  it('should update specialist in default dir when specialist lives in default dir', () => {
+    const defaultDir = getSpecialistsDirMock();
+    // Create directory and a specialist in the default dir manually
+    fs.mkdirSync(defaultDir, { recursive: true });
+    const defaultPath = path.join(defaultDir, 'default-agent.md');
+    const content = `---
+name: default-agent
+description: A default agent
+model: haiku
+tools:
+  - Read
+schedules:
+  - type: daily
+    cron: "0 0 * * *"
+    enabled: true
+memory:
+  strategy: raw
+  maxEntries: 100
+  retentionDays: 30
+escalation:
+  onFailure: alert_user
+---
+
+# Default Agent`;
+    fs.writeFileSync(defaultPath, content, 'utf-8');
+
+    // Mock resolveSpecialistPath to find it in default dir
+    resolveSpecialistPathMock.mockReturnValue({ filePath: defaultPath, source: 'default' });
+
+    const updatedPath = updateSpecialistDefinition('default-agent', `---
+name: default-agent
+description: Updated default agent
+model: sonnet
+tools:
+  - Read
+  - Bash
+schedules:
+  - type: daily
+    cron: "0 0 * * *"
+    enabled: true
+memory:
+  strategy: raw
+  maxEntries: 100
+  retentionDays: 30
+escalation:
+  onFailure: alert_user
+---
+
+# Updated Default Agent`);
+
+    expect(updatedPath).toBe(defaultPath);
+    const written = fs.readFileSync(updatedPath, 'utf-8');
+    expect(written).toContain('description: Updated default agent');
+  });
+
+  it('should update specialist in custom dir when specialist lives in custom dir', () => {
+    const customDir = getCustomSpecialistsDirMock();
+    // Create directory and a specialist in the custom dir manually
+    fs.mkdirSync(customDir, { recursive: true });
+    const customPath = path.join(customDir, 'custom-agent.md');
+    const content = `---
+name: custom-agent
+description: A custom agent
+model: haiku
+tools:
+  - Read
+schedules:
+  - type: daily
+    cron: "0 0 * * *"
+    enabled: true
+memory:
+  strategy: raw
+  maxEntries: 100
+  retentionDays: 30
+escalation:
+  onFailure: alert_user
+---
+
+# Custom Agent`;
+    fs.writeFileSync(customPath, content, 'utf-8');
+
+    // Mock resolveSpecialistPath to find it in custom dir
+    resolveSpecialistPathMock.mockReturnValue({ filePath: customPath, source: 'custom' });
+
+    const updatedPath = updateSpecialistDefinition('custom-agent', `---
+name: custom-agent
+description: Updated custom agent
+model: sonnet
+tools:
+  - Read
+  - Bash
+schedules:
+  - type: daily
+    cron: "0 0 * * *"
+    enabled: true
+memory:
+  strategy: raw
+  maxEntries: 100
+  retentionDays: 30
+escalation:
+  onFailure: alert_user
+---
+
+# Updated Custom Agent`);
+
+    expect(updatedPath).toBe(customPath);
+    const written = fs.readFileSync(updatedPath, 'utf-8');
+    expect(written).toContain('description: Updated custom agent');
+  });
+
+  it('should reject creating a custom specialist when the name already exists in the default dir', () => {
+    const defaultPath = path.join(tempRoot, 'cron', 'security-monitor.md');
+    resolveSpecialistPathMock.mockReturnValue({ filePath: defaultPath, source: 'default' });
+
+    expect(() => scaffoldSpecialist('security-monitor')).toThrow(`already exists at ${defaultPath}`);
   });
 });

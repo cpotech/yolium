@@ -632,8 +632,8 @@ export function AddSpecialistDialog({
         </div>
         <p className="text-xs text-[var(--color-text-muted)] mb-4">
           {isEditMode
-            ? <>Update the existing scheduled specialist definition in <code>src/agents/cron/{editingSpecialistId}.md</code>.</>
-            : <>Create a new scheduled specialist definition in <code>src/agents/cron/</code>.</>}
+            ? <>Update the existing scheduled specialist definition in its current directory. Default agents stay in <code>src/agents/cron/</code>; custom agents stay in <code>~/.yolium/agents/cron/custom/</code>.</>
+            : <>Create a new scheduled specialist definition in <code>~/.yolium/agents/cron/custom/</code>.</>}
         </p>
 
         <div className="space-y-3">

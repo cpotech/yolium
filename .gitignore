@@ -17,8 +17,8 @@ coverage
 # Dependencies
 node_modules/
 
-# CRON agents
-src/agents/cron
+# Custom CRON agents (user-created, live in ~/.yolium/agents/cron/custom/)
+# Default agents in src/agents/cron/ are tracked by git
 
 # TypeScript
 *.tsbuildinfo

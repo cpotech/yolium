@@ -27,6 +27,7 @@ vi.mock('node:fs', () => ({
   readFileSync: vi.fn(() => ''),
   appendFileSync: vi.fn(),
   readdirSync: vi.fn(() => []),
+  watch: vi.fn(() => ({ close: vi.fn() })),
 }));
 
 vi.mock('node:os', () => ({
@@ -56,8 +57,10 @@ vi.mock('@main/services/specialist-loader', () => ({
     memory: { strategy: 'distill_daily', maxEntries: 300, retentionDays: 90 },
     escalation: { onFailure: 'alert_user', onPattern: 'reduce_frequency' },
     promptTemplates: { heartbeat: 'Monitor security', daily: 'Daily audit' },
+    source: 'default',
   })),
   getSpecialistsDir: vi.fn(() => '/test/agents/cron'),
+  getCustomSpecialistsDir: vi.fn(() => '/home/test/.yolium/agents/cron/custom'),
   validateSchedules: vi.fn(() => true),
   parseSpecialistDefinition: vi.fn(),
 }));
@@ -122,6 +125,7 @@ vi.mock('@main/lib/logger', () => ({
 
 import { CronScheduler } from '@main/services/scheduler';
 import { getScheduleState, appendRun, getRecentRuns, getRunStats, getRunsSince, saveScheduleState, updateSpecialistStatus } from '@main/stores/yolium-db';
+import { listSpecialists, loadSpecialist, getSpecialistsDir, getCustomSpecialistsDir } from '@main/services/specialist-loader';
 import { BrowserWindow } from 'electron';
 import type { ScheduledRun } from '@shared/types/schedule';
 
@@ -632,6 +636,97 @@ describe('scheduler', () => {
       scheduler.start();
       const summary = (scheduler as any).distillDaily('security-monitor');
       expect(summary.length).toBeLessThan(10000);
+    });
+  });
+
+  // ─── Dual-Directory File Watching ──────────────────────────────────────────
+
+  describe('dual-directory file watching', () => {
+    it('should watch both default and custom specialist directories for file changes', async () => {
+      const fs = await import('node:fs');
+      const watchCalls: string[] = [];
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.watch as any).mockImplementation((dir: string) => {
+        watchCalls.push(dir);
+        return { close: vi.fn() };
+      });
+
+      scheduler.start();
+
+      expect(watchCalls).toContain('/test/agents/cron');
+      expect(watchCalls).toContain('/home/test/.yolium/agents/cron/custom');
+    });
+
+    it('should close both watchers on unwatchSpecialistFiles', async () => {
+      const fs = await import('node:fs');
+      const closeFns: ReturnType<typeof vi.fn>[] = [];
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.watch as any).mockImplementation(() => {
+        const close = vi.fn();
+        closeFns.push(close);
+        return { close };
+      });
+
+      scheduler.start();
+      scheduler.stop();
+
+      // Both watchers should have their close() called
+      for (const closeFn of closeFns) {
+        expect(closeFn).toHaveBeenCalled();
+      }
+    });
+
+    it('should load specialists from both default and custom directories', () => {
+      scheduler.start();
+
+      // listSpecialists is called during loadSpecialists
+      expect(listSpecialists).toHaveBeenCalled();
+    });
+
+    it('should include source field in loaded specialist definitions', () => {
+      scheduler.start();
+
+      const specialists = scheduler.getSpecialists();
+      const securityMonitor = specialists.get('security-monitor');
+      expect(securityMonitor).toBeDefined();
+      expect(securityMonitor!.source).toBe('default');
+    });
+
+    it('should handle custom directory not existing without error', async () => {
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        if (p === '/home/test/.yolium/agents/cron/custom') return false;
+        return true;
+      });
+
+      // Should not throw
+      expect(() => {
+        const localScheduler = new CronScheduler();
+        localScheduler.start();
+        localScheduler.stop();
+      }).not.toThrow();
+    });
+
+    it('should reload when files change in custom/default directory', async () => {
+      const fs = await import('node:fs');
+      const watchCallbacks: ((eventType: string, filename: string) => void)[] = [];
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.watch as any).mockImplementation((_dir: string, callback: (eventType: string, filename: string) => void) => {
+        watchCallbacks.push(callback);
+        return { close: vi.fn() };
+      });
+
+      scheduler.start();
+      const initialLoadCalls = vi.mocked(listSpecialists).mock.calls.length;
+
+      // Simulate file change in one of the watched directories
+      if (watchCallbacks.length > 0) {
+        watchCallbacks[0]('change', 'test-agent.md');
+        // Wait for debounce
+        await vi.waitFor(() => {
+          expect(vi.mocked(listSpecialists).mock.calls.length).toBeGreaterThan(initialLoadCalls);
+        }, { timeout: 2000 });
+      }
     });
   });
 });

@@ -6,7 +6,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import matter from 'gray-matter';
-import { getSpecialistsDir, parseSpecialistDefinition } from './specialist-loader';
+import { getCustomSpecialistsDir, resolveSpecialistPath, parseSpecialistDefinition } from './specialist-loader';
 
 const TEMPLATE = `---
 name: {{name}}
@@ -78,16 +78,26 @@ export function getDefaultTemplate(name: string, description?: string): string {
     .replace(/\{\{displayName\}\}/g, displayName));
 }
 
-function ensureSpecialistsDir(): string {
-  const dir = getSpecialistsDir();
+function ensureCustomSpecialistsDir(): string {
+  const dir = getCustomSpecialistsDir();
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
   return dir;
 }
 
-function getSpecialistFilePath(name: string): string {
-  return path.join(ensureSpecialistsDir(), `${name}.md`);
+/**
+ * Resolve where a specialist file should be written.
+ * For new specialists: always the custom directory.
+ * For existing specialists: whichever directory they currently live in.
+ */
+function getSpecialistFilePath(name: string, mode: 'create' | 'update'): string {
+  if (mode === 'update') {
+    const resolved = resolveSpecialistPath(name);
+    if (resolved) return resolved.filePath;
+    // Fall through — writeSpecialistDefinition will throw "does not exist"
+  }
+  return path.join(ensureCustomSpecialistsDir(), `${name}.md`);
 }
 
 function normalizeSpecialistContent(name: string, content: string): string {
@@ -104,11 +114,12 @@ function writeSpecialistDefinition(
   options: { description?: string; content?: string },
   mode: 'create' | 'update'
 ): string {
-  const filePath = getSpecialistFilePath(name);
+  const resolved = resolveSpecialistPath(name);
+  const filePath = getSpecialistFilePath(name, mode);
   const exists = fs.existsSync(filePath);
 
-  if (mode === 'create' && exists) {
-    throw new Error(`Specialist "${name}" already exists at ${filePath}`);
+  if (mode === 'create' && (resolved || exists)) {
+    throw new Error(`Specialist "${name}" already exists at ${resolved?.filePath ?? filePath}`);
   }
 
   if (mode === 'update' && !exists) {

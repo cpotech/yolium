@@ -76,6 +76,7 @@ describe('AddSpecialistDialog', () => {
     render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
 
     expect(screen.getByTestId('specialist-name-input')).toBeInTheDocument();
+    expect(screen.getByText(/~\/\.yolium\/agents\/cron\/custom\//)).toBeInTheDocument();
     // Guided form sections should be visible
     expect(screen.getByTestId('guided-description')).toBeInTheDocument();
     // No paste mode toggle should exist
@@ -295,6 +296,7 @@ describe('AddSpecialistDialog', () => {
     expect(screen.getByTestId('specialist-name-input')).toBeDisabled();
     expect(screen.queryByTestId('specialist-clone-select')).not.toBeInTheDocument();
     expect(screen.getByTestId('specialist-create-btn')).toHaveTextContent('Save');
+    expect(screen.getByText(/Default agents stay in/)).toBeInTheDocument();
   });
 
   it('should call schedule.updateDefinition with serialized guided form when saving in edit mode', async () => {
