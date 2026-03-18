@@ -418,6 +418,30 @@ export function KanbanView({
       e.preventDefault()
       setShowShortcutsHelp(prev => !prev)
     }
+    if (e.key === 'x' && isVimContentActive) {
+      // Delete focused card (single card via vim focus) with confirmation
+      e.preventDefault()
+      if (board) {
+        const colId = columns[focusedColumnIndex].id
+        const query = searchQuery.toLowerCase().trim()
+        const colItems = board.items
+          .filter(item => item.column === colId)
+          .filter(item => !query || item.title.toLowerCase().includes(query) || item.description.toLowerCase().includes(query))
+          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        const card = colItems[Math.min(focusedCardIndex, Math.max(colItems.length - 1, 0))]
+        if (card && projectPath) {
+          void window.electronAPI.dialog.confirmOkCancel(
+            'Delete Item',
+            `Delete "${card.title}"? This cannot be undone.`
+          ).then(confirmed => {
+            if (confirmed) {
+              void window.electronAPI.kanban.deleteItems(projectPath, [card.id]).then(() => loadBoard())
+            }
+          })
+        }
+      }
+      return
+    }
     if (e.key === 'Delete' || e.key === 'Backspace') {
       if (selectedIds.size > 0) {
         e.preventDefault()
@@ -440,7 +464,7 @@ export function KanbanView({
         viewRef.current?.focus()
       }
     }
-  }, [newItemDialogOpen, selectedItem, loadBoard, showShortcutsHelp, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, board, vim, columns, focusedColumnIndex, getColumnItems, handleCardClick])
+  }, [newItemDialogOpen, selectedItem, loadBoard, showShortcutsHelp, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, board, vim, columns, focusedColumnIndex, getColumnItems, handleCardClick, projectPath, focusedCardIndex])
 
   const handleCardDrop = useCallback(async (itemId: string, targetColumn: ColumnId) => {
     if (!projectPath || !board) return
@@ -618,6 +642,7 @@ export function KanbanView({
             <input
               ref={searchInputRef}
               data-testid="search-input"
+              data-vim-key="/"
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
@@ -654,6 +679,7 @@ export function KanbanView({
           )}
           <button
             data-testid="refresh-button"
+            data-vim-key="r"
             onClick={handleRefresh}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] rounded-md transition-colors"
           >
@@ -663,6 +689,7 @@ export function KanbanView({
           </button>
           <button
             data-testid="new-item-button"
+            data-vim-key="n"
             onClick={handleNewItemClick}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[var(--color-accent-primary)] text-white hover:bg-[var(--color-accent-hover)] rounded-md transition-colors"
           >

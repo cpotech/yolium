@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useEffect } from 'react';
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts';
+import { getActionsForZone, type VimActionZone } from '@shared/vim-actions';
 
 interface KeyboardShortcutsDialogProps {
   isOpen: boolean;
@@ -16,6 +17,13 @@ interface ShortcutGroup {
   shortcuts: ShortcutItem[];
 }
 
+function buildManifestGroup(title: string, zone: VimActionZone): ShortcutGroup {
+  return {
+    title,
+    shortcuts: getActionsForZone(zone).map(a => ({ keys: a.key, description: a.description })),
+  };
+}
+
 const shortcutGroups: ShortcutGroup[] = [
   {
     title: 'Vim Modes',
@@ -25,37 +33,17 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: 'Ctrl+[', description: 'Return to NORMAL mode (alt)' },
     ],
   },
-  {
-    title: 'Vim Navigation',
-    shortcuts: [
-      { keys: 'e', description: 'Focus Sidebar (Explorer)' },
-      { keys: 't', description: 'Focus TabBar' },
-      { keys: 'c', description: 'Focus Content' },
-      { keys: 's', description: 'Focus StatusBar' },
-      { keys: 'Tab', description: 'Cycle zones forward' },
-      { keys: 'Shift+Tab', description: 'Cycle zones backward' },
-      { keys: 'j / ArrowDown', description: 'Move down in zone' },
-      { keys: 'k / ArrowUp', description: 'Move up in zone' },
-      { keys: 'h / ArrowLeft', description: 'Move left in zone' },
-      { keys: 'l / ArrowRight', description: 'Move right in zone' },
-      { keys: 'Enter', description: 'Activate focused element' },
-      { keys: 'x', description: 'Delete/remove focused element' },
-      { keys: 'gg', description: 'Jump to first item' },
-      { keys: 'G', description: 'Jump to last item' },
-      { keys: 'n', description: 'New item (Kanban)' },
-      { keys: 'r', description: 'Refresh (Kanban)' },
-      { keys: '/', description: 'Search (auto INSERT)' },
-      { keys: '?', description: 'Toggle shortcuts help' },
-    ],
-  },
+  buildManifestGroup('Zone Switching', 'global'),
+  buildManifestGroup('Content (Kanban)', 'content'),
+  buildManifestGroup('Tab Bar', 'tabs'),
+  buildManifestGroup('Sidebar', 'sidebar'),
+  buildManifestGroup('Status Bar', 'status-bar'),
+  buildManifestGroup('Dialog (Work Item)', 'dialog'),
   {
     title: 'Kanban Selection',
     shortcuts: [
       { keys: 'Ctrl+Click', description: 'Multi-select items' },
       { keys: 'Shift+Click', description: 'Range select items' },
-      { keys: 'Ctrl+A', description: 'Select all items' },
-      { keys: 'Delete', description: 'Delete selected items' },
-      { keys: 'Esc', description: 'Clear selection' },
     ],
   },
   {
@@ -100,19 +88,6 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: 'Ctrl+Shift+N', description: 'New project' },
       { keys: 'Ctrl+Shift+H', description: 'Scheduled agents' },
       { keys: 'Ctrl+Shift+R', description: 'Toggle recording' },
-    ],
-  },
-  {
-    title: 'Vim Actions',
-    shortcuts: [
-      { keys: 'L', description: 'Toggle theme' },
-      { keys: 'P', description: 'Project settings' },
-      { keys: ',', description: 'Settings' },
-      { keys: 'Q', description: 'Stop container' },
-      { keys: 'W', description: 'Toggle recording' },
-      { keys: 'H', description: 'Scheduled agents' },
-      { keys: 'D', description: 'Delete item' },
-      { keys: 'X', description: 'Stop agent' },
     ],
   },
   {

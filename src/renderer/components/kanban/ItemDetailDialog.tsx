@@ -341,6 +341,7 @@ export function ItemDetailDialog({
             <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">Ctrl+Q</kbd>
             <button
               data-testid="close-button"
+              data-vim-key="Escape"
               onClick={handleClose}
               className="p-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded transition-colors flex-shrink-0"
             >

@@ -84,6 +84,7 @@ export function ProjectList({
         )}
         <button
           data-testid="add-project-button"
+          data-vim-key="a"
           onClick={onAddProject}
           className="flex items-center gap-0.5 p-1 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
         >
@@ -116,6 +117,7 @@ export function ProjectList({
                 <div
                   data-testid={`project-item-${project.path}`}
                   data-vim-focused={isFocused ? 'true' : undefined}
+                  data-vim-key="Enter"
                   className={`group flex items-center gap-2 px-3 py-1.5 cursor-pointer text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors ${
                     isFocused ? 'ring-1 ring-[var(--color-accent-primary)] bg-[var(--color-bg-tertiary)]' : ''
                   }`}
