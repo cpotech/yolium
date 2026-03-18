@@ -57,9 +57,6 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
   }, []);
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    // Don't process when dialogs are open
-    if (dialogOpen) return;
-
     // Don't intercept keys with Ctrl/Meta modifiers (let existing shortcuts work)
     if (event.ctrlKey || event.metaKey || event.altKey) {
       // Exception: Ctrl+[ exits to NORMAL (vim escape equivalent)
@@ -70,7 +67,7 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
       return;
     }
 
-    // In INSERT mode, only Escape exits
+    // In INSERT mode, only Escape exits — always allowed, even when dialog open
     if (mode === 'INSERT') {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -82,12 +79,15 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
     // NORMAL mode key handling
     const key = event.key;
 
-    // Mode switching
+    // Mode switching — always allowed, even when dialog open
     if (key === 'i') {
       event.preventDefault();
       setMode('INSERT');
       return;
     }
+
+    // Block zone switching and Tab cycling when dialogs are open
+    if (dialogOpen) return;
 
     // Zone switching with single keys
     if (key in ZONE_KEYS) {

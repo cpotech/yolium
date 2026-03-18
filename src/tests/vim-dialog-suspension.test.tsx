@@ -17,6 +17,10 @@ vi.mock('@renderer/components/agent/AgentControls', () => ({
   }) => <div data-testid="status-badge">{item.agentStatus}</div>,
 }))
 
+vi.mock('@renderer/components/StatusBar', () => ({
+  StatusBar: () => <div data-testid="status-bar-mock" />,
+}))
+
 vi.mock('@renderer/components/code-review/GitDiffDialog', () => ({
   GitDiffDialog: ({
     isOpen,
@@ -88,8 +92,24 @@ function renderWithVim(ui: React.ReactElement) {
   )
 }
 
+function renderItemDetailDialog(overrides: Partial<Parameters<typeof ItemDetailDialog>[0]> = {}) {
+  return renderWithVim(
+    <ItemDetailDialog
+      isOpen={true}
+      item={createMockItem()}
+      projectPath="/test/project"
+      onClose={overrides.onClose ?? vi.fn()}
+      onUpdated={overrides.onUpdated ?? vi.fn()}
+      {...overrides}
+    />,
+  )
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
+
+  // jsdom doesn't implement scrollIntoView
+  Element.prototype.scrollIntoView = vi.fn()
 
   mockLoadConfig.mockImplementation(() => createPendingPromise())
   mockWorktreeChangedFiles.mockImplementation(() => createPendingPromise())
@@ -184,35 +204,6 @@ describe('VimModeProvider dialog suspension', () => {
     expect(screen.getByTestId('vim-zone')).toHaveTextContent('content')
   })
 
-  it('should ignore global INSERT-mode toggles and Escape handling while the item detail dialog is open', async () => {
-    const onClose = vi.fn()
-
-    renderWithVim(
-      <ItemDetailDialog
-        isOpen={true}
-        item={createMockItem()}
-        projectPath="/test/project"
-        onClose={onClose}
-        onUpdated={vi.fn()}
-      />,
-    )
-
-    fireEvent.keyDown(document, { key: 'i' })
-    expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
-
-    fireEvent.click(screen.getByTestId('enter-insert-mode'))
-    expect(screen.getByTestId('vim-mode')).toHaveTextContent('INSERT')
-
-    await act(async () => {
-      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').parentElement!, {
-        key: 'Escape',
-      })
-    })
-
-    expect(onClose).toHaveBeenCalledTimes(1)
-    expect(screen.getByTestId('vim-mode')).toHaveTextContent('INSERT')
-  })
-
   it('should resume vim navigation after a kanban dialog closes', () => {
     const { rerender } = render(
       <VimModeProvider>
@@ -244,5 +235,279 @@ describe('VimModeProvider dialog suspension', () => {
     fireEvent.keyDown(document, { key: 'e' })
 
     expect(screen.getByTestId('vim-zone')).toHaveTextContent('sidebar')
+  })
+})
+
+describe('ItemDetailDialog vim-aware navigation', () => {
+  it('should allow mode switching (i key) while the item detail dialog is open', () => {
+    renderItemDetailDialog()
+
+    // Press 'i' globally — should enter INSERT mode even with dialog open
+    fireEvent.keyDown(document, { key: 'i' })
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('INSERT')
+  })
+
+  it('should allow Escape to exit INSERT to NORMAL without closing the item detail dialog', async () => {
+    const onClose = vi.fn()
+    renderItemDetailDialog({ onClose })
+
+    // Enter INSERT mode
+    fireEvent.keyDown(document, { key: 'i' })
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('INSERT')
+
+    // Press Escape — should exit to NORMAL, not close
+    await act(async () => {
+      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
+        key: 'Escape',
+      })
+    })
+
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('should close the item detail dialog when Escape is pressed in NORMAL mode', async () => {
+    const onClose = vi.fn()
+    renderItemDetailDialog({ onClose })
+
+    // Dialog opens in INSERT mode
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('INSERT')
+
+    // First Escape: INSERT -> NORMAL (does NOT close)
+    await act(async () => {
+      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
+        key: 'Escape',
+      })
+    })
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
+    expect(onClose).not.toHaveBeenCalled()
+
+    // Second Escape: NORMAL -> close dialog
+    await act(async () => {
+      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
+        key: 'Escape',
+      })
+    })
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('should still block zone switching keys (e/t/c/s) while the item detail dialog is open', () => {
+    renderItemDetailDialog()
+
+    fireEvent.keyDown(document, { key: 'e' })
+    expect(screen.getByTestId('vim-zone')).toHaveTextContent('content')
+
+    fireEvent.keyDown(document, { key: 't' })
+    expect(screen.getByTestId('vim-zone')).toHaveTextContent('content')
+
+    fireEvent.keyDown(document, { key: 's' })
+    expect(screen.getByTestId('vim-zone')).toHaveTextContent('content')
+  })
+
+  it('should still block Tab-based zone cycling while the item detail dialog is open', () => {
+    renderItemDetailDialog()
+
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(screen.getByTestId('vim-zone')).toHaveTextContent('content')
+  })
+
+  it('should navigate between fields with j/k in NORMAL mode inside ItemDetailDialog', async () => {
+    renderItemDetailDialog()
+
+    // Get into NORMAL mode — exit INSERT first
+    await act(async () => {
+      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
+        key: 'Escape',
+      })
+    })
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
+
+    // focusedFieldIndex starts at 0 (title). Press j to go to description (1)
+    fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, { key: 'j' })
+
+    // The description field should now have the focus ring
+    const descriptionField = document.getElementById('detail-description')!
+    expect(descriptionField.closest('[data-field-index="1"]')).toBeTruthy()
+  })
+
+  it('should jump to first field with gg in NORMAL mode inside ItemDetailDialog', async () => {
+    renderItemDetailDialog()
+
+    // Get into NORMAL mode
+    await act(async () => {
+      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
+        key: 'Escape',
+      })
+    })
+
+    // Navigate to last field first
+    fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, { key: 'G' })
+
+    // Now gg to go back to first
+    const container = screen.getByTestId('item-detail-dialog').closest('[tabindex]')!
+    fireEvent.keyDown(container, { key: 'g' })
+    fireEvent.keyDown(container, { key: 'g' })
+
+    // Title field should have focus ring
+    const titleField = document.getElementById('detail-title')!
+    expect(titleField.closest('[data-field-index="0"]')).toBeTruthy()
+  })
+
+  it('should jump to last field with G in NORMAL mode inside ItemDetailDialog', async () => {
+    renderItemDetailDialog()
+
+    // Get into NORMAL mode
+    await act(async () => {
+      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
+        key: 'Escape',
+      })
+    })
+
+    fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, { key: 'G' })
+
+    // Comment field should have focus ring
+    const commentField = document.getElementById('comment-input')!
+    expect(commentField.closest('[data-field-index="2"]')).toBeTruthy()
+  })
+
+  it('should focus highlighted field and enter INSERT when i is pressed in NORMAL mode inside ItemDetailDialog', async () => {
+    renderItemDetailDialog()
+
+    // Get into NORMAL mode
+    await act(async () => {
+      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
+        key: 'Escape',
+      })
+    })
+
+    // Navigate to description
+    fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, { key: 'j' })
+
+    // Press i to enter INSERT on highlighted field
+    fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, { key: 'i' })
+
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('INSERT')
+    expect(document.activeElement?.id).toBe('detail-description')
+  })
+
+  it('should focus highlighted field and enter INSERT when Enter is pressed in NORMAL mode inside ItemDetailDialog', async () => {
+    renderItemDetailDialog()
+
+    // Get into NORMAL mode
+    await act(async () => {
+      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
+        key: 'Escape',
+      })
+    })
+
+    // Navigate to description
+    fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, { key: 'j' })
+
+    // Press Enter to enter INSERT on highlighted field
+    fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, { key: 'Enter' })
+
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('INSERT')
+    expect(document.activeElement?.id).toBe('detail-description')
+  })
+
+  it('should show visual focus ring on the highlighted field in NORMAL mode', async () => {
+    renderItemDetailDialog()
+
+    // Get into NORMAL mode
+    await act(async () => {
+      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
+        key: 'Escape',
+      })
+    })
+
+    // Title field (index 0) should have focus ring in NORMAL mode
+    const titleWrapper = document.getElementById('detail-title')!.closest('[data-field-index="0"]')!
+    expect(titleWrapper.className).toContain('ring-2')
+  })
+
+  it('should auto-enter INSERT mode when ItemDetailDialog opens', () => {
+    renderItemDetailDialog()
+
+    // Dialog opens in INSERT mode (title has autoFocus)
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('INSERT')
+  })
+
+  it('should enter INSERT mode when a field receives focus via click', async () => {
+    renderItemDetailDialog()
+
+    // Get into NORMAL mode first
+    await act(async () => {
+      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
+        key: 'Escape',
+      })
+    })
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
+
+    // Click on description field
+    fireEvent.focus(screen.getByTestId('description-input'))
+
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('INSERT')
+  })
+})
+
+describe('ItemDetailDialog shortcuts hint bar', () => {
+  it('should display NORMAL mode shortcuts when in NORMAL mode', async () => {
+    renderItemDetailDialog()
+
+    // Get into NORMAL mode
+    await act(async () => {
+      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
+        key: 'Escape',
+      })
+    })
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
+
+    const hintsBar = screen.getByTestId('shortcuts-hint-bar')
+    expect(hintsBar).toHaveTextContent('j/k')
+    expect(hintsBar).toHaveTextContent('Navigate')
+    expect(hintsBar).toHaveTextContent('gg')
+    expect(hintsBar).toHaveTextContent('First')
+    expect(hintsBar).toHaveTextContent('Last')
+    expect(hintsBar).toHaveTextContent('Edit')
+    expect(hintsBar).toHaveTextContent('Close')
+  })
+
+  it('should display INSERT mode shortcuts when in INSERT mode', () => {
+    renderItemDetailDialog()
+
+    // Dialog auto-enters INSERT mode
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('INSERT')
+
+    const hintsBar = screen.getByTestId('shortcuts-hint-bar')
+    expect(hintsBar).toHaveTextContent('Normal mode')
+    expect(hintsBar).toHaveTextContent('Ctrl+Enter')
+    expect(hintsBar).toHaveTextContent('Save')
+    expect(hintsBar).toHaveTextContent('Ctrl+Del')
+    expect(hintsBar).toHaveTextContent('Delete')
+  })
+
+  it('should always show agent shortcuts in the hints bar', async () => {
+    renderItemDetailDialog()
+
+    // Check agent shortcuts in INSERT mode
+    const hintsBar = screen.getByTestId('shortcuts-hint-bar')
+    expect(hintsBar).toHaveTextContent('Ctrl+Shift+P')
+    expect(hintsBar).toHaveTextContent('Plan')
+    expect(hintsBar).toHaveTextContent('Ctrl+Shift+C')
+    expect(hintsBar).toHaveTextContent('Code')
+    expect(hintsBar).toHaveTextContent('Ctrl+Shift+V')
+    expect(hintsBar).toHaveTextContent('Verify')
+
+    // Switch to NORMAL mode and verify agent shortcuts still there
+    await act(async () => {
+      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
+        key: 'Escape',
+      })
+    })
+
+    expect(hintsBar).toHaveTextContent('Ctrl+Shift+P')
+    expect(hintsBar).toHaveTextContent('Ctrl+Shift+C')
+    expect(hintsBar).toHaveTextContent('Ctrl+Shift+V')
   })
 })

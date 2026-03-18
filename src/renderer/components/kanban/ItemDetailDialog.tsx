@@ -8,7 +8,7 @@ import { X } from 'lucide-react'
 import type { KanbanItem } from '@shared/types/kanban'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
-import { useSuspendVimNavigation } from '@renderer/context/VimModeContext'
+import { useSuspendVimNavigation, useVimModeContext } from '@renderer/context/VimModeContext'
 import { AgentLogPanel } from '../agent/AgentLogPanel'
 import { GitDiffDialog } from '../code-review/GitDiffDialog'
 import { ItemDetailEditorPane } from './item-detail/ItemDetailEditorPane'
@@ -19,6 +19,8 @@ import { useItemDetailPrWorkflow } from './item-detail/useItemDetailPrWorkflow'
 import { StatusBar } from '@renderer/components/StatusBar'
 import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper'
 import type { ClaudeUsageState } from '@shared/types/agent'
+
+const FIELD_IDS = ['detail-title', 'detail-description', 'comment-input']
 
 interface ItemDetailDialogProps {
   isOpen: boolean
@@ -54,12 +56,15 @@ export function ItemDetailDialog({
   claudeUsage,
 }: ItemDetailDialogProps): React.ReactElement | null {
   useSuspendVimNavigation(isOpen)
+  const vim = useVimModeContext()
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDiffViewer, setShowDiffViewer] = useState(false)
+  const [focusedFieldIndex, setFocusedFieldIndex] = useState(0)
   const answerInputRef = useRef<HTMLTextAreaElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
+  const gPendingRef = useRef(false)
 
   const agentSession = useAgentSession({
     itemId: item?.id,
@@ -103,6 +108,14 @@ export function ItemDetailDialog({
     setErrorMessage,
   })
 
+  // Enter INSERT mode when dialog opens (title has autoFocus)
+  useEffect(() => {
+    if (isOpen) {
+      vim.enterInsertMode()
+      setFocusedFieldIndex(0)
+    }
+  }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (item?.agentStatus === 'waiting' && item.agentQuestion && answerInputRef.current) {
       answerInputRef.current.focus()
@@ -137,18 +150,33 @@ export function ItemDetailDialog({
     onClose()
   }, [draft, onClose])
 
-  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      handleClose()
+  const focusField = useCallback((index: number) => {
+    const el = document.getElementById(FIELD_IDS[index])
+    if (el) {
+      el.focus()
+      el.scrollIntoView?.({ block: 'nearest' })
     }
+    vim.enterInsertMode()
+    setFocusedFieldIndex(index)
+  }, [vim])
+
+  const handleFieldFocus = useCallback((index: number) => {
+    vim.enterInsertMode()
+    setFocusedFieldIndex(index)
+  }, [vim])
+
+  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
+    // Ctrl+Enter to save
     if (event.key === 'Enter' && event.ctrlKey && draft.saveStatus !== 'saving' && draft.title.trim().length > 0) {
       event.preventDefault()
       void draft.flushDraft('manual')
+      return
     }
+    // Ctrl+Delete to delete
     if (event.key === 'Delete' && event.ctrlKey && !isDeleting) {
       event.preventDefault()
       void handleDelete()
+      return
     }
     // Agent shortcuts: Ctrl+Shift+{P,C,V,S,D,M}
     if (event.ctrlKey && event.shiftKey && item) {
@@ -172,17 +200,83 @@ export function ItemDetailDialog({
         }
       }
     }
+
+    // Vim-mode-aware Escape handling
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      if (vim.mode === 'INSERT') {
+        // EXIT INSERT -> NORMAL, blur field, focus dialog container
+        vim.exitToNormal()
+        ;(document.activeElement as HTMLElement)?.blur()
+        dialogRef.current?.focus()
+      } else {
+        // NORMAL mode Escape -> close dialog
+        handleClose()
+      }
+      return
+    }
+
+    // NORMAL mode field navigation (only when not focused on an input)
+    if (vim.mode === 'NORMAL') {
+      const target = event.target as HTMLElement
+      const tagName = target.tagName.toLowerCase()
+      const isEditable = tagName === 'input' || tagName === 'textarea' || tagName === 'select' || target.isContentEditable
+      if (isEditable) return
+
+      if (event.key === 'j' || event.key === 'ArrowDown') {
+        event.preventDefault()
+        const next = Math.min(focusedFieldIndex + 1, FIELD_IDS.length - 1)
+        setFocusedFieldIndex(next)
+        document.getElementById(FIELD_IDS[next])?.scrollIntoView({ block: 'nearest' })
+        gPendingRef.current = false
+      } else if (event.key === 'k' || event.key === 'ArrowUp') {
+        event.preventDefault()
+        const prev = Math.max(focusedFieldIndex - 1, 0)
+        setFocusedFieldIndex(prev)
+        document.getElementById(FIELD_IDS[prev])?.scrollIntoView({ block: 'nearest' })
+        gPendingRef.current = false
+      } else if (event.key === 'g') {
+        if (gPendingRef.current) {
+          // gg — jump to first field
+          event.preventDefault()
+          setFocusedFieldIndex(0)
+          document.getElementById(FIELD_IDS[0])?.scrollIntoView({ block: 'nearest' })
+          gPendingRef.current = false
+        } else {
+          gPendingRef.current = true
+        }
+      } else if (event.key === 'G') {
+        event.preventDefault()
+        const last = FIELD_IDS.length - 1
+        setFocusedFieldIndex(last)
+        document.getElementById(FIELD_IDS[last])?.scrollIntoView({ block: 'nearest' })
+        gPendingRef.current = false
+      } else if (event.key === 'i' || event.key === 'Enter') {
+        event.preventDefault()
+        focusField(focusedFieldIndex)
+        gPendingRef.current = false
+      } else {
+        gPendingRef.current = false
+      }
+    }
+
     if (dialogRef.current) {
       trapFocus(event, dialogRef.current)
     }
-  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle])
+  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedFieldIndex, focusField])
 
   if (!isOpen || !item) return null
 
+  const kbdClass = 'px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]'
+
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--color-bg-secondary)]" onKeyDown={handleKeyDown}>
+    <div
+      ref={dialogRef}
+      tabIndex={-1}
+      className="fixed inset-0 z-50 flex flex-col bg-[var(--color-bg-secondary)] outline-none"
+      onKeyDown={handleKeyDown}
+    >
       <div
-        ref={dialogRef}
         data-testid="item-detail-dialog"
         role="dialog"
         aria-modal="true"
@@ -226,6 +320,9 @@ export function ItemDetailDialog({
             onCommentTextChange={lifecycle.setCommentText}
             onAddComment={() => void lifecycle.addComment()}
             onSelectCommentOption={lifecycle.setAnswerText}
+            vimMode={vim.mode}
+            focusedFieldIndex={focusedFieldIndex}
+            onFieldFocus={handleFieldFocus}
           />
 
           <ItemDetailSidebar
@@ -288,6 +385,33 @@ export function ItemDetailDialog({
            </div>
          )}
        </div>
+
+        {/* Shortcuts hint bar */}
+        <div
+          data-testid="shortcuts-hint-bar"
+          className="flex items-center gap-3 px-4 py-1.5 bg-[var(--color-bg-tertiary)] border-t border-[var(--color-border-primary)] text-xs text-[var(--color-text-muted)]"
+        >
+          {vim.mode === 'NORMAL' ? (
+            <>
+              <span><kbd className={kbdClass}>j/k</kbd> Navigate</span>
+              <span><kbd className={kbdClass}>gg</kbd> First</span>
+              <span><kbd className={kbdClass}>G</kbd> Last</span>
+              <span><kbd className={kbdClass}>i</kbd> Edit field</span>
+              <span><kbd className={kbdClass}>Esc</kbd> Close</span>
+            </>
+          ) : (
+            <>
+              <span><kbd className={kbdClass}>Esc</kbd> Normal mode</span>
+              <span><kbd className={kbdClass}>Ctrl+Enter</kbd> Save</span>
+              <span><kbd className={kbdClass}>Ctrl+Del</kbd> Delete</span>
+            </>
+          )}
+          <span className="ml-auto flex items-center gap-3">
+            <span><kbd className={kbdClass}>Ctrl+Shift+P</kbd> Plan</span>
+            <span><kbd className={kbdClass}>Ctrl+Shift+C</kbd> Code</span>
+            <span><kbd className={kbdClass}>Ctrl+Shift+V</kbd> Verify</span>
+          </span>
+        </div>
 
         {/* StatusBar at the bottom of the dialog */}
         <StatusBar
