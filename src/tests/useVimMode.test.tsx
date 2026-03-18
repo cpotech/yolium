@@ -175,4 +175,60 @@ describe('useVimMode', () => {
 
     expect(onZoneChange).toHaveBeenCalledWith('sidebar');
   });
+
+  it('should call onGoToKanban when b is pressed in NORMAL mode', () => {
+    const onGoToKanban = vi.fn();
+    const { result } = renderHook(() => useVimMode({ onGoToKanban }));
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'b' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(onGoToKanban).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not call onGoToKanban when b is pressed in INSERT mode', () => {
+    const onGoToKanban = vi.fn();
+    const { result } = renderHook(() => useVimMode({ onGoToKanban }));
+
+    // Enter INSERT mode
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'i' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.mode).toBe('INSERT');
+
+    // Press b - should not trigger
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'b' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(onGoToKanban).not.toHaveBeenCalled();
+  });
+
+  it('should not call onGoToKanban when b is pressed with dialog open', () => {
+    const onGoToKanban = vi.fn();
+    const { result } = renderHook(() => useVimMode({ onGoToKanban, dialogOpen: true }));
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'b' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(onGoToKanban).not.toHaveBeenCalled();
+  });
+
+  it('should not call onGoToKanban when b is pressed with Ctrl modifier', () => {
+    const onGoToKanban = vi.fn();
+    const { result } = renderHook(() => useVimMode({ onGoToKanban }));
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'b', ctrlKey: true });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(onGoToKanban).not.toHaveBeenCalled();
+  });
 });

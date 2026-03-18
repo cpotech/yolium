@@ -25,6 +25,7 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'zone-status', key: 's', zone: 'global', mode: 'NORMAL', description: 'Focus status bar' },
   { id: 'zone-cycle-forward', key: 'Tab', zone: 'global', mode: 'NORMAL', description: 'Cycle zones forward' },
   { id: 'zone-cycle-backward', key: 'Shift+Tab', zone: 'global', mode: 'NORMAL', description: 'Cycle zones backward' },
+  { id: 'go-to-kanban', key: 'b', zone: 'global', mode: 'NORMAL', description: 'Go to kanban board' },
 
   // Content zone — Kanban board
   { id: 'card-down', key: 'j', zone: 'content', mode: 'NORMAL', description: 'Next card' },

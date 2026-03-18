@@ -7,7 +7,7 @@ import { VIM_ACTIONS, getActionsForZone } from '@shared/vim-actions';
 describe('VIM_ACTIONS manifest consistency', () => {
   it('should export a non-empty VIM_ACTIONS array', () => {
     expect(Array.isArray(VIM_ACTIONS)).toBe(true);
-    expect(VIM_ACTIONS.length).toBeGreaterThanOrEqual(42);
+    expect(VIM_ACTIONS.length).toBeGreaterThanOrEqual(43);
   });
 
   it('every action should have a unique id', () => {

@@ -25,6 +25,8 @@ export interface UseVimModeOptions {
   onZoneChange?: (zone: VimZone) => void;
   /** Whether the active tab is a terminal (auto-INSERT) */
   isTerminalActive?: boolean;
+  /** Called when 'b' is pressed to navigate to kanban board */
+  onGoToKanban?: () => void;
 }
 
 export interface UseVimModeResult {
@@ -38,11 +40,13 @@ export interface UseVimModeResult {
 }
 
 export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
-  const { dialogOpen = false, onZoneChange, isTerminalActive = false } = options;
+  const { dialogOpen = false, onZoneChange, isTerminalActive = false, onGoToKanban } = options;
   const [mode, setMode] = useState<VimMode>('NORMAL');
   const [activeZone, setActiveZoneState] = useState<VimZone>('content');
   const onZoneChangeRef = useRef(onZoneChange);
   onZoneChangeRef.current = onZoneChange;
+  const onGoToKanbanRef = useRef(onGoToKanban);
+  onGoToKanbanRef.current = onGoToKanban;
 
   const setActiveZone = useCallback((zone: VimZone) => {
     setActiveZoneState(zone);
@@ -137,6 +141,14 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
       event.preventDefault();
       const zone = ZONE_KEYS[key];
       setActiveZone(zone);
+      return;
+    }
+
+    // Go to kanban board
+    if (key === 'b') {
+      event.preventDefault();
+      onGoToKanbanRef.current?.();
+      setActiveZone('content');
       return;
     }
 
