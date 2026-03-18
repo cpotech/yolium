@@ -54,3 +54,4 @@ dev-test-electron/
 
 # Agent instructions (written to worktrees for non-Claude agents)
 .yolium-*-instructions.md
+src/tools/twitter/__pycache__/
