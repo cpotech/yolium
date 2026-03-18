@@ -969,4 +969,54 @@ describe('KanbanView', () => {
     // Agent should NOT be started
     expect(mockAgentStart).not.toHaveBeenCalled()
   })
+
+  it('should display R shortcut badge next to the Refresh button', async () => {
+    const board = createMockBoard([])
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
+
+    const badge = screen.getByTestId('shortcut-badge-r')
+    expect(badge).toBeInTheDocument()
+    expect(badge).toHaveTextContent('R')
+  })
+
+  it('should display N shortcut badge next to the New Item button', async () => {
+    const board = createMockBoard([])
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
+
+    const badge = screen.getByTestId('shortcut-badge-n')
+    expect(badge).toBeInTheDocument()
+    expect(badge).toHaveTextContent('N')
+  })
+
+  it('should display ? shortcut badge next to shortcuts help toggle area', async () => {
+    const board = createMockBoard([])
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
+    })
+
+    // Toggle shortcuts overlay
+    fireEvent.keyDown(screen.getByTestId('kanban-view'), { key: '?' })
+
+    const shortcutsHelp = screen.getByTestId('shortcuts-help')
+    // The ? badge text should be present in the shortcuts overlay
+    const kbdElements = shortcutsHelp.querySelectorAll('kbd')
+    const questionBadge = Array.from(kbdElements).find(el => el.textContent === '?')
+    expect(questionBadge).toBeTruthy()
+  })
 })
