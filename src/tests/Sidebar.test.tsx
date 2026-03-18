@@ -346,6 +346,36 @@ describe('Sidebar', () => {
     })
   })
 
+  describe('shortcut hints', () => {
+    it('should display E shortcut hint on the collapse toggle button when collapsed', () => {
+      render(
+        <Sidebar
+          projects={[]}
+          collapsed={true}
+          {...defaultProps}
+        />
+      )
+
+      const hint = screen.getByTestId('sidebar-shortcut-hint')
+      expect(hint).toBeInTheDocument()
+      expect(hint).toHaveTextContent('E')
+    })
+
+    it('should display E shortcut hint label when expanded', () => {
+      render(
+        <Sidebar
+          projects={[]}
+          collapsed={false}
+          {...defaultProps}
+        />
+      )
+
+      const hint = screen.getByTestId('sidebar-shortcut-hint')
+      expect(hint).toBeInTheDocument()
+      expect(hint).toHaveTextContent('E')
+    })
+  })
+
   describe('waiting popover', () => {
     const sidebarItems: SidebarWorkItem[] = [
       {

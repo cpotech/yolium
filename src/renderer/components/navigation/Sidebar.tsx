@@ -71,9 +71,11 @@ export function Sidebar({
       <button
         data-testid="collapse-toggle"
         onClick={onToggleCollapse}
-        className="flex items-center justify-center p-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] border-t border-[var(--color-border-primary)]"
+        className="flex items-center justify-center gap-1 p-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] border-t border-[var(--color-border-primary)]"
+        title="Toggle sidebar (E)"
       >
         {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        <kbd data-testid="sidebar-shortcut-hint" className="text-[10px] font-mono text-[var(--color-text-muted)]">E</kbd>
       </button>
     </div>
   );

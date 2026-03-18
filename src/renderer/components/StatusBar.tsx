@@ -362,6 +362,33 @@ export function StatusBar({
           )}
         </button>
 
+        {/* Zone navigation shortcut hints (NORMAL mode only) */}
+        {vim.mode === 'NORMAL' && (
+          <span data-testid="zone-hints" className="flex items-center gap-1">
+            {([
+              { key: 'E', zone: 'sidebar' },
+              { key: 'T', zone: 'tabs' },
+              { key: 'C', zone: 'content' },
+              { key: 'S', zone: 'status-bar' },
+            ] as const).map(({ key, zone }) => {
+              const isActive = vim.activeZone === zone;
+              return (
+                <kbd
+                  key={key}
+                  data-testid={`zone-hint-${key.toLowerCase()}`}
+                  className={`inline-flex items-center justify-center w-4 h-4 text-[10px] font-mono rounded border ${
+                    isActive
+                      ? 'bg-[var(--color-accent-primary)]/20 border-[var(--color-accent-primary)] text-[var(--color-accent-primary)]'
+                      : 'bg-[var(--color-bg-tertiary)] border-[var(--color-border-secondary)] text-[var(--color-text-muted)]'
+                  }`}
+                >
+                  {key}
+                </kbd>
+              );
+            })}
+          </span>
+        )}
+
         {/* Keyboard shortcuts hint */}
         <button
           data-testid="shortcuts-button"
@@ -369,7 +396,7 @@ export function StatusBar({
           className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
         >
           <Keyboard size={12} />
-          <span className="hidden sm:inline">Ctrl+?</span>
+          <span className="hidden sm:inline">?</span>
         </button>
       </div>
     </div>

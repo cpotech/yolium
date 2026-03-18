@@ -187,7 +187,7 @@ export function ItemDetailDialog({
         role="dialog"
         aria-modal="true"
         aria-label={`Item details: ${item.title}`}
-        className="flex flex-col h-full"
+        className="flex flex-col flex-1 min-h-0"
       >
         <div className="flex items-center justify-between px-6 py-3 border-b border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
           <h2 className="text-base font-semibold text-[var(--color-text-primary)] truncate min-w-0">

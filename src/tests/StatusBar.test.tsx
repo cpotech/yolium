@@ -7,6 +7,26 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { ThemeProvider } from '@renderer/theme';
 import { StatusBar } from '@renderer/components/StatusBar';
 
+vi.mock('@renderer/context/VimModeContext', () => {
+  let mockValue = {
+    mode: 'NORMAL' as const,
+    activeZone: 'content' as const,
+    setActiveZone: () => {},
+    enterInsertMode: () => {},
+    exitToNormal: () => {},
+    suspendNavigation: () => () => {},
+  };
+  return {
+    useVimModeContext: () => mockValue,
+    __setMockVimMode: (overrides: Record<string, unknown>) => {
+      mockValue = { ...mockValue, ...overrides };
+    },
+  };
+});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const { __setMockVimMode } = await import('@renderer/context/VimModeContext') as any;
+
 function renderStatusBar(overrides: Partial<React.ComponentProps<typeof StatusBar>> = {}) {
   const props: React.ComponentProps<typeof StatusBar> = {
     contextLabel: 'Scheduled Agents',
@@ -74,5 +94,43 @@ describe('StatusBar', () => {
 
     expect(screen.getByTestId('status-path')).toHaveTextContent('/tmp/project');
     expect(screen.queryByTestId('status-label')).not.toBeInTheDocument();
+  });
+
+  it('should display zone navigation shortcut hints (E, T, C, S) in NORMAL mode', () => {
+    __setMockVimMode({ mode: 'NORMAL', activeZone: 'content' });
+    renderStatusBar();
+
+    const zoneHints = screen.getByTestId('zone-hints');
+    expect(zoneHints).toBeInTheDocument();
+
+    expect(screen.getByTestId('zone-hint-e')).toHaveTextContent('E');
+    expect(screen.getByTestId('zone-hint-t')).toHaveTextContent('T');
+    expect(screen.getByTestId('zone-hint-c')).toHaveTextContent('C');
+    expect(screen.getByTestId('zone-hint-s')).toHaveTextContent('S');
+  });
+
+  it('should hide zone navigation shortcut hints in INSERT mode', () => {
+    __setMockVimMode({ mode: 'INSERT', activeZone: 'content' });
+    renderStatusBar();
+
+    expect(screen.queryByTestId('zone-hints')).not.toBeInTheDocument();
+
+    // Reset to NORMAL for other tests
+    __setMockVimMode({ mode: 'NORMAL', activeZone: 'content' });
+  });
+
+  it('should highlight the active zone shortcut hint when its zone is focused', () => {
+    __setMockVimMode({ mode: 'NORMAL', activeZone: 'sidebar' });
+    renderStatusBar();
+
+    const eHint = screen.getByTestId('zone-hint-e');
+    expect(eHint.className).toContain('text-[var(--color-accent-primary)]');
+
+    // Other hints should have muted styling
+    const tHint = screen.getByTestId('zone-hint-t');
+    expect(tHint.className).toContain('text-[var(--color-text-muted)]');
+
+    // Reset
+    __setMockVimMode({ mode: 'NORMAL', activeZone: 'content' });
   });
 });

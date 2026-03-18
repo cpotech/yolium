@@ -613,6 +613,7 @@ export function KanbanView({
           >
             <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
             Refresh
+            <kbd data-testid="shortcut-badge-r" className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)] font-mono">R</kbd>
           </button>
           <button
             data-testid="new-item-button"
@@ -621,6 +622,7 @@ export function KanbanView({
           >
             <Plus size={14} />
             New Item
+            <kbd data-testid="shortcut-badge-n" className="px-1 py-0.5 text-[10px] bg-white/10 rounded border border-white/20 font-mono text-white/70">N</kbd>
           </button>
         </div>
       </div>
