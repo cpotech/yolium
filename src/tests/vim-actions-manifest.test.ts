@@ -11,7 +11,7 @@ describe('VIM_ACTIONS manifest consistency', () => {
   });
 
   it('should export at least 80 actions covering all shortcut categories', () => {
-    expect(VIM_ACTIONS.length).toBeGreaterThanOrEqual(80);
+    expect(VIM_ACTIONS.length).toBeGreaterThanOrEqual(87);
     const categories = new Set(VIM_ACTIONS.map(a => a.category));
     expect(categories.has('vim')).toBe(true);
     expect(categories.has('electron')).toBe(true);
@@ -184,5 +184,45 @@ describe('VIM_ACTIONS manifest consistency', () => {
     const keys = mouseActions.map(a => a.key);
     expect(keys).toContain('Ctrl+Click');
     expect(keys).toContain('Shift+Click');
+  });
+
+  it('should include merge/PR shortcut actions in the dialog-sidebar zone', () => {
+    const sidebarActions = getActionsForZone('dialog-sidebar');
+    const mergePrActionIds = [
+      'dialog-compare-changes',
+      'dialog-rebase',
+      'dialog-check-conflicts',
+      'dialog-merge-push-pr',
+      'dialog-approve-pr',
+      'dialog-merge-pr',
+      'dialog-open-pr',
+    ];
+    const expectedKeys: Record<string, string> = {
+      'dialog-compare-changes': 'f',
+      'dialog-rebase': 'r',
+      'dialog-check-conflicts': 'k',
+      'dialog-merge-push-pr': 'g',
+      'dialog-approve-pr': 'a',
+      'dialog-merge-pr': 'w',
+      'dialog-open-pr': 'o',
+    };
+    for (const actionId of mergePrActionIds) {
+      const action = sidebarActions.find(a => a.id === actionId);
+      expect(action).toBeDefined();
+      expect(action?.zone).toBe('dialog-sidebar');
+      expect(action?.key).toBe(expectedKeys[actionId]);
+    }
+  });
+
+  it('should not have key conflicts between merge/PR keys and existing dialog-sidebar keys', () => {
+    const sidebarActions = getActionsForZone('dialog-sidebar');
+    const keyMap = new Map<string, string>();
+    for (const action of sidebarActions) {
+      const existing = keyMap.get(action.key);
+      if (existing) {
+        expect(false, `key '${action.key}' conflicts: ${existing} and ${action.id}`).toBe(true);
+      }
+      keyMap.set(action.key, action.id);
+    }
   });
 });

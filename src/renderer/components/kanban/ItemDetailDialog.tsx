@@ -278,6 +278,42 @@ export function ItemDetailDialog({
           void handleDelete()
           return
         }
+        // Merge/PR shortcuts
+        if (event.key === 'f' && item.branch && item.mergeStatus) {
+          event.preventDefault()
+          setShowDiffViewer(true)
+          return
+        }
+        if (event.key === 'r' && item.worktreePath && !prWorkflow.isRebasing) {
+          event.preventDefault()
+          void prWorkflow.rebaseOntoDefault()
+          return
+        }
+        if (event.key === 'k' && item.mergeStatus && !prWorkflow.isCheckingConflicts) {
+          event.preventDefault()
+          void prWorkflow.checkConflicts()
+          return
+        }
+        if (event.key === 'g' && (item.agentStatus === 'completed' || item.column === 'done' || item.column === 'verify') && !prWorkflow.isMerging) {
+          event.preventDefault()
+          void prWorkflow.mergeAndPushPr()
+          return
+        }
+        if (event.key === 'a' && item.mergeStatus === 'merged' && prWorkflow.prUrl && !prWorkflow.isApprovingPr && !prWorkflow.isMergingPr) {
+          event.preventDefault()
+          void prWorkflow.approvePr()
+          return
+        }
+        if (event.key === 'w' && item.mergeStatus === 'merged' && prWorkflow.prUrl && !prWorkflow.isMergingPr && !prWorkflow.isApprovingPr) {
+          event.preventDefault()
+          void prWorkflow.mergePr()
+          return
+        }
+        if (event.key === 'o' && prWorkflow.prUrl) {
+          event.preventDefault()
+          window.electronAPI.app.openExternal(prWorkflow.prUrl)
+          return
+        }
       }
 
       // Editor zone field navigation
@@ -323,7 +359,7 @@ export function ItemDetailDialog({
     if (dialogRef.current && !(vim.mode === 'NORMAL' && event.key === 'Tab')) {
       trapFocus(event, dialogRef.current)
     }
-  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedFieldIndex, focusField, focusZone, agentSession.currentSessionId])
+  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedFieldIndex, focusField, focusZone, agentSession.currentSessionId, prWorkflow])
 
   if (!isOpen || !item) return null
 
@@ -397,6 +433,7 @@ export function ItemDetailDialog({
 
           <ItemDetailSidebar
             focusZone={focusZone}
+            showKbdHints={focusZone === 'sidebar'}
             item={item}
             agentProvider={draft.agentProvider}
             model={draft.model}
@@ -485,6 +522,8 @@ export function ItemDetailDialog({
                 <span><kbd className={kbdClass}>v</kbd> Verify</span>
                 <span><kbd className={kbdClass}>x</kbd> Stop</span>
                 <span><kbd className={kbdClass}>d</kbd> Delete</span>
+                <span><kbd className={kbdClass}>f</kbd> Diff</span>
+                <span><kbd className={kbdClass}>g</kbd> Merge</span>
                 <span><kbd className={kbdClass}>Esc</kbd> Back</span>
               </>
             )

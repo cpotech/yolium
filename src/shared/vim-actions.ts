@@ -125,6 +125,13 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'agent-marketing-sidebar', key: 'm', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Marketing Agent (sidebar)' },
   { id: 'agent-stop-sidebar', key: 'x', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Stop Agent (sidebar)' },
   { id: 'item-delete-sidebar', key: 'd', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Delete Item (sidebar)' },
+  { id: 'dialog-compare-changes', key: 'f', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Compare Changes (diff)' },
+  { id: 'dialog-rebase', key: 'r', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Pull Latest (Rebase)' },
+  { id: 'dialog-check-conflicts', key: 'k', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Check Conflicts' },
+  { id: 'dialog-merge-push-pr', key: 'g', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Squash, Merge & Push PR' },
+  { id: 'dialog-approve-pr', key: 'a', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Approve PR' },
+  { id: 'dialog-merge-pr', key: 'w', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Merge PR (finalize)' },
+  { id: 'dialog-open-pr', key: 'o', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Open PR (external)' },
 
   // --- Agent Controls — Ctrl+Shift shortcuts ---
   { id: 'agent-plan', key: 'Ctrl+Shift+P', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Agent Controls (Work Item)', description: 'Plan Agent' },

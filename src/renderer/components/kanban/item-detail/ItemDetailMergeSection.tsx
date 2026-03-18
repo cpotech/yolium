@@ -4,6 +4,7 @@ import type { KanbanItem } from '@shared/types/kanban'
 import type { ConflictCheckResult, RebaseResultState } from './useItemDetailPrWorkflow'
 
 interface ItemDetailMergeSectionProps {
+  showKbdHints: boolean
   item: KanbanItem
   prUrl: string | null
   conflictCheck: ConflictCheckResult | null
@@ -25,6 +26,7 @@ interface ItemDetailMergeSectionProps {
 }
 
 export function ItemDetailMergeSection({
+  showKbdHints,
   item,
   prUrl,
   conflictCheck,
@@ -61,6 +63,7 @@ export function ItemDetailMergeSection({
       >
         <ArrowLeftRight size={12} />
         Compare Changes
+        {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-status-info)]/10 rounded border border-[var(--color-status-info)]/30 font-mono ml-1">f</kbd>}
       </button>
 
       {item.mergeStatus === 'merged' && (
@@ -79,6 +82,7 @@ export function ItemDetailMergeSection({
                 <GitPullRequest size={12} />
                 <span>View PR</span>
                 <ExternalLink size={10} />
+                {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-status-info)]/10 rounded border border-[var(--color-status-info)]/30 font-mono ml-auto">o</kbd>}
               </button>
               <button
                 data-testid="approve-pr-button"
@@ -88,6 +92,7 @@ export function ItemDetailMergeSection({
               >
                 <Check size={12} />
                 {isApprovingPr ? 'Approving...' : 'Approve PR'}
+                {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-white/20 rounded border border-white/30 font-mono ml-auto">a</kbd>}
               </button>
               <button
                 data-testid="merge-pr-button"
@@ -97,6 +102,7 @@ export function ItemDetailMergeSection({
               >
                 <GitMerge size={12} />
                 {isMergingPr ? 'Merging...' : 'Merge PR'}
+                {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-white/20 rounded border border-white/30 font-mono ml-auto">w</kbd>}
               </button>
             </div>
           )}
@@ -129,6 +135,7 @@ export function ItemDetailMergeSection({
             >
               <ArrowDownToLine size={12} />
               {isRebasing ? 'Pulling...' : 'Pull Latest (Rebase)'}
+              {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-special-worktree)]/10 rounded border border-[var(--color-special-worktree)]/30 font-mono ml-auto">r</kbd>}
             </button>
           )}
           <button
@@ -147,6 +154,7 @@ export function ItemDetailMergeSection({
             className="w-full px-3 py-1.5 text-xs bg-[var(--color-status-error)] text-white rounded-md hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isMerging ? 'Retrying...' : 'Retry Squash Merge & PR'}
+            {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-white/20 rounded border border-white/30 font-mono ml-auto">g</kbd>}
           </button>
         </div>
       )}
@@ -163,6 +171,7 @@ export function ItemDetailMergeSection({
               >
                 <ArrowDownToLine size={12} />
                 {isRebasing ? 'Pulling...' : 'Pull Latest (Rebase)'}
+                {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-special-worktree)]/10 rounded border border-[var(--color-special-worktree)]/30 font-mono ml-auto">r</kbd>}
               </button>
               {rebaseResult && (
                 <div data-testid="rebase-result" className="mb-2">
@@ -201,6 +210,7 @@ export function ItemDetailMergeSection({
           >
             <AlertTriangle size={12} />
             {isCheckingConflicts ? 'Checking...' : 'Check Conflicts'}
+            {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-primary)] rounded border border-[var(--color-border-primary)] font-mono ml-auto">k</kbd>}
           </button>
 
           {conflictCheck && (
@@ -238,6 +248,7 @@ export function ItemDetailMergeSection({
           >
             <GitMerge size={12} />
             {isMerging ? 'Squashing & Merging...' : 'Squash, Merge & Push PR'}
+            {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-white/20 rounded border border-white/30 font-mono ml-auto">g</kbd>}
           </button>
           {item.agentStatus !== 'completed' && item.column !== 'done' && item.column !== 'verify' && (
             <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
