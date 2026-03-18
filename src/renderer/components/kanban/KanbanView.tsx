@@ -164,6 +164,16 @@ export function KanbanView({
     }
   }, [board, isLoading])
 
+  // Focus container when content zone becomes active
+  useEffect(() => {
+    if (isVimContentActive && viewRef.current) {
+      const active = document.activeElement
+      const tag = active?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      viewRef.current.focus()
+    }
+  }, [isVimContentActive])
+
   // Auto-refresh every 15 seconds
   useEffect(() => {
     if (!projectPath) return

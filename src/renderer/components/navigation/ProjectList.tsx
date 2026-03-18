@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Folder, X, Plus } from 'lucide-react';
 import type { SidebarProject } from '@renderer/stores/sidebar-store';
 import type { AgentStatus, KanbanColumn } from '@shared/types/kanban';
@@ -42,6 +42,17 @@ export function ProjectList({
   const vim = useVimModeContext();
   const isZoneActive = vim.activeZone === 'sidebar' && vim.mode === 'NORMAL';
   const [focusedIndex, setFocusedIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Focus container when zone becomes active
+  useEffect(() => {
+    if (isZoneActive && containerRef.current) {
+      const active = document.activeElement;
+      const tag = active?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      containerRef.current.focus();
+    }
+  }, [isZoneActive]);
 
   const handleAnswer = async (item: SidebarWorkItem, option: string) => {
     await onAnswerAndResume(item.projectPath, item.itemId, option, item.agentName || 'code-agent');
@@ -74,7 +85,7 @@ export function ProjectList({
   }, [isZoneActive, projects, focusedIndex, onProjectClick, onProjectRemove, onAddProject, onOpenSchedule]);
 
   return (
-    <div className="flex flex-col h-full" onKeyDown={handleVimKeyDown} tabIndex={isZoneActive ? 0 : undefined}>
+    <div ref={containerRef} className="flex flex-col h-full" onKeyDown={handleVimKeyDown} tabIndex={isZoneActive ? 0 : undefined}>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border-primary)]">
         {!collapsed && (

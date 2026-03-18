@@ -176,6 +176,17 @@ export function StatusBar({
   const isZoneActive = vim.activeZone === 'status-bar' && vim.mode === 'NORMAL';
   const [focusedButtonIndex, setFocusedButtonIndex] = useState(0);
   const buttonsRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Focus container when zone becomes active
+  useEffect(() => {
+    if (isZoneActive && containerRef.current) {
+      const active = document.activeElement;
+      const tag = active?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      containerRef.current.focus();
+    }
+  }, [isZoneActive]);
 
   const getButtons = useCallback((): HTMLButtonElement[] => {
     if (!buttonsRef.current) return [];
@@ -234,6 +245,7 @@ export function StatusBar({
   const hasContextMetadata = Boolean(primaryLabel || hasBranchMetadata || containerInfo);
   return (
     <div
+      ref={containerRef}
       data-testid="status-bar"
       data-vim-zone="status-bar"
       tabIndex={isZoneActive ? 0 : undefined}
