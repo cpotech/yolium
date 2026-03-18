@@ -136,7 +136,7 @@ Each integration declares:
 - `service` — A human-readable service identifier (any string)
 - `env` — A map of environment variable names that the service requires
 
-The actual credential values are stored separately in `~/.yolium/specialist-credentials.json` (mode 0o600, never committed to git). When a scheduled agent runs, its credentials are injected as environment variables into the Docker container.
+The actual credential values are stored in the SQLite database (`~/.yolium/yolium.db`, `credentials` table). Legacy `specialist-credentials.json` files are automatically migrated on first access. When a scheduled agent runs, its credentials are injected as environment variables into the Docker container.
 
 ### Managing Credentials
 

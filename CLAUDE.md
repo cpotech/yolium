@@ -76,16 +76,17 @@ Full API reference with types: [docs/IPC.md](docs/IPC.md).
 - `agent-container.ts` — Create headless agent containers with stream-json parsing for live output
 - `container-lifecycle.ts` — Create/stop interactive containers (user-facing terminal)
 - `image-builder.ts` — Build `yolium:latest` Docker image
-- `project-registry.ts` — Track project cache directories (`~/.yolium/project-registry.json`)
+- `project-registry.ts` — Track project cache directories (delegates to SQLite via yolium-db.ts)
 - `cache-manager.ts` — Cache cleanup (orphaned, stale)
 - `agent-auth.ts` — Shared agent authentication checks (Claude/OpenCode/Codex)
 - `path-utils.ts` — Docker-specific path normalization
 - `shared.ts` — Shared Docker client instance (dockerode)
 
 #### Stores (`src/main/stores/`)
-- `yolium-db.ts` — Unified SQLite store for kanban boards and project registry
-- `session-store.ts` — Persist tab/session state across restarts
-- `sidebar-store.ts` — Persist sidebar project list
+- `yolium-db.ts` — Unified SQLite store for kanban boards, project registry, schedules, and credentials
+- `kanban-store.ts` — Re-export shim that delegates to yolium-db.ts
+- `session-store.ts` — Persist tab/session state via localStorage
+- `workitem-log-store.ts` — Per-work-item agent output logs (filesystem-based)
 
 #### Git (`src/main/git/`)
 - `git-worktree.ts` — Create/delete git worktrees for branch isolation
@@ -157,7 +158,7 @@ Full API reference with types: [docs/IPC.md](docs/IPC.md).
 - **Namespaced IPC**: All IPC channels follow `domain:action` naming (e.g., `kanban:add-item`) to avoid collisions and improve discoverability
 - **Agent protocol**: Agents communicate via `@@YOLIUM:{type,data}` JSON messages embedded in stdout — no separate control channel needed
 - **Stream-json output**: Agent containers use `--output-format stream-json` with Claude CLI so events stream incrementally (Claude's `-p` mode alone buffers all output until completion). The main process parses JSON events into readable display text (assistant messages, tool use summaries, results with cost) and extracts protocol messages from text content
-- **SQLite for persistence**: Kanban boards and project registry use SQLite via better-sqlite3; session state and settings use JSON files via electron-store
+- **SQLite for persistence**: Kanban boards and project registry use SQLite via better-sqlite3; session state uses localStorage; agent output logs use the filesystem
 
 ## Common Patterns
 
