@@ -8,6 +8,7 @@ import { X } from 'lucide-react'
 import type { KanbanItem } from '@shared/types/kanban'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
+import { useSuspendVimNavigation } from '@renderer/context/VimModeContext'
 import { AgentLogPanel } from '../agent/AgentLogPanel'
 import { GitDiffDialog } from '../code-review/GitDiffDialog'
 import { ItemDetailEditorPane } from './item-detail/ItemDetailEditorPane'
@@ -31,6 +32,8 @@ export function ItemDetailDialog({
   onClose,
   onUpdated,
 }: ItemDetailDialogProps): React.ReactElement | null {
+  useSuspendVimNavigation(isOpen)
+
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDiffViewer, setShowDiffViewer] = useState(false)

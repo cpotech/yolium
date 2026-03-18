@@ -4,7 +4,7 @@
  * Wraps the app and provides mode/zone state to all children.
  */
 
-import React, { createContext, useContext, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useVimMode, type VimMode, type VimZone, type UseVimModeOptions } from '@renderer/hooks/useVimMode';
 
 interface VimModeContextValue {
@@ -13,9 +13,11 @@ interface VimModeContextValue {
   setActiveZone: (zone: VimZone) => void;
   enterInsertMode: () => void;
   exitToNormal: () => void;
+  suspendNavigation: () => () => void;
 }
 
 const VimModeContext = createContext<VimModeContextValue | null>(null);
+const noopRelease = () => {};
 
 interface VimModeProviderProps {
   children: React.ReactNode;
@@ -30,7 +32,25 @@ export function VimModeProvider({
   isTerminalActive = false,
   onZoneChange,
 }: VimModeProviderProps): React.ReactElement {
-  const vim = useVimMode({ dialogOpen, isTerminalActive, onZoneChange });
+  const [dialogSuspensionCount, setDialogSuspensionCount] = useState(0);
+  const nextSuspensionIdRef = useRef(0);
+  const suspensionIdsRef = useRef<Set<number>>(new Set());
+
+  const suspendNavigation = useCallback(() => {
+    const suspensionId = nextSuspensionIdRef.current++;
+    suspensionIdsRef.current.add(suspensionId);
+    setDialogSuspensionCount(suspensionIdsRef.current.size);
+
+    return () => {
+      if (!suspensionIdsRef.current.delete(suspensionId)) {
+        return;
+      }
+      setDialogSuspensionCount(suspensionIdsRef.current.size);
+    };
+  }, []);
+
+  const effectiveDialogOpen = dialogOpen || dialogSuspensionCount > 0;
+  const vim = useVimMode({ dialogOpen: effectiveDialogOpen, isTerminalActive, onZoneChange });
 
   // Attach global keydown listener
   useEffect(() => {
@@ -64,11 +84,24 @@ export function VimModeProvider({
         setActiveZone: vim.setActiveZone,
         enterInsertMode: vim.enterInsertMode,
         exitToNormal: vim.exitToNormal,
+        suspendNavigation,
       }}
     >
       {children}
     </VimModeContext.Provider>
   );
+}
+
+export function useSuspendVimNavigation(isActive: boolean): void {
+  const suspendNavigation = useContext(VimModeContext)?.suspendNavigation;
+
+  useEffect(() => {
+    if (!isActive || !suspendNavigation) {
+      return;
+    }
+
+    return suspendNavigation();
+  }, [isActive, suspendNavigation]);
 }
 
 export function useVimModeContext(): VimModeContextValue {
@@ -81,6 +114,7 @@ export function useVimModeContext(): VimModeContextValue {
       setActiveZone: () => {},
       enterInsertMode: () => {},
       exitToNormal: () => {},
+      suspendNavigation: () => noopRelease,
     };
   }
   return context;
