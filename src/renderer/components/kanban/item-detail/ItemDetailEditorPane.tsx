@@ -1,5 +1,6 @@
 import React from 'react'
 import type { KanbanComment } from '@shared/types/kanban'
+import type { VimMode } from '@renderer/hooks/useVimMode'
 import { CommentsList } from '../CommentsList'
 
 interface ItemDetailEditorPaneProps {
@@ -13,6 +14,9 @@ interface ItemDetailEditorPaneProps {
   onCommentTextChange: (value: string) => void
   onAddComment: () => void
   onSelectCommentOption: (value: string) => void
+  vimMode?: VimMode
+  focusedFieldIndex?: number
+  onFieldFocus?: (index: number) => void
 }
 
 export function ItemDetailEditorPane({
@@ -26,11 +30,19 @@ export function ItemDetailEditorPane({
   onCommentTextChange,
   onAddComment,
   onSelectCommentOption,
+  vimMode,
+  focusedFieldIndex,
+  onFieldFocus,
 }: ItemDetailEditorPaneProps): React.ReactElement {
+  const isNormal = vimMode === 'NORMAL'
+
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div>
-        <div className="mb-5">
+        <div
+          data-field-index="0"
+          className={`mb-5 ${isNormal && focusedFieldIndex === 0 ? 'ring-2 ring-[var(--color-accent-primary)] rounded-md' : ''}`}
+        >
           <label
             htmlFor="detail-title"
             className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
@@ -43,12 +55,16 @@ export function ItemDetailEditorPane({
             type="text"
             value={title}
             onChange={event => onTitleChange(event.target.value)}
+            onFocus={() => onFieldFocus?.(0)}
             autoFocus
             className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
           />
         </div>
 
-        <div className="mb-5">
+        <div
+          data-field-index="1"
+          className={`mb-5 ${isNormal && focusedFieldIndex === 1 ? 'ring-2 ring-[var(--color-accent-primary)] rounded-md' : ''}`}
+        >
           <label
             htmlFor="detail-description"
             className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
@@ -60,6 +76,7 @@ export function ItemDetailEditorPane({
             data-testid="description-input"
             value={description}
             onChange={event => onDescriptionChange(event.target.value)}
+            onFocus={() => onFieldFocus?.(1)}
             rows={10}
             className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
           />
@@ -67,7 +84,10 @@ export function ItemDetailEditorPane({
 
         <CommentsList comments={comments} onSelectOption={onSelectCommentOption} />
 
-        <div className="mt-4">
+        <div
+          data-field-index="2"
+          className={`mt-4 ${isNormal && focusedFieldIndex === 2 ? 'ring-2 ring-[var(--color-accent-primary)] rounded-md' : ''}`}
+        >
           <label
             htmlFor="comment-input"
             className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
@@ -79,6 +99,7 @@ export function ItemDetailEditorPane({
             data-testid="comment-input"
             value={commentText}
             onChange={event => onCommentTextChange(event.target.value)}
+            onFocus={() => onFieldFocus?.(2)}
             onKeyDown={event => {
               if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
                 event.preventDefault()
