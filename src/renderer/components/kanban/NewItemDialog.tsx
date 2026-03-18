@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { X, Plus } from 'lucide-react'
 import type { KanbanAgentProvider, AgentDefinition } from '@shared/types/agent'
 import { trapFocus } from '@shared/lib/focus-trap'
+import { useSuspendVimNavigation } from '@renderer/context/VimModeContext'
 
 interface NewItemDialogProps {
   isOpen: boolean
@@ -24,6 +25,8 @@ export function NewItemDialog({
   onClose,
   onCreated,
 }: NewItemDialogProps): React.ReactElement | null {
+  useSuspendVimNavigation(isOpen)
+
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [branch, setBranch] = useState('')
