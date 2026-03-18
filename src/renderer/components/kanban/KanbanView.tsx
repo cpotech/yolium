@@ -5,6 +5,7 @@ import { NewItemDialog } from './NewItemDialog'
 import { ItemDetailDialog } from './ItemDetailDialog'
 import type { KanbanBoard, KanbanItem, KanbanColumn as ColumnId } from '@shared/types/kanban'
 import { prepareConflictResolution } from './item-detail/useItemDetailPrWorkflow'
+import { useVimModeContext } from '@renderer/context/VimModeContext'
 
 interface KanbanViewProps {
   projectPath: string | null
@@ -41,6 +42,10 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
   const lastClickedIdRef = useRef<string | null>(null)
   const viewRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const vim = useVimModeContext()
+  const isVimContentActive = vim.mode === 'NORMAL' && vim.activeZone === 'content'
+  const [focusedColumnIndex, setFocusedColumnIndex] = useState(0)
+  const [focusedCardIndex, setFocusedCardIndex] = useState(0)
   // Ref to track dialog open state without stale closures
   const dialogOpenRef = useRef(false)
   // Ref to track when user is interacting with any input (prevents focus theft)
@@ -296,6 +301,20 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return
     if (newItemDialogOpen || selectedItem) return
 
+    // Vim spatial navigation (h/l for columns) in NORMAL mode
+    if (isVimContentActive && board) {
+      if (e.key === 'h' || e.key === 'ArrowLeft') {
+        e.preventDefault()
+        setFocusedColumnIndex(prev => Math.max(prev - 1, 0))
+        return
+      }
+      if (e.key === 'l' || e.key === 'ArrowRight') {
+        e.preventDefault()
+        setFocusedColumnIndex(prev => Math.min(prev + 1, columns.length - 1))
+        return
+      }
+    }
+
     if (e.key === 'n' || e.key === 'N') {
       e.preventDefault()
       setNewItemDialogOpen(true)
@@ -307,6 +326,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
     if (e.key === '/') {
       e.preventDefault()
       searchInputRef.current?.focus()
+      vim.enterInsertMode()
     }
     if (e.key === '?') {
       e.preventDefault()
@@ -337,7 +357,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
         viewRef.current?.focus()
       }
     }
-  }, [newItemDialogOpen, selectedItem, loadBoard, showShortcutsHelp, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems])
+  }, [newItemDialogOpen, selectedItem, loadBoard, showShortcutsHelp, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, board, vim])
 
   const handleCardDrop = useCallback(async (itemId: string, targetColumn: ColumnId) => {
     if (!projectPath || !board) return
@@ -504,7 +524,7 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
   }
 
   return (
-    <div ref={viewRef} data-testid="kanban-view" tabIndex={0} onKeyDown={handleKeyDown} className="flex-1 min-h-0 flex flex-col bg-[var(--color-bg-primary)] outline-none">
+    <div ref={viewRef} data-testid="kanban-view" data-vim-zone="content" tabIndex={0} onKeyDown={handleKeyDown} className={`flex-1 min-h-0 flex flex-col bg-[var(--color-bg-primary)] outline-none ${isVimContentActive ? 'ring-1 ring-[var(--color-accent-primary)]' : ''}`}>
       {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border-primary)]">
         <div className="flex items-center gap-3 text-sm text-[var(--color-text-secondary)]">
@@ -727,21 +747,28 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
         className="flex-1 overflow-x-auto min-h-0 p-4"
       >
         <div className="flex gap-4 h-full">
-          {columns.map((col) => (
-            <KanbanColumn
-              key={col.id}
-              columnId={col.id}
-              title={col.title}
-              items={getColumnItems(col.id)}
-              selectedIds={selectedIds}
-              onCardClick={handleCardClick}
-              onCardDrop={handleCardDrop}
-              onRetryAgent={handleRetryAgent}
-              onResumeAgent={handleResumeAgent}
-              onRunAgainAgent={handleRunAgainAgent}
-              onFixConflicts={handleFixConflicts}
-            />
-          ))}
+          {columns.map((col, colIndex) => {
+            const colItems = getColumnItems(col.id)
+            const isActiveCol = isVimContentActive && colIndex === focusedColumnIndex
+            const clampedCardIndex = Math.min(focusedCardIndex, Math.max(colItems.length - 1, 0))
+            return (
+              <KanbanColumn
+                key={col.id}
+                columnId={col.id}
+                title={col.title}
+                items={colItems}
+                selectedIds={selectedIds}
+                focusedCardIndex={isActiveCol ? clampedCardIndex : undefined}
+                onCardClick={handleCardClick}
+                onCardDrop={handleCardDrop}
+                onRetryAgent={handleRetryAgent}
+                onResumeAgent={handleResumeAgent}
+                onRunAgainAgent={handleRunAgainAgent}
+                onFixConflicts={handleFixConflicts}
+                onFocusedCardChange={isActiveCol ? setFocusedCardIndex : undefined}
+              />
+            )
+          })}
         </div>
       </div>
 

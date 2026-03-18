@@ -5,6 +5,7 @@ import type { KanbanItem, AgentStatus, MergeStatus } from '@shared/types/kanban'
 interface KanbanCardProps {
   item: KanbanItem
   isSelected?: boolean
+  isFocused?: boolean
   onClick: (item: KanbanItem, event: React.MouseEvent | React.KeyboardEvent) => void
   onDragStart?: (item: KanbanItem) => void
   onRetryAgent?: (itemId: string) => void
@@ -105,7 +106,7 @@ function getMergeStatusConfig(status: MergeStatus): MergeStatusConfig {
   }
 }
 
-export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgent, onResumeAgent, onRunAgainAgent, onFixConflicts }: KanbanCardProps): React.ReactElement {
+export function KanbanCard({ item, isSelected, isFocused, onClick, onDragStart, onRetryAgent, onResumeAgent, onRunAgainAgent, onFixConflicts }: KanbanCardProps): React.ReactElement {
   const statusConfig = getStatusConfig(item.agentStatus)
   const mergeStatusConfig = item.mergeStatus ? getMergeStatusConfig(item.mergeStatus) : null
   const [isDragging, setIsDragging] = useState(false)
@@ -186,6 +187,7 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
   return (
     <div
       data-testid="kanban-card"
+      data-vim-focused={isFocused ? 'true' : undefined}
       role="button"
       tabIndex={0}
       aria-label={`${item.title} - ${item.agentStatus}`}
@@ -201,6 +203,7 @@ export function KanbanCard({ item, isSelected, onClick, onDragStart, onRetryAgen
       }}
       onDragEnd={() => setIsDragging(false)}
       className={`bg-[var(--color-bg-primary)] rounded-md p-3 cursor-pointer transition-all hover:border-[var(--color-accent-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] ${
+        isFocused ? 'ring-2 ring-[var(--color-accent-primary)] border-[var(--color-accent-primary)]' :
         isSelected ? 'border-2 border-[var(--color-accent-primary)] ring-1 ring-[var(--color-accent-primary)]/30' :
         isRunning ? 'border border-[var(--color-status-warning)]/50 shadow-[0_0_8px_var(--color-status-warning)]/15' : 'border border-[var(--color-border-primary)]'
       } ${isDragging ? 'opacity-50' : ''}`}

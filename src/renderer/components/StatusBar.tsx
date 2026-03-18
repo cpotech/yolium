@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Square, Loader2, Keyboard, GitBranch, TreeDeciduous, Sun, Moon, Settings, FileJson } from 'lucide-react';
 import type { ContainerState } from '@shared/types/tabs';
 import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper';
 import type { ClaudeUsageState } from '@shared/types/agent';
 import { useTheme } from '@renderer/theme';
 import { SpeechToTextButton } from './SpeechToTextButton';
+import { useVimModeContext } from '@renderer/context/VimModeContext';
 
 interface StatusBarProps {
   folderPath?: string;
@@ -171,13 +172,74 @@ export function StatusBar({
 
   const containerInfo = containerState ? stateDisplay[containerState] : null;
   const { theme, toggleTheme } = useTheme();
+  const vim = useVimModeContext();
+  const isZoneActive = vim.activeZone === 'status-bar' && vim.mode === 'NORMAL';
+  const [focusedButtonIndex, setFocusedButtonIndex] = useState(0);
+  const buttonsRef = useRef<HTMLDivElement>(null);
+
+  const getButtons = useCallback((): HTMLButtonElement[] => {
+    if (!buttonsRef.current) return [];
+    return Array.from(buttonsRef.current.querySelectorAll('button'));
+  }, []);
+
+  const handleVimKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!isZoneActive) return;
+
+    const buttons = getButtons();
+    if (buttons.length === 0) return;
+
+    if (e.key === 'l' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      setFocusedButtonIndex(prev => Math.min(prev + 1, buttons.length - 1));
+    } else if (e.key === 'h' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setFocusedButtonIndex(prev => Math.max(prev - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const idx = Math.min(focusedButtonIndex, buttons.length - 1);
+      buttons[idx]?.click();
+    }
+  }, [isZoneActive, focusedButtonIndex, getButtons]);
+
+  // Update data-vim-focused attributes on buttons
+  useEffect(() => {
+    const buttons = getButtons();
+    buttons.forEach((btn, i) => {
+      btn.setAttribute('data-vim-focused', isZoneActive && i === focusedButtonIndex ? 'true' : 'false');
+      if (isZoneActive && i === focusedButtonIndex) {
+        btn.classList.add('ring-1', 'ring-[var(--color-accent-primary)]');
+      } else {
+        btn.classList.remove('ring-1', 'ring-[var(--color-accent-primary)]');
+      }
+    });
+  }, [focusedButtonIndex, isZoneActive, getButtons]);
+
   const primaryLabel = folderPath || contextLabel;
   const hasBranchMetadata = Boolean(worktreeName || gitBranch);
   const hasContextMetadata = Boolean(primaryLabel || hasBranchMetadata || containerInfo);
   return (
-    <div data-testid="status-bar" className="flex items-center justify-between h-7 px-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)] text-xs shrink-0">
-      {/* Left: context label/path + git branch + state */}
+    <div
+      data-testid="status-bar"
+      data-vim-zone="status-bar"
+      tabIndex={isZoneActive ? 0 : undefined}
+      onKeyDown={handleVimKeyDown}
+      className={`flex items-center justify-between h-7 px-3 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)] text-xs shrink-0 ${
+        isZoneActive ? 'ring-1 ring-[var(--color-accent-primary)]' : ''
+      }`}
+    >
+      {/* Left: mode indicator + context label/path + git branch + state */}
       <div className="flex items-center gap-2 text-[var(--color-text-secondary)] truncate overflow-hidden min-w-0">
+        {/* Vim mode indicator */}
+        <span
+          data-testid="vim-mode-indicator"
+          className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${
+            vim.mode === 'NORMAL'
+              ? 'bg-[var(--color-accent-primary)]/20 text-[var(--color-accent-primary)]'
+              : 'bg-[var(--color-status-success)]/20 text-[var(--color-status-success)]'
+          }`}
+        >
+          -- {vim.mode} --
+        </span>
         {folderPath && (
           <span data-testid="status-path" className="truncate max-w-[300px]">
             {folderPath}
@@ -227,7 +289,7 @@ export function StatusBar({
       </div>
 
       {/* Right: action buttons and shortcuts hint */}
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div ref={buttonsRef} className="flex items-center gap-2 flex-shrink-0">
         {/* Stop button (only when running or starting) */}
         {onStop && (containerState === 'running' || containerState === 'starting') && (
           <button

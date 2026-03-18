@@ -17,6 +17,37 @@ interface ShortcutGroup {
 
 const shortcutGroups: ShortcutGroup[] = [
   {
+    title: 'Vim Modes',
+    shortcuts: [
+      { keys: 'i', description: 'Enter INSERT mode' },
+      { keys: 'Escape', description: 'Return to NORMAL mode' },
+      { keys: 'Ctrl+[', description: 'Return to NORMAL mode (alt)' },
+    ],
+  },
+  {
+    title: 'Vim Navigation',
+    shortcuts: [
+      { keys: 'e', description: 'Focus Sidebar (Explorer)' },
+      { keys: 't', description: 'Focus TabBar' },
+      { keys: 'c', description: 'Focus Content' },
+      { keys: 's', description: 'Focus StatusBar' },
+      { keys: 'Tab', description: 'Cycle zones forward' },
+      { keys: 'Shift+Tab', description: 'Cycle zones backward' },
+      { keys: 'j / ArrowDown', description: 'Move down in zone' },
+      { keys: 'k / ArrowUp', description: 'Move up in zone' },
+      { keys: 'h / ArrowLeft', description: 'Move left in zone' },
+      { keys: 'l / ArrowRight', description: 'Move right in zone' },
+      { keys: 'Enter', description: 'Activate focused element' },
+      { keys: 'x', description: 'Delete/remove focused element' },
+      { keys: 'gg', description: 'Jump to first item' },
+      { keys: 'G', description: 'Jump to last item' },
+      { keys: 'n', description: 'New item (Kanban)' },
+      { keys: 'r', description: 'Refresh (Kanban)' },
+      { keys: '/', description: 'Search (auto INSERT)' },
+      { keys: '?', description: 'Toggle shortcuts help' },
+    ],
+  },
+  {
     title: 'Tab Management',
     shortcuts: [
       { keys: 'Ctrl+Shift+T', description: 'New tab' },

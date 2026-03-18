@@ -1,0 +1,123 @@
+/**
+ * @module src/hooks/useVimMode
+ * Core modal state machine for vim-style TUI navigation.
+ * Manages NORMAL/INSERT modes, zone tracking, and keydown handling.
+ */
+
+import { useState, useCallback, useRef } from 'react';
+
+export type VimMode = 'NORMAL' | 'INSERT';
+export type VimZone = 'sidebar' | 'tabs' | 'content' | 'status-bar';
+
+const ZONE_ORDER: VimZone[] = ['sidebar', 'tabs', 'content', 'status-bar'];
+
+const ZONE_KEYS: Record<string, VimZone> = {
+  e: 'sidebar',
+  t: 'tabs',
+  c: 'content',
+  s: 'status-bar',
+};
+
+export interface UseVimModeOptions {
+  /** When true, vim navigation is suspended (keys pass through) */
+  dialogOpen?: boolean;
+  /** Called when the active zone changes */
+  onZoneChange?: (zone: VimZone) => void;
+  /** Whether the active tab is a terminal (auto-INSERT) */
+  isTerminalActive?: boolean;
+}
+
+export interface UseVimModeResult {
+  mode: VimMode;
+  activeZone: VimZone;
+  handleKeyDown: (event: KeyboardEvent) => void;
+  setActiveZone: (zone: VimZone) => void;
+  enterInsertMode: () => void;
+  exitToNormal: () => void;
+}
+
+export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
+  const { dialogOpen = false, onZoneChange, isTerminalActive = false } = options;
+  const [mode, setMode] = useState<VimMode>('NORMAL');
+  const [activeZone, setActiveZoneState] = useState<VimZone>('content');
+  const onZoneChangeRef = useRef(onZoneChange);
+  onZoneChangeRef.current = onZoneChange;
+
+  const setActiveZone = useCallback((zone: VimZone) => {
+    setActiveZoneState(zone);
+    onZoneChangeRef.current?.(zone);
+  }, []);
+
+  const enterInsertMode = useCallback(() => {
+    setMode('INSERT');
+  }, []);
+
+  const exitToNormal = useCallback(() => {
+    setMode('NORMAL');
+  }, []);
+
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    // Don't process when dialogs are open
+    if (dialogOpen) return;
+
+    // Don't intercept keys with Ctrl/Meta modifiers (let existing shortcuts work)
+    if (event.ctrlKey || event.metaKey || event.altKey) {
+      // Exception: Ctrl+[ exits to NORMAL (vim escape equivalent)
+      if (event.ctrlKey && event.key === '[') {
+        event.preventDefault();
+        setMode('NORMAL');
+      }
+      return;
+    }
+
+    // In INSERT mode, only Escape exits
+    if (mode === 'INSERT') {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setMode('NORMAL');
+      }
+      return;
+    }
+
+    // NORMAL mode key handling
+    const key = event.key;
+
+    // Mode switching
+    if (key === 'i') {
+      event.preventDefault();
+      setMode('INSERT');
+      return;
+    }
+
+    // Zone switching with single keys
+    if (key in ZONE_KEYS) {
+      event.preventDefault();
+      const zone = ZONE_KEYS[key];
+      setActiveZone(zone);
+      return;
+    }
+
+    // Tab cycling
+    if (key === 'Tab') {
+      event.preventDefault();
+      const currentIndex = ZONE_ORDER.indexOf(activeZone);
+      if (event.shiftKey) {
+        const prevIndex = (currentIndex - 1 + ZONE_ORDER.length) % ZONE_ORDER.length;
+        setActiveZone(ZONE_ORDER[prevIndex]);
+      } else {
+        const nextIndex = (currentIndex + 1) % ZONE_ORDER.length;
+        setActiveZone(ZONE_ORDER[nextIndex]);
+      }
+      return;
+    }
+  }, [dialogOpen, mode, activeZone, setActiveZone]);
+
+  return {
+    mode,
+    activeZone,
+    handleKeyDown,
+    setActiveZone,
+    enterInsertMode,
+    exitToNormal,
+  };
+}

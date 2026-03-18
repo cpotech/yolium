@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Tab } from './Tab';
 import type { Tab as TabType } from '@shared/types/tabs';
+import { useVimModeContext } from '@renderer/context/VimModeContext';
 
 interface TabBarProps {
   tabs: TabType[];
@@ -23,6 +24,9 @@ export function TabBar({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
+  const vim = useVimModeContext();
+  const isZoneActive = vim.activeZone === 'tabs' && vim.mode === 'NORMAL';
+  const [focusedTabIndex, setFocusedTabIndex] = useState(0);
 
   const updateArrowVisibility = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -63,10 +67,48 @@ export function TabBar({
     onTabContextMenu(tab.id, e.clientX, e.clientY);
   };
 
+  // Keep focusedTabIndex in bounds when tabs change
+  useEffect(() => {
+    if (focusedTabIndex >= tabs.length && tabs.length > 0) {
+      setFocusedTabIndex(tabs.length - 1);
+    }
+  }, [tabs.length, focusedTabIndex]);
+
+  const handleVimKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!isZoneActive || tabs.length === 0) return;
+
+    if (e.key === 'l' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      setFocusedTabIndex(prev => Math.min(prev + 1, tabs.length - 1));
+    } else if (e.key === 'h' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setFocusedTabIndex(prev => Math.max(prev - 1, 0));
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      setFocusedTabIndex(0);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      setFocusedTabIndex(tabs.length - 1);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const idx = Math.min(focusedTabIndex, tabs.length - 1);
+      onTabClick(tabs[idx].id);
+    } else if (e.key === 'x') {
+      e.preventDefault();
+      const idx = Math.min(focusedTabIndex, tabs.length - 1);
+      onTabClose(tabs[idx].id);
+    }
+  }, [isZoneActive, tabs, focusedTabIndex, onTabClick, onTabClose]);
+
   return (
     <div
       data-testid="tab-bar"
-      className="flex items-center h-9 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border-primary)] shrink-0"
+      data-vim-zone="tabs"
+      tabIndex={isZoneActive ? 0 : undefined}
+      onKeyDown={handleVimKeyDown}
+      className={`flex items-center h-9 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border-primary)] shrink-0 ${
+        isZoneActive ? 'ring-1 ring-[var(--color-accent-primary)]' : ''
+      }`}
       role="tablist"
     >
       {/* Left scroll arrow */}
@@ -85,11 +127,12 @@ export function TabBar({
         ref={scrollContainerRef}
         className="flex-1 flex overflow-x-hidden"
       >
-        {tabs.map(tab => (
+        {tabs.map((tab, index) => (
           <Tab
             key={tab.id}
             tab={tab}
             isActive={tab.id === activeTabId}
+            isVimFocused={isZoneActive && index === focusedTabIndex}
             onClick={() => onTabClick(tab.id)}
             onClose={() => onTabClose(tab.id)}
             onContextMenu={(e) => handleContextMenu(tab, e)}

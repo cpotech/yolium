@@ -1,0 +1,178 @@
+/**
+ * @vitest-environment jsdom
+ */
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import { useVimMode } from '@renderer/hooks/useVimMode';
+
+describe('useVimMode', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it('should start in NORMAL mode by default', () => {
+    const { result } = renderHook(() => useVimMode());
+    expect(result.current.mode).toBe('NORMAL');
+  });
+
+  it('should transition to INSERT mode when i is pressed in NORMAL mode', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'i' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(result.current.mode).toBe('INSERT');
+  });
+
+  it('should transition back to NORMAL mode when Escape is pressed in INSERT mode', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    // Enter INSERT mode
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'i' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.mode).toBe('INSERT');
+
+    // Press Escape to return to NORMAL
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'Escape' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.mode).toBe('NORMAL');
+  });
+
+  it('should not process vim keys when a dialog is open', () => {
+    const { result } = renderHook(() => useVimMode({ dialogOpen: true }));
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'e' });
+      result.current.handleKeyDown(event);
+    });
+
+    // Should remain on default zone, not switch to sidebar
+    expect(result.current.activeZone).toBe('content');
+  });
+
+  it('should focus sidebar zone when e is pressed in NORMAL mode', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'e' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(result.current.activeZone).toBe('sidebar');
+  });
+
+  it('should focus status-bar zone when s is pressed in NORMAL mode', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 's' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(result.current.activeZone).toBe('status-bar');
+  });
+
+  it('should focus tabs zone when t is pressed in NORMAL mode', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 't' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(result.current.activeZone).toBe('tabs');
+  });
+
+  it('should focus content zone when c is pressed in NORMAL mode', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    // First switch away from content
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'e' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.activeZone).toBe('sidebar');
+
+    // Now switch to content
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'c' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.activeZone).toBe('content');
+  });
+
+  it('should cycle zones with Tab in NORMAL mode', () => {
+    const { result } = renderHook(() => useVimMode());
+    // Default is 'content'
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'Tab' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.activeZone).toBe('status-bar');
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'Tab' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.activeZone).toBe('sidebar');
+  });
+
+  it('should reverse-cycle zones with Shift+Tab in NORMAL mode', () => {
+    const { result } = renderHook(() => useVimMode());
+    // Default is 'content'
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.activeZone).toBe('tabs');
+  });
+
+  it('should not change zone when already in INSERT mode', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    // Enter INSERT mode
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'i' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.mode).toBe('INSERT');
+
+    // Try zone switch - should not work
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'e' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.activeZone).toBe('content');
+  });
+
+  it('should expose current mode and active zone from the hook return value', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    expect(result.current).toHaveProperty('mode');
+    expect(result.current).toHaveProperty('activeZone');
+    expect(result.current).toHaveProperty('handleKeyDown');
+    expect(result.current).toHaveProperty('setActiveZone');
+    expect(typeof result.current.mode).toBe('string');
+    expect(typeof result.current.activeZone).toBe('string');
+  });
+
+  it('should call onZoneChange callback when zone changes', () => {
+    const onZoneChange = vi.fn();
+    const { result } = renderHook(() => useVimMode({ onZoneChange }));
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'e' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(onZoneChange).toHaveBeenCalledWith('sidebar');
+  });
+});

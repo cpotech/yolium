@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { ProjectList } from './ProjectList';
 import type { SidebarWorkItem } from './ProjectList';
 import type { SidebarProject } from '@renderer/stores/sidebar-store';
+import { useVimModeContext } from '@renderer/context/VimModeContext';
 
 interface SidebarProps {
   projects: SidebarProject[];
@@ -27,12 +28,16 @@ export function Sidebar({
   onAnswerAndResume,
   onOpenSchedule,
 }: SidebarProps): React.ReactElement {
+  const vim = useVimModeContext();
+  const isZoneActive = vim.activeZone === 'sidebar' && vim.mode === 'NORMAL';
+
   return (
     <div
       data-testid="sidebar"
+      data-vim-zone="sidebar"
       className={`flex flex-col bg-[var(--color-bg-secondary)] border-r border-[var(--color-border-primary)] transition-all ${
         collapsed ? 'w-10' : 'w-48'
-      }`}
+      } ${isZoneActive ? 'ring-1 ring-[var(--color-accent-primary)]' : ''}`}
     >
       {/* Project list */}
       <div className="flex-1 min-h-0">
