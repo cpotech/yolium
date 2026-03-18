@@ -31,6 +31,34 @@ vi.mock('@renderer/components/code-review/GitDiffDialog', () => ({
   ) : null),
 }))
 
+vi.mock('@renderer/components/StatusBar', () => ({
+  StatusBar: ({
+    folderPath,
+    contextLabel,
+    gitBranch,
+    worktreeName,
+    onShowShortcuts = vi.fn(),
+    onOpenSettings = vi.fn(),
+    onOpenProjectSettings = vi.fn(),
+    whisperRecordingState,
+    whisperSelectedModel,
+    onToggleRecording = vi.fn(),
+    onOpenModelDialog = vi.fn(),
+    claudeUsage,
+  }: any) => (
+    <div data-testid="status-bar-mock">
+      <div data-testid="vim-mode-indicator">-- NORMAL --</div>
+      <div data-testid="status-path">{folderPath}</div>
+      <div data-testid="status-branch">{gitBranch}</div>
+      <button data-testid="shortcuts-button" onClick={onShowShortcuts}>Shortcuts</button>
+      <button data-testid="settings-button" onClick={onOpenSettings}>Settings</button>
+      <button data-testid="project-settings-button" onClick={onOpenProjectSettings}>Project Settings</button>
+      <div data-testid="whisper-controls">Whisper</div>
+      <div data-testid="claude-usage">Claude Usage</div>
+    </div>
+  ),
+}))
+
 const mockKanbanUpdateItem = vi.fn()
 const mockKanbanDeleteItem = vi.fn()
 const mockKanbanAddComment = vi.fn()
