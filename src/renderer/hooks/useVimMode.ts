@@ -7,15 +7,16 @@
 import { useState, useCallback, useRef } from 'react';
 
 export type VimMode = 'NORMAL' | 'INSERT' | 'VISUAL';
-export type VimZone = 'sidebar' | 'tabs' | 'content' | 'status-bar';
+export type VimZone = 'sidebar' | 'tabs' | 'content' | 'status-bar' | 'schedule';
 
-const ZONE_ORDER: VimZone[] = ['sidebar', 'tabs', 'content', 'status-bar'];
+const ZONE_ORDER: VimZone[] = ['sidebar', 'tabs', 'content', 'status-bar', 'schedule'];
 
 const ZONE_KEYS: Record<string, VimZone> = {
   e: 'sidebar',
   t: 'tabs',
   c: 'content',
   s: 'status-bar',
+  a: 'schedule',
 };
 
 export interface UseVimModeOptions {

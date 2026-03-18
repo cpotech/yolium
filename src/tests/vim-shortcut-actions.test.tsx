@@ -29,7 +29,7 @@ function renderWithVim(ui: React.ReactElement) {
 function ZoneSetter({ zone }: { zone: string }) {
   const { setActiveZone } = useVimModeContext();
   React.useEffect(() => {
-    setActiveZone(zone as 'sidebar' | 'tabs' | 'content' | 'status-bar');
+    setActiveZone(zone as 'sidebar' | 'tabs' | 'content' | 'status-bar' | 'schedule');
   }, [zone, setActiveZone]);
   return null;
 }
@@ -1051,7 +1051,7 @@ describe('Mode transitions', () => {
     expect(screen.getByTestId('vim-zone')).toHaveTextContent('content');
   });
 
-  it('Tab cycles zones: sidebar -> tabs -> content -> status-bar', () => {
+  it('Tab cycles zones: sidebar -> tabs -> content -> status-bar -> schedule', () => {
     renderWithVim(<VimProbe />);
 
     // Start at content (default)
@@ -1061,7 +1061,11 @@ describe('Mode transitions', () => {
     fireEvent.keyDown(document, { key: 'Tab' });
     expect(screen.getByTestId('vim-zone')).toHaveTextContent('status-bar');
 
-    // Tab from status-bar -> sidebar
+    // Tab from status-bar -> schedule
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(screen.getByTestId('vim-zone')).toHaveTextContent('schedule');
+
+    // Tab from schedule -> sidebar
     fireEvent.keyDown(document, { key: 'Tab' });
     expect(screen.getByTestId('vim-zone')).toHaveTextContent('sidebar');
 

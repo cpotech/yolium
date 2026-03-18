@@ -80,6 +80,20 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'project-add-alt', key: '+', zone: 'sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar', description: 'Add project (alt)' },
   { id: 'project-scheduled', key: 'h', zone: 'sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar', description: 'Scheduled agents' },
 
+  // --- Schedule zone — Scheduled Agents panel ---
+  { id: 'specialist-down', key: 'j', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Next specialist' },
+  { id: 'specialist-up', key: 'k', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Previous specialist' },
+  { id: 'specialist-first', key: 'gg', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'First specialist' },
+  { id: 'specialist-last', key: 'G', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Last specialist' },
+  { id: 'specialist-run', key: 'r', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Trigger run' },
+  { id: 'specialist-toggle', key: 't', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Toggle enabled' },
+  { id: 'specialist-history', key: 'Enter', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Open history' },
+  { id: 'specialist-configure', key: 'c', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Configure specialist' },
+  { id: 'specialist-add', key: 'n', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Add specialist' },
+  { id: 'specialist-view-specialists', key: '1', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Specialists view' },
+  { id: 'specialist-view-actions', key: '2', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Actions view' },
+  { id: 'schedule-help', key: '?', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Keyboard shortcuts' },
+
   // --- Status bar zone ---
   { id: 'status-next', key: 'l', zone: 'status-bar', mode: 'NORMAL', category: 'vim', group: 'Status Bar', description: 'Next button' },
   { id: 'status-prev', key: 'h', zone: 'status-bar', mode: 'NORMAL', category: 'vim', group: 'Status Bar', description: 'Previous button' },
@@ -158,6 +172,7 @@ export const SHORTCUT_GROUP_ORDER: string[] = [
   'Content (Kanban)',
   'Tab Bar',
   'Sidebar',
+  'Schedule (Agents)',
   'Status Bar',
   'Dialog (Work Item)',
   'Sidebar Focus (Work Item)',
