@@ -59,6 +59,9 @@ vi.mock('@main/docker/project-registry', () => ({
 
 vi.mock('@main/git/git-config', () => ({
   loadGitConfig: vi.fn(() => null),
+}))
+
+vi.mock('@main/git/codex-oauth', () => ({
   refreshCodexOAuthTokenSerialized: vi.fn(async () => undefined),
 }));
 

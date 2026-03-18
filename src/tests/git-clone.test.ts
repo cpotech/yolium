@@ -25,12 +25,24 @@ vi.mock('@main/lib/logger', () => ({
 
 vi.mock('@main/git/git-config', () => ({
   loadGitConfig: vi.fn(),
-  loadDetectedGitConfig: vi.fn(),
   saveGitConfig: vi.fn(),
+}))
+
+vi.mock('@main/git/git-identity', () => ({
+  loadDetectedGitConfig: vi.fn(),
+}))
+
+vi.mock('@main/git/git-credentials', () => ({
   fetchGitHubUser: vi.fn(),
-  hasHostClaudeOAuth: vi.fn(() => false),
-  hasHostCodexOAuth: vi.fn(() => false),
   generateGitCredentials: vi.fn(),
+}))
+
+vi.mock('@main/git/claude-oauth', () => ({
+  hasHostClaudeOAuth: vi.fn(() => false),
+}))
+
+vi.mock('@main/git/codex-oauth', () => ({
+  hasHostCodexOAuth: vi.fn(() => false),
 }))
 
 vi.mock('@main/git/git-worktree', () => ({
@@ -54,8 +66,8 @@ import {
 } from '@main/ipc/git-handlers'
 import {
   loadGitConfig,
-  generateGitCredentials,
 } from '@main/git/git-config'
+import { generateGitCredentials } from '@main/git/git-credentials'
 import { initGitRepoWithDefaults } from '@main/git/git-worktree'
 
 type CloneHandler = (_event: unknown, url: string, targetDir: string) => Promise<GitCloneResult>

@@ -1,8 +1,9 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { loadGitConfig, refreshCodexOAuthTokenSerialized } from '@main/git/git-config';
+import { loadGitConfig } from '@main/git/git-config';
 import type { GitConfig } from '@main/git/git-config';
+import { refreshCodexOAuthTokenSerialized } from '@main/git/codex-oauth';
 import { detectPackageManager, detectProjectTypes } from '@main/services/project-onboarding';
 import { getValidatedSharedDirs } from '@main/services/project-config';
 import { getContainerProjectPath, toContainerHomePath, toDockerPath } from './path-utils';

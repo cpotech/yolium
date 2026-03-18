@@ -34,13 +34,25 @@ vi.mock('@main/git/git-worktree', () => ({
 
 vi.mock('@main/git/git-config', () => ({
   loadGitConfig: vi.fn(),
-  loadDetectedGitConfig: vi.fn(),
   saveGitConfig: vi.fn(),
+}))
+
+vi.mock('@main/git/git-identity', () => ({
+  loadDetectedGitConfig: vi.fn(),
+}))
+
+vi.mock('@main/git/git-credentials', () => ({
   fetchGitHubUser: vi.fn(),
-  hasHostClaudeOAuth: vi.fn(),
-  hasHostCodexOAuth: vi.fn(),
   generateGitCredentials: vi.fn(),
+}))
+
+vi.mock('@main/git/claude-oauth', () => ({
+  hasHostClaudeOAuth: vi.fn(),
   fetchClaudeUsage: vi.fn(),
+}))
+
+vi.mock('@main/git/codex-oauth', () => ({
+  hasHostCodexOAuth: vi.fn(),
 }));
 
 vi.mock('node:fs', () => ({

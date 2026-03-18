@@ -8,7 +8,10 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { app } from 'electron';
 import { createLogger } from '@main/lib/logger';
-import { loadGitConfig, generateGitCredentials, getHostClaudeCredentialsPath, getHostCodexCredentialsPath } from '@main/git/git-config';
+import { loadGitConfig } from '@main/git/git-config';
+import { generateGitCredentials } from '@main/git/git-credentials';
+import { getHostClaudeCredentialsPath } from '@main/git/claude-oauth';
+import { getHostCodexCredentialsPath } from '@main/git/codex-oauth';
 import { getValidatedSharedDirs } from '@main/services/project-config';
 import { getProjectDirName, toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
 import {

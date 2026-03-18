@@ -10,7 +10,11 @@ import { execFile } from 'node:child_process';
 import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 import { createLogger } from '@main/lib/logger';
 import { getErrorMessage } from '@main/lib/error-utils';
-import { loadGitConfig, loadDetectedGitConfig, saveGitConfig, fetchGitHubUser, hasHostClaudeOAuth, hasHostCodexOAuth, generateGitCredentials, fetchClaudeUsage } from '@main/git/git-config';
+import { loadGitConfig, saveGitConfig } from '@main/git/git-config';
+import { loadDetectedGitConfig } from '@main/git/git-identity';
+import { fetchGitHubUser, generateGitCredentials } from '@main/git/git-credentials';
+import { hasHostClaudeOAuth, fetchClaudeUsage } from '@main/git/claude-oauth';
+import { hasHostCodexOAuth } from '@main/git/codex-oauth';
 import {
   isGitRepo,
   hasCommits,

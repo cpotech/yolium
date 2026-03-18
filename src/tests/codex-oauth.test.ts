@@ -1,12 +1,7 @@
-/**
- * Tests for Codex OAuth token refresh logic in git-config.ts
- */
-
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as path from 'node:path';
 import * as os from 'node:os';
 
-// Mock node:fs
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(),
   readFileSync: vi.fn(),
@@ -24,12 +19,11 @@ vi.mock('node:fs', () => ({
   },
 }));
 
-// Mock global fetch
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
 import * as fs from 'node:fs';
-import { refreshCodexOAuthToken, refreshCodexOAuthTokenSerialized } from '@main/git/codex-oauth';
+import { hasHostCodexOAuth, refreshCodexOAuthToken, refreshCodexOAuthTokenSerialized, getHostCodexCredentialsPath } from '@main/git/codex-oauth';
 
 const AUTH_PATH = path.join(os.homedir(), '.codex', 'auth.json');
 
@@ -46,6 +40,35 @@ function makeAuthJson(overrides?: Record<string, unknown>) {
     ...overrides,
   });
 }
+
+describe('hasHostCodexOAuth', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+  });
+
+  it('should return true when auth.json has chatgpt mode and access_token', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(makeAuthJson());
+
+    expect(hasHostCodexOAuth()).toBe(true);
+  });
+
+  it('should return false when auth.json does not exist', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+
+    expect(hasHostCodexOAuth()).toBe(false);
+  });
+
+  it('should return false when auth_mode is not chatgpt', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      makeAuthJson({ auth_mode: 'api_key' }),
+    );
+
+    expect(hasHostCodexOAuth()).toBe(false);
+  });
+});
 
 describe('refreshCodexOAuthToken', () => {
   beforeEach(() => {
@@ -88,7 +111,6 @@ describe('refreshCodexOAuthToken', () => {
       },
     );
 
-    // Verify file was written with updated tokens
     expect(fs.writeFileSync).toHaveBeenCalledOnce();
     const [writePath, writeContent, writeOptions] = vi.mocked(fs.writeFileSync).mock.calls[0];
     expect(writePath).toBe(AUTH_PATH);
@@ -113,7 +135,6 @@ describe('refreshCodexOAuthToken', () => {
       json: async () => ({
         access_token: 'new-access-token',
         refresh_token: 'new-refresh-token',
-        // No id_token in response
       }),
     });
 
@@ -122,7 +143,7 @@ describe('refreshCodexOAuthToken', () => {
     expect(result).toBe(true);
 
     const written = JSON.parse(vi.mocked(fs.writeFileSync).mock.calls[0][1] as string);
-    expect(written.tokens.id_token).toBe('old-id-token'); // Unchanged
+    expect(written.tokens.id_token).toBe('old-id-token');
     expect(written.tokens.access_token).toBe('new-access-token');
     expect(written.tokens.refresh_token).toBe('new-refresh-token');
   });
@@ -217,11 +238,9 @@ describe('refreshCodexOAuthTokenSerialized', () => {
 
     mockFetch.mockReturnValue(firstCall);
 
-    // Start two concurrent refreshes
     const p1 = refreshCodexOAuthTokenSerialized();
     const p2 = refreshCodexOAuthTokenSerialized();
 
-    // Resolve the single fetch
     resolveFirst({
       ok: true,
       json: async () => ({
@@ -234,7 +253,6 @@ describe('refreshCodexOAuthTokenSerialized', () => {
 
     expect(r1).toBe(true);
     expect(r2).toBe(true);
-    // fetch should have been called only once (mutex coalesces concurrent calls)
     expect(mockFetch).toHaveBeenCalledOnce();
   });
 
@@ -247,12 +265,34 @@ describe('refreshCodexOAuthTokenSerialized', () => {
       }),
     });
 
-    // First call
     await refreshCodexOAuthTokenSerialized();
     expect(mockFetch).toHaveBeenCalledTimes(1);
 
-    // Second call after first completes — should trigger a new refresh
     await refreshCodexOAuthTokenSerialized();
     expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('getHostCodexCredentialsPath', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should return Codex credentials path when file exists', () => {
+    vi.mocked(fs.statSync).mockReturnValue({ isFile: () => true } as ReturnType<typeof fs.statSync>);
+
+    const result = getHostCodexCredentialsPath();
+
+    expect(result).toBe(AUTH_PATH);
+  });
+
+  it('should return null when Codex credentials file does not exist', () => {
+    vi.mocked(fs.statSync).mockImplementation(() => {
+      throw new Error('ENOENT');
+    });
+
+    const result = getHostCodexCredentialsPath();
+
+    expect(result).toBeNull();
   });
 });
