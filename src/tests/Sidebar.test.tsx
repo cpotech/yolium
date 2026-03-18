@@ -251,6 +251,28 @@ describe('Sidebar', () => {
       expect(onProjectClick).toHaveBeenCalledWith('/home/user/project1')
     })
 
+    it('should not display status dot for items in the done column', () => {
+      render(
+        <Sidebar
+          projects={mockProjects}
+          collapsed={false}
+          {...defaultProps}
+          sidebarItems={[
+            {
+              projectPath: '/home/user/project1',
+              itemId: 'done-item',
+              itemTitle: 'Done item',
+              agentName: 'code-agent',
+              agentStatus: 'running',
+              column: 'done',
+            },
+          ]}
+        />
+      )
+
+      expect(screen.queryByTestId('status-dot-done-item')).not.toBeInTheDocument()
+    })
+
     it('should not render dots when no active items', () => {
       render(
         <Sidebar
