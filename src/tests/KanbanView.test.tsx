@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { KanbanView } from '@renderer/components/kanban/KanbanView'
 import { ThemeProvider } from '@renderer/theme'
 import type { KanbanBoard, KanbanItem } from '@shared/types/kanban'
@@ -1128,6 +1128,83 @@ describe('KanbanView', () => {
     const shortcutsHelp = screen.getByTestId('shortcuts-help')
     const kbdElements = shortcutsHelp.querySelectorAll('kbd')
     expect([...kbdElements].some(el => el.textContent === '?')).toBe(true)
+  })
+})
+
+describe('KanbanView dialog-aware focus guard', () => {
+  it('should not auto-focus view when ItemDetailDialog is open and board refreshes', async () => {
+    const items = [createMockItem({ id: '1', title: 'Task 1', column: 'backlog' })]
+    const board = createMockBoard(items)
+    mockKanbanGetBoard.mockResolvedValue(board)
+
+    render(
+      <ThemeProvider>
+        <KanbanView projectPath="/test/project" />
+      </ThemeProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('kanban-card').length).toBeGreaterThan(0)
+    })
+
+    // Open the detail dialog by clicking the card
+    fireEvent.click(screen.getAllByTestId('kanban-card')[0])
+
+    await waitFor(() => {
+      expect(screen.getByTestId('item-detail-dialog')).toBeInTheDocument()
+    })
+
+    // Focus the dialog container
+    const dialogContainer = screen.getByTestId('item-detail-dialog').parentElement!
+    dialogContainer.focus()
+
+    // Simulate a board refresh (which triggers the useEffect with setBoard)
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+    fireEvent.click(screen.getByTestId('refresh-button'))
+
+    await waitFor(() => {
+      // View should not have stolen focus from the dialog
+      const view = screen.getByTestId('kanban-view')
+      expect(document.activeElement).not.toBe(view)
+    })
+  })
+
+  it('should not steal focus from dialog container element with tabIndex=-1', async () => {
+    const items = [createMockItem({ id: '1', title: 'Task 1', column: 'backlog' })]
+    const board = createMockBoard(items)
+    mockKanbanGetBoard.mockResolvedValue(board)
+
+    render(
+      <ThemeProvider>
+        <KanbanView projectPath="/test/project" />
+      </ThemeProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('kanban-card').length).toBeGreaterThan(0)
+    })
+
+    // Open the detail dialog
+    fireEvent.click(screen.getAllByTestId('kanban-card')[0])
+
+    await waitFor(() => {
+      expect(screen.getByTestId('item-detail-dialog')).toBeInTheDocument()
+    })
+
+    // The dialog container has tabIndex={-1}
+    const dialogContainer = screen.getByTestId('item-detail-dialog').parentElement!
+    expect(dialogContainer.getAttribute('tabindex')).toBe('-1')
+    dialogContainer.focus()
+
+    // After another board load, focus should stay on the dialog container
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    // Wait for any pending effects
+    await act(async () => {
+      await new Promise(r => setTimeout(r, 0))
+    })
+
+    expect(document.activeElement).toBe(dialogContainer)
   })
 })
 
