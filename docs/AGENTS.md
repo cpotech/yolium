@@ -110,7 +110,7 @@ The Marketing Agent executes marketing tasks by routing to specialized skills. I
 
 Agents maintain conversational context across sessions through the comment thread on each work item.
 
-When an agent starts (or resumes), Yolium calls `buildConversationHistory()` ([`kanban-store.ts:216`](../src/main/stores/kanban-store.ts#L216)) to collect all comments on the work item — from users, system events, and previous agent runs. This history is appended to the agent's prompt via `buildAgentPrompt()` ([`agent-runner.ts:56`](../src/main/services/agent-runner.ts#L56)) with the instruction "Continue from where you left off."
+When an agent starts (or resumes), Yolium calls `buildConversationHistory()` ([`yolium-db.ts:855`](../src/main/stores/yolium-db.ts#L855)) to collect all comments on the work item — from users, system events, and previous agent runs. This history is appended to the agent's prompt via `buildAgentPrompt()` ([`agent-runner.ts:56`](../src/main/services/agent-runner.ts#L56)) with the instruction "Continue from where you left off."
 
 This means:
 - A **Code Agent** can read the Plan Agent's analysis and implementation plan from the comment thread.

@@ -148,7 +148,7 @@ These are mutually exclusive -- toggling OAuth on in Settings clears the API key
 
 ### Cache Retention Policy
 
-Yolium tracks all project caches in a registry (`~/.yolium/project-registry.json`) with timestamps. Cache cleanup options:
+Yolium tracks all project caches in the SQLite database (`~/.yolium/yolium.db`, `project_registry` table) with timestamps. Cache cleanup options:
 
 - **Orphaned Caches**: When you delete a project folder from your system, its cache becomes "orphaned." These can be cleaned up to reclaim disk space.
 - **Stale Caches**: Caches not accessed within 90 days (configurable) are considered stale and can be removed.
@@ -166,6 +166,7 @@ Cache directories use readable names (e.g., `my-project-a1b2c3d4e5f6`) combining
 - **Desktop**: Electron 40 with Electron Forge
 - **Terminal**: xterm.js with WebGL addon
 - **Container**: Dockerode for Docker API integration
+- **Database**: better-sqlite3 (SQLite) for kanban boards, project registry, schedules, and credentials
 - **PTY**: node-pty for shell session management
 
 ### Building from Source
@@ -228,16 +229,21 @@ The resulting package installs to `/opt/yolium-desktop` with a symlink at `/usr/
 
 ```
 src/
-├── main.ts              # Electron main process
-├── App.tsx              # Main React component
-├── components/          # React UI components
-│   ├── TabBar.tsx       # Tab management
-│   ├── Terminal.tsx     # xterm.js wrapper
-│   ├── StatusBar.tsx    # Git status display
-│   └── dialogs/         # Modal dialogs
-├── lib/
-│   ├── docker-manager.ts    # Container lifecycle
-│   ├── pty-manager.ts       # Terminal sessions
-│   └── git-worktree.ts      # Git integration
-└── preload.ts           # Electron IPC bridge
+├── main.ts                  # Electron main process entry
+├── preload.ts               # IPC bridge
+├── main/                    # Main process code
+│   ├── ipc/                 # IPC handlers (namespaced)
+│   ├── services/            # Agent runner, scheduler, etc.
+│   ├── stores/              # SQLite (yolium-db), session, logs
+│   ├── docker/              # Container lifecycle, image builder
+│   ├── git/                 # Worktree, config, credentials
+│   └── lib/                 # Logger, utilities
+├── renderer/                # React UI
+│   ├── main.tsx             # React entry point
+│   ├── App.tsx              # Root component
+│   ├── components/          # UI components by feature
+│   ├── hooks/               # Custom React hooks
+│   └── theme/               # Theme provider and tokens
+└── shared/                  # Types shared across processes
+    └── types/
 ```
