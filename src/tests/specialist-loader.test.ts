@@ -608,6 +608,89 @@ System prompt here.`;
     });
   });
 
+  describe('bluesky-privacybooks specialist', () => {
+    const blueskyMarkdown = (() => {
+      const realFs = require('node:fs');
+      const realPath = require('node:path');
+      const filePath = realPath.join(__dirname, '..', 'agents', 'cron', 'bluesky-privacybooks.md');
+      return realFs.readFileSync(filePath, 'utf-8');
+    })();
+
+    it('should parse bluesky-privacybooks.md frontmatter with all required fields (name, description, model, tools, schedules, memory, escalation, integrations, promptTemplates)', () => {
+      const result = parseSpecialistDefinition(blueskyMarkdown);
+
+      expect(result.name).toBe('bluesky-privacybooks');
+      expect(result.description).toBeTruthy();
+      expect(result.model).toBe('sonnet');
+      expect(result.tools).toContain('WebSearch');
+      expect(result.tools).toContain('WebFetch');
+      expect(result.schedules).toHaveLength(3);
+      expect(result.schedules.map(s => s.type)).toEqual(['heartbeat', 'daily', 'weekly']);
+      expect(result.memory.strategy).toBe('distill_daily');
+      expect(result.memory.maxEntries).toBe(500);
+      expect(result.memory.retentionDays).toBe(90);
+      expect(result.escalation.onFailure).toBe('notify_slack');
+      expect(result.escalation.onPattern).toBe('reduce_frequency');
+      expect(result.integrations).toBeDefined();
+      expect(result.integrations!.length).toBeGreaterThanOrEqual(1);
+      expect(result.promptTemplates).toBeDefined();
+      expect(Object.keys(result.promptTemplates!)).toContain('heartbeat');
+      expect(Object.keys(result.promptTemplates!)).toContain('daily');
+      expect(Object.keys(result.promptTemplates!)).toContain('weekly');
+    });
+
+    it('should contain heartbeat, daily, and weekly prompt templates with Bluesky-specific content', () => {
+      const result = parseSpecialistDefinition(blueskyMarkdown);
+      const templates = result.promptTemplates!;
+
+      // Heartbeat should reference original posts, replies, engagement
+      expect(templates.heartbeat).toMatch(/original posts|replies|engagement/i);
+      expect(templates.heartbeat).toMatch(/search_posts|get_notifications/i);
+
+      // Daily should reference strategy, search queries, content mix
+      expect(templates.daily).toMatch(/strategy|search queries/i);
+      expect(templates.daily).toMatch(/HMRC|tax|content mix/i);
+
+      // Weekly should reference audit, engagement, KPI
+      expect(templates.weekly).toMatch(/audit|engagement/i);
+      expect(templates.weekly).toMatch(/follower growth|KPI/i);
+    });
+
+    it('should include tools field in parsed ServiceIntegration with value [\'bluesky\']', () => {
+      const result = parseSpecialistDefinition(blueskyMarkdown);
+      const blueskyIntegration = result.integrations!.find(i => i.service === 'bluesky-api');
+      expect(blueskyIntegration).toBeDefined();
+      expect(blueskyIntegration!.tools).toEqual(['bluesky']);
+    });
+
+    it('should include BLUESKY_IDENTIFIER and BLUESKY_APP_PASSWORD in the bluesky-api integration env map', () => {
+      const result = parseSpecialistDefinition(blueskyMarkdown);
+      const blueskyIntegration = result.integrations!.find(i => i.service === 'bluesky-api');
+
+      expect(blueskyIntegration).toBeDefined();
+      expect(blueskyIntegration!.env).toHaveProperty('BLUESKY_IDENTIFIER');
+      expect(blueskyIntegration!.env).toHaveProperty('BLUESKY_APP_PASSWORD');
+    });
+
+    it('should have 3 schedules: heartbeat (*/20), daily, and weekly', () => {
+      const result = parseSpecialistDefinition(blueskyMarkdown);
+
+      expect(result.schedules).toHaveLength(3);
+      expect(result.schedules[0].type).toBe('heartbeat');
+      expect(result.schedules[0].cron).toBe('*/20 * * * *');
+      expect(result.schedules[1].type).toBe('daily');
+      expect(result.schedules[2].type).toBe('weekly');
+    });
+
+    it('should have all schedules disabled by default', () => {
+      const result = parseSpecialistDefinition(blueskyMarkdown);
+
+      expect(result.schedules[0].enabled).toBe(false);
+      expect(result.schedules[1].enabled).toBe(false);
+      expect(result.schedules[2].enabled).toBe(false);
+    });
+  });
+
   describe('getSpecialistsDir', () => {
     it('should resolve to src/agents/cron/ in development when app.getAppPath() is available', () => {
       // In test environment, require('electron') throws, so we verify
