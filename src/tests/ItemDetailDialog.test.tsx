@@ -7,6 +7,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ItemDetailDialog } from '@renderer/components/kanban/ItemDetailDialog'
 import type { KanbanItem } from '@shared/types/kanban'
 
+const mockVimMode = { current: 'NORMAL' as 'NORMAL' | 'INSERT' }
+const mockExitToNormal = vi.fn()
+const mockEnterInsertMode = vi.fn()
+
+vi.mock('@renderer/context/VimModeContext', async () => {
+  const actual = await vi.importActual<typeof import('@renderer/context/VimModeContext')>('@renderer/context/VimModeContext')
+  return {
+    ...actual,
+    useVimModeContext: () => ({
+      mode: mockVimMode.current,
+      activeZone: 'content' as const,
+      setActiveZone: vi.fn(),
+      enterInsertMode: mockEnterInsertMode,
+      exitToNormal: mockExitToNormal,
+      suspendNavigation: () => () => {},
+    }),
+  }
+})
+
 vi.mock('@renderer/components/agent/AgentControls', () => ({
   AgentControls: ({
     item,
@@ -88,6 +107,7 @@ function createMockItem(overrides: Partial<KanbanItem> = {}): KanbanItem {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockVimMode.current = 'NORMAL'
   mockLoadConfig.mockResolvedValue({
     providerModels: {
       claude: ['sonnet'],
@@ -359,6 +379,533 @@ describe('ItemDetailDialog', () => {
       })
 
       expect(mockStart).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('sidebar focus zone', () => {
+    const getContainer = () => screen.getByTestId('item-detail-dialog').parentElement!
+
+    it('should initialize with focusZone set to editor', () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem()}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByTestId('editor-zone')).toHaveClass('ring-1')
+      expect(screen.getByTestId('sidebar-zone')).not.toHaveClass('ring-1')
+    })
+
+    it('should switch focusZone to sidebar when Tab is pressed in NORMAL mode', () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem()}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      expect(screen.getByTestId('sidebar-zone')).toHaveClass('ring-1')
+      expect(screen.getByTestId('editor-zone')).not.toHaveClass('ring-1')
+    })
+
+    it('should switch focusZone back to editor when Tab is pressed again in NORMAL mode', () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem()}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      expect(screen.getByTestId('editor-zone')).toHaveClass('ring-1')
+      expect(screen.getByTestId('sidebar-zone')).not.toHaveClass('ring-1')
+    })
+
+    it('should show sidebar ring indicator when focusZone is sidebar', () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem()}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      const sidebar = screen.getByTestId('sidebar-zone')
+      expect(sidebar).toHaveClass('ring-1')
+      expect(sidebar).toHaveClass('ring-[var(--color-accent-primary)]')
+    })
+
+    it('should show editor ring indicator when focusZone is editor', () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem()}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      const editor = screen.getByTestId('editor-zone')
+      expect(editor).toHaveClass('ring-1')
+      expect(editor).toHaveClass('ring-[var(--color-accent-primary)]')
+    })
+
+    it('should trigger plan-agent start when p is pressed in sidebar zone NORMAL mode with idle item', async () => {
+      const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+      window.electronAPI.agent.start = mockStart
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'idle' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'p' })
+      })
+
+      expect(mockStart).toHaveBeenCalledWith(
+        expect.objectContaining({ agentName: 'plan-agent' }),
+      )
+    })
+
+    it('should trigger code-agent start when c is pressed in sidebar zone NORMAL mode with idle item', async () => {
+      const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+      window.electronAPI.agent.start = mockStart
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'idle' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'c' })
+      })
+
+      expect(mockStart).toHaveBeenCalledWith(
+        expect.objectContaining({ agentName: 'code-agent' }),
+      )
+    })
+
+    it('should trigger verify-agent start when v is pressed in sidebar zone NORMAL mode with idle item', async () => {
+      const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+      window.electronAPI.agent.start = mockStart
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'idle' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'v' })
+      })
+
+      expect(mockStart).toHaveBeenCalledWith(
+        expect.objectContaining({ agentName: 'verify-agent' }),
+      )
+    })
+
+    it('should trigger scout-agent start when s is pressed in sidebar zone NORMAL mode', async () => {
+      const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+      window.electronAPI.agent.start = mockStart
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'idle' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 's' })
+      })
+
+      expect(mockStart).toHaveBeenCalledWith(
+        expect.objectContaining({ agentName: 'scout-agent' }),
+      )
+    })
+
+    it('should trigger design-agent start when pressing Shift+D in sidebar zone NORMAL mode', async () => {
+      const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+      window.electronAPI.agent.start = mockStart
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'idle' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'D', shiftKey: true })
+      })
+
+      expect(mockStart).toHaveBeenCalledWith(
+        expect.objectContaining({ agentName: 'design-agent' }),
+      )
+    })
+
+    it('should trigger marketing-agent start when m is pressed in sidebar zone NORMAL mode', async () => {
+      const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+      window.electronAPI.agent.start = mockStart
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'idle' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'm' })
+      })
+
+      expect(mockStart).toHaveBeenCalledWith(
+        expect.objectContaining({ agentName: 'marketing-agent' }),
+      )
+    })
+
+    it('should trigger stop agent when x is pressed in sidebar zone with running agent', async () => {
+      const mockStop = vi.fn()
+      window.electronAPI.agent.stop = mockStop
+      mockGetActiveSession.mockResolvedValue({
+        sessionId: 'session-1',
+        cumulativeUsage: { inputTokens: 0, outputTokens: 0, costUsd: 0 },
+      })
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'running' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      // Wait for async reconnect to set currentSessionId
+      await act(async () => {
+        await new Promise(r => setTimeout(r, 0))
+      })
+
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'x' })
+      })
+
+      expect(mockStop).toHaveBeenCalledWith('session-1')
+    })
+
+    it('should trigger delete when d is pressed in sidebar zone NORMAL mode', async () => {
+      mockKanbanDeleteItem.mockResolvedValue(undefined)
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'idle' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'd' })
+      })
+
+      expect(mockKanbanDeleteItem).toHaveBeenCalledWith('/test/project', 'item-1')
+    })
+
+    it('should not trigger single-key agent shortcuts when focusZone is editor', async () => {
+      const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+      window.electronAPI.agent.start = mockStart
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'idle' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      // Do NOT press Tab — stay in editor zone
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'p' })
+      })
+
+      expect(mockStart).not.toHaveBeenCalled()
+    })
+
+    it('should not trigger single-key agent shortcuts when vim mode is INSERT', async () => {
+      mockVimMode.current = 'INSERT'
+      const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+      window.electronAPI.agent.start = mockStart
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'idle' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      // Tab won't switch zone in INSERT mode, but even if it did, p shouldn't fire
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'Tab' })
+        fireEvent.keyDown(getContainer(), { key: 'p' })
+      })
+
+      expect(mockStart).not.toHaveBeenCalled()
+    })
+
+    it('should not trigger single-key agent shortcuts when agent is already starting', async () => {
+      // Use a never-resolving promise to keep isStartingAgent true
+      const mockStart = vi.fn().mockReturnValue(new Promise(() => {}))
+      window.electronAPI.agent.start = mockStart
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'idle' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      // Start first agent (sets isStartingAgent = true)
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'p' })
+      })
+
+      // Try starting another while first is still pending
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'c' })
+      })
+
+      // Only one start call should have been made
+      expect(mockStart).toHaveBeenCalledTimes(1)
+    })
+
+    it('should not trigger single-key agent shortcuts when item status is running', async () => {
+      const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+      window.electronAPI.agent.start = mockStart
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'running' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'p' })
+      })
+
+      expect(mockStart).not.toHaveBeenCalled()
+    })
+
+    it('should still handle Ctrl+Shift agent shortcuts regardless of focusZone', async () => {
+      const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+      window.electronAPI.agent.start = mockStart
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'idle' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      // Switch to sidebar zone
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      // Ctrl+Shift+P should still work in sidebar zone
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), {
+          key: 'P',
+          ctrlKey: true,
+          shiftKey: true,
+        })
+      })
+
+      expect(mockStart).toHaveBeenCalledWith(
+        expect.objectContaining({ agentName: 'plan-agent' }),
+      )
+    })
+
+    it('should switch focusZone to editor when Escape is pressed in sidebar zone', () => {
+      const onClose = vi.fn()
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem()}
+          projectPath="/test/project"
+          onClose={onClose}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      // Switch to sidebar
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      expect(screen.getByTestId('sidebar-zone')).toHaveClass('ring-1')
+
+      // Escape should return to editor zone, NOT close dialog
+      fireEvent.keyDown(getContainer(), { key: 'Escape' })
+
+      expect(screen.getByTestId('editor-zone')).toHaveClass('ring-1')
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
+    it('should reset focusZone to editor when dialog re-opens', () => {
+      const { rerender } = render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem()}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      // Switch to sidebar
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      expect(screen.getByTestId('sidebar-zone')).toHaveClass('ring-1')
+
+      // Close dialog
+      rerender(
+        <ItemDetailDialog
+          isOpen={false}
+          item={createMockItem()}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      // Reopen dialog
+      rerender(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem()}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByTestId('editor-zone')).toHaveClass('ring-1')
+      expect(screen.getByTestId('sidebar-zone')).not.toHaveClass('ring-1')
+    })
+
+    it('should update hint bar to show sidebar shortcuts when focusZone is sidebar', () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem()}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      const hintBar = screen.getByTestId('shortcuts-hint-bar')
+      expect(hintBar.textContent).toContain('Editor')
+      expect(hintBar.textContent).toContain('Plan')
+      expect(hintBar.textContent).toContain('Code')
+      expect(hintBar.textContent).toContain('Verify')
+      expect(hintBar.textContent).toContain('Stop')
+      expect(hintBar.textContent).toContain('Delete')
+    })
+
+    it('should update hint bar to show editor shortcuts when focusZone is editor', () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem()}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      const hintBar = screen.getByTestId('shortcuts-hint-bar')
+      expect(hintBar.textContent).toContain('Navigate')
+      expect(hintBar.textContent).toContain('Sidebar')
+      expect(hintBar.textContent).toContain('Edit field')
     })
   })
 
