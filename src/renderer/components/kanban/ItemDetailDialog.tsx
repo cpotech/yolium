@@ -108,10 +108,10 @@ export function ItemDetailDialog({
     setErrorMessage,
   })
 
-  // Enter INSERT mode when dialog opens (title has autoFocus)
+  // Focus dialog container when dialog opens so keyboard navigation works immediately
   useEffect(() => {
     if (isOpen) {
-      vim.enterInsertMode()
+      dialogRef.current?.focus()
       setFocusedFieldIndex(0)
     }
   }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps

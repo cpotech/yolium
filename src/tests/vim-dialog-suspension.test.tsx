@@ -266,23 +266,33 @@ describe('ItemDetailDialog vim-aware navigation', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
+  it('should open ItemDetailDialog in NORMAL mode (not INSERT)', () => {
+    renderItemDetailDialog()
+
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
+  })
+
+  it('should not auto-focus title input when ItemDetailDialog opens', () => {
+    renderItemDetailDialog()
+
+    expect(document.activeElement?.id).not.toBe('detail-title')
+  })
+
+  it('should focus the dialog container when ItemDetailDialog opens so keyboard events work', () => {
+    renderItemDetailDialog()
+
+    const container = screen.getByTestId('item-detail-dialog').closest('[tabindex]')
+    expect(container).not.toBeNull()
+  })
+
   it('should close the item detail dialog when Escape is pressed in NORMAL mode', async () => {
     const onClose = vi.fn()
     renderItemDetailDialog({ onClose })
 
-    // Dialog opens in INSERT mode
-    expect(screen.getByTestId('vim-mode')).toHaveTextContent('INSERT')
-
-    // First Escape: INSERT -> NORMAL (does NOT close)
-    await act(async () => {
-      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
-        key: 'Escape',
-      })
-    })
+    // Dialog opens in NORMAL mode
     expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
-    expect(onClose).not.toHaveBeenCalled()
 
-    // Second Escape: NORMAL -> close dialog
+    // Escape in NORMAL mode -> close dialog
     await act(async () => {
       fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
         key: 'Escape',
@@ -315,12 +325,7 @@ describe('ItemDetailDialog vim-aware navigation', () => {
   it('should navigate between fields with j/k in NORMAL mode inside ItemDetailDialog', async () => {
     renderItemDetailDialog()
 
-    // Get into NORMAL mode — exit INSERT first
-    await act(async () => {
-      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
-        key: 'Escape',
-      })
-    })
+    // Dialog opens in NORMAL mode
     expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
 
     // focusedFieldIndex starts at 0 (title). Press j to go to description (1)
@@ -334,12 +339,8 @@ describe('ItemDetailDialog vim-aware navigation', () => {
   it('should jump to first field with gg in NORMAL mode inside ItemDetailDialog', async () => {
     renderItemDetailDialog()
 
-    // Get into NORMAL mode
-    await act(async () => {
-      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
-        key: 'Escape',
-      })
-    })
+    // Dialog opens in NORMAL mode
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
 
     // Navigate to last field first
     fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, { key: 'G' })
@@ -357,12 +358,8 @@ describe('ItemDetailDialog vim-aware navigation', () => {
   it('should jump to last field with G in NORMAL mode inside ItemDetailDialog', async () => {
     renderItemDetailDialog()
 
-    // Get into NORMAL mode
-    await act(async () => {
-      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
-        key: 'Escape',
-      })
-    })
+    // Dialog opens in NORMAL mode
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
 
     fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, { key: 'G' })
 
@@ -374,12 +371,8 @@ describe('ItemDetailDialog vim-aware navigation', () => {
   it('should focus highlighted field and enter INSERT when i is pressed in NORMAL mode inside ItemDetailDialog', async () => {
     renderItemDetailDialog()
 
-    // Get into NORMAL mode
-    await act(async () => {
-      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
-        key: 'Escape',
-      })
-    })
+    // Dialog opens in NORMAL mode
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
 
     // Navigate to description
     fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, { key: 'j' })
@@ -394,12 +387,8 @@ describe('ItemDetailDialog vim-aware navigation', () => {
   it('should focus highlighted field and enter INSERT when Enter is pressed in NORMAL mode inside ItemDetailDialog', async () => {
     renderItemDetailDialog()
 
-    // Get into NORMAL mode
-    await act(async () => {
-      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
-        key: 'Escape',
-      })
-    })
+    // Dialog opens in NORMAL mode
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
 
     // Navigate to description
     fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, { key: 'j' })
@@ -414,34 +403,31 @@ describe('ItemDetailDialog vim-aware navigation', () => {
   it('should show visual focus ring on the highlighted field in NORMAL mode', async () => {
     renderItemDetailDialog()
 
-    // Get into NORMAL mode
-    await act(async () => {
-      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
-        key: 'Escape',
-      })
-    })
+    // Dialog opens in NORMAL mode
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
 
     // Title field (index 0) should have focus ring in NORMAL mode
     const titleWrapper = document.getElementById('detail-title')!.closest('[data-field-index="0"]')!
     expect(titleWrapper.className).toContain('ring-2')
   })
 
-  it('should auto-enter INSERT mode when ItemDetailDialog opens', () => {
+  it('should not auto-focus title input when ItemDetailDialog opens', () => {
     renderItemDetailDialog()
 
-    // Dialog opens in INSERT mode (title has autoFocus)
-    expect(screen.getByTestId('vim-mode')).toHaveTextContent('INSERT')
+    expect(document.activeElement?.id).not.toBe('detail-title')
+  })
+
+  it('should focus the dialog container when ItemDetailDialog opens so keyboard events work', () => {
+    renderItemDetailDialog()
+
+    const container = screen.getByTestId('item-detail-dialog').closest('[tabindex]')
+    expect(container).not.toBeNull()
   })
 
   it('should enter INSERT mode when a field receives focus via click', async () => {
     renderItemDetailDialog()
 
-    // Get into NORMAL mode first
-    await act(async () => {
-      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
-        key: 'Escape',
-      })
-    })
+    // Dialog opens in NORMAL mode
     expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
 
     // Click on description field
@@ -455,12 +441,7 @@ describe('ItemDetailDialog shortcuts hint bar', () => {
   it('should display NORMAL mode shortcuts when in NORMAL mode', async () => {
     renderItemDetailDialog()
 
-    // Get into NORMAL mode
-    await act(async () => {
-      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
-        key: 'Escape',
-      })
-    })
+    // Dialog opens in NORMAL mode
     expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
 
     const hintsBar = screen.getByTestId('shortcuts-hint-bar')
@@ -476,7 +457,8 @@ describe('ItemDetailDialog shortcuts hint bar', () => {
   it('should display INSERT mode shortcuts when in INSERT mode', () => {
     renderItemDetailDialog()
 
-    // Dialog auto-enters INSERT mode
+    // Enter INSERT mode explicitly (dialog opens in NORMAL)
+    fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, { key: 'i' })
     expect(screen.getByTestId('vim-mode')).toHaveTextContent('INSERT')
 
     const hintsBar = screen.getByTestId('shortcuts-hint-bar')
@@ -490,7 +472,10 @@ describe('ItemDetailDialog shortcuts hint bar', () => {
   it('should always show agent shortcuts in the hints bar', async () => {
     renderItemDetailDialog()
 
-    // Check agent shortcuts in INSERT mode
+    // Dialog opens in NORMAL mode
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
+
+    // Check agent shortcuts in NORMAL mode
     const hintsBar = screen.getByTestId('shortcuts-hint-bar')
     expect(hintsBar).toHaveTextContent('Ctrl+Shift+P')
     expect(hintsBar).toHaveTextContent('Plan')
@@ -499,12 +484,8 @@ describe('ItemDetailDialog shortcuts hint bar', () => {
     expect(hintsBar).toHaveTextContent('Ctrl+Shift+V')
     expect(hintsBar).toHaveTextContent('Verify')
 
-    // Switch to NORMAL mode and verify agent shortcuts still there
-    await act(async () => {
-      fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
-        key: 'Escape',
-      })
-    })
+    // Switch to INSERT mode and verify agent shortcuts still there
+    fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, { key: 'i' })
 
     expect(hintsBar).toHaveTextContent('Ctrl+Shift+P')
     expect(hintsBar).toHaveTextContent('Ctrl+Shift+C')
