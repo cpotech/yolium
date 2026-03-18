@@ -4,6 +4,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { KanbanView } from '@renderer/components/kanban/KanbanView'
+import { ThemeProvider } from '@renderer/theme'
 import type { KanbanBoard, KanbanItem } from '@shared/types/kanban'
 
 // Mock the electronAPI
@@ -42,6 +43,16 @@ beforeEach(() => {
         resume: mockAgentResume,
         recover: mockAgentRecover,
         listDefinitions: vi.fn().mockResolvedValue([]),
+        readLog: vi.fn().mockResolvedValue(''),
+        destroy: vi.fn().mockResolvedValue(() => {}),
+        clearLog: vi.fn().mockResolvedValue(undefined),
+        getActiveSession: vi.fn().mockResolvedValue(null),
+        onOutput: vi.fn(() => () => {}),
+        onProgress: vi.fn(() => () => {}),
+        onComplete: vi.fn(() => () => {}),
+        onError: vi.fn(() => () => {}),
+        onExit: vi.fn(() => () => {}),
+        onCostUpdate: vi.fn(() => () => {}),
       },
     },
     writable: true,
@@ -652,24 +663,7 @@ describe('KanbanView', () => {
     expect(screen.getByTestId('empty-board-message')).toHaveTextContent(/press N/i)
   })
 
-  it('should call onShowShortcuts when ? key is pressed', async () => {
-    const board = createMockBoard([])
-    mockKanbanGetBoard.mockResolvedValueOnce(board)
-
-    const onShowShortcuts = vi.fn()
-    render(<KanbanView projectPath="/test/project" onShowShortcuts={onShowShortcuts} />)
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
-    })
-
-    // Press ? key
-    fireEvent.keyDown(screen.getByTestId('kanban-view'), { key: '?' })
-
-    expect(onShowShortcuts).toHaveBeenCalledTimes(1)
-  })
-
-  it('should not render inline shortcuts help overlay', async () => {
+  it('should show inline shortcuts help overlay when ? key is pressed', async () => {
     const board = createMockBoard([])
     mockKanbanGetBoard.mockResolvedValueOnce(board)
 
@@ -679,10 +673,10 @@ describe('KanbanView', () => {
       expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
     })
 
-    // Press ? key — should not show inline overlay
+    // Press ? key — should show inline shortcuts overlay
     fireEvent.keyDown(screen.getByTestId('kanban-view'), { key: '?' })
 
-    expect(screen.queryByTestId('shortcuts-help')).not.toBeInTheDocument()
+    expect(screen.getByTestId('shortcuts-help')).toBeInTheDocument()
   })
 
   it('should have horizontal scroll container for columns', async () => {
@@ -1132,8 +1126,108 @@ describe('KanbanView', () => {
     fireEvent.keyDown(screen.getByTestId('kanban-view'), { key: '?' })
 
     const shortcutsHelp = screen.getByTestId('shortcuts-help')
-    // The ? badge text should be present in the shortcuts overlay
     const kbdElements = shortcutsHelp.querySelectorAll('kbd')
-    expect(kbdElements).toContain('?')
+    expect([...kbdElements].some(el => el.textContent === '?')).toBe(true)
+  })
+})
+
+describe('KanbanView vim j/k navigation', () => {
+  const viewItems = [
+    createMockItem({ id: 'card-1', title: 'Card 1' }),
+    createMockItem({ id: 'card-2', title: 'Card 2' }),
+    createMockItem({ id: 'card-3', title: 'Card 3' }),
+  ]
+
+  it('should move down to next card with j key when KanbanView has focus', async () => {
+    const board = createMockBoard(viewItems)
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('kanban-card').length).toBeGreaterThan(0)
+    })
+    const view = screen.getByTestId('kanban-view')
+    fireEvent.keyDown(view, { key: 'j' })
+
+    const cards = screen.getAllByTestId('kanban-card')
+    expect(cards[1].getAttribute('data-vim-focused')).toBe('true')
+    expect(cards[0].getAttribute('data-vim-focused')).toBeNull()
+  })
+
+  it('should move up to previous card with k key when KanbanView has focus', async () => {
+    const board = createMockBoard(viewItems)
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('kanban-card').length).toBeGreaterThan(0)
+    })
+    const view = screen.getByTestId('kanban-view')
+    // Press j to go to index 1
+    fireEvent.keyDown(view, { key: 'j' })
+    // Then press k to go back to index 0
+    fireEvent.keyDown(view, { key: 'k' })
+
+    const cards = screen.getAllByTestId('kanban-card')
+    expect(cards[0].getAttribute('data-vim-focused')).toBe('true')
+  })
+
+  it('should wrap card index when pressing j on last card in focused column', async () => {
+    const board = createMockBoard(viewItems)
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('kanban-card').length).toBeGreaterThan(0)
+    })
+    const view = screen.getByTestId('kanban-view')
+    // Press j three times: 0 -> 1 -> 2 -> 0 (wrap)
+    fireEvent.keyDown(view, { key: 'j' })
+    fireEvent.keyDown(view, { key: 'j' })
+    fireEvent.keyDown(view, { key: 'j' })
+
+    const cards = screen.getAllByTestId('kanban-card')
+    expect(cards[0].getAttribute('data-vim-focused')).toBe('true')
+  })
+
+  it('should wrap card index when pressing k on first card in focused column', async () => {
+    const board = createMockBoard(viewItems)
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    render(<KanbanView projectPath="/test/project" />)
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('kanban-card').length).toBeGreaterThan(0)
+    })
+    const view = screen.getByTestId('kanban-view')
+    // Press k from index 0 -> wraps to last
+    fireEvent.keyDown(view, { key: 'k' })
+
+    const cards = screen.getAllByTestId('kanban-card')
+    expect(cards[2].getAttribute('data-vim-focused')).toBe('true')
+  })
+
+  it('should open card detail with Enter key on focused card from KanbanView level', async () => {
+    const board = createMockBoard(viewItems)
+    mockKanbanGetBoard.mockResolvedValueOnce(board)
+
+    render(
+      <ThemeProvider>
+        <KanbanView projectPath="/test/project" />
+      </ThemeProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('kanban-card').length).toBeGreaterThan(0)
+    })
+    const view = screen.getByTestId('kanban-view')
+    fireEvent.keyDown(view, { key: 'Enter' })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('item-detail-dialog')).toBeInTheDocument()
+    })
   })
 })
