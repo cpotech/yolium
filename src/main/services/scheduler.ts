@@ -10,7 +10,7 @@ import * as os from 'node:os';
 import cron from 'node-cron';
 import { BrowserWindow } from 'electron';
 import { createLogger } from '@main/lib/logger';
-import { listSpecialists, loadSpecialist } from '@main/services/specialist-loader';
+import { listSpecialists, loadSpecialist, getSpecialistsDir } from '@main/services/specialist-loader';
 import { startScheduledAgent } from '@main/services/agent-runner';
 import {
   getScheduleState,
@@ -78,6 +78,8 @@ export class CronScheduler {
   private state: ScheduleState;
   private distillationJob: CronJob | null = null;
   private triggerCounts: Map<string, number> = new Map();
+  private fileWatcher: fs.FSWatcher | null = null;
+  private fileWatcherDebounce: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     this.state = getScheduleState();
@@ -91,6 +93,9 @@ export class CronScheduler {
 
     // Load all specialists
     this.loadSpecialists();
+
+    // Watch specialist directory for file changes (always, even when scheduling is disabled)
+    this.watchSpecialistFiles();
 
     // Register cron jobs for enabled specialists
     if (!this.state.globalEnabled) {
@@ -114,7 +119,7 @@ export class CronScheduler {
   }
 
   /**
-   * Stop the scheduler: destroy all cron jobs.
+   * Stop the scheduler: destroy all cron jobs and file watcher.
    */
   stop(): void {
     logger.info('Stopping CRON scheduler');
@@ -130,6 +135,8 @@ export class CronScheduler {
       this.distillationJob.stop();
       this.distillationJob = null;
     }
+
+    this.unwatchSpecialistFiles();
   }
 
   /**
@@ -253,6 +260,42 @@ export class CronScheduler {
    */
   getState(): ScheduleState {
     return this.state;
+  }
+
+  // ─── Private: File Watching ────────────────────────────────────────────
+
+  private watchSpecialistFiles(): void {
+    this.unwatchSpecialistFiles();
+
+    const dir = getSpecialistsDir();
+    if (!fs.existsSync(dir)) return;
+
+    try {
+      this.fileWatcher = fs.watch(dir, (eventType, filename) => {
+        if (!filename || !filename.endsWith('.md') || filename.startsWith('_')) return;
+
+        // Debounce: editors often fire multiple events per save
+        if (this.fileWatcherDebounce) clearTimeout(this.fileWatcherDebounce);
+        this.fileWatcherDebounce = setTimeout(() => {
+          this.fileWatcherDebounce = null;
+          logger.info('Specialist file changed, reloading', { filename });
+          this.reload();
+        }, 500);
+      });
+    } catch (err) {
+      logger.error('Failed to watch specialist directory', { dir, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  private unwatchSpecialistFiles(): void {
+    if (this.fileWatcherDebounce) {
+      clearTimeout(this.fileWatcherDebounce);
+      this.fileWatcherDebounce = null;
+    }
+    if (this.fileWatcher) {
+      this.fileWatcher.close();
+      this.fileWatcher = null;
+    }
   }
 
   // ─── Private: Core Scheduling ──────────────────────────────────────────
