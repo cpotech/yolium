@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useEffect } from 'react';
+import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts';
 
 interface KeyboardShortcutsDialogProps {
   isOpen: boolean;
@@ -54,7 +55,13 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: 'Shift+Click', description: 'Range select items' },
       { keys: 'Ctrl+A', description: 'Select all items' },
       { keys: 'Delete', description: 'Delete selected items' },
-      { keys: 'Esc', description: 'Clear selection / close' },
+      { keys: 'Esc', description: 'Clear selection' },
+    ],
+  },
+  {
+    title: 'Dialog',
+    shortcuts: [
+      { keys: 'Ctrl+Q', description: 'Close dialog' },
     ],
   },
   {
@@ -150,7 +157,7 @@ export function KeyboardShortcutsDialog({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (isCloseShortcut(e)) {
         onClose();
       }
     },
@@ -200,7 +207,7 @@ export function KeyboardShortcutsDialog({
           ))}
         </div>
 
-        <div className="mt-6 flex justify-end">
+        <div className="mt-6 flex justify-end items-center gap-2">
           <button
             onClick={onClose}
             data-testid="shortcuts-close"
@@ -208,6 +215,7 @@ export function KeyboardShortcutsDialog({
           >
             OK
           </button>
+          <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">Ctrl+Q</kbd>
         </div>
       </div>
     </div>

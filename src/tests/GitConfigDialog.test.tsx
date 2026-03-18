@@ -79,7 +79,7 @@ describe('GitConfigDialog', () => {
     })
   })
 
-  it('closes on Escape and preserves OAuth save semantics', async () => {
+  it('closes on Ctrl+Q and preserves OAuth save semantics', async () => {
     const onClose = vi.fn()
     const onSave = vi.fn()
 
@@ -93,7 +93,7 @@ describe('GitConfigDialog', () => {
     )
 
     const dialog = screen.getByTestId('git-config-dialog')
-    fireEvent.keyDown(dialog, { key: 'Escape' })
+    fireEvent.keyDown(dialog, { key: 'q', ctrlKey: true })
     expect(onClose).toHaveBeenCalledTimes(1)
 
     const openaiInput = screen.getByTestId('openai-key-input')

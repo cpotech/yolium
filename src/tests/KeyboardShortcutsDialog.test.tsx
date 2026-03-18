@@ -61,7 +61,7 @@ describe('KeyboardShortcutsDialog', () => {
     expect(text).toContain('Kanban Selection')
   })
 
-  it('should list Ctrl+Click, Shift+Click, Ctrl+A, Delete, and Esc shortcuts in the Kanban Selection group', () => {
+  it('should list Ctrl+Click, Shift+Click, Ctrl+A, Delete, Esc, and Ctrl+Q shortcuts', () => {
     render(<KeyboardShortcutsDialog isOpen={true} onClose={() => {}} />)
 
     const dialog = screen.getByTestId('shortcuts-dialog')
@@ -75,7 +75,9 @@ describe('KeyboardShortcutsDialog', () => {
     expect(text).toContain('Select all items')
     expect(text).toContain('Delete')
     expect(text).toContain('Delete selected items')
-    expect(text).toContain('Clear selection / close')
+    expect(text).toContain('Clear selection')
+    expect(text).toContain('Ctrl+Q')
+    expect(text).toContain('Close dialog')
   })
 
   it('should display a Vim Actions shortcut group', () => {

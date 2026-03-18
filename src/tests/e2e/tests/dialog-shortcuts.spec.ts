@@ -28,7 +28,7 @@ test.describe('Dialog Shortcuts', () => {
   });
 
   test.describe('Agent Select Dialog', () => {
-    test('Escape in agent dialog should go back to path dialog', async () => {
+    test('Ctrl+Q in agent dialog should go back to path dialog', async () => {
       ctx = await launchApp();
       const { window } = ctx;
 
@@ -38,8 +38,8 @@ test.describe('Dialog Shortcuts', () => {
       await window.click(selectors.pathNextButton);
       await expect(window.locator(selectors.agentDialog)).toBeVisible();
 
-      // Press Escape - should go back to path dialog, not cancel
-      await window.keyboard.press('Escape');
+      // Press Ctrl+Q - should go back to path dialog, not cancel
+      await window.keyboard.press('Control+q');
 
       // Agent dialog should close
       await expect(window.locator(selectors.agentDialog)).not.toBeVisible();
@@ -48,7 +48,7 @@ test.describe('Dialog Shortcuts', () => {
       await expect(window.locator(selectors.pathDialog)).toBeVisible();
     });
 
-    test('Back button should show Esc shortcut hint, not backspace', async () => {
+    test('Escape in agent dialog should NOT go back to path dialog', async () => {
       ctx = await launchApp();
       const { window } = ctx;
 
@@ -58,11 +58,26 @@ test.describe('Dialog Shortcuts', () => {
       await window.click(selectors.pathNextButton);
       await expect(window.locator(selectors.agentDialog)).toBeVisible();
 
-      // Back button should show Esc hint
+      // Press Escape - should NOT go back (only Ctrl+Q closes)
+      await window.keyboard.press('Escape');
+      await expect(window.locator(selectors.agentDialog)).toBeVisible();
+    });
+
+    test('Back button should show Ctrl+Q shortcut hint', async () => {
+      ctx = await launchApp();
+      const { window } = ctx;
+
+      // Navigate to agent dialog
+      await window.click(selectors.newTabButton);
+      await window.fill(selectors.pathInput, testRepoPath);
+      await window.click(selectors.pathNextButton);
+      await expect(window.locator(selectors.agentDialog)).toBeVisible();
+
+      // Back button should show Ctrl+Q hint
       const backButton = window.locator(selectors.agentBackButton);
       await expect(backButton).toBeVisible();
-      // Should contain "Esc" not backspace symbol
-      await expect(backButton).toContainText('Esc');
+      // Should contain "Ctrl+Q"
+      await expect(backButton).toContainText('Ctrl+Q');
     });
 
     test('worktree toggle should not have w shortcut hint', async () => {
@@ -224,7 +239,7 @@ test.describe('Dialog Shortcuts', () => {
       await expect(window.locator(selectors.gitConfigDialog)).not.toBeVisible();
     });
 
-    test('Escape should close git settings dialog', async () => {
+    test('Ctrl+Q should close git settings dialog', async () => {
       ctx = await launchApp();
       const { window, app } = ctx;
 
@@ -234,16 +249,31 @@ test.describe('Dialog Shortcuts', () => {
       });
       await expect(window.locator(selectors.gitConfigDialog)).toBeVisible();
 
-      // Press Escape
-      await window.locator(selectors.gitConfigDialog).press('Escape');
+      // Press Ctrl+Q
+      await window.locator(selectors.gitConfigDialog).press('Control+q');
 
       // Dialog should close
       await expect(window.locator(selectors.gitConfigDialog)).not.toBeVisible();
     });
+
+    test('Escape should NOT close git settings dialog', async () => {
+      ctx = await launchApp();
+      const { window, app } = ctx;
+
+      // Open git settings dialog via IPC
+      await app.evaluate(({ BrowserWindow }) => {
+        BrowserWindow.getAllWindows()[0].webContents.send('git-settings:show');
+      });
+      await expect(window.locator(selectors.gitConfigDialog)).toBeVisible();
+
+      // Press Escape - dialog should NOT close
+      await window.locator(selectors.gitConfigDialog).press('Escape');
+      await expect(window.locator(selectors.gitConfigDialog)).toBeVisible();
+    });
   });
 
   test.describe('Keyboard Shortcuts Dialog', () => {
-    test('should not show Ctrl+Q quit shortcut', async () => {
+    test('should show Ctrl+Q as Close dialog shortcut', async () => {
       ctx = await launchApp();
       const { window } = ctx;
 
@@ -251,11 +281,39 @@ test.describe('Dialog Shortcuts', () => {
       await window.click(selectors.shortcutsButton);
       await expect(window.locator(selectors.shortcutsDialog)).toBeVisible();
 
-      // Should not contain quit shortcut
+      // Should contain Ctrl+Q as Close dialog shortcut
       const dialogText = await window.locator(selectors.shortcutsDialog).textContent();
-      expect(dialogText).not.toContain('Ctrl+Q');
-      expect(dialogText).not.toContain('Ctrl+Alt+Shift+Q');
+      expect(dialogText).toContain('Ctrl+Q');
+      expect(dialogText).toContain('Close dialog');
+
+      // Should NOT contain Quit shortcut
       expect(dialogText).not.toContain('Quit');
+    });
+
+    test('Escape should NOT close shortcuts dialog', async () => {
+      ctx = await launchApp();
+      const { window } = ctx;
+
+      // Open shortcuts dialog
+      await window.click(selectors.shortcutsButton);
+      await expect(window.locator(selectors.shortcutsDialog)).toBeVisible();
+
+      // Press Escape - dialog should NOT close
+      await window.locator(selectors.shortcutsDialog).press('Escape');
+      await expect(window.locator(selectors.shortcutsDialog)).toBeVisible();
+    });
+
+    test('Ctrl+Q should close shortcuts dialog', async () => {
+      ctx = await launchApp();
+      const { window } = ctx;
+
+      // Open shortcuts dialog
+      await window.click(selectors.shortcutsButton);
+      await expect(window.locator(selectors.shortcutsDialog)).toBeVisible();
+
+      // Press Ctrl+Q - dialog should close
+      await window.locator(selectors.shortcutsDialog).press('Control+q');
+      await expect(window.locator(selectors.shortcutsDialog)).not.toBeVisible();
     });
 
     test('should show Ctrl+Shift+N for New Project and Ctrl+Shift+, for Settings', async () => {

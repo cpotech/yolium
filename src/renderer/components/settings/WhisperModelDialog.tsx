@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useEffect, useState } from 'react';
 import { Download, Trash2, Check, Loader2, HardDrive, Copy, ClipboardCheck, Wrench } from 'lucide-react';
 import type { WhisperModelSize } from '@shared/types/whisper';
 import { WHISPER_MODELS } from '@shared/types/whisper';
+import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts';
 
 interface WhisperModelDialogProps {
   isOpen: boolean;
@@ -139,7 +140,7 @@ export function WhisperModelDialog({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (isCloseShortcut(e)) {
         e.preventDefault();
         onClose();
       }
@@ -330,7 +331,7 @@ export function WhisperModelDialog({
           >
             Close
             <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">
-              Esc
+              Ctrl+Q
             </kbd>
           </button>
         </div>

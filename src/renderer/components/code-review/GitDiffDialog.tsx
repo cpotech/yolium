@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { X, FileText, FilePlus, FileMinus, FileEdit, Loader2, AlertTriangle } from 'lucide-react'
+import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts'
 
 interface GitDiffDialogProps {
   isOpen: boolean
@@ -208,7 +209,7 @@ export function GitDiffDialog({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (isCloseShortcut(e)) {
         e.preventDefault()
         onClose()
       }
@@ -237,13 +238,16 @@ export function GitDiffDialog({
             </span>
           )}
         </div>
-        <button
-          data-testid="diff-dialog-close"
-          onClick={onClose}
-          className="p-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded transition-colors"
-        >
-          <X size={18} />
-        </button>
+        <div className="flex items-center gap-2">
+          <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">Ctrl+Q</kbd>
+          <button
+            data-testid="diff-dialog-close"
+            onClick={onClose}
+            className="p-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Content */}

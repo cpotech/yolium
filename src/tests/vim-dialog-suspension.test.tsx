@@ -285,17 +285,18 @@ describe('ItemDetailDialog vim-aware navigation', () => {
     expect(container).not.toBeNull()
   })
 
-  it('should close the item detail dialog when Escape is pressed in NORMAL mode', async () => {
+  it('should close the item detail dialog when Ctrl+Q is pressed in NORMAL mode', async () => {
     const onClose = vi.fn()
     renderItemDetailDialog({ onClose })
 
     // Dialog opens in NORMAL mode
     expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
 
-    // Escape in NORMAL mode -> close dialog
+    // Ctrl+Q in NORMAL mode -> close dialog
     await act(async () => {
       fireEvent.keyDown(screen.getByTestId('item-detail-dialog').closest('[tabindex]')!, {
-        key: 'Escape',
+        key: 'q',
+        ctrlKey: true,
       })
     })
 

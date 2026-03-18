@@ -3,6 +3,7 @@ import { X, Plus } from 'lucide-react'
 import type { KanbanAgentProvider, AgentDefinition } from '@shared/types/agent'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useSuspendVimNavigation } from '@renderer/context/VimModeContext'
+import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts'
 
 interface NewItemDialogProps {
   isOpen: boolean
@@ -122,7 +123,7 @@ export function NewItemDialog({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (isCloseShortcut(e)) {
         e.preventDefault()
         onClose()
       }
@@ -155,13 +156,16 @@ export function NewItemDialog({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border-primary)]">
           <h2 className="text-base font-semibold text-[var(--color-text-primary)]">New Item</h2>
-          <button
-            data-testid="close-button"
-            onClick={onClose}
-            className="p-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded transition-colors flex-shrink-0"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">Ctrl+Q</kbd>
+            <button
+              data-testid="close-button"
+              onClick={onClose}
+              className="p-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded transition-colors flex-shrink-0"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Error banner */}

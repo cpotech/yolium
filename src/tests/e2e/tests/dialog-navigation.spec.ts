@@ -101,7 +101,7 @@ test.describe('Dialog Navigation', () => {
     await expect(window.locator(selectors.pathDialog)).toBeVisible();
   });
 
-  test('Escape in path dialog should go back then close at root', async () => {
+  test('Escape in path dialog navigates up one directory, Ctrl+Q closes', async () => {
     ctx = await launchApp();
     const { window } = ctx;
 
@@ -112,19 +112,19 @@ test.describe('Dialog Navigation', () => {
     const currentPath = await window.locator(selectors.pathInput).inputValue();
     const depth = currentPath.split(/[\\/]+/).filter(Boolean).length;
     const maxPresses = Math.max(6, depth + 3);
-    const start = Date.now();
 
-    // Press Escape multiple times to navigate back to root and then close
-    // (Escape now goes back one directory level, closes only when at root)
+    // Press Escape multiple times to navigate up directories
     for (let i = 0; i < maxPresses; i++) {
       await window.keyboard.press('Escape');
-      const isVisible = await window.locator(selectors.pathDialog).isVisible();
-      if (!isVisible) break;
-      if (Date.now() - start > 5000) break;
       await window.waitForTimeout(100);
     }
 
-    // Dialog should close
+    // Escape alone should not close the dialog (just navigate up)
+    // Dialog should still be visible
+    await expect(window.locator(selectors.pathDialog)).toBeVisible();
+
+    // Ctrl+Q should close the dialog
+    await window.keyboard.press('Control+q');
     await expect(window.locator(selectors.pathDialog)).not.toBeVisible();
 
     // Should return to primary UI (empty-state or restored tabs)
