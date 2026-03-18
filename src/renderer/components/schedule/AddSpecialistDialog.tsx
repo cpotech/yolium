@@ -29,7 +29,7 @@ interface GuidedFormState {
   memory: { strategy: MemoryStrategy; maxEntries: number; retentionDays: number };
   escalation: { onFailure?: EscalationAction; onPattern?: EscalationAction };
   promptTemplates: Record<string, string>;
-  integrations: Array<{ service: string; env: Record<string, string> }>;
+  integrations: Array<{ service: string; env: Record<string, string>; tools: string[] }>;
   systemPrompt: string;
 }
 
@@ -114,6 +114,12 @@ export function serializeGuidedFormToMarkdown(form: GuidedFormState): string {
       lines.push('    env:');
       for (const [key, val] of Object.entries(int.env)) {
         lines.push(`      ${key}: "${val}"`);
+      }
+      if (int.tools && int.tools.length > 0) {
+        lines.push('    tools:');
+        for (const tool of int.tools) {
+          lines.push(`      - ${tool}`);
+        }
       }
     }
   }
@@ -209,13 +215,13 @@ export function parseMarkdownToGuidedForm(markdown: string): GuidedFormState {
   const intMatch = fm.match(/integrations:\s*\n((?:\s+-[\s\S]*?)(?=\n\w|\n---|$))/);
   if (intMatch) {
     const intBlock = intMatch[1];
-    const entries = intBlock.split(/\n\s+-\s+/).filter(Boolean);
+    const entries = intBlock.split(/\n {2}-\s+/).filter(Boolean);
     for (const entry of entries) {
       const clean = entry.startsWith('-') ? entry.replace(/^-\s+/, '') : entry;
       const svcMatch = clean.match(/service:\s*(.+)/);
       if (svcMatch) {
         const env: Record<string, string> = {};
-        const envSection = clean.match(/env:\s*\n((?:\s+\w+:.*\n?)*)/);
+        const envSection = clean.match(/env:\s*\n((?:\s{6,}\w+:.*\n?)*)/);
         if (envSection) {
           const envLines = envSection[1].match(/(\w+):\s*(.*)/g);
           if (envLines) {
@@ -228,7 +234,17 @@ export function parseMarkdownToGuidedForm(markdown: string): GuidedFormState {
             }
           }
         }
-        form.integrations.push({ service: svcMatch[1].trim(), env });
+        const tools: string[] = [];
+        const toolsSection = clean.match(/tools:\s*\n((?:\s+-\s+.+\n?)*)/);
+        if (toolsSection) {
+          const toolMatches = toolsSection[1].match(/-\s+(.+)/g);
+          if (toolMatches) {
+            for (const t of toolMatches) {
+              tools.push(t.replace(/-\s+/, '').trim());
+            }
+          }
+        }
+        form.integrations.push({ service: svcMatch[1].trim(), env, tools });
       }
     }
   }
@@ -565,7 +581,7 @@ export function AddSpecialistDialog({
   const addGuidedIntegration = useCallback(() => {
     setGuidedForm(prev => ({
       ...prev,
-      integrations: [...prev.integrations, { service: '', env: {} }],
+      integrations: [...prev.integrations, { service: '', env: {}, tools: [] }],
     }));
   }, []);
 
@@ -905,6 +921,24 @@ export function AddSpecialistDialog({
                   >
                     + Add env key
                   </button>
+                  <div className="mt-2">
+                    <label className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Tools</label>
+                    <input
+                      type="text"
+                      value={int.tools?.join(', ') || ''}
+                      onChange={(e) => {
+                        const updated = [...guidedForm.integrations];
+                        updated[ii] = {
+                          ...updated[ii],
+                          tools: e.target.value.split(',').map(t => t.trim()).filter(Boolean),
+                        };
+                        updateGuided('integrations', updated);
+                      }}
+                      placeholder="Comma-separated tool names (e.g. twitter, slack)"
+                      className={`${inputClass} text-xs mt-0.5 w-full`}
+                    />
+                    <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Custom tool scripts mounted into the container</p>
+                  </div>
                 </div>
               ))}
               <button

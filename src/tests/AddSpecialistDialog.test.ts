@@ -72,7 +72,7 @@ describe('parseMarkdownToGuidedForm', () => {
       escalation: { onFailure: 'pause' as const, onPattern: undefined },
       promptTemplates: {},
       integrations: [
-        { service: 'slack', env: { SLACK_TOKEN: 'tok123' } },
+        { service: 'slack', env: { SLACK_TOKEN: 'tok123' }, tools: [] },
       ],
       systemPrompt: '# Round Trip\n\nSystem prompt here.',
     };
@@ -129,7 +129,7 @@ describe('parseMarkdownToGuidedForm', () => {
     expect(parsed.description).toBe('Handles CRLF markdown');
     expect(parsed.tools).toEqual(['Read', 'Bash']);
     expect(parsed.schedules).toEqual([{ type: 'daily', cron: '0 8 * * *', enabled: true }]);
-    expect(parsed.integrations).toEqual([{ service: 'slack', env: { SLACK_TOKEN: '' } }]);
+    expect(parsed.integrations).toEqual([{ service: 'slack', env: { SLACK_TOKEN: '' }, tools: [] }]);
     expect(parsed.systemPrompt).toContain('Windows Agent');
   });
 
@@ -145,5 +145,177 @@ describe('parseMarkdownToGuidedForm', () => {
     const invalidResult = parseMarkdownToGuidedForm('no frontmatter here');
     expect(invalidResult.name).toBe('');
     expect(invalidResult.model).toBe('haiku');
+  });
+
+  it('should parse integration tools from markdown frontmatter', () => {
+    const markdown = [
+      '---',
+      'name: twitter-agent',
+      'description: Twitter agent',
+      'model: sonnet',
+      'tools:',
+      '  - Read',
+      'schedules:',
+      '  - type: daily',
+      '    cron: "0 0 * * *"',
+      '    enabled: true',
+      'memory:',
+      '  strategy: distill_daily',
+      '  maxEntries: 300',
+      '  retentionDays: 90',
+      'escalation:',
+      '  onFailure: alert_user',
+      'integrations:',
+      '  - service: twitter',
+      '    env:',
+      '      API_KEY: "key123"',
+      '    tools:',
+      '      - twitter',
+      '---',
+      '',
+      '# Twitter Agent',
+    ].join('\n');
+
+    const parsed = parseMarkdownToGuidedForm(markdown);
+    expect(parsed.integrations).toHaveLength(1);
+    expect(parsed.integrations[0].service).toBe('twitter');
+    expect(parsed.integrations[0].tools).toEqual(['twitter']);
+    expect(parsed.integrations[0].env).toEqual({ API_KEY: 'key123' });
+  });
+
+  it('should round-trip integrations with tools field', () => {
+    const original = {
+      name: 'tools-roundtrip',
+      description: 'Round trip with tools',
+      model: 'sonnet',
+      tools: ['Read'],
+      schedules: [{ type: 'daily', cron: '0 0 * * *', enabled: true }],
+      memory: { strategy: 'distill_daily' as const, maxEntries: 300, retentionDays: 90 },
+      escalation: { onFailure: 'alert_user' as const, onPattern: undefined },
+      promptTemplates: {},
+      integrations: [
+        { service: 'twitter', env: { API_KEY: 'secret' }, tools: ['twitter'] },
+      ],
+      systemPrompt: '# Test',
+    };
+
+    const serialized = serializeGuidedFormToMarkdown(original);
+    const parsed = parseMarkdownToGuidedForm(serialized);
+
+    expect(parsed.integrations).toHaveLength(1);
+    expect(parsed.integrations[0].service).toBe('twitter');
+    expect(parsed.integrations[0].tools).toEqual(['twitter']);
+    expect(parsed.integrations[0].env).toEqual({ API_KEY: 'secret' });
+  });
+
+  it('should handle integrations with empty tools array', () => {
+    const original = {
+      name: 'empty-tools',
+      description: 'Empty tools test',
+      model: 'haiku',
+      tools: ['Read'],
+      schedules: [{ type: 'daily', cron: '0 0 * * *', enabled: true }],
+      memory: { strategy: 'distill_daily' as const, maxEntries: 300, retentionDays: 90 },
+      escalation: { onFailure: 'alert_user' as const, onPattern: undefined },
+      promptTemplates: {},
+      integrations: [
+        { service: 'slack', env: { TOKEN: 'tok' }, tools: [] },
+      ],
+      systemPrompt: '# Test',
+    };
+
+    const serialized = serializeGuidedFormToMarkdown(original);
+    const parsed = parseMarkdownToGuidedForm(serialized);
+
+    expect(parsed.integrations).toHaveLength(1);
+    expect(parsed.integrations[0].service).toBe('slack');
+    expect(parsed.integrations[0].tools).toEqual([]);
+  });
+
+  it('should handle integrations with no tools field (backwards compat)', () => {
+    const markdown = [
+      '---',
+      'name: legacy-agent',
+      'description: Legacy agent',
+      'model: haiku',
+      'tools:',
+      '  - Read',
+      'schedules:',
+      '  - type: daily',
+      '    cron: "0 0 * * *"',
+      '    enabled: true',
+      'memory:',
+      '  strategy: distill_daily',
+      '  maxEntries: 300',
+      '  retentionDays: 90',
+      'escalation:',
+      '  onFailure: alert_user',
+      'integrations:',
+      '  - service: slack',
+      '    env:',
+      '      SLACK_TOKEN: "tok123"',
+      '---',
+      '',
+      '# Legacy Agent',
+    ].join('\n');
+
+    const parsed = parseMarkdownToGuidedForm(markdown);
+    expect(parsed.integrations).toHaveLength(1);
+    expect(parsed.integrations[0].service).toBe('slack');
+    expect(parsed.integrations[0].tools).toEqual([]);
+    expect(parsed.integrations[0].env).toEqual({ SLACK_TOKEN: 'tok123' });
+  });
+});
+
+describe('serializeGuidedFormToMarkdown - integration tools', () => {
+  it('should serialize integration tools as sibling of env in YAML', () => {
+    const form = {
+      name: 'tools-serialize',
+      description: 'Serialize tools test',
+      model: 'sonnet',
+      tools: ['Read'],
+      schedules: [{ type: 'daily', cron: '0 0 * * *', enabled: true }],
+      memory: { strategy: 'distill_daily' as const, maxEntries: 300, retentionDays: 90 },
+      escalation: { onFailure: 'alert_user' as const, onPattern: undefined },
+      promptTemplates: {},
+      integrations: [
+        { service: 'twitter', env: { API_KEY: 'key123' }, tools: ['twitter'] },
+      ],
+      systemPrompt: '# Test',
+    };
+
+    const md = serializeGuidedFormToMarkdown(form);
+
+    // tools: should appear at 4-space indent (sibling of env:)
+    expect(md).toContain('    tools:\n      - twitter');
+    // Verify it's at integration level, not top-level tools
+    expect(md).toMatch(/integrations:\n\s+- service: twitter\n\s+env:\n\s+API_KEY:.*\n\s+tools:\n\s+- twitter/);
+  });
+
+  it('should not place tools inside env block during serialization', () => {
+    const form = {
+      name: 'no-tools-in-env',
+      description: 'Test',
+      model: 'sonnet',
+      tools: ['Read'],
+      schedules: [{ type: 'daily', cron: '0 0 * * *', enabled: true }],
+      memory: { strategy: 'distill_daily' as const, maxEntries: 300, retentionDays: 90 },
+      escalation: { onFailure: 'alert_user' as const, onPattern: undefined },
+      promptTemplates: {},
+      integrations: [
+        { service: 'twitter', env: { API_KEY: 'key123' }, tools: ['twitter'] },
+      ],
+      systemPrompt: '# Test',
+    };
+
+    const md = serializeGuidedFormToMarkdown(form);
+
+    // Extract the env block — only lines at 6+ space indent (env key level)
+    const envMatch = md.match(/env:\n((?:\s{6,}\w+:.*\n?)*)/);
+    expect(envMatch).toBeTruthy();
+    // env keys should not include 'tools'
+    const envKeys = envMatch![1].match(/(\w+):/g)?.map(k => k.replace(/:$/, ''));
+    expect(envKeys).toEqual(['API_KEY']);
+    expect(envKeys).not.toContain('tools');
   });
 });
