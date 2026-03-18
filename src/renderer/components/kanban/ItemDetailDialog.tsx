@@ -16,6 +16,9 @@ import { ItemDetailSidebar } from './item-detail/ItemDetailSidebar'
 import { useItemDetailDraft } from './item-detail/useItemDetailDraft'
 import { useItemDetailAgentLifecycle } from './item-detail/useItemDetailAgentLifecycle'
 import { useItemDetailPrWorkflow } from './item-detail/useItemDetailPrWorkflow'
+import { StatusBar } from '@renderer/components/StatusBar'
+import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper'
+import type { ClaudeUsageState } from '@shared/types/agent'
 
 interface ItemDetailDialogProps {
   isOpen: boolean
@@ -23,6 +26,15 @@ interface ItemDetailDialogProps {
   projectPath: string
   onClose: () => void
   onUpdated: () => void
+  // StatusBar props
+  onShowShortcuts?: () => void
+  onOpenSettings?: () => void
+  onOpenProjectSettings?: () => void
+  whisperRecordingState?: WhisperRecordingState
+  whisperSelectedModel?: WhisperModelSize
+  onToggleRecording?: () => void
+  onOpenModelDialog?: () => void
+  claudeUsage?: ClaudeUsageState
 }
 
 export function ItemDetailDialog({
@@ -31,6 +43,15 @@ export function ItemDetailDialog({
   projectPath,
   onClose,
   onUpdated,
+  // StatusBar props
+  onShowShortcuts,
+  onOpenSettings,
+  onOpenProjectSettings,
+  whisperRecordingState,
+  whisperSelectedModel,
+  onToggleRecording,
+  onOpenModelDialog,
+  claudeUsage,
 }: ItemDetailDialogProps): React.ReactElement | null {
   useSuspendVimNavigation(isOpen)
 
@@ -258,24 +279,40 @@ export function ItemDetailDialog({
           />
         </div>
 
-        {(agentSession.showAgentLog || agentSession.agentOutputLines.length > 0) && (
-          <div className="border-t border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
-            <AgentLogPanel
-              outputLines={agentSession.agentOutputLines}
-              onClear={agentSession.clearAgentOutput}
-            />
-          </div>
-        )}
-      </div>
+         {(agentSession.showAgentLog || agentSession.agentOutputLines.length > 0) && (
+           <div className="border-t border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
+             <AgentLogPanel
+               outputLines={agentSession.agentOutputLines}
+               onClear={agentSession.clearAgentOutput}
+             />
+           </div>
+         )}
+       </div>
 
-      {item.branch && (
-        <GitDiffDialog
-          isOpen={showDiffViewer}
-          onClose={() => setShowDiffViewer(false)}
-          projectPath={projectPath}
-          branchName={item.branch}
+        {/* StatusBar at the bottom of the dialog */}
+        <StatusBar
+          folderPath={projectPath}
+          contextLabel={item.branch}
+          gitBranch={item.branch}
+          worktreeName={item.worktreePath ? item.worktreePath.split('/').pop() : undefined}
+          onShowShortcuts={onShowShortcuts ?? (() => {})}
+          onOpenSettings={onOpenSettings ?? (() => {})}
+          onOpenProjectSettings={onOpenProjectSettings ?? (() => {})}
+          whisperRecordingState={whisperRecordingState ?? 'idle'}
+          whisperSelectedModel={whisperSelectedModel ?? 'small'}
+          onToggleRecording={onToggleRecording ?? (() => {})}
+          onOpenModelDialog={onOpenModelDialog ?? (() => {})}
+          claudeUsage={claudeUsage}
         />
-      )}
-    </div>
-  )
+
+       {item.branch && (
+         <GitDiffDialog
+           isOpen={showDiffViewer}
+           onClose={() => setShowDiffViewer(false)}
+           projectPath={projectPath}
+           branchName={item.branch}
+         />
+       )}
+     </div>
+   )
 }

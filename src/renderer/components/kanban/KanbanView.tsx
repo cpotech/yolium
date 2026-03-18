@@ -6,11 +6,22 @@ import { ItemDetailDialog } from './ItemDetailDialog'
 import type { KanbanBoard, KanbanItem, KanbanColumn as ColumnId } from '@shared/types/kanban'
 import { prepareConflictResolution } from './item-detail/useItemDetailPrWorkflow'
 import { useVimModeContext } from '@renderer/context/VimModeContext'
+import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper'
+import type { ClaudeUsageState } from '@shared/types/agent'
 
 interface KanbanViewProps {
   projectPath: string | null
   onSwitchProject?: (newPath: string) => void
   onDeleteProject?: (projectPath: string) => void
+  // StatusBar props
+  onShowShortcuts?: () => void
+  onOpenSettings?: () => void
+  onOpenProjectSettings?: () => void
+  whisperRecordingState?: WhisperRecordingState
+  whisperSelectedModel?: WhisperModelSize
+  onToggleRecording?: () => void
+  onOpenModelDialog?: () => void
+  claudeUsage?: ClaudeUsageState
 }
 
 const columns: { id: ColumnId; title: string }[] = [
@@ -25,7 +36,20 @@ function resolveAgentName(item: KanbanItem): string {
   return item.activeAgentName || item.lastAgentName || item.agentType || 'code-agent'
 }
 
-export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: KanbanViewProps): React.ReactElement {
+export function KanbanView({
+  projectPath,
+  onSwitchProject,
+  onDeleteProject,
+  // StatusBar props
+  onShowShortcuts,
+  onOpenSettings,
+  onOpenProjectSettings,
+  whisperRecordingState,
+  whisperSelectedModel,
+  onToggleRecording,
+  onOpenModelDialog,
+  claudeUsage,
+}: KanbanViewProps): React.ReactElement {
   const [board, setBoard] = useState<KanbanBoard | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [newItemDialogOpen, setNewItemDialogOpen] = useState(false)
@@ -780,14 +804,23 @@ export function KanbanView({ projectPath, onSwitchProject, onDeleteProject }: Ka
         onCreated={handleNewItemCreated}
       />
 
-      {/* Item Detail Dialog */}
-      <ItemDetailDialog
-        isOpen={selectedItem !== null}
-        item={selectedItem}
-        projectPath={projectPath}
-        onClose={handleDetailClose}
-        onUpdated={handleDetailUpdated}
-      />
+       {/* Item Detail Dialog */}
+       <ItemDetailDialog
+         isOpen={selectedItem !== null}
+         item={selectedItem}
+         projectPath={projectPath}
+         onClose={handleDetailClose}
+         onUpdated={handleDetailUpdated}
+         // StatusBar props
+         onShowShortcuts={onShowShortcuts}
+         onOpenSettings={onOpenSettings}
+         onOpenProjectSettings={onOpenProjectSettings}
+         whisperRecordingState={whisperRecordingState}
+         whisperSelectedModel={whisperSelectedModel}
+         onToggleRecording={onToggleRecording}
+         onOpenModelDialog={onOpenModelDialog}
+         claudeUsage={claudeUsage}
+       />
     </div>
   )
 }
