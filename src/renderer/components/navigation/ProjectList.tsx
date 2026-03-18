@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { Folder, X, Plus } from 'lucide-react';
 import type { SidebarProject } from '@renderer/stores/sidebar-store';
 import type { AgentStatus, KanbanColumn } from '@shared/types/kanban';
 import { StatusDotPopover } from './StatusDotPopover';
 import { getFolderName } from '@renderer/lib/path-utils';
+import { useVimModeContext } from '@renderer/context/VimModeContext';
 
 export interface SidebarWorkItem {
   projectPath: string;
@@ -36,12 +37,39 @@ export function ProjectList({
   onAddProject,
   onAnswerAndResume,
 }: ProjectListProps): React.ReactElement {
+  const vim = useVimModeContext();
+  const isZoneActive = vim.activeZone === 'sidebar' && vim.mode === 'NORMAL';
+  const [focusedIndex, setFocusedIndex] = useState(0);
+
   const handleAnswer = async (item: SidebarWorkItem, option: string) => {
     await onAnswerAndResume(item.projectPath, item.itemId, option, item.agentName || 'code-agent');
   };
 
+  const handleVimKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!isZoneActive || projects.length === 0) return;
+
+    if (e.key === 'j' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      setFocusedIndex(prev => (prev + 1) % projects.length);
+    } else if (e.key === 'k' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      setFocusedIndex(prev => (prev - 1 + projects.length) % projects.length);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const idx = Math.min(focusedIndex, projects.length - 1);
+      onProjectClick(projects[idx].path);
+    } else if (e.key === 'x') {
+      e.preventDefault();
+      const idx = Math.min(focusedIndex, projects.length - 1);
+      onProjectRemove(projects[idx].path);
+    } else if (e.key === '+' || e.key === 'a') {
+      e.preventDefault();
+      onAddProject();
+    }
+  }, [isZoneActive, projects, focusedIndex, onProjectClick, onProjectRemove, onAddProject]);
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" onKeyDown={handleVimKeyDown} tabIndex={isZoneActive ? 0 : undefined}>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border-primary)]">
         {!collapsed && (
@@ -69,18 +97,22 @@ export function ProjectList({
             </div>
           )
         ) : (
-          projects.map((project) => {
+          projects.map((project, projectIndex) => {
             const projectItems = sidebarItems.filter(w => w.projectPath === project.path && w.column !== 'done');
             // Sort items: running -> waiting -> failed
             const sortedItems = [...projectItems].sort((a, b) => {
               const order: Partial<Record<AgentStatus, number>> = { running: 0, waiting: 1, failed: 2 };
               return (order[a.agentStatus] ?? 3) - (order[b.agentStatus] ?? 3);
             });
+            const isFocused = isZoneActive && projectIndex === focusedIndex;
             return (
               <div key={project.path}>
                 <div
                   data-testid={`project-item-${project.path}`}
-                  className="group flex items-center gap-2 px-3 py-1.5 cursor-pointer text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                  data-vim-focused={isFocused ? 'true' : undefined}
+                  className={`group flex items-center gap-2 px-3 py-1.5 cursor-pointer text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors ${
+                    isFocused ? 'ring-1 ring-[var(--color-accent-primary)] bg-[var(--color-bg-tertiary)]' : ''
+                  }`}
                   onClick={() => onProjectClick(project.path)}
                 >
                   <Folder size={14} className="shrink-0 text-[var(--color-text-muted)]" />

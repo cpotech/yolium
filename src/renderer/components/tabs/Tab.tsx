@@ -21,12 +21,13 @@ function StatusDot({ state }: { state: ContainerState }): React.ReactElement {
 interface TabProps {
   tab: TabType;
   isActive: boolean;
+  isVimFocused?: boolean;
   onClick: () => void;
   onClose: (e: React.MouseEvent) => void;
   onContextMenu: (e: React.MouseEvent) => void;
 }
 
-export function Tab({ tab, isActive, onClick, onClose, onContextMenu }: TabProps): React.ReactElement {
+export function Tab({ tab, isActive, isVimFocused, onClick, onClose, onContextMenu }: TabProps): React.ReactElement {
   const handleClose = (e: React.MouseEvent) => {
     e.stopPropagation();  // Don't trigger tab click
     onClose(e);
@@ -41,6 +42,7 @@ export function Tab({ tab, isActive, onClick, onClose, onContextMenu }: TabProps
       data-testid={`tab-${tab.id}`}
       data-active={isActive}
       data-tab-type={tab.type}
+      data-vim-focused={isVimFocused ? 'true' : undefined}
       onClick={onClick}
       onContextMenu={onContextMenu}
       className={`
@@ -51,6 +53,7 @@ export function Tab({ tab, isActive, onClick, onClose, onContextMenu }: TabProps
           ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]'
           : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-secondary)]'
         }
+        ${isVimFocused ? 'ring-2 ring-[var(--color-accent-primary)]' : ''}
       `}
     >
       {/* Icon - different for terminal vs kanban */}

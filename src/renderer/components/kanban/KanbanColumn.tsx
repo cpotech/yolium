@@ -1,18 +1,21 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import { KanbanCard } from './KanbanCard'
 import type { KanbanItem, KanbanColumn as ColumnId } from '@shared/types/kanban'
+import { useVimModeContext } from '@renderer/context/VimModeContext'
 
 interface KanbanColumnProps {
   columnId: ColumnId
   title: string
   items: KanbanItem[]
   selectedIds?: Set<string>
+  focusedCardIndex?: number
   onCardClick: (item: KanbanItem, event: React.MouseEvent | React.KeyboardEvent) => void
   onCardDrop?: (itemId: string, targetColumn: ColumnId) => void
   onRetryAgent?: (itemId: string) => void
   onResumeAgent?: (itemId: string) => void
   onRunAgainAgent?: (itemId: string) => void
   onFixConflicts?: (itemId: string) => void
+  onFocusedCardChange?: (index: number) => void
 }
 
 const columnBorderColors: Record<ColumnId, string> = {
@@ -28,15 +31,54 @@ export function KanbanColumn({
   title,
   items,
   selectedIds,
+  focusedCardIndex,
   onCardClick,
   onCardDrop,
   onRetryAgent,
   onResumeAgent,
   onRunAgainAgent,
   onFixConflicts,
+  onFocusedCardChange,
 }: KanbanColumnProps): React.ReactElement {
   const borderColor = columnBorderColors[columnId]
   const [isDragOver, setIsDragOver] = useState(false)
+  const vim = useVimModeContext()
+  const isVimActive = vim.mode === 'NORMAL' && vim.activeZone === 'content'
+  const gPendingRef = useRef(false)
+
+  const handleVimKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!isVimActive || items.length === 0 || focusedCardIndex === undefined) return
+
+    if (e.key === 'j' || e.key === 'ArrowDown') {
+      e.preventDefault()
+      onFocusedCardChange?.((focusedCardIndex + 1) % items.length)
+      gPendingRef.current = false
+    } else if (e.key === 'k' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      onFocusedCardChange?.((focusedCardIndex - 1 + items.length) % items.length)
+      gPendingRef.current = false
+    } else if (e.key === 'g') {
+      if (gPendingRef.current) {
+        // gg - jump to first
+        e.preventDefault()
+        onFocusedCardChange?.(0)
+        gPendingRef.current = false
+      } else {
+        gPendingRef.current = true
+      }
+    } else if (e.key === 'G') {
+      e.preventDefault()
+      onFocusedCardChange?.(items.length - 1)
+      gPendingRef.current = false
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      const idx = Math.min(focusedCardIndex, items.length - 1)
+      onCardClick(items[idx], e as unknown as React.KeyboardEvent)
+      gPendingRef.current = false
+    } else {
+      gPendingRef.current = false
+    }
+  }, [isVimActive, items, focusedCardIndex, onFocusedCardChange, onCardClick])
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -66,6 +108,8 @@ export function KanbanColumn({
     <div
       data-testid={`kanban-column-${columnId}`}
       aria-label={`${title} column, ${items.length} items`}
+      tabIndex={isVimActive && focusedCardIndex !== undefined ? 0 : undefined}
+      onKeyDown={handleVimKeyDown}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -108,11 +152,12 @@ export function KanbanColumn({
             <p className="text-sm">{isDragOver ? 'Drop here' : 'No items'}</p>
           </div>
         ) : (
-          items.map((item) => (
+          items.map((item, itemIndex) => (
             <KanbanCard
               key={item.id}
               item={item}
               isSelected={selectedIds?.has(item.id)}
+              isFocused={isVimActive && focusedCardIndex === itemIndex}
               onClick={onCardClick}
               onRetryAgent={onRetryAgent}
               onResumeAgent={onResumeAgent}
