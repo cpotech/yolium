@@ -252,7 +252,7 @@ export function processStreamChunk(
       if (parsed.text) textContent += `${parsed.text}\n`;
       if (parsed.usage) usageParts.push(parsed.usage);
       if (parsed.isAgentMessage && parsed.text) agentMessageTexts.push(parsed.text);
-    } catch {
+    } catch { /* not a JSON stream event — treat as plain text output */
       displayParts.push(trimmed);
       textContent += `${trimmed}\n`;
     }
@@ -281,7 +281,7 @@ export function flushLineBuffer(
     const parsed = parseStreamEvent(event);
     textContent = parsed.text ? `${parsed.text}\n` : '';
     usage = parsed.usage;
-  } catch {
+  } catch { /* not a JSON stream event — treat as plain text output */
     textContent = `${trimmed}\n`;
   }
 

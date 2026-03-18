@@ -7,6 +7,8 @@ import type { IpcMain } from 'electron';
 import { BrowserWindow } from 'electron';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
+import { isPathWithinBase } from '@main/lib/error-utils';
 
 export function registerReportHandlers(ipcMain: IpcMain): void {
   ipcMain.handle(
@@ -16,8 +18,8 @@ export function registerReportHandlers(ipcMain: IpcMain): void {
         return { success: false, error: 'File path is required' };
       }
 
-      // Reject directory traversal
-      if (filePath.includes('..')) {
+      // Reject paths that resolve outside the user's home directory
+      if (!isPathWithinBase(filePath, os.homedir())) {
         return { success: false, error: 'Path traversal is not allowed' };
       }
 
@@ -33,7 +35,7 @@ export function registerReportHandlers(ipcMain: IpcMain): void {
         if (!stats.isFile()) {
           return { success: false, error: 'Path is not a file' };
         }
-      } catch {
+      } catch { /* file does not exist or is not accessible */
         return { success: false, error: 'File not found' };
       }
 

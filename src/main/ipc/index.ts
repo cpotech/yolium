@@ -5,6 +5,7 @@
 
 import { ipcMain, dialog, shell } from 'electron';
 import { createLogger } from '@main/lib/logger';
+import { getErrorMessage } from '@main/lib/error-utils';
 import { registerAppHandlers, performCleanup, isCleanupDone } from './app-handlers';
 import { registerTerminalHandlers } from './terminal-handlers';
 import { registerTabHandlers } from './tab-handlers';
@@ -25,13 +26,6 @@ import { registerScheduleHandlers } from './schedule-handlers';
 const logger = createLogger('ipc');
 let handlersRegistered = false;
 let registrationAttempts = 0;
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
-}
 
 /**
  * Register all IPC handlers.

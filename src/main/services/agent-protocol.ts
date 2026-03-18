@@ -183,7 +183,7 @@ export function parseProtocolMessage(json: string): AnyProtocolMessage | null {
       default:
         return null;
     }
-  } catch {
+  } catch { /* invalid JSON in protocol message — discard and return null */
     return null;
   }
 }

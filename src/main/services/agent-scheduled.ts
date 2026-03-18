@@ -108,7 +108,7 @@ export function startScheduledAgent(params: ScheduledAgentParams): Promise<Sched
           if (toolDir) {
             try {
               integrationTools[toolName] = fs.readdirSync(toolDir).filter(f => !f.startsWith('.'));
-            } catch {
+            } catch { /* toolDir exists but cannot be read */
               integrationTools[toolName] = [`<unreadable: ${toolDir}>`];
             }
           } else {

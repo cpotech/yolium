@@ -275,7 +275,7 @@ export function isWhisperBinaryAvailable(): boolean {
       : 'which whisper-cli 2>/dev/null || which whisper-cpp 2>/dev/null || which whisper 2>/dev/null';
     execSync(cmd, { stdio: 'pipe' });
     return true;
-  } catch {
+  } catch { /* binary not in PATH */
     return false;
   }
 }
@@ -298,8 +298,7 @@ export function resolveWhisperBinary(): string | null {
       encoding: 'utf-8',
     }).trim().split(/\r?\n/)[0]; // 'where' on Windows may return multiple lines
     if (systemBinary) return systemBinary;
-  } catch {
-    // Not in PATH
+  } catch { /* Not in PATH */
   }
 
   return null;
@@ -403,8 +402,7 @@ export function getSelectedModel(): WhisperModelSize {
         return config.modelSize;
       }
     }
-  } catch {
-    // Fall through to default
+  } catch { /* Fall through to default */
   }
   return 'small';
 }
@@ -557,7 +555,7 @@ function isToolAvailable(tool: string): boolean {
   try {
     execSync(`which ${tool}`, { stdio: 'pipe' });
     return true;
-  } catch {
+  } catch { /* tool not in PATH */
     return false;
   }
 }
@@ -588,8 +586,7 @@ function getInstallHint(tool: string): string {
         }
       }
     }
-  } catch {
-    // /etc/os-release not available (macOS, etc.)
+  } catch { /* /etc/os-release not available (macOS, etc.) */
   }
 
   const pkg = pkgMap[tool];

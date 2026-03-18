@@ -45,7 +45,7 @@ export async function detectDockerState(): Promise<DockerState> {
   try {
     await docker.ping();
     running = true;
-  } catch {
+  } catch { /* Docker daemon is not reachable */
     running = false;
   }
 
@@ -70,7 +70,7 @@ export async function waitForDockerReady(timeoutMs: number = 60000): Promise<boo
       await docker.ping();
       logger.info('Docker daemon ready', { elapsedMs: Date.now() - start });
       return true;
-    } catch {
+    } catch { /* Docker daemon not ready yet, continue polling */
       await new Promise(resolve => setTimeout(resolve, pollInterval));
     }
   }
@@ -90,8 +90,7 @@ export async function startDockerDesktop(): Promise<boolean> {
     logger.debug('Trying Docker Desktop CLI');
     await execAsync('docker desktop start');
     return await waitForDockerReady(60000);
-  } catch {
-    // Fall back to platform-specific launch
+  } catch { /* docker desktop CLI not available — fall back to platform-specific launch */
     logger.debug('Docker Desktop CLI failed, falling back to legacy method');
     return startDockerDesktopLegacy();
   }
@@ -136,7 +135,7 @@ async function startDockerDesktopLegacy(): Promise<boolean> {
           detached: true,
           stdio: 'ignore',
         }).unref();
-      } catch {
+      } catch { /* systemctl not available — fall back to direct binary execution */
         // Fall back to direct binary execution
         if (desktopPath) {
           logger.debug('Falling back to direct binary execution', { path: desktopPath });

@@ -30,8 +30,7 @@ function getDirectorySize(dirPath: string): number {
         totalSize += fs.statSync(entryPath).size;
       }
     }
-  } catch {
-    // Directory doesn't exist or can't be read
+  } catch { /* Directory doesn't exist or can't be read */
   }
   return totalSize;
 }
@@ -116,7 +115,7 @@ export function deleteProjectCache(dirName: string): { deleted: boolean; error?:
 
     logger.info('Project cache deleted', { dirName });
     return { deleted: true };
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     const error = err instanceof Error ? err.message : String(err);
     logger.error('Failed to delete project cache', { dirName, error });
     return { deleted: false, error };

@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
 import type { AgentProvider } from '@shared/types/agent';
 import type { ProjectType } from '@shared/types/onboarding';
+import { getFolderName } from '@renderer/lib/path-utils';
 
 export type { AgentProvider } from '@shared/types/agent';
 
@@ -131,8 +132,7 @@ export function AgentSelectDialog({
 
   if (!isOpen) return null;
 
-  // Extract folder name from path
-  const folderName = folderPath.split('/').pop() || folderPath;
+  const folderName = getFolderName(folderPath);
 
   return (
     <div

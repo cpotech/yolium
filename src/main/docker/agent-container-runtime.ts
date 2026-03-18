@@ -178,8 +178,7 @@ export function wireAgentContainerRuntime(params: {
         try {
           await container.stop({ t: 5 });
           await container.remove({ force: true });
-        } catch {
-          // Container is already stopping or gone.
+        } catch { /* Container is already stopping or gone. */
         }
         notifyExit(webContentsId, sessionId, 124, onExit);
       }
@@ -247,15 +246,13 @@ export function wireAgentContainerRuntime(params: {
         const info = await container.inspect();
         exitCode = info.State.ExitCode;
         logger.info('Agent container completed', { sessionId, exitCode });
-      } catch {
-        // Container may already be removed.
+      } catch { /* Container may already be removed. */
       }
 
       notifyExit(webContentsId, sessionId, exitCode, onExit);
       try {
         await container.remove({ force: true });
-      } catch {
-        // Container may already be removed.
+      } catch { /* Container may already be removed. */
       }
       agentSessions.delete(sessionId);
     }

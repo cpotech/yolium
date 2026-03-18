@@ -2,17 +2,13 @@ import React from 'react';
 import { FolderPlus, Terminal, Folder, ArrowRight, Sun, Moon } from 'lucide-react';
 import { useTheme } from '@renderer/theme';
 import type { SidebarProject } from '@renderer/stores/sidebar-store';
+import { getFolderName } from '@renderer/lib/path-utils';
 
 interface EmptyStateProps {
   onNewTab: () => void;
   onCreateProject?: () => void;
   projects?: SidebarProject[];
   onProjectClick?: (path: string) => void;
-}
-
-/** Extract folder name from a full path (handles / and \ separators). */
-function getFolderName(path: string): string {
-  return path.split(/[/\\]/).filter(Boolean).pop() || path;
 }
 
 export function EmptyState({ onNewTab, onCreateProject, projects, onProjectClick }: EmptyStateProps): React.ReactElement {

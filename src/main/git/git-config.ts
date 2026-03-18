@@ -33,8 +33,7 @@ function loadSystemGitConfig(): Partial<GitConfig> | null {
     if (email) config.email = email;
 
     return Object.keys(config).length > 0 ? config : null;
-  } catch {
-    // Git not available or no global config set
+  } catch { /* Git not available or no global config set */
     return null;
   }
 }
@@ -173,7 +172,7 @@ export function hasHostClaudeOAuth(): boolean {
     const content = fs.readFileSync(credPath, 'utf-8');
     const creds = JSON.parse(content);
     return !!(creds?.claudeAiOauth?.accessToken);
-  } catch {
+  } catch { /* Credentials file missing, unreadable, or malformed — treat as no OAuth. */
     return false;
   }
 }
@@ -222,7 +221,7 @@ export async function refreshClaudeOAuthToken(): Promise<boolean> {
 
     fs.writeFileSync(credPath, JSON.stringify(creds, null, 2), { encoding: 'utf-8', mode: 0o600 });
     return true;
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     console.warn('[git-config] Claude OAuth refresh error:', err instanceof Error ? err.message : String(err));
     return false;
   }
@@ -305,7 +304,7 @@ export async function fetchClaudeUsage(): Promise<ClaudeUsageData | null> {
         resetsAt: data.seven_day?.resets_at ?? '',
       },
     };
-  } catch {
+  } catch { /* Network error, credential file unreadable, or malformed JSON — usage data unavailable. */
     return null;
   }
 }
@@ -323,7 +322,7 @@ export function hasHostCodexOAuth(): boolean {
     const content = fs.readFileSync(authPath, 'utf-8');
     const auth = JSON.parse(content);
     return auth?.auth_mode === 'chatgpt' && !!(auth?.tokens?.access_token);
-  } catch {
+  } catch { /* Credentials file missing, unreadable, or malformed — treat as no OAuth. */
     return false;
   }
 }
@@ -386,7 +385,7 @@ export async function refreshCodexOAuthToken(): Promise<boolean> {
     // Write back with restrictive permissions
     fs.writeFileSync(authPath, JSON.stringify(auth, null, 2), { encoding: 'utf-8', mode: 0o600 });
     return true;
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     console.warn('[git-config] Codex OAuth refresh error:', err instanceof Error ? err.message : String(err));
     return false;
   }
@@ -426,8 +425,7 @@ export function getHostCodexCredentialsPath(): string | null {
     if (fs.statSync(authPath).isFile()) {
       return authPath;
     }
-  } catch {
-    // File doesn't exist
+  } catch { /* File doesn't exist */
   }
   return null;
 }
@@ -444,8 +442,7 @@ export function getHostClaudeCredentialsPath(): string | null {
     if (fs.statSync(credPath).isFile()) {
       return credPath;
     }
-  } catch {
-    // File doesn't exist
+  } catch { /* File doesn't exist */
   }
   return null;
 }
@@ -504,7 +501,7 @@ export function loadGitConfig(): GitConfig | null {
     }
 
     return null;
-  } catch {
+  } catch { /* Config file unreadable or contains invalid JSON — treat as no config. */
     return null;
   }
 }
@@ -530,7 +527,7 @@ export async function fetchGitHubUser(pat: string): Promise<{ name: string; emai
     const email: string = data.email || (login ? `${login}@users.noreply.github.com` : '');
 
     return { name, email, login };
-  } catch {
+  } catch { /* Network error or unexpected API response — caller treats null as unauthenticated. */
     return null;
   }
 }

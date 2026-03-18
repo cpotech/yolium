@@ -14,7 +14,7 @@ export async function checkGhCliAvailable(): Promise<boolean> {
   try {
     await execFileAsync('gh', ['--version'])
     ghCliAvailable = true
-  } catch {
+  } catch { /* gh CLI is not installed or not on PATH. */
     ghCliAvailable = false
   }
 
@@ -63,8 +63,7 @@ export async function mergeBranchAndPushPR(
     await execFileAsync('git', ['fetch', 'origin'], {
       cwd: projectPath,
     })
-  } catch {
-    // Continue without remote updates.
+  } catch { /* Continue without remote updates. */
   }
 
   const baseRef = gitRefExists(projectPath, `origin/${defaultBranch}`)
@@ -76,7 +75,7 @@ export async function mergeBranchAndPushPR(
     await execFileAsync('git', ['branch', prBranch, baseRef], {
       cwd: projectPath,
     })
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     const error = err as { stderr?: string; message?: string }
     const stderr = error.stderr || error.message || 'Unknown error'
     return { success: false, error: `Failed to create PR branch: ${stderr}` }
@@ -88,7 +87,7 @@ export async function mergeBranchAndPushPR(
     await execFileAsync('git', ['worktree', 'add', tempWorktreePath, prBranch], {
       cwd: projectPath,
     })
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     const error = err as { stderr?: string; message?: string }
     const stderr = error.stderr || error.message || 'Unknown error'
     await deleteBranchBestEffortAsync(projectPath, prBranch)
@@ -107,15 +106,14 @@ export async function mergeBranchAndPushPR(
     await execFileAsync('git', ['commit', '-m', itemTitle], {
       cwd: tempWorktreePath,
     })
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     const error = err as { stderr?: string; stdout?: string; message?: string }
     const output = (error.stderr || '') + (error.stdout || '')
 
     if (output.includes('CONFLICT') || output.includes('Automatic merge failed')) {
       try {
         await execFileAsync('git', ['merge', '--abort'], { cwd: tempWorktreePath })
-      } catch {
-        // Ignore abort errors.
+      } catch { /* Ignore abort errors. */
       }
       await cleanupTemp()
       return { success: false, conflict: true, error: 'Merge conflicts detected. Please resolve manually.' }
@@ -129,7 +127,7 @@ export async function mergeBranchAndPushPR(
     await execFileAsync('git', ['push', '-u', 'origin', prBranch], {
       cwd: tempWorktreePath,
     })
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     const error = err as { stderr?: string; message?: string }
     const stderr = error.stderr || error.message || 'Unknown error'
     await cleanupTemp()
@@ -158,7 +156,7 @@ export async function mergeBranchAndPushPR(
       },
     )
     prUrl = stdout.trim()
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     const error = err as { stderr?: string; message?: string }
     const stderr = error.stderr || error.message || 'Unknown error'
     await removeWorktreeBestEffortAsync(projectPath, tempWorktreePath)
@@ -173,8 +171,7 @@ export async function mergeBranchAndPushPR(
 
   try {
     await cleanupWorktreeAndBranch(projectPath, worktreePath, worktreeBranch)
-  } catch {
-    // Best effort after a successful PR.
+  } catch { /* Best effort after a successful PR. */
   }
 
   return { success: true, prUrl, prBranch }
@@ -196,7 +193,7 @@ export async function approvePR(projectPath: string, prUrl: string): Promise<App
       cwd: projectPath,
     })
     return { success: true }
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     const error = err as { stderr?: string; message?: string }
     const stderr = error.stderr || error.message || 'Unknown error'
     return { success: false, error: `Failed to approve PR: ${stderr}` }
@@ -219,7 +216,7 @@ export async function mergePR(projectPath: string, prUrl: string): Promise<Merge
       cwd: projectPath,
     })
     return { success: true }
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     const error = err as { stderr?: string; message?: string }
     const stderr = error.stderr || error.message || 'Unknown error'
     return { success: false, error: `Failed to merge PR: ${stderr}` }

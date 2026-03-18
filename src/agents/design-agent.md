@@ -3,7 +3,7 @@ name: design-agent
 description: Executes frontend design tasks by routing to specialized impeccable skills — audit, critique, polish, colorize, animate, and 12 more steering commands
 model: opus
 timeout: 60
-order: 4
+order: 5
 tools:
   - Read
   - Glob

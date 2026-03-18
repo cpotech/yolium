@@ -13,7 +13,10 @@ import type {
   KanbanBoard,
   KanbanItem,
   KanbanComment,
+  KanbanColumn,
   CommentSource,
+  AgentStatus,
+  MergeStatus,
 } from '@shared/types/kanban';
 import type { KanbanAgentProvider } from '@shared/types/agent';
 import type {
@@ -61,7 +64,7 @@ export function normalizeForHash(projectPath: string): string {
 function safeJsonParse<T>(value: string, fallback: T): T {
   try {
     return JSON.parse(value) as T;
-  } catch {
+  } catch { /* malformed JSON — return fallback value */
     return fallback;
   }
 }
@@ -171,7 +174,7 @@ function migrateLegacyBoards(database: Database.Database): void {
   let files: string[];
   try {
     files = fs.readdirSync(boardsDir);
-  } catch {
+  } catch { /* boards directory not readable — skip migration */
     return;
   }
 
@@ -253,7 +256,7 @@ function migrateLegacyBoards(database: Database.Database): void {
         }
 
         fs.renameSync(filePath, filePath + '.migrated');
-      } catch (err) {
+      } catch (err) { /* intentionally ignored */
         logger.warn('Failed to migrate board file', { file, error: String(err) });
       }
     }
@@ -283,7 +286,7 @@ function migrateLegacyProjectRegistry(database: Database.Database): void {
     }
 
     fs.renameSync(registryPath, registryPath + '.migrated');
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     logger.warn('Failed to migrate project registry', { error: String(err) });
   }
 }
@@ -386,7 +389,7 @@ function migrateLegacyRunHistory(database: Database.Database): void {
   let entries: string[];
   try {
     entries = fs.readdirSync(schedulesDir);
-  } catch {
+  } catch { /* schedules directory not readable — skip migration */
     return;
   }
 
@@ -427,7 +430,7 @@ function migrateLegacyActionLogs(database: Database.Database): void {
   let entries: string[];
   try {
     entries = fs.readdirSync(schedulesDir);
-  } catch {
+  } catch { /* schedules directory not readable — skip migration */
     return;
   }
 
@@ -517,8 +520,7 @@ export function getDb(): Database.Database {
 
   try {
     fs.chmodSync(dbPath, 0o600);
-  } catch {
-    // May fail on Windows — non-critical
+  } catch { /* May fail on Windows — non-critical */
   }
 
   return db;
@@ -531,12 +533,64 @@ export function closeDb(): void {
   }
 }
 
+// ─── SQLite Row Types ────────────────────────────────────────────────────
+
+interface BoardRow {
+  id: string;
+  project_path: string;
+  last_agent_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ItemRow {
+  id: string;
+  board_id: string;
+  title: string;
+  description: string;
+  column: string;
+  agent_provider: string;
+  order: number;
+  agent_status: string;
+  branch: string | null;
+  agent_type: string | null;
+  model: string | null;
+  active_agent_name: string | null;
+  last_agent_name: string | null;
+  agent_question: string | null;
+  agent_question_options: string | null;
+  test_specs: string | null;
+  worktree_path: string | null;
+  merge_status: string | null;
+  pr_url: string | null;
+  verified: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface CommentRow {
+  id: string;
+  item_id: string;
+  source: string;
+  text: string;
+  timestamp: string;
+  options: string | null;
+}
+
+interface RegistryRow {
+  dir_name: string;
+  path: string;
+  folder_name: string;
+  last_accessed: string;
+  created_at: string;
+}
+
 // ─── Row Conversion Helpers ──────────────────────────────────────────────
 
-function rowToComment(row: any): KanbanComment {
+function rowToComment(row: CommentRow): KanbanComment {
   const comment: KanbanComment = {
     id: row.id,
-    source: row.source,
+    source: row.source as CommentSource,
     text: row.text,
     timestamp: row.timestamp,
   };
@@ -546,15 +600,15 @@ function rowToComment(row: any): KanbanComment {
   return comment;
 }
 
-function rowToItem(row: any, comments: KanbanComment[]): KanbanItem {
+function rowToItem(row: ItemRow, comments: KanbanComment[]): KanbanItem {
   const item: KanbanItem = {
     id: row.id,
     title: row.title,
     description: row.description,
-    column: row.column,
+    column: row.column as KanbanColumn,
     agentProvider: row.agent_provider as KanbanAgentProvider,
     order: row.order,
-    agentStatus: row.agent_status,
+    agentStatus: row.agent_status as AgentStatus,
     comments,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -569,14 +623,14 @@ function rowToItem(row: any, comments: KanbanComment[]): KanbanItem {
   if (row.agent_question_options != null) item.agentQuestionOptions = safeJsonParse(row.agent_question_options, []);
   if (row.test_specs != null) item.testSpecs = safeJsonParse(row.test_specs, []);
   if (row.worktree_path != null) item.worktreePath = row.worktree_path;
-  if (row.merge_status != null) item.mergeStatus = row.merge_status;
+  if (row.merge_status != null) item.mergeStatus = row.merge_status as MergeStatus;
   if (row.pr_url != null) item.prUrl = row.pr_url;
   if (row.verified != null) item.verified = row.verified === 1;
 
   return item;
 }
 
-function assembleBoard(boardRow: any, itemRows: any[], commentRows: any[]): KanbanBoard {
+function assembleBoard(boardRow: BoardRow, itemRows: ItemRow[], commentRows: CommentRow[]): KanbanBoard {
   // Group comments by item_id
   const commentsByItem = new Map<string, KanbanComment[]>();
   for (const row of commentRows) {
@@ -632,21 +686,21 @@ export function getBoard(projectPath: string): KanbanBoard | null {
 
   const boardRow = database.prepare(
     'SELECT * FROM kanban_boards WHERE project_path = ?'
-  ).get(normalized) as any;
+  ).get(normalized) as BoardRow | undefined;
 
   if (!boardRow) return null;
 
   const itemRows = database.prepare(
     'SELECT * FROM kanban_items WHERE board_id = ? ORDER BY "order" ASC'
-  ).all(boardRow.id) as any[];
+  ).all(boardRow.id) as ItemRow[];
 
-  const itemIds = itemRows.map((r: any) => r.id);
-  let commentRows: any[] = [];
+  const itemIds = itemRows.map((r) => r.id);
+  let commentRows: CommentRow[] = [];
   if (itemIds.length > 0) {
     const placeholders = itemIds.map(() => '?').join(', ');
     commentRows = database.prepare(
       `SELECT * FROM kanban_comments WHERE item_id IN (${placeholders}) ORDER BY timestamp ASC`
-    ).all(...itemIds) as any[];
+    ).all(...itemIds) as CommentRow[];
   }
 
   return assembleBoard(boardRow, itemRows, commentRows);
@@ -759,7 +813,7 @@ export function updateItem(
 
   // Build SET clause dynamically for provided fields
   const setClauses: string[] = ['updated_at = ?'];
-  const params: any[] = [now];
+  const params: (string | number | null)[] = [now];
 
   const fieldMap: Record<string, string> = {
     title: 'title',
@@ -782,7 +836,7 @@ export function updateItem(
   for (const [key, col] of Object.entries(fieldMap)) {
     if (key in updates) {
       setClauses.push(`${col} = ?`);
-      params.push((updates as any)[key] ?? null);
+      params.push((updates as Record<string, string | number | null>)[key] ?? null);
     }
   }
 
@@ -922,7 +976,7 @@ interface ProjectRegistry {
 
 export function loadProjectRegistry(): ProjectRegistry {
   const database = getDb();
-  const rows = database.prepare('SELECT * FROM project_registry').all() as any[];
+  const rows = database.prepare('SELECT * FROM project_registry').all() as RegistryRow[];
 
   const projects: Record<string, ProjectEntry> = {};
   for (const row of rows) {
@@ -990,7 +1044,7 @@ export function getScheduleState(): ScheduleState {
 
   try {
     return JSON.parse(row.value) as ScheduleState;
-  } catch {
+  } catch { /* malformed JSON — return default state */
     return createDefaultState();
   }
 }

@@ -17,8 +17,7 @@ function ensureDefaultBranchCheckout(projectPath: string, defaultBranch: string)
 
   try {
     execFileSync('git', ['worktree', 'prune'], { cwd: projectPath, stdio: 'pipe' })
-  } catch {
-    // Ignore prune errors.
+  } catch { /* Ignore prune errors. */
   }
 
   try {
@@ -27,7 +26,7 @@ function ensureDefaultBranchCheckout(projectPath: string, defaultBranch: string)
       stdio: 'pipe',
     })
     return
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     const error = err as { stderr?: Buffer; message?: string }
     const stderr = error.stderr?.toString() || error.message || 'Unknown error'
 
@@ -46,13 +45,11 @@ function ensureDefaultBranchCheckout(projectPath: string, defaultBranch: string)
           cwd: projectPath,
           stdio: 'pipe',
         })
-      } catch {
-        // Ignore stale cleanup errors.
+      } catch { /* Ignore stale cleanup errors. */
       }
       try {
         execFileSync('git', ['worktree', 'prune'], { cwd: projectPath, stdio: 'pipe' })
-      } catch {
-        // Ignore prune errors.
+      } catch { /* Ignore prune errors. */
       }
     } else if (
       conflictingPath.includes('.yolium/worktrees/') ||
@@ -63,8 +60,7 @@ function ensureDefaultBranchCheckout(projectPath: string, defaultBranch: string)
           cwd: conflictingPath,
           stdio: 'pipe',
         })
-      } catch {
-        // Ignore detach errors and retry checkout.
+      } catch { /* Ignore detach errors and retry checkout. */
       }
     }
 
@@ -74,7 +70,7 @@ function ensureDefaultBranchCheckout(projectPath: string, defaultBranch: string)
         stdio: 'pipe',
       })
       return
-    } catch (retryErr) {
+    } catch (retryErr) { /* intentionally ignored */
       const retryError = retryErr as { stderr?: Buffer; message?: string }
       const retryStderr = retryError.stderr?.toString() || retryError.message || 'Unknown error'
       throw new Error(`Failed to checkout ${defaultBranch}: ${retryStderr}`)
@@ -93,7 +89,7 @@ export function mergeWorktreeBranch(projectPath: string, branchName: string): vo
       cwd: projectPath,
       stdio: 'pipe',
     })
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     const error = err as { stderr?: Buffer; stdout?: Buffer; message?: string }
     const output = (error.stderr?.toString() || '') + (error.stdout?.toString() || '')
 
@@ -103,8 +99,7 @@ export function mergeWorktreeBranch(projectPath: string, branchName: string): vo
           cwd: projectPath,
           stdio: 'ignore',
         })
-      } catch {
-        // Ignore abort errors.
+      } catch { /* Ignore abort errors. */
       }
       throw new Error('conflict: Merge conflicts detected. Please resolve manually.')
     }
@@ -145,7 +140,7 @@ export async function getWorktreeDiffStats(projectPath: string, branchName: stri
       insertions: insertionsMatch ? parseInt(insertionsMatch[1], 10) : 0,
       deletions: deletionsMatch ? parseInt(deletionsMatch[1], 10) : 0,
     }
-  } catch {
+  } catch { /* Branch may not exist yet or diff failed — return empty stats rather than surfacing an error. */
     return { filesChanged: 0, insertions: 0, deletions: 0 }
   }
 }
@@ -204,7 +199,7 @@ export function checkMergeConflicts(projectPath: string, branchName: string): Co
       { cwd: projectPath, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] },
     )
     return { clean: true, conflictingFiles: [] }
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     const error = err as { status?: number; stdout?: string }
     if (error.status === 1 && error.stdout) {
       const files = error.stdout
@@ -218,7 +213,7 @@ export function checkMergeConflicts(projectPath: string, branchName: string): Co
 
   try {
     ensureDefaultBranchCheckout(projectPath, defaultBranch)
-  } catch {
+  } catch { /* Could not restore the default branch — cannot perform the merge-tree fallback check. */
     return { clean: false, conflictingFiles: ['(unable to checkout default branch)'] }
   }
 
@@ -229,26 +224,24 @@ export function checkMergeConflicts(projectPath: string, branchName: string): Co
     })
     try {
       execFileSync('git', ['merge', '--abort'], { cwd: projectPath, stdio: 'ignore' })
-    } catch {
+    } catch { /* merge --abort failed (no merge in progress) — try reset --merge as fallback. */
       try {
         execFileSync('git', ['reset', '--merge'], { cwd: projectPath, stdio: 'ignore' })
-      } catch {
-        // Best effort.
+      } catch { /* Best effort. */
       }
     }
     return { clean: true, conflictingFiles: [] }
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     const mergeErr = err as { stderr?: Buffer; stdout?: Buffer }
     const output = (mergeErr.stderr?.toString() || '') + '\n' + (mergeErr.stdout?.toString() || '')
     const conflictingFiles = parseConflictFileList(output)
 
     try {
       execFileSync('git', ['merge', '--abort'], { cwd: projectPath, stdio: 'ignore' })
-    } catch {
+    } catch { /* merge --abort failed (no merge in progress) — try reset --merge as fallback. */
       try {
         execFileSync('git', ['reset', '--merge'], { cwd: projectPath, stdio: 'ignore' })
-      } catch {
-        // Best effort.
+      } catch { /* Best effort. */
       }
     }
 
@@ -274,8 +267,7 @@ export function rebaseBranchOntoDefault(worktreePath: string, projectPath: strin
       cwd: projectPath,
       stdio: 'pipe',
     })
-  } catch {
-    // Continue with local refs.
+  } catch { /* Continue with local refs. */
   }
 
   const rebaseTarget = gitRefExists(projectPath, `origin/${defaultBranch}`)
@@ -288,7 +280,7 @@ export function rebaseBranchOntoDefault(worktreePath: string, projectPath: strin
       stdio: 'pipe',
     })
     return { success: true }
-  } catch (err) {
+  } catch (err) { /* intentionally ignored */
     const error = err as { stderr?: Buffer; stdout?: Buffer; message?: string }
     const output = (error.stderr?.toString() || '') + '\n' + (error.stdout?.toString() || '')
     const conflictingFiles = parseConflictFileList(output)
@@ -298,8 +290,7 @@ export function rebaseBranchOntoDefault(worktreePath: string, projectPath: strin
         cwd: worktreePath,
         stdio: 'ignore',
       })
-    } catch {
-      // Best effort.
+    } catch { /* Best effort. */
     }
 
     if (output.includes('CONFLICT') || output.includes('could not apply')) {

@@ -3,6 +3,7 @@ import { Folder, X, Plus } from 'lucide-react';
 import type { SidebarProject } from '@renderer/stores/sidebar-store';
 import type { AgentStatus, KanbanColumn } from '@shared/types/kanban';
 import { StatusDotPopover } from './StatusDotPopover';
+import { getFolderName } from '@renderer/lib/path-utils';
 
 export interface SidebarWorkItem {
   projectPath: string;
@@ -35,11 +36,6 @@ export function ProjectList({
   onAddProject,
   onAnswerAndResume,
 }: ProjectListProps): React.ReactElement {
-  // Extract folder name from path (handle both / and \ separators)
-  const getFolderName = (path: string): string => {
-    return path.split(/[/\\]/).filter(Boolean).pop() || path;
-  };
-
   const handleAnswer = async (item: SidebarWorkItem, option: string) => {
     await onAnswerAndResume(item.projectPath, item.itemId, option, item.agentName || 'code-agent');
   };

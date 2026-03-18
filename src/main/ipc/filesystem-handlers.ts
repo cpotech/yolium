@@ -7,6 +7,7 @@ import type { IpcMain } from 'electron';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import * as fs from 'node:fs/promises';
+import { isPathWithinBase } from '@main/lib/error-utils';
 
 /**
  * Register filesystem IPC handlers.
@@ -73,12 +74,12 @@ export function registerFilesystemHandlers(ipcMain: IpcMain): void {
   // Read a file as UTF-8 text (used for mock HTML preview)
   ipcMain.handle('fs:read-file', async (_event, filePath: string) => {
     try {
-      // Reject paths with directory traversal
-      if (filePath.includes('..')) {
+      const resolvedPath = path.resolve(filePath);
+
+      // Reject paths that resolve outside the user's home directory
+      if (!isPathWithinBase(resolvedPath, os.homedir())) {
         return { success: false, content: null, error: 'Path traversal not allowed' };
       }
-
-      const resolvedPath = path.resolve(filePath);
 
       // Verify file exists and check size
       const stats = await fs.stat(resolvedPath);
