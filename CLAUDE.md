@@ -328,6 +328,7 @@ E2E tests live in `src/tests/e2e/tests/`:
 - New UI components or dialogs
 - User-facing workflows (tab creation, settings changes)
 - Integration points (Docker, terminal, IPC)
+- **Keyboard shortcuts and vim actions** — any new or modified shortcut must have an E2E test verifying the actual keyboard interaction works end-to-end (not just unit-level synthetic events). Use Playwright's `keyboard.press()` to simulate real key presses. Reference existing patterns in `src/tests/e2e/tests/vim-shortcut-explorer.spec.ts` and `src/tests/e2e/tests/dialog-shortcuts.spec.ts`.
 
 ### E2E Test Isolation
 
