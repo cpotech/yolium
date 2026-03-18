@@ -5,6 +5,7 @@ import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { KeyboardShortcutsDialog } from '@renderer/components/settings/KeyboardShortcutsDialog'
+import { VIM_ACTIONS, SHORTCUT_GROUP_ORDER } from '@shared/vim-actions'
 
 describe('KeyboardShortcutsDialog', () => {
   it('should render the Agent Controls shortcut group with Ctrl+Shift+P for Plan Agent', () => {
@@ -119,5 +120,46 @@ describe('KeyboardShortcutsDialog', () => {
     expect(kbds).toContain('w')
     expect(kbds).toContain('h')
     expect(kbds).toContain('x')
+  })
+
+  it('should render a group heading for every entry in SHORTCUT_GROUP_ORDER', () => {
+    render(<KeyboardShortcutsDialog isOpen={true} onClose={() => {}} />)
+
+    const dialog = screen.getByTestId('shortcuts-dialog')
+    const headings = Array.from(dialog.querySelectorAll('h3')).map(h => h.textContent)
+
+    for (const group of SHORTCUT_GROUP_ORDER) {
+      expect(headings, `missing group heading '${group}'`).toContain(group)
+    }
+  })
+
+  it('every shortcut displayed should correspond to a VIM_ACTIONS entry', () => {
+    render(<KeyboardShortcutsDialog isOpen={true} onClose={() => {}} />)
+
+    const dialog = screen.getByTestId('shortcuts-dialog')
+    // Get all shortcut rows (each row has a description span and a kbd)
+    const kbds = Array.from(dialog.querySelectorAll('kbd'))
+    const manifestKeys = new Set(VIM_ACTIONS.map(a => a.key))
+
+    for (const kbd of kbds) {
+      const keyText = kbd.textContent ?? ''
+      // Skip the Ctrl+Q hint in the footer (not a shortcut row)
+      if (kbd.closest('.mt-6')) continue
+      expect(manifestKeys.has(keyText), `displayed key '${keyText}' not found in VIM_ACTIONS`).toBe(true)
+    }
+  })
+
+  it('should not contain any hardcoded shortcut arrays outside the manifest', async () => {
+    // Read the source file and verify no inline shortcut arrays exist
+    const fs = await import('fs')
+    const path = await import('path')
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../renderer/components/settings/KeyboardShortcutsDialog.tsx'),
+      'utf-8'
+    )
+    // Should not have any array literals with keys/description objects
+    const hardcodedPattern = /shortcuts:\s*\[/g
+    const matches = source.match(hardcodedPattern)
+    expect(matches, 'found hardcoded shortcut arrays in KeyboardShortcutsDialog').toBeNull()
   })
 })
