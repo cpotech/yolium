@@ -11,6 +11,7 @@ import type { AgentTokenUsage } from '@shared/types/agent'
 
 interface ItemDetailSidebarProps {
   focusZone: 'editor' | 'sidebar'
+  showKbdHints: boolean
   item: KanbanItem
   agentProvider: KanbanItem['agentProvider']
   model: string
@@ -58,6 +59,7 @@ interface ItemDetailSidebarProps {
 
 export function ItemDetailSidebar({
   focusZone,
+  showKbdHints,
   item,
   agentProvider,
   model,
@@ -272,6 +274,7 @@ export function ItemDetailSidebar({
         )}
 
         <ItemDetailMergeSection
+          showKbdHints={showKbdHints}
           item={item}
           prUrl={prUrl}
           conflictCheck={conflictCheck}
