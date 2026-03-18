@@ -3,7 +3,9 @@
  * Shared auth checks for agent providers.
  */
 
-import { loadGitConfig, hasHostClaudeOAuth, hasHostCodexOAuth } from '@main/git/git-config';
+import { loadGitConfig } from '@main/git/git-config';
+import { hasHostClaudeOAuth } from '@main/git/claude-oauth';
+import { hasHostCodexOAuth } from '@main/git/codex-oauth';
 
 /**
  * Check whether an agent provider has valid authentication configured.

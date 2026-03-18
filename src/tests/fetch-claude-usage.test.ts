@@ -24,17 +24,12 @@ vi.mock('node:fs', () => ({
   },
 }));
 
-// Mock node:child_process (required by git-config for loadSystemGitConfig)
-vi.mock('node:child_process', () => ({
-  execSync: vi.fn(),
-}));
-
 // Mock global fetch
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
 import * as fs from 'node:fs';
-import { fetchClaudeUsage, refreshClaudeOAuthToken, refreshClaudeOAuthTokenSerialized } from '@main/git/git-config';
+import { fetchClaudeUsage, refreshClaudeOAuthToken, refreshClaudeOAuthTokenSerialized } from '@main/git/claude-oauth';
 
 const CRED_PATH = path.join(os.homedir(), '.claude', '.credentials.json');
 

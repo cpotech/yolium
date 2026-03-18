@@ -58,6 +58,9 @@ vi.mock('@main/services/project-onboarding', () => ({
 
 vi.mock('@main/git/git-config', () => ({
   loadGitConfig: loadGitConfigMock,
+}))
+
+vi.mock('@main/git/codex-oauth', () => ({
   refreshCodexOAuthTokenSerialized: refreshCodexOAuthTokenSerializedMock,
 }));
 
