@@ -66,11 +66,13 @@ export function KanbanView({
   const viewRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const vim = useVimModeContext()
-  const isVimContentActive = vim.mode === 'NORMAL' && vim.activeZone === 'content'
+  const isVisualMode = vim.mode === 'VISUAL'
+  const isVimContentActive = (vim.mode === 'NORMAL' || isVisualMode) && vim.activeZone === 'content'
   const [focusedColumnIndex, setFocusedColumnIndex] = useState(0)
   const [focusedCardIndex, setFocusedCardIndex] = useState(0)
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
   const gPendingRef = useRef(false)
+  const visualAnchorIndexRef = useRef(-1)
   // Ref to track dialog open state without stale closures
   const dialogOpenRef = useRef(false)
   // Ref to track when user is interacting with any input (prevents focus theft)
@@ -345,7 +347,16 @@ export function KanbanView({
       if (e.key === 'j' || e.key === 'ArrowDown') {
         e.preventDefault()
         if (currentColumnItems.length > 0) {
-          setFocusedCardIndex((focusedCardIndex + 1) % currentColumnItems.length)
+          const newIndex = (focusedCardIndex + 1) % currentColumnItems.length
+          setFocusedCardIndex(newIndex)
+          if (isVisualMode) {
+            const newCard = currentColumnItems[newIndex]
+            const newGlobalIdx = allVisibleItems.findIndex(i => i.id === newCard.id)
+            const anchor = visualAnchorIndexRef.current
+            const start = Math.min(anchor, newGlobalIdx)
+            const end = Math.max(anchor, newGlobalIdx)
+            setSelectedIds(new Set(allVisibleItems.slice(start, end + 1).map(i => i.id)))
+          }
         }
         gPendingRef.current = false
         return
@@ -353,7 +364,16 @@ export function KanbanView({
       if (e.key === 'k' || e.key === 'ArrowUp') {
         e.preventDefault()
         if (currentColumnItems.length > 0) {
-          setFocusedCardIndex((focusedCardIndex - 1 + currentColumnItems.length) % currentColumnItems.length)
+          const newIndex = (focusedCardIndex - 1 + currentColumnItems.length) % currentColumnItems.length
+          setFocusedCardIndex(newIndex)
+          if (isVisualMode) {
+            const newCard = currentColumnItems[newIndex]
+            const newGlobalIdx = allVisibleItems.findIndex(i => i.id === newCard.id)
+            const anchor = visualAnchorIndexRef.current
+            const start = Math.min(anchor, newGlobalIdx)
+            const end = Math.max(anchor, newGlobalIdx)
+            setSelectedIds(new Set(allVisibleItems.slice(start, end + 1).map(i => i.id)))
+          }
         }
         gPendingRef.current = false
         return
@@ -386,6 +406,18 @@ export function KanbanView({
           handleCardClick(currentColumnItems[idx], e)
         }
         gPendingRef.current = false
+        return
+      }
+
+      if (e.key === 'v' && !isVisualMode) {
+        e.preventDefault()
+        const clampedIdx = Math.min(focusedCardIndex, Math.max(currentColumnItems.length - 1, 0))
+        const focusedCard = currentColumnItems[clampedIdx]
+        if (focusedCard) {
+          const globalIdx = allVisibleItems.findIndex(i => i.id === focusedCard.id)
+          visualAnchorIndexRef.current = globalIdx
+          setSelectedIds(new Set([focusedCard.id]))
+        }
         return
       }
 
@@ -457,6 +489,7 @@ export function KanbanView({
     if (e.key === 'Escape') {
       if (selectedIds.size > 0) {
         e.preventDefault()
+        visualAnchorIndexRef.current = -1
         handleClearSelection()
       } else if (searchQuery) {
         e.preventDefault()
@@ -464,7 +497,7 @@ export function KanbanView({
         viewRef.current?.focus()
       }
     }
-  }, [newItemDialogOpen, selectedItem, loadBoard, showShortcutsHelp, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, board, vim, columns, focusedColumnIndex, getColumnItems, handleCardClick, projectPath, focusedCardIndex])
+  }, [newItemDialogOpen, selectedItem, loadBoard, showShortcutsHelp, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, isVisualMode, board, vim, columns, focusedColumnIndex, focusedCardIndex, getColumnItems, handleCardClick, projectPath])
 
   const handleCardDrop = useCallback(async (itemId: string, targetColumn: ColumnId) => {
     if (!projectPath || !board) return
@@ -709,6 +742,11 @@ export function KanbanView({
           <div className="flex items-center gap-2 text-sm text-[var(--color-accent-primary)]">
             <CheckSquare size={14} />
             <span data-testid="selection-count">{selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''} selected</span>
+            {isVisualMode && (
+              <span data-testid="visual-mode-indicator" className="px-2 py-0.5 text-xs font-mono font-bold bg-[var(--color-accent-primary)]/20 rounded">
+                -- VISUAL --
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -828,6 +866,7 @@ export function KanbanView({
             <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">j</kbd>/<kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">k</kbd> Navigate cards</div>
             <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">gg</kbd>/<kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">G</kbd> First/Last card</div>
             <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Enter</kbd> Open focused card</div>
+            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">V</kbd> Visual select</div>
           </div>
         </div>
       )}

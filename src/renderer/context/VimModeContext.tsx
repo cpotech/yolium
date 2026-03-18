@@ -12,6 +12,7 @@ interface VimModeContextValue {
   activeZone: VimZone;
   setActiveZone: (zone: VimZone) => void;
   enterInsertMode: () => void;
+  enterVisualMode: () => void;
   exitToNormal: () => void;
   suspendNavigation: () => () => void;
 }
@@ -83,6 +84,7 @@ export function VimModeProvider({
         activeZone: vim.activeZone,
         setActiveZone: vim.setActiveZone,
         enterInsertMode: vim.enterInsertMode,
+        enterVisualMode: vim.enterVisualMode,
         exitToNormal: vim.exitToNormal,
         suspendNavigation,
       }}
@@ -113,6 +115,7 @@ export function useVimModeContext(): VimModeContextValue {
       activeZone: 'content',
       setActiveZone: () => {},
       enterInsertMode: () => {},
+      enterVisualMode: () => {},
       exitToNormal: () => {},
       suspendNavigation: () => noopRelease,
     };
