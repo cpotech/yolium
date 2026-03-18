@@ -58,6 +58,35 @@ describe('tools-resolver', () => {
     expect(result).toBe(expectedPath);
   });
 
+  it('should return absolute path to src/tools/bluesky in dev when directory exists', () => {
+    vi.mocked(fs.existsSync).mockImplementation((p) => {
+      return typeof p === 'string' && p.endsWith(path.sep + 'bluesky');
+    });
+
+    const result = resolveToolDir('bluesky');
+    expect(result).not.toBeNull();
+    expect(result).toMatch(/tools[/\\]bluesky$/);
+  });
+
+  it('should return null for bluesky tool directory when it does not exist', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+
+    const result = resolveToolDir('bluesky');
+    expect(result).toBeNull();
+  });
+
+  it('should return resources/tools/bluesky path in production when process.resourcesPath is set', () => {
+    Object.defineProperty(process, 'resourcesPath', { value: '/app/resources', writable: true, configurable: true });
+
+    const expectedPath = path.join('/app/resources', 'tools', 'bluesky');
+    vi.mocked(fs.existsSync).mockImplementation((p) => {
+      return p === expectedPath;
+    });
+
+    const result = resolveToolDir('bluesky');
+    expect(result).toBe(expectedPath);
+  });
+
   it('should handle tool names with hyphens and underscores', () => {
     vi.mocked(fs.existsSync).mockImplementation((p) => {
       return typeof p === 'string' && (p.endsWith(path.sep + 'my-tool') || p.endsWith(path.sep + 'my_tool'));
