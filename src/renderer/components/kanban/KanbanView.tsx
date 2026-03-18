@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { FolderOpen, RefreshCw, Plus, Loader2, X, AlertTriangle, Keyboard, Search, GitBranch, Trash2, CheckSquare } from 'lucide-react'
+import { FolderOpen, RefreshCw, Plus, Loader2, X, AlertTriangle, Search, GitBranch, Trash2, CheckSquare } from 'lucide-react'
 import { KanbanColumn } from './KanbanColumn'
 import { NewItemDialog } from './NewItemDialog'
 import { ItemDetailDialog } from './ItemDetailDialog'
@@ -55,7 +55,6 @@ export function KanbanView({
   const [newItemDialogOpen, setNewItemDialogOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<KanbanItem | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [gitWarning, setGitWarning] = useState<{
     isRepo: boolean
@@ -354,7 +353,7 @@ export function KanbanView({
     }
     if (e.key === '?') {
       e.preventDefault()
-      setShowShortcutsHelp(prev => !prev)
+      onShowShortcuts?.()
     }
     if (e.key === 'Delete' || e.key === 'Backspace') {
       if (selectedIds.size > 0) {
@@ -372,16 +371,13 @@ export function KanbanView({
       if (selectedIds.size > 0) {
         e.preventDefault()
         handleClearSelection()
-      } else if (showShortcutsHelp) {
-        e.preventDefault()
-        setShowShortcutsHelp(false)
       } else if (searchQuery) {
         e.preventDefault()
         setSearchQuery('')
         viewRef.current?.focus()
       }
     }
-  }, [newItemDialogOpen, selectedItem, loadBoard, showShortcutsHelp, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, board, vim])
+  }, [newItemDialogOpen, selectedItem, loadBoard, onShowShortcuts, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, board, vim])
 
   const handleCardDrop = useCallback(async (itemId: string, targetColumn: ColumnId) => {
     if (!projectPath || !board) return
@@ -720,35 +716,6 @@ export function KanbanView({
                 Initialize Git
               </button>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Shortcuts help overlay */}
-      {showShortcutsHelp && (
-        <div
-          data-testid="shortcuts-help"
-          className="px-4 py-3 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border-primary)] text-sm"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-medium text-[var(--color-text-primary)] flex items-center gap-2">
-              <Keyboard size={14} />
-              Keyboard Shortcuts
-            </h3>
-            <button onClick={() => setShowShortcutsHelp(false)} className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">
-              <X size={14} />
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-[var(--color-text-secondary)]">
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">N</kbd> New item</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">R</kbd> Refresh board</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">/</kbd> Search items</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">?</kbd> Toggle shortcuts</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Ctrl+Click</kbd> Multi-select</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Shift+Click</kbd> Range select</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Ctrl+A</kbd> Select all</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Delete</kbd> Delete selected</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Esc</kbd> Clear selection / close</div>
           </div>
         </div>
       )}

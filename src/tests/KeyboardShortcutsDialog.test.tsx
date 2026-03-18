@@ -45,4 +45,29 @@ describe('KeyboardShortcutsDialog', () => {
     expect(text).toContain('Settings')
     expect(text).toContain('Ctrl+Shift+,')
   })
+
+  it('should display the "Kanban Selection" group', () => {
+    render(<KeyboardShortcutsDialog isOpen={true} onClose={() => {}} />)
+
+    const dialog = screen.getByTestId('shortcuts-dialog')
+    const text = dialog.textContent ?? ''
+    expect(text).toContain('Kanban Selection')
+  })
+
+  it('should list Ctrl+Click, Shift+Click, Ctrl+A, Delete, and Esc shortcuts in the Kanban Selection group', () => {
+    render(<KeyboardShortcutsDialog isOpen={true} onClose={() => {}} />)
+
+    const dialog = screen.getByTestId('shortcuts-dialog')
+    const text = dialog.textContent ?? ''
+
+    expect(text).toContain('Ctrl+Click')
+    expect(text).toContain('Multi-select items')
+    expect(text).toContain('Shift+Click')
+    expect(text).toContain('Range select items')
+    expect(text).toContain('Ctrl+A')
+    expect(text).toContain('Select all items')
+    expect(text).toContain('Delete')
+    expect(text).toContain('Delete selected items')
+    expect(text).toContain('Clear selection / close')
+  })
 })

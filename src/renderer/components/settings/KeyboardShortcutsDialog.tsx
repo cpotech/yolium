@@ -48,6 +48,16 @@ const shortcutGroups: ShortcutGroup[] = [
     ],
   },
   {
+    title: 'Kanban Selection',
+    shortcuts: [
+      { keys: 'Ctrl+Click', description: 'Multi-select items' },
+      { keys: 'Shift+Click', description: 'Range select items' },
+      { keys: 'Ctrl+A', description: 'Select all items' },
+      { keys: 'Delete', description: 'Delete selected items' },
+      { keys: 'Esc', description: 'Clear selection / close' },
+    ],
+  },
+  {
     title: 'Tab Management',
     shortcuts: [
       { keys: 'Ctrl+Shift+T', description: 'New tab' },
