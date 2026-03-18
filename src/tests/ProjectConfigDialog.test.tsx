@@ -280,7 +280,7 @@ describe('ProjectConfigDialog', () => {
     expect(screen.getByTestId('empty-state')).toHaveTextContent('No shared directories configured')
   })
 
-  it('escape key closes without saving', async () => {
+  it('Ctrl+Q key closes without saving', async () => {
     mockLoad.mockResolvedValue({ sharedDirs: [] })
     const onClose = vi.fn()
 
@@ -296,7 +296,7 @@ describe('ProjectConfigDialog', () => {
       expect(screen.getByTestId('project-config-dialog')).toBeInTheDocument()
     })
 
-    fireEvent.keyDown(screen.getByTestId('project-config-dialog'), { key: 'Escape' })
+    fireEvent.keyDown(screen.getByTestId('project-config-dialog'), { key: 'q', ctrlKey: true })
 
     expect(onClose).toHaveBeenCalled()
     expect(mockSave).not.toHaveBeenCalled()

@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
 import { trapFocus } from '@shared/lib/focus-trap';
+import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts';
 
 interface ProjectConfigDialogProps {
   isOpen: boolean;
@@ -112,7 +113,7 @@ export function ProjectConfigDialog({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (isCloseShortcut(e)) {
         e.preventDefault();
         onClose();
         return;
@@ -160,17 +161,20 @@ export function ProjectConfigDialog({
               {projectPath}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            data-testid="project-config-close"
-            className="rounded-md p-1.5 text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]"
-            aria-label="Close project settings"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">Ctrl+Q</kbd>
+            <button
+              type="button"
+              onClick={onClose}
+              data-testid="project-config-close"
+              className="rounded-md p-1.5 text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]"
+              aria-label="Close project settings"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Content */}

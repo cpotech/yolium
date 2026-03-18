@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useEffect, useState } from 'react';
 import type { AgentProvider } from '@shared/types/agent';
 import type { ProjectType } from '@shared/types/onboarding';
 import { getFolderName } from '@renderer/lib/path-utils';
+import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts';
 
 export type { AgentProvider } from '@shared/types/agent';
 
@@ -107,7 +108,7 @@ export function AgentSelectDialog({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (isCloseShortcut(e)) {
         e.preventDefault();
         onBack();
       } else if (e.key === 'Enter') {
@@ -305,7 +306,7 @@ export function AgentSelectDialog({
             className="px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors flex items-center gap-2"
           >
             Back
-            <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">Esc</kbd>
+            <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">Ctrl+Q</kbd>
           </button>
           <button
             data-testid="agent-start"

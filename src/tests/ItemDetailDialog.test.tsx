@@ -235,7 +235,7 @@ describe('ItemDetailDialog', () => {
     expect(screen.getByTestId('title-input')).toHaveValue('Second item')
   })
 
-  it('should flush a pending draft save when the dialog closes via Escape', async () => {
+  it('should flush a pending draft save when the dialog closes via Ctrl+Q', async () => {
     mockKanbanUpdateItem.mockResolvedValue(undefined)
     const onClose = vi.fn()
 
@@ -255,7 +255,8 @@ describe('ItemDetailDialog', () => {
 
     await act(async () => {
       fireEvent.keyDown(screen.getByTestId('item-detail-dialog').parentElement!, {
-        key: 'Escape',
+        key: 'q',
+        ctrlKey: true,
       })
     })
 

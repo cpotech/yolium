@@ -19,6 +19,7 @@ import { useItemDetailPrWorkflow } from './item-detail/useItemDetailPrWorkflow'
 import { StatusBar } from '@renderer/components/StatusBar'
 import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper'
 import type { ClaudeUsageState } from '@shared/types/agent'
+import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts'
 
 const FIELD_IDS = ['detail-title', 'detail-description', 'comment-input']
 
@@ -203,11 +204,17 @@ export function ItemDetailDialog({
       }
     }
 
+    // Ctrl+Q to close dialog
+    if (isCloseShortcut(event)) {
+      event.preventDefault()
+      handleClose()
+      return
+    }
+
     // Vim-mode-aware Escape handling
     if (event.key === 'Escape') {
       event.preventDefault()
       if (vim.mode === 'INSERT') {
-        // EXIT INSERT -> NORMAL, blur field, focus dialog container
         vim.exitToNormal()
         ;(document.activeElement as HTMLElement)?.blur()
         dialogRef.current?.focus()
@@ -215,9 +222,6 @@ export function ItemDetailDialog({
         // Sidebar zone Escape -> return to editor zone
         setFocusZone('editor')
         dialogRef.current?.focus()
-      } else {
-        // NORMAL mode Escape in editor zone -> close dialog
-        handleClose()
       }
       return
     }
@@ -333,13 +337,16 @@ export function ItemDetailDialog({
           <h2 className="text-base font-semibold text-[var(--color-text-primary)] truncate min-w-0">
             {item.title || 'Untitled Item'}
           </h2>
-          <button
-            data-testid="close-button"
-            onClick={handleClose}
-            className="p-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded transition-colors flex-shrink-0"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">Ctrl+Q</kbd>
+            <button
+              data-testid="close-button"
+              onClick={handleClose}
+              className="p-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded transition-colors flex-shrink-0"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {errorMessage && (
@@ -451,7 +458,7 @@ export function ItemDetailDialog({
                 <span><kbd className={kbdClass}>G</kbd> Last</span>
                 <span><kbd className={kbdClass}>i</kbd> Edit field</span>
                 <span><kbd className={kbdClass}>Tab</kbd> Sidebar</span>
-                <span><kbd className={kbdClass}>Esc</kbd> Close</span>
+                <span><kbd className={kbdClass}>Ctrl+Q</kbd> Close</span>
                 <span className="ml-auto flex items-center gap-3">
                   <span><kbd className={kbdClass}>Ctrl+Shift+P</kbd> Plan</span>
                   <span><kbd className={kbdClass}>Ctrl+Shift+C</kbd> Code</span>

@@ -199,12 +199,12 @@ describe('AddSpecialistDialog', () => {
     expect(nameInput).toHaveValue('my-specialist-2026');
   });
 
-  it('should close on Escape and backdrop click', () => {
+  it('should close on Ctrl+Q and backdrop click', () => {
     const onClose = vi.fn();
 
     render(<AddSpecialistDialog isOpen={true} onClose={onClose} onCreated={vi.fn()} />);
 
-    fireEvent.keyDown(screen.getByTestId('add-specialist-dialog'), { key: 'Escape' });
+    fireEvent.keyDown(screen.getByTestId('add-specialist-dialog'), { key: 'q', ctrlKey: true });
     expect(onClose).toHaveBeenCalledTimes(1);
 
     onClose.mockClear();

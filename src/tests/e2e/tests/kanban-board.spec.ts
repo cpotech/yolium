@@ -151,14 +151,14 @@ test.describe('Kanban Board', () => {
     await expect(createBtn).toBeEnabled();
   });
 
-  test('should close new item dialog with Escape', async () => {
+  test('should close new item dialog with Ctrl+Q', async () => {
     await openKanbanBoard();
     const { window } = ctx;
 
     await window.click(selectors.kanbanNewItemButton);
     await expect(window.locator(selectors.newItemDialog)).toBeVisible();
 
-    await window.keyboard.press('Escape');
+    await window.keyboard.press('Control+q');
     await expect(window.locator(selectors.newItemDialog)).not.toBeVisible();
   });
 
@@ -300,9 +300,9 @@ test.describe('Kanban Board', () => {
     ).toHaveCount(0);
   });
 
-  test('should close detail dialog with Escape', async () => {
+  test('should close detail dialog with Ctrl+Q', async () => {
     await openKanbanBoard();
-    await createItemViaIPC('Escape Test', 'Test');
+    await createItemViaIPC('Ctrl+Q Test', 'Test');
     const { window } = ctx;
 
     await window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
@@ -310,7 +310,7 @@ test.describe('Kanban Board', () => {
 
     // Click the dialog header first to ensure focus is on the dialog overlay (not in an input)
     await window.locator(selectors.detailCloseButton).focus();
-    await window.keyboard.press('Escape');
+    await window.keyboard.press('Control+q');
     await expect(window.locator(selectors.itemDetailDialog)).not.toBeVisible();
   });
 

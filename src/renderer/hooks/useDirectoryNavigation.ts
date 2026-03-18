@@ -11,6 +11,7 @@ import {
   hasTrailingSeparator,
   PATH_SEP,
 } from '@shared/lib/path-utils'
+import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts'
 
 export interface DirectoryEntry {
   name: string
@@ -181,22 +182,22 @@ export function useDirectoryNavigation({
         return
       }
 
-      switch (e.key) {
-        case 'Escape':
-          e.preventDefault()
-          if (inputValue) {
-            const parentPath = getParentDirectory(inputValue)
-            const normalizedInput = normalizePath(inputValue)
-            if (parentPath === normalizedInput) {
-              onCancel()
-            } else {
-              setInputValue(parentPath)
-            }
-          } else {
-            onCancel()
-          }
-          break
+      // Ctrl+Q to cancel
+      if (isCloseShortcut(e)) {
+        e.preventDefault()
+        onCancel()
+        return
+      }
 
+      // Escape navigates up one directory (does not cancel)
+      if (e.key === 'Escape' && inputValue) {
+        e.preventDefault()
+        const parentPath = getParentDirectory(inputValue)
+        setInputValue(parentPath)
+        return
+      }
+
+      switch (e.key) {
         case 'Enter':
           e.preventDefault()
           if (inputValue.trim()) {

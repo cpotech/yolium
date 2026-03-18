@@ -103,7 +103,7 @@ test.describe('Speech-to-Text', () => {
   });
 
   test.describe('Whisper Model Dialog', () => {
-    test('should open model dialog from status bar and close with Escape', async () => {
+    test('should open model dialog from status bar and close with Ctrl+Q', async () => {
       test.skip(!!process.env.CI || process.env.YOLIUM_E2E_SKIP_DOCKER_TESTS === '1', 'Skipped in CI - requires Docker container');
       ctx = await launchApp();
       const { window } = ctx;
@@ -128,9 +128,9 @@ test.describe('Speech-to-Text', () => {
       await expect(window.locator(selectors.whisperModel('medium'))).toBeVisible();
       await expect(window.locator(selectors.whisperModel('large'))).toBeVisible();
 
-      // Click the dialog to ensure focus, then close with Escape
+      // Click the dialog to ensure focus, then close with Ctrl+Q
       await window.locator(selectors.whisperModelDialog).click();
-      await window.keyboard.press('Escape');
+      await window.keyboard.press('Control+q');
       await expect(window.locator(selectors.whisperModelDialog)).not.toBeVisible({ timeout: 3000 });
     });
 

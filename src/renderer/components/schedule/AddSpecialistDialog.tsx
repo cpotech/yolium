@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CronHelper } from './CronHelper';
 import type { MemoryStrategy, EscalationAction } from '@shared/types/schedule';
+import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts';
 
 interface AddSpecialistDialogProps {
   isOpen: boolean;
@@ -461,7 +462,7 @@ export function AddSpecialistDialog({
   }, [onClose]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Escape') {
+    if (isCloseShortcut(e)) {
       e.preventDefault();
       onClose();
     }
