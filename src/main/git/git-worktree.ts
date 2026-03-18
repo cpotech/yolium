@@ -47,3 +47,9 @@ export type {
   MergeAndPushResult,
   MergePRResult,
 } from './git-github-pr'
+
+export {
+  cloneRepository,
+  extractRepoNameFromUrl,
+} from './git-clone'
+export type { GitCloneResult } from './git-clone'

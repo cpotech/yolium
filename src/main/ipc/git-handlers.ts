@@ -13,7 +13,7 @@ import { getErrorMessage } from '@main/lib/error-utils';
 import { loadGitConfig, saveGitConfig } from '@main/git/git-config';
 import { loadDetectedGitConfig } from '@main/git/git-identity';
 import { fetchGitHubUser, generateGitCredentials } from '@main/git/git-credentials';
-import { hasHostClaudeOAuth, fetchClaudeUsage } from '@main/git/claude-oauth';
+import { hasHostClaudeOAuth } from '@main/git/claude-oauth';
 import { hasHostCodexOAuth } from '@main/git/codex-oauth';
 import {
   isGitRepo,
@@ -32,11 +32,14 @@ import {
   mergePR,
   rebaseBranchOntoDefault,
 } from '@main/git/git-worktree';
+import {
+  cloneRepository,
+  extractRepoNameFromUrl,
+} from '@main/git/git-clone';
 import type { GitConfig } from '@shared/types/git';
 import type { ProjectType } from '@shared/types/onboarding';
 
 const logger = createLogger('git-handlers');
-const GIT_CLONE_TIMEOUT_MS = 5 * 60 * 1000;
 
 const GIT_CHANNELS = {
   loadConfig: 'git-config:load',
@@ -57,7 +60,6 @@ const GIT_CHANNELS = {
   worktreeFileDiff: 'git:worktree-file-diff',
   detectNestedRepos: 'git:detect-nested-repos',
   rebaseOntoDefault: 'git:rebase-onto-default',
-  getClaudeUsage: 'usage:get-claude',
 } as const;
 
 export const GIT_IPC_CHANNELS = Object.values(GIT_CHANNELS);
@@ -76,114 +78,6 @@ function registerGitChannel(ipcMain: IpcMain, channel: GitIpcChannel, handler: G
     });
     throw error;
   }
-}
-
-export interface GitCloneResult {
-  success: boolean;
-  clonedPath: string | null;
-  error: string | null;
-}
-
-function expandHomePath(inputPath: string): string {
-  return inputPath.startsWith('~')
-    ? inputPath.replace(/^~(?=$|[\\/])/, os.homedir())
-    : inputPath;
-}
-
-/**
- * Extract repository name from a git URL.
- * Supports HTTPS, SSH, and SCP-like git URL formats.
- */
-export function extractRepoNameFromUrl(repoUrl: string): string | null {
-  const trimmed = repoUrl.trim();
-  if (!trimmed) return null;
-
-  const withoutQuery = trimmed.replace(/[?#].*$/, '');
-  const withoutTrailingSlash = withoutQuery.replace(/[\\/]+$/, '');
-  const withoutDotGit = withoutTrailingSlash.replace(/\.git$/i, '');
-  if (!withoutDotGit) return null;
-
-  const scpLikeMatch = withoutDotGit.match(/^[^@\s]+@[^:\s]+:(.+)$/);
-  if (scpLikeMatch?.[1]) {
-    const repoName = path.posix.basename(scpLikeMatch[1]);
-    return repoName && repoName !== '.' ? repoName : null;
-  }
-
-  try {
-    const parsed = new URL(withoutDotGit);
-    const pathname = parsed.pathname.replace(/^\/+/, '');
-    const repoName = path.posix.basename(pathname);
-    return repoName && repoName !== '.' ? repoName : null;
-  } catch { /* not a valid URL — fall back to path-segment extraction */
-    const segments = withoutDotGit.split(/[\\/]/).filter(Boolean);
-    if (segments.length < 2) return null;
-    return segments[segments.length - 1] ?? null;
-  }
-}
-
-function buildGitCloneEnv(): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...process.env };
-  const gitConfig = loadGitConfig();
-
-  if (gitConfig?.githubPat) {
-    const credPath = generateGitCredentials(gitConfig);
-    if (credPath) {
-      env.GIT_TERMINAL_PROMPT = '0';
-      env.GIT_CONFIG_COUNT = '1';
-      env.GIT_CONFIG_KEY_0 = 'credential.helper';
-      env.GIT_CONFIG_VALUE_0 = `store --file "${credPath}"`;
-    }
-  }
-
-  return env;
-}
-
-function resolveCloneTargetPath(targetDir: string, repoName: string): string {
-  const expanded = expandHomePath(targetDir.trim());
-  if (!expanded) {
-    return path.join(process.cwd(), repoName);
-  }
-
-  const endsWithSeparator = /[\\/]$/.test(expanded);
-  if (endsWithSeparator) {
-    return path.join(expanded, repoName);
-  }
-
-  try {
-    if (fs.statSync(expanded).isDirectory()) {
-      return path.join(expanded, repoName);
-    }
-  } catch { /* Path does not exist yet, treat as explicit target path. */
-  }
-
-  return expanded;
-}
-
-async function runGitClone(url: string, targetPath: string, env: NodeJS.ProcessEnv): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    let progressOutput = '';
-
-    const proc = execFile(
-      'git',
-      ['clone', url, targetPath],
-      {
-        env,
-        timeout: GIT_CLONE_TIMEOUT_MS,
-      },
-      (error, _stdout, stderr) => {
-        if (error) {
-          const errorMessage = (stderr || progressOutput || error.message || 'Failed to clone repository').trim();
-          reject(new Error(errorMessage));
-          return;
-        }
-        resolve();
-      },
-    );
-
-    proc.stderr?.on('data', (chunk: Buffer | string) => {
-      progressOutput += chunk.toString();
-    });
-  });
 }
 
 /**
@@ -354,34 +248,9 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   });
 
   // Clone repository into target directory.
-  registerGitChannel(ipcMain, GIT_CHANNELS.clone, async (_event, url: string, targetDir: string): Promise<GitCloneResult> => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.clone, async (_event, url: string, targetDir: string) => {
     logger.info('IPC: git:clone', { url, targetDir });
-
-    const repoName = extractRepoNameFromUrl(url);
-    if (!repoName) {
-      return { success: false, clonedPath: null, error: 'Invalid repository URL' };
-    }
-
-    const targetPath = resolveCloneTargetPath(targetDir, repoName);
-    const parentDirectory = path.dirname(targetPath);
-
-    if (fs.existsSync(targetPath)) {
-      return { success: false, clonedPath: null, error: `Target already exists: ${targetPath}` };
-    }
-
-    if (!fs.existsSync(parentDirectory)) {
-      return { success: false, clonedPath: null, error: `Parent directory does not exist: ${parentDirectory}` };
-    }
-
-    try {
-      const env = buildGitCloneEnv();
-      await runGitClone(url.trim(), targetPath, env);
-      return { success: true, clonedPath: targetPath, error: null };
-    } catch (err) { /* intentionally ignored */
-      const message = err instanceof Error ? err.message : 'Failed to clone repository';
-      logger.error('Failed to clone repository', { url, targetPath, error: message });
-      return { success: false, clonedPath: null, error: message };
-    }
+    return cloneRepository(url, targetDir);
   });
 
   // Validate branch name for UI
@@ -534,12 +403,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     return { isRepo: false, nestedRepos };
   });
 
-  // Get Claude OAuth usage state (auth status + usage data)
-  registerGitChannel(ipcMain, GIT_CHANNELS.getClaudeUsage, async () => {
-    const hasOAuth = hasHostClaudeOAuth();
-    const usage = hasOAuth ? await fetchClaudeUsage() : null;
-    return { hasOAuth, usage };
-  });
+
 
   logger.info('Git IPC handlers registered', {
     count: GIT_IPC_CHANNELS.length,
