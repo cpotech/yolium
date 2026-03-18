@@ -25,6 +25,7 @@ export function SpeechToTextButton({
       {/* Main mic button */}
       <button
         data-testid="speech-to-text-button"
+        data-vim-key="w"
         onClick={onToggleRecording}
         disabled={isTranscribing}
         className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${

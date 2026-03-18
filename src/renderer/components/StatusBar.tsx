@@ -309,6 +309,7 @@ export function StatusBar({
         {onStop && (containerState === 'running' || containerState === 'starting') && (
           <button
             data-testid="stop-button"
+            data-vim-key="q"
             onClick={onStop}
             className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
           >
@@ -348,6 +349,7 @@ export function StatusBar({
         {onOpenProjectSettings && (
           <button
             data-testid="project-settings-button"
+            data-vim-key="p"
             onClick={onOpenProjectSettings}
             className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
             title="Project settings"
@@ -360,6 +362,7 @@ export function StatusBar({
         {/* Settings button */}
         <button
           data-testid="settings-button"
+          data-vim-key=","
           onClick={onOpenSettings}
           className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
         >
@@ -370,6 +373,7 @@ export function StatusBar({
         {/* Theme toggle */}
         <button
           data-testid="theme-toggle"
+          data-vim-key="L"
           onClick={toggleTheme}
           className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
         >
@@ -411,6 +415,7 @@ export function StatusBar({
         {/* Keyboard shortcuts hint */}
         <button
           data-testid="shortcuts-button"
+          data-vim-key="?"
           onClick={onShowShortcuts}
           className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
         >

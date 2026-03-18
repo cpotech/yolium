@@ -188,6 +188,7 @@ export function KanbanCard({ item, isSelected, isFocused, onClick, onDragStart, 
     <div
       data-testid="kanban-card"
       data-vim-focused={isFocused ? 'true' : undefined}
+      data-vim-key="Enter"
       role="button"
       tabIndex={0}
       aria-label={`${item.title} - ${item.agentStatus}`}
