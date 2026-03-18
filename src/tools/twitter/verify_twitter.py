@@ -1,60 +1,17 @@
 #!/usr/bin/env python3
 
-import base64
-import hashlib
-import hmac
 import json
 import os
 import sys
-import time
-import uuid
 import urllib.error
 import urllib.parse
 import urllib.request
 
+sys.path.insert(0, os.path.dirname(__file__))
+from _oauth import build_oauth_header
+
 
 USERS_ME_URL = "https://api.x.com/2/users/me"
-
-
-def percent_encode(value):
-    return urllib.parse.quote(str(value), safe="~-._")
-
-
-def build_oauth_header(method, url, consumer_key, consumer_secret, token, token_secret, query_params=None):
-    nonce = uuid.uuid4().hex
-    timestamp = str(int(time.time()))
-    params = {
-        "oauth_consumer_key": consumer_key,
-        "oauth_nonce": nonce,
-        "oauth_signature_method": "HMAC-SHA1",
-        "oauth_timestamp": timestamp,
-        "oauth_token": token,
-        "oauth_version": "1.0",
-    }
-    # OAuth 1.0a requires all query params in the signature base string
-    sig_params = dict(params)
-    if query_params:
-        sig_params.update(query_params)
-    normalized = "&".join(
-        f"{percent_encode(key)}={percent_encode(sig_params[key])}"
-        for key in sorted(sig_params)
-    )
-    base_string = "&".join([
-        method.upper(),
-        percent_encode(url),
-        percent_encode(normalized),
-    ])
-    signing_key = f"{percent_encode(consumer_secret)}&{percent_encode(token_secret)}"
-    digest = hmac.new(
-        signing_key.encode("utf-8"),
-        base_string.encode("utf-8"),
-        hashlib.sha1,
-    ).digest()
-    params["oauth_signature"] = base64.b64encode(digest).decode("utf-8")
-    return "OAuth " + ", ".join(
-        f'{percent_encode(key)}="{percent_encode(value)}"'
-        for key, value in sorted(params.items())
-    )
 
 
 def check_env(name):
