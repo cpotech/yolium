@@ -140,6 +140,7 @@ function App(): React.ReactElement {
         const board = await window.electronAPI.kanban.getBoard(project.path);
         if (board) {
           for (const item of board.items) {
+            if (item.column === 'done') continue;
             // Include items with active agent status: running, waiting, or failed
             if (item.agentStatus === 'running' || item.agentStatus === 'failed') {
               items.push({

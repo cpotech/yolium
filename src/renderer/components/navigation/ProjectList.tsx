@@ -74,7 +74,7 @@ export function ProjectList({
           )
         ) : (
           projects.map((project) => {
-            const projectItems = sidebarItems.filter(w => w.projectPath === project.path);
+            const projectItems = sidebarItems.filter(w => w.projectPath === project.path && w.column !== 'done');
             // Sort items: running -> waiting -> failed
             const sortedItems = [...projectItems].sort((a, b) => {
               const order: Partial<Record<AgentStatus, number>> = { running: 0, waiting: 1, failed: 2 };
