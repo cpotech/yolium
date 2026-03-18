@@ -139,7 +139,7 @@ export function ProjectConfigDialog({
   const jsonPreview = JSON.stringify({ sharedDirs }, null, 2);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
+    <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center">
       <div
         ref={dialogRef}
         onKeyDown={handleKeyDown}

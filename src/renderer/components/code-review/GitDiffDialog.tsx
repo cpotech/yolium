@@ -220,7 +220,7 @@ export function GitDiffDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col bg-[var(--color-bg-secondary)]"
+      className="fixed inset-0 z-[70] flex flex-col bg-[var(--color-bg-secondary)]"
       onKeyDown={handleKeyDown}
       data-testid="git-diff-dialog"
     >

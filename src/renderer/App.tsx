@@ -460,7 +460,7 @@ function App(): React.ReactElement {
 
       {/* Docker image build progress overlay */}
       {(docker.buildProgress || docker.buildError) && (
-        <div data-testid="build-progress-overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+        <div data-testid="build-progress-overlay" className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70">
           <div className="bg-[var(--color-bg-secondary)] rounded-lg p-6 max-w-2xl w-full mx-4 shadow-xl border border-[var(--color-border-primary)]">
             <div className="flex items-center gap-3 mb-4">
               {docker.buildError ? (

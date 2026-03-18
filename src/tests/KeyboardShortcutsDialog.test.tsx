@@ -46,6 +46,13 @@ describe('KeyboardShortcutsDialog', () => {
     expect(text).toContain('Ctrl+Shift+,')
   })
 
+  it('should render overlay with z-index higher than z-50 (e.g. z-[60])', () => {
+    render(<KeyboardShortcutsDialog isOpen={true} onClose={() => {}} />)
+
+    const overlay = document.querySelector('.fixed.inset-0')
+    expect(overlay).toHaveClass('z-[60]')
+  })
+
   it('should display the "Kanban Selection" group', () => {
     render(<KeyboardShortcutsDialog isOpen={true} onClose={() => {}} />)
 
