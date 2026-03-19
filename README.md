@@ -31,12 +31,31 @@ Each agent runs in its own Docker container with an isolated git worktree — no
 
 Agents see the full conversation history when resumed. Prior comments are fed back into the prompt, so an agent can pick up where it (or a previous agent) left off — enabling multi-session workflows across Plan → Code → Verify. See [Agent Memory](docs/AGENTS.md#agent-memory) for details.
 
+## Scheduled Agents (CRON)
+
+Yolium includes a built-in CRON scheduling system that runs agents autonomously on a schedule — no user interaction required. Define a **specialist** as a Markdown file, assign cron schedules, and Yolium handles execution, memory, cost tracking, and escalation.
+
+- **Time-driven execution** — heartbeat (every 30 min), daily, weekly, or custom cron expressions
+- **Built-in specialists** — security monitoring, codebase health checks, social media growth
+- **Persistent memory** — agents see their recent run history and avoid repeating work
+- **Cost controls** — per-run token/cost tracking, spike detection, automatic frequency reduction
+- **Zero-code setup** — drop a `.md` file in `src/agents/cron/` and reload
+
+| Specialist | Purpose |
+|---|---|
+| `security-monitor` | Scan for leaked secrets, audit dependencies, CVE reports |
+| `codebase-health` | CI status, failing tests, technical debt tracking |
+| `twitter-growth` | Engagement monitoring, content planning, performance audits |
+
+> **[Scheduled Agents documentation](docs/CRON-AGENTS.md)** — full guide to creating specialists, cron expressions, memory strategies, escalation, cost estimation, and troubleshooting.
+
 ## Extensibility
 
 Each agent is a single Markdown file with YAML frontmatter and a system prompt, auto-discovered from `src/agents/`. Drop in a new `.md` file and it's immediately available — no code changes needed. See [Custom Agents](docs/AGENTS.md#custom-agents) for the schema and a walkthrough.
 
 ## Features
 
+- **Scheduled Agents (CRON)** - Run specialists autonomously on cron schedules with persistent memory, cost tracking, and adaptive escalation ([details](docs/CRON-AGENTS.md))
 - **Kanban Board** - Built-in project board with Backlog, Ready, In Progress, and Done columns. Track work items, assign agents, and monitor progress — all persisted across sessions
 - **Agent Orchestration** - Plan, Code, and Verify agents work autonomously: decompose goals into tasks, implement changes, run tests, commit branches, and review results — with interactive pauses when they need input
 - **Parallel Agents** - Each agent gets its own git worktree and branch. Zero conflicts, clean branches ready for PR. ([details](docs/TECHNICAL.md#git-worktrees))
