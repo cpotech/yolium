@@ -17,6 +17,8 @@ interface ItemDetailEditorPaneProps {
   vimMode?: VimMode
   focusedFieldIndex?: number
   onFieldFocus?: (index: number) => void
+  focusedCommentId?: string | null
+  selectedCommentIds?: Set<string>
 }
 
 export function ItemDetailEditorPane({
@@ -33,6 +35,8 @@ export function ItemDetailEditorPane({
   vimMode,
   focusedFieldIndex,
   onFieldFocus,
+  focusedCommentId,
+  selectedCommentIds,
 }: ItemDetailEditorPaneProps): React.ReactElement {
   const isNormal = vimMode === 'NORMAL'
 
@@ -81,7 +85,12 @@ export function ItemDetailEditorPane({
           />
         </div>
 
-        <CommentsList comments={comments} onSelectOption={onSelectCommentOption} />
+        <CommentsList
+          comments={comments}
+          onSelectOption={onSelectCommentOption}
+          focusedCommentId={focusedCommentId}
+          selectedCommentIds={selectedCommentIds}
+        />
 
         <div
           data-field-index="2"

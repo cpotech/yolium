@@ -3,7 +3,7 @@
  * Dialog for viewing and editing kanban item details with agent controls.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import type { KanbanItem } from '@shared/types/kanban'
 import { trapFocus } from '@shared/lib/focus-trap'
@@ -21,7 +21,9 @@ import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whis
 import type { ClaudeUsageState } from '@shared/types/agent'
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts'
 
-const FIELD_IDS = ['detail-title', 'detail-description', 'comment-input']
+type NavigableItem =
+  | { type: 'field'; id: string }
+  | { type: 'comment'; id: string; text: string }
 
 interface ItemDetailDialogProps {
   isOpen: boolean
@@ -62,11 +64,21 @@ export function ItemDetailDialog({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDiffViewer, setShowDiffViewer] = useState(false)
-  const [focusedFieldIndex, setFocusedFieldIndex] = useState(0)
+  const [focusedItemIndex, setFocusedItemIndex] = useState(0)
   const [focusZone, setFocusZone] = useState<'editor' | 'sidebar'>('editor')
+  const [dialogVisualMode, setDialogVisualMode] = useState(false)
+  const [selectedItemIndices, setSelectedItemIndices] = useState<Set<number>>(new Set())
+  const visualAnchorRef = useRef<number>(0)
   const answerInputRef = useRef<HTMLTextAreaElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const gPendingRef = useRef(false)
+
+  const navigableItems: NavigableItem[] = useMemo(() => [
+    { type: 'field', id: 'detail-title' },
+    { type: 'field', id: 'detail-description' },
+    ...(item?.comments ?? []).map(c => ({ type: 'comment' as const, id: c.id, text: c.text })),
+    { type: 'field', id: 'comment-input' },
+  ], [item?.comments])
 
   const agentSession = useAgentSession({
     itemId: item?.id,
@@ -125,8 +137,11 @@ export function ItemDetailDialog({
   useEffect(() => {
     if (isOpen) {
       dialogRef.current?.focus()
-      setFocusedFieldIndex(0)
+      setFocusedItemIndex(0)
       setFocusZone('editor')
+      setDialogVisualMode(false)
+      setSelectedItemIndices(new Set())
+      visualAnchorRef.current = 0
     }
   }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -165,19 +180,28 @@ export function ItemDetailDialog({
   }, [draft, onClose])
 
   const focusField = useCallback((index: number) => {
-    const el = document.getElementById(FIELD_IDS[index])
-    if (el) {
-      el.focus()
-      el.scrollIntoView?.({ block: 'nearest' })
+    const item = navigableItems[index]
+    if (item?.type === 'field') {
+      const el = document.getElementById(item.id)
+      if (el) {
+        el.focus()
+        el.scrollIntoView?.({ block: 'nearest' })
+      }
+      vim.enterInsertMode()
     }
-    vim.enterInsertMode()
-    setFocusedFieldIndex(index)
-  }, [vim])
+    setFocusedItemIndex(index)
+  }, [vim, navigableItems])
 
-  const handleFieldFocus = useCallback((index: number) => {
-    vim.enterInsertMode()
-    setFocusedFieldIndex(index)
-  }, [vim])
+  // Map field DOM index (0=title, 1=desc, 2=comment-input) to navigableItems index
+  const handleFieldFocus = useCallback((fieldIndex: number) => {
+    const fieldIds = ['detail-title', 'detail-description', 'comment-input']
+    const fieldId = fieldIds[fieldIndex]
+    const navIndex = navigableItems.findIndex(it => it.type === 'field' && it.id === fieldId)
+    if (navIndex >= 0) {
+      vim.enterInsertMode()
+      setFocusedItemIndex(navIndex)
+    }
+  }, [vim, navigableItems])
 
   const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
     // Ctrl+Enter to save
@@ -221,6 +245,11 @@ export function ItemDetailDialog({
     // Vim-mode-aware Escape handling
     if (event.key === 'Escape') {
       event.preventDefault()
+      if (dialogVisualMode) {
+        setDialogVisualMode(false)
+        setSelectedItemIndices(new Set())
+        return
+      }
       if (vim.mode === 'INSERT') {
         vim.exitToNormal()
         dialogRef.current?.focus()
@@ -330,38 +359,103 @@ export function ItemDetailDialog({
       const isEditable = tagName === 'input' || tagName === 'textarea' || tagName === 'select' || target.isContentEditable
       if (isEditable) return
 
-      // 4. Editor zone field navigation
+      // 4. Editor zone navigation (NORMAL or dialog VISUAL mode)
       if (focusZone === 'editor') {
+        const lastIdx = navigableItems.length - 1
+
+        // V (Shift+V) toggles dialog-local visual mode
+        if (event.key === 'V' && event.shiftKey) {
+          event.preventDefault()
+          if (dialogVisualMode) {
+            setDialogVisualMode(false)
+            setSelectedItemIndices(new Set())
+          } else {
+            setDialogVisualMode(true)
+            visualAnchorRef.current = focusedItemIndex
+            setSelectedItemIndices(new Set([focusedItemIndex]))
+          }
+          gPendingRef.current = false
+          return
+        }
+
+        // y in visual mode: yank selected text to clipboard
+        if (dialogVisualMode && event.key === 'y') {
+          event.preventDefault()
+          const texts: string[] = []
+          const sortedIndices = Array.from(selectedItemIndices).sort((a, b) => a - b)
+          for (const idx of sortedIndices) {
+            const navItem = navigableItems[idx]
+            if (navItem.type === 'comment') {
+              texts.push(navItem.text)
+            } else if (navItem.type === 'field') {
+              const el = document.getElementById(navItem.id) as HTMLInputElement | HTMLTextAreaElement | null
+              if (el) texts.push(el.value)
+            }
+          }
+          void navigator.clipboard.writeText(texts.join('\n\n'))
+          setDialogVisualMode(false)
+          setSelectedItemIndices(new Set())
+          gPendingRef.current = false
+          return
+        }
+
+        const scrollToItem = (idx: number) => {
+          const navItem = navigableItems[idx]
+          if (navItem.type === 'field') {
+            document.getElementById(navItem.id)?.scrollIntoView({ block: 'nearest' })
+          } else {
+            document.querySelector(`[data-comment-id="${navItem.id}"]`)?.scrollIntoView({ block: 'nearest' })
+          }
+        }
+
+        const updateVisualSelection = (newIndex: number) => {
+          if (dialogVisualMode) {
+            const anchor = visualAnchorRef.current
+            const start = Math.min(anchor, newIndex)
+            const end = Math.max(anchor, newIndex)
+            setSelectedItemIndices(new Set(Array.from({ length: end - start + 1 }, (_, i) => start + i)))
+          }
+        }
+
         if (event.key === 'j' || event.key === 'ArrowDown') {
           event.preventDefault()
-          const next = Math.min(focusedFieldIndex + 1, FIELD_IDS.length - 1)
-          setFocusedFieldIndex(next)
-          document.getElementById(FIELD_IDS[next])?.scrollIntoView({ block: 'nearest' })
+          const next = Math.min(focusedItemIndex + 1, lastIdx)
+          setFocusedItemIndex(next)
+          scrollToItem(next)
+          updateVisualSelection(next)
           gPendingRef.current = false
         } else if (event.key === 'k' || event.key === 'ArrowUp') {
           event.preventDefault()
-          const prev = Math.max(focusedFieldIndex - 1, 0)
-          setFocusedFieldIndex(prev)
-          document.getElementById(FIELD_IDS[prev])?.scrollIntoView({ block: 'nearest' })
+          const prev = Math.max(focusedItemIndex - 1, 0)
+          setFocusedItemIndex(prev)
+          scrollToItem(prev)
+          updateVisualSelection(prev)
           gPendingRef.current = false
         } else if (event.key === 'g') {
           if (gPendingRef.current) {
             event.preventDefault()
-            setFocusedFieldIndex(0)
-            document.getElementById(FIELD_IDS[0])?.scrollIntoView({ block: 'nearest' })
+            setFocusedItemIndex(0)
+            scrollToItem(0)
+            updateVisualSelection(0)
             gPendingRef.current = false
           } else {
             gPendingRef.current = true
           }
         } else if (event.key === 'G') {
           event.preventDefault()
-          const last = FIELD_IDS.length - 1
-          setFocusedFieldIndex(last)
-          document.getElementById(FIELD_IDS[last])?.scrollIntoView({ block: 'nearest' })
+          setFocusedItemIndex(lastIdx)
+          scrollToItem(lastIdx)
+          updateVisualSelection(lastIdx)
           gPendingRef.current = false
-        } else if (event.key === 'i' || event.key === 'Enter') {
+        } else if ((event.key === 'i' || event.key === 'Enter') && !dialogVisualMode) {
           event.preventDefault()
-          focusField(focusedFieldIndex)
+          const currentItem = navigableItems[focusedItemIndex]
+          if (currentItem.type === 'field') {
+            focusField(focusedItemIndex)
+          } else {
+            // Comments are read-only: block the event from reaching global vim handler
+            event.stopPropagation()
+          }
           gPendingRef.current = false
         } else {
           gPendingRef.current = false
@@ -373,7 +467,7 @@ export function ItemDetailDialog({
     if (dialogRef.current && !(vim.mode === 'NORMAL' && event.key === 'Tab')) {
       trapFocus(event, dialogRef.current)
     }
-  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedFieldIndex, focusField, focusZone, agentSession.currentSessionId, prWorkflow])
+  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedItemIndex, focusField, focusZone, agentSession.currentSessionId, prWorkflow, navigableItems, dialogVisualMode, selectedItemIndices])
 
   if (!isOpen || !item) return null
 
@@ -440,8 +534,25 @@ export function ItemDetailDialog({
             onAddComment={() => void lifecycle.addComment()}
             onSelectCommentOption={lifecycle.setAnswerText}
             vimMode={vim.mode}
-            focusedFieldIndex={focusedFieldIndex}
+            focusedFieldIndex={(() => {
+              const currentItem = navigableItems[focusedItemIndex]
+              if (!currentItem || currentItem.type !== 'field') return -1
+              const fieldIds = ['detail-title', 'detail-description', 'comment-input']
+              return fieldIds.indexOf(currentItem.id)
+            })()}
             onFieldFocus={handleFieldFocus}
+            focusedCommentId={(() => {
+              const currentItem = navigableItems[focusedItemIndex]
+              return currentItem?.type === 'comment' ? currentItem.id : null
+            })()}
+            selectedCommentIds={(() => {
+              const ids = new Set<string>()
+              for (const idx of selectedItemIndices) {
+                const navItem = navigableItems[idx]
+                if (navItem?.type === 'comment') ids.add(navItem.id)
+              }
+              return ids
+            })()}
           />
           </div>
 
@@ -513,13 +624,20 @@ export function ItemDetailDialog({
           data-testid="shortcuts-hint-bar"
           className="flex items-center gap-3 px-4 py-1.5 bg-[var(--color-bg-tertiary)] border-t border-[var(--color-border-primary)] text-xs text-[var(--color-text-muted)]"
         >
-          {vim.mode === 'NORMAL' ? (
+          {dialogVisualMode ? (
+              <>
+                <span><kbd className={kbdClass}>j/k</kbd> Extend</span>
+                <span><kbd className={kbdClass}>y</kbd> Yank</span>
+                <span><kbd className={kbdClass}>Esc</kbd> Exit</span>
+              </>
+          ) : vim.mode === 'NORMAL' ? (
             focusZone === 'editor' ? (
               <>
                 <span><kbd className={kbdClass}>j/k</kbd> Navigate</span>
                 <span><kbd className={kbdClass}>gg</kbd> First</span>
                 <span><kbd className={kbdClass}>G</kbd> Last</span>
                 <span><kbd className={kbdClass}>i</kbd> Edit field</span>
+                <span><kbd className={kbdClass}>V</kbd> Visual</span>
                 <span><kbd className={kbdClass}>Tab</kbd> Sidebar</span>
                 <span><kbd className={kbdClass}>Ctrl+Q</kbd> Close</span>
               </>
