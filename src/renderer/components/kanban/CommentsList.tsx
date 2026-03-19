@@ -341,13 +341,15 @@ function formatTimestamp(isoString: string): string {
 interface CommentsListProps {
   comments: KanbanComment[]
   onSelectOption?: (option: string) => void
+  focusedCommentId?: string | null
+  selectedCommentIds?: Set<string>
 }
 
 /**
  * Display a list of comments with source badges and timestamps.
  * @param props - Component props
  */
-export function CommentsList({ comments, onSelectOption }: CommentsListProps): React.ReactElement {
+export function CommentsList({ comments, onSelectOption, focusedCommentId, selectedCommentIds }: CommentsListProps): React.ReactElement {
   const [mockFilePath, setMockFilePath] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const markdownComponents = createMarkdownComponents(setMockFilePath)
@@ -418,7 +420,8 @@ export function CommentsList({ comments, onSelectOption }: CommentsListProps): R
           {filteredComments.map(comment => (
             <div
               key={comment.id}
-              className="bg-[var(--color-bg-primary)] rounded-md p-3 border border-[var(--color-border-primary)]"
+              data-comment-id={comment.id}
+              className={`bg-[var(--color-bg-primary)] rounded-md p-3 border border-[var(--color-border-primary)]${focusedCommentId === comment.id ? ' ring-2 ring-[var(--color-accent-primary)]' : ''}${selectedCommentIds?.has(comment.id) ? ' bg-[var(--color-accent-primary)]/10' : ''}`}
             >
               <div className="flex items-center justify-between gap-2 mb-1">
                 <div className="flex items-center gap-2">
