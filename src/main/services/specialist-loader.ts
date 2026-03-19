@@ -34,8 +34,7 @@ export function getSpecialistsDir(): string {
     const { app } = require('electron');
     const appPath = app.getAppPath();
     devCandidates.push(path.join(appPath, 'src', 'agents', 'cron'));
-  } catch {
-    // Electron not available (test environment)
+  } catch { /* Electron not available (test environment) */
   }
 
   // Standalone `.vite/build/main.js` launches and test environments run from the

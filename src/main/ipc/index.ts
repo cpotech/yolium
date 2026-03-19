@@ -3,7 +3,7 @@
  * IPC handler registration. Aggregates all IPC handlers into a single entry point.
  */
 
-import { ipcMain, dialog, shell } from 'electron';
+import { ipcMain, shell } from 'electron';
 import { createLogger } from '@main/lib/logger';
 import { getErrorMessage } from '@main/lib/error-utils';
 import { registerAppHandlers, performCleanup, isCleanupDone } from './app-handlers';
@@ -51,7 +51,7 @@ export function registerAllHandlers(): boolean {
     { name: 'app', register: () => registerAppHandlers(ipcMain, shell) },
     { name: 'terminal', register: () => registerTerminalHandlers(ipcMain) },
     { name: 'tabs', register: () => registerTabHandlers(ipcMain) },
-    { name: 'dialog', register: () => registerDialogHandlers(ipcMain, dialog) },
+    { name: 'dialog', register: () => registerDialogHandlers(ipcMain) },
     { name: 'filesystem', register: () => registerFilesystemHandlers(ipcMain) },
     { name: 'git', register: () => registerGitHandlers(ipcMain) },
     { name: 'docker', register: () => registerDockerHandlers(ipcMain) },

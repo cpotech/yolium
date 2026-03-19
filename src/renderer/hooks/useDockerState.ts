@@ -4,6 +4,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useConfirmDialog } from '@renderer/hooks/useConfirmDialog'
+import type { ConfirmDialogProps } from '@renderer/components/shared/ConfirmDialog'
 
 export interface UseDockerStateResult {
   /** Docker readiness state: null = checking, true = ready, false = needs setup */
@@ -34,6 +36,8 @@ export interface UseDockerStateResult {
   executeImageDeletion: () => Promise<void>
   /** Manually trigger Docker image build */
   handleBuildImage: () => void
+  /** Props for the confirm dialog used by this hook */
+  confirmDialogProps: ConfirmDialogProps
 }
 
 /**
@@ -46,6 +50,8 @@ export function useDockerState(): UseDockerStateResult {
   const [buildError, setBuildError] = useState<string | null>(null)
   const [isRebuilding, setIsRebuilding] = useState(false)
   const [imageRemoved, setImageRemoved] = useState(false)
+
+  const { confirm: confirmAction, dialogProps: confirmDialogProps } = useConfirmDialog()
 
   const progressRef = useRef<HTMLDivElement | null>(null)
   const buildCancelledRef = useRef<boolean>(false)
@@ -109,11 +115,11 @@ export function useDockerState(): UseDockerStateResult {
   }, [])
 
   const handleDeleteImage = useCallback(async (): Promise<boolean> => {
-    // Show confirmation dialog
-    const confirmed = await window.electronAPI.dialog.confirmOkCancel(
-      'Delete Docker Image',
-      'This will:\n\u2022 End all active terminals\n\u2022 Remove all yolium containers\n\u2022 Remove the Docker image\n\nThe image will be rebuilt automatically when you start a new terminal.\n\nContinue?'
-    )
+    const confirmed = await confirmAction({
+      title: 'Delete Docker Image',
+      message: 'This will:\n\u2022 End all active terminals\n\u2022 Remove all yolium containers\n\u2022 Remove the Docker image\n\nThe image will be rebuilt automatically when you start a new terminal.\n\nContinue?',
+      confirmLabel: 'Delete',
+    })
     if (!confirmed) return false
 
     setIsRebuilding(true)
@@ -121,7 +127,7 @@ export function useDockerState(): UseDockerStateResult {
 
     // Return true so caller can close tabs while we proceed
     return true
-  }, [])
+  }, [confirmAction])
 
   const executeImageDeletion = useCallback(async () => {
     try {
@@ -196,5 +202,6 @@ export function useDockerState(): UseDockerStateResult {
     handleDeleteImage,
     executeImageDeletion,
     handleBuildImage,
+    confirmDialogProps,
   }
 }

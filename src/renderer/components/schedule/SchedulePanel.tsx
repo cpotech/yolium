@@ -5,6 +5,8 @@ import { ActionsView } from './ActionsView';
 import { AddSpecialistDialog } from './AddSpecialistDialog';
 import type { ActionStats, ScheduleType } from '@shared/types/schedule';
 import { useVimModeContext } from '@renderer/context/VimModeContext';
+import { useConfirmDialog } from '@renderer/hooks/useConfirmDialog';
+import { ConfirmDialog } from '@renderer/components/shared/ConfirmDialog';
 
 interface SpecialistInfo {
   name: string;
@@ -48,6 +50,7 @@ export function SchedulePanel(): React.ReactElement {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const viewRef = useRef<HTMLDivElement>(null);
   const gPendingRef = useRef(false);
+  const { confirm: confirmAction, dialogProps: confirmDialogProps } = useConfirmDialog();
   const vim = useVimModeContext();
   const isVimScheduleActive = vim.mode === 'NORMAL' && vim.activeZone === 'schedule';
 
@@ -151,14 +154,15 @@ export function SchedulePanel(): React.ReactElement {
   }, []);
 
   const handleResetSpecialist = useCallback(async (id: string) => {
-    const confirmed = await window.electronAPI.dialog.confirmOkCancel(
-      'Reset Specialist',
-      'This will clear all run history, action logs, and workspace files for this specialist. This cannot be undone.',
-    );
+    const confirmed = await confirmAction({
+      title: 'Reset Specialist',
+      message: 'This will clear all run history, action logs, and workspace files for this specialist. This cannot be undone.',
+      confirmLabel: 'Reset',
+    });
     if (!confirmed) return;
     await window.electronAPI.schedule.resetSpecialist(id);
     loadState();
-  }, [loadState]);
+  }, [loadState, confirmAction]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     const target = e.target as HTMLElement;
@@ -626,6 +630,9 @@ export function SchedulePanel(): React.ReactElement {
         onClose={handleCloseEditor}
         onCreated={handleSpecialistCreated}
       />
+
+      {/* Confirm dialog */}
+      <ConfirmDialog {...confirmDialogProps} />
     </div>
   );
 }

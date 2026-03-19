@@ -26,7 +26,7 @@ export function getScheduleState(): ScheduleState {
 
   try {
     return JSON.parse(row.value) as ScheduleState;
-  } catch {
+  } catch { /* invalid JSON — use default */
     return createDefaultState();
   }
 }

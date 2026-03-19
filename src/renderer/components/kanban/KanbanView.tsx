@@ -6,6 +6,8 @@ import { ItemDetailDialog } from './ItemDetailDialog'
 import type { KanbanBoard, KanbanItem, KanbanColumn as ColumnId } from '@shared/types/kanban'
 import { prepareConflictResolution } from './item-detail/useItemDetailPrWorkflow'
 import { useVimModeContext } from '@renderer/context/VimModeContext'
+import { useConfirmDialog } from '@renderer/hooks/useConfirmDialog'
+import { ConfirmDialog } from '@renderer/components/shared/ConfirmDialog'
 import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper'
 import type { ClaudeUsageState } from '@shared/types/agent'
 
@@ -65,6 +67,7 @@ export function KanbanView({
   const lastClickedIdRef = useRef<string | null>(null)
   const viewRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const { confirm: confirmAction, dialogProps: confirmDialogProps } = useConfirmDialog()
   const vim = useVimModeContext()
   const isVisualMode = vim.mode === 'VISUAL'
   const isVimContentActive = (vim.mode === 'NORMAL' || isVisualMode) && vim.activeZone === 'content'
@@ -490,10 +493,11 @@ export function KanbanView({
           .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
         const card = colItems[Math.min(focusedCardIndex, Math.max(colItems.length - 1, 0))]
         if (card && projectPath) {
-          void window.electronAPI.dialog.confirmOkCancel(
-            'Delete Item',
-            `Delete "${card.title}"? This cannot be undone.`
-          ).then(confirmed => {
+          void confirmAction({
+            title: 'Delete Item',
+            message: `Delete "${card.title}"? This cannot be undone.`,
+            confirmLabel: 'Delete',
+          }).then(confirmed => {
             if (confirmed) {
               void window.electronAPI.kanban.deleteItems(projectPath, [card.id]).then(() => loadBoard())
             }
@@ -556,10 +560,11 @@ export function KanbanView({
   const handleDeleteProject = useCallback(async () => {
     if (!projectPath || !onDeleteProject || isDeleting) return
 
-    const confirmed = await window.electronAPI.dialog.confirmOkCancel(
-      'Delete Project',
-      'Delete this project? This will stop all running agents, remove worktrees, and delete the kanban board. This cannot be undone.'
-    )
+    const confirmed = await confirmAction({
+      title: 'Delete Project',
+      message: 'Delete this project? This will stop all running agents, remove worktrees, and delete the kanban board. This cannot be undone.',
+      confirmLabel: 'Delete',
+    })
     if (!confirmed) return
 
     setIsDeleting(true)
@@ -950,6 +955,9 @@ export function KanbanView({
         onClose={handleNewItemClose}
         onCreated={handleNewItemCreated}
       />
+
+       {/* Confirm Dialog */}
+       <ConfirmDialog {...confirmDialogProps} />
 
        {/* Item Detail Dialog */}
        <ItemDetailDialog

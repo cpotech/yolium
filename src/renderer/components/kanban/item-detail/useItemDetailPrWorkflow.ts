@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { KanbanItem } from '@shared/types/kanban'
+import { useConfirmDialog } from '@renderer/hooks/useConfirmDialog'
+import type { ConfirmDialogProps } from '@renderer/components/shared/ConfirmDialog'
 
 export interface ConflictCheckResult {
   clean: boolean
@@ -58,6 +60,7 @@ export interface ItemDetailPrWorkflowController {
   isRebasing: boolean
   rebaseResult: RebaseResultState | null
   isFixingConflicts: boolean
+  confirmDialogProps: ConfirmDialogProps
   fixConflicts: () => Promise<void>
   checkConflicts: () => Promise<void>
   rebaseOntoDefault: () => Promise<void>
@@ -81,6 +84,7 @@ export function useItemDetailPrWorkflow({
   const [isRebasing, setIsRebasing] = useState(false)
   const [rebaseResult, setRebaseResult] = useState<RebaseResultState | null>(null)
   const [isFixingConflicts, setIsFixingConflicts] = useState(false)
+  const { confirm: confirmAction, dialogProps: confirmDialogProps } = useConfirmDialog()
 
   useEffect(() => {
     setPrUrl(item?.prUrl || null)
@@ -150,10 +154,11 @@ export function useItemDetailPrWorkflow({
         ? `${stats.filesChanged} file${stats.filesChanged !== 1 ? 's' : ''} changed, +${stats.insertions} -${stats.deletions}`
         : 'No changes detected'
 
-      const confirmed = await window.electronAPI.dialog.confirmOkCancel(
-        'Squash, Merge & Create PR',
-        `Squash merge branch "${item.branch}" and push a PR?\n\n${statsMessage}`,
-      )
+      const confirmed = await confirmAction({
+        title: 'Squash, Merge & Create PR',
+        message: `Squash merge branch "${item.branch}" and push a PR?\n\n${statsMessage}`,
+        confirmLabel: 'Merge',
+      })
       if (!confirmed) {
         return
       }
@@ -235,10 +240,11 @@ export function useItemDetailPrWorkflow({
   const mergePr = useCallback(async () => {
     if (!item || !prUrl || isMergingPr) return
 
-    const confirmed = await window.electronAPI.dialog.confirmOkCancel(
-      'Merge PR',
-      `Squash merge and delete the remote branch for this PR?\n\n${prUrl}`,
-    )
+    const confirmed = await confirmAction({
+      title: 'Merge PR',
+      message: `Squash merge and delete the remote branch for this PR?\n\n${prUrl}`,
+      confirmLabel: 'Merge',
+    })
     if (!confirmed) return
 
     setIsMergingPr(true)
@@ -270,6 +276,7 @@ export function useItemDetailPrWorkflow({
     isRebasing,
     rebaseResult,
     isFixingConflicts,
+    confirmDialogProps,
     fixConflicts,
     checkConflicts,
     rebaseOntoDefault,

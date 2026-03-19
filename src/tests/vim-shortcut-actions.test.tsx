@@ -217,13 +217,15 @@ describe('KanbanView NORMAL mode actions', () => {
       fireEvent.keyDown(view, { key: 'x' });
     });
 
-    // Should prompt for confirmation before deleting
-    expect(mockConfirmOkCancel).toHaveBeenCalledWith(
-      'Delete Item',
-      expect.stringContaining('Delete')
-    );
-    // After confirmation resolves true, deleteItems is called
-    await act(async () => {});
+    // ConfirmDialog should now be visible — click the confirm button
+    const confirmBtn = screen.getByTestId('confirm-dialog-confirm');
+    expect(confirmBtn).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.click(confirmBtn);
+    });
+
+    // After confirmation, deleteItems is called
     expect(mockDeleteItems).toHaveBeenCalled();
   });
 

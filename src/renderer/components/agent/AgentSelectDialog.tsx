@@ -3,6 +3,7 @@ import type { AgentProvider } from '@shared/types/agent';
 import type { ProjectType } from '@shared/types/onboarding';
 import { getFolderName } from '@renderer/lib/path-utils';
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts';
+import { useSuspendVimNavigation } from '@renderer/context/VimModeContext';
 
 export type { AgentProvider } from '@shared/types/agent';
 
@@ -25,6 +26,8 @@ export function AgentSelectDialog({
   onCancel,
   onGitInit,
 }: AgentSelectDialogProps): React.ReactElement | null {
+  useSuspendVimNavigation(isOpen);
+
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstButtonRef = useRef<HTMLButtonElement>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentProvider>('claude');

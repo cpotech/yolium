@@ -3,7 +3,9 @@
  * Modal for previewing HTML mock files in a sandboxed iframe.
  */
 
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts'
+import { useSuspendVimNavigation } from '@renderer/context/VimModeContext'
 
 interface MockPreviewModalProps {
   filePath: string | null
@@ -15,9 +17,12 @@ interface MockPreviewModalProps {
  * Modal that loads an HTML mock file via IPC and displays it in a sandboxed iframe.
  */
 export function MockPreviewModal({ filePath, isOpen, onClose }: MockPreviewModalProps): React.ReactElement | null {
+  useSuspendVimNavigation(isOpen)
+
   const [content, setContent] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!isOpen || !filePath) {
@@ -43,15 +48,44 @@ export function MockPreviewModal({ filePath, isOpen, onClose }: MockPreviewModal
     })
   }, [isOpen, filePath])
 
+  // Auto-focus overlay on open for keyboard events
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => overlayRef.current?.focus(), 50)
+    }
+  }, [isOpen])
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (isCloseShortcut(e)) {
+        e.preventDefault()
+        onClose()
+      }
+    },
+    [onClose]
+  )
+
+  const handleBackdropClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.target === e.currentTarget) {
+        onClose()
+      }
+    },
+    [onClose]
+  )
+
   if (!isOpen) return null
 
   const fileName = filePath?.split('/').pop() || 'Mock Preview'
 
   return (
     <div
+      ref={overlayRef}
       data-testid="mock-preview-overlay"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      onClick={onClose}
+      onClick={handleBackdropClick}
+      onKeyDown={handleKeyDown}
+      tabIndex={-1}
     >
       <div
         data-testid="mock-preview-modal"
@@ -68,16 +102,19 @@ export function MockPreviewModal({ filePath, isOpen, onClose }: MockPreviewModal
             </svg>
             <span className="text-sm font-medium text-[var(--color-text-primary)]">{fileName}</span>
           </div>
-          <button
-            data-testid="mock-preview-close"
-            onClick={onClose}
-            className="p-1 rounded hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">Ctrl+Q</kbd>
+            <button
+              data-testid="mock-preview-close"
+              onClick={onClose}
+              className="p-1 rounded hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Content */}

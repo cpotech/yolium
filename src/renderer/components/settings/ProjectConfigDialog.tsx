@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
 import { trapFocus } from '@shared/lib/focus-trap';
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts';
+import { useSuspendVimNavigation } from '@renderer/context/VimModeContext';
 
 interface ProjectConfigDialogProps {
   isOpen: boolean;
@@ -30,6 +31,8 @@ export function ProjectConfigDialog({
   projectPath,
   onClose,
 }: ProjectConfigDialogProps): React.ReactElement | null {
+  useSuspendVimNavigation(isOpen);
+
   const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -140,10 +143,11 @@ export function ProjectConfigDialog({
   const jsonPreview = JSON.stringify({ sharedDirs }, null, 2);
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center">
+    <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div
         ref={dialogRef}
         onKeyDown={handleKeyDown}
+        onClick={(e) => e.stopPropagation()}
         tabIndex={-1}
         role="dialog"
         aria-modal="true"

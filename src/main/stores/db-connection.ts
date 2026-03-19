@@ -56,7 +56,7 @@ export function normalizeForHash(projectPath: string): string {
 export function safeJsonParse<T>(value: string, fallback: T): T {
   try {
     return JSON.parse(value) as T;
-  } catch {
+  } catch { /* invalid JSON — use fallback */
     return fallback;
   }
 }
@@ -166,7 +166,7 @@ function migrateLegacyBoards(database: Database.Database): void {
   let files: string[];
   try {
     files = fs.readdirSync(boardsDir);
-  } catch {
+  } catch { /* directory not readable — skip migration */
     return;
   }
 
@@ -381,7 +381,7 @@ function migrateLegacyRunHistory(database: Database.Database): void {
   let entries: string[];
   try {
     entries = fs.readdirSync(schedulesDir);
-  } catch {
+  } catch { /* directory not readable — skip migration */
     return;
   }
 
@@ -422,7 +422,7 @@ function migrateLegacyActionLogs(database: Database.Database): void {
   let entries: string[];
   try {
     entries = fs.readdirSync(schedulesDir);
-  } catch {
+  } catch { /* directory not readable — skip migration */
     return;
   }
 
@@ -512,8 +512,7 @@ export function getDb(): Database.Database {
 
   try {
     fs.chmodSync(dbPath, 0o600);
-  } catch {
-    // May fail on Windows — non-critical
+  } catch { /* May fail on Windows — non-critical */
   }
 
   return db;

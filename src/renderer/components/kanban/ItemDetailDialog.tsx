@@ -16,6 +16,7 @@ import { ItemDetailSidebar } from './item-detail/ItemDetailSidebar'
 import { useItemDetailDraft } from './item-detail/useItemDetailDraft'
 import { useItemDetailAgentLifecycle } from './item-detail/useItemDetailAgentLifecycle'
 import { useItemDetailPrWorkflow } from './item-detail/useItemDetailPrWorkflow'
+import { ConfirmDialog } from '@renderer/components/shared/ConfirmDialog'
 import type { CommentsListHandle } from './CommentsList'
 import { StatusBar } from '@renderer/components/StatusBar'
 import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper'
@@ -797,6 +798,9 @@ export function ItemDetailDialog({
            branchName={item.branch}
          />
        )}
+
+       {/* PR workflow confirm dialog */}
+       <ConfirmDialog {...prWorkflow.confirmDialogProps} />
      </div>
    )
 }

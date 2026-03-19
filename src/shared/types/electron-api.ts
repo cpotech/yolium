@@ -33,10 +33,6 @@ import type {
 
 export type CleanupFunction = () => void;
 
-export interface DialogWorktreeCleanupResult {
-  response: number;
-}
-
 export interface FilesystemDirectoryEntry {
   name: string;
   path: string;
@@ -276,15 +272,9 @@ export interface EventsAPI {
   onScheduleShow: (callback: () => void) => CleanupFunction;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface DialogAPI {
-  confirmClose: (message: string) => Promise<boolean>;
-  confirmOkCancel: (title: string, message: string) => Promise<boolean>;
-  confirmCloseMultiple: (count: number) => Promise<boolean>;
-  worktreeCleanup: (
-    branchName: string,
-    hasUncommittedChanges: boolean,
-  ) => Promise<DialogWorktreeCleanupResult>;
-  selectFolder: () => Promise<string | null>;
+  // All native dialog methods have been replaced by React ConfirmDialog.
 }
 
 export interface FilesystemAPI {
