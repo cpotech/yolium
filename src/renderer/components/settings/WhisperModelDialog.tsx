@@ -3,6 +3,7 @@ import { Download, Trash2, Check, Loader2, HardDrive, Copy, ClipboardCheck, Wren
 import type { WhisperModelSize } from '@shared/types/whisper';
 import { WHISPER_MODELS } from '@shared/types/whisper';
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts';
+import { useSuspendVimNavigation } from '@renderer/context/VimModeContext';
 
 interface WhisperModelDialogProps {
   isOpen: boolean;
@@ -61,6 +62,8 @@ export function WhisperModelDialog({
   onDeleteModel,
   onClose,
 }: WhisperModelDialogProps): React.ReactElement | null {
+  useSuspendVimNavigation(isOpen);
+
   const dialogRef = useRef<HTMLDivElement>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -162,10 +165,12 @@ export function WhisperModelDialog({
       ref={dialogRef}
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60"
       onKeyDown={handleKeyDown}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       tabIndex={-1}
     >
       <div
         data-testid="whisper-model-dialog"
+        onClick={(e) => e.stopPropagation()}
         className="bg-[var(--color-bg-primary)] rounded-lg shadow-xl border border-[var(--color-border-primary)] p-6 max-w-lg w-full mx-4"
       >
         <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-2">

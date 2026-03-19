@@ -24,7 +24,6 @@ export type {
   ContainerCreateGitConfig,
   ContainerWorktreeInfo,
   DialogAPI,
-  DialogWorktreeCleanupResult,
   DockerAPI,
   DockerImageInfo,
   ElectronAPI,

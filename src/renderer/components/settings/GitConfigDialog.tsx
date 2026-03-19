@@ -3,6 +3,7 @@ import type { GitConfigWithPat } from '@shared/types/git';
 import { trapFocus } from '@shared/lib/focus-trap';
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts';
 import { useDialogScroll } from '@renderer/hooks/useDialogScroll';
+import { useSuspendVimNavigation } from '@renderer/context/VimModeContext';
 
 export type { GitConfigWithPat } from '@shared/types/git';
 
@@ -45,6 +46,8 @@ export function GitConfigDialog({
   imageRemoved = false,
   isRebuilding = false,
 }: GitConfigDialogProps): React.ReactElement | null {
+  useSuspendVimNavigation(isOpen);
+
   const dialogRef = useRef<HTMLFormElement>(null);
   const patInputRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -298,11 +301,12 @@ export function GitConfigDialog({
   const showIdentity = initialConfig?.githubLogin && !patCleared;
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/60">
+    <div className="fixed inset-0 z-[60] bg-black/60" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <form
         ref={dialogRef}
         onSubmit={handleSubmit}
         onKeyDown={handleKeyDown}
+        onClick={(e) => e.stopPropagation()}
         tabIndex={-1}
         role="dialog"
         aria-modal="true"

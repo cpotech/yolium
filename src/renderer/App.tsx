@@ -34,6 +34,8 @@ import { KanbanView } from '@renderer/components/kanban/KanbanView';
 import { SchedulePanel } from '@renderer/components/schedule/SchedulePanel';
 import { ErrorBoundary } from '@renderer/components/ErrorBoundary';
 import { VimModeProvider } from '@renderer/context/VimModeContext';
+import { useConfirmDialog } from '@renderer/hooks/useConfirmDialog';
+import { ConfirmDialog } from '@renderer/components/shared/ConfirmDialog';
 
 function App(): React.ReactElement {
   // Restore kanban tabs that were open in the previous session
@@ -62,6 +64,9 @@ function App(): React.ReactElement {
 
   // Stable ref for toggleRecording to avoid IPC listener re-registration
   const stableToggleRecording = useCallback(() => whisper.toggleRecording(), [whisper]);
+
+  // Confirm dialog for stop-container
+  const { confirm: confirmAction, dialogProps: confirmDialogProps } = useConfirmDialog();
 
   // Docker state management
   const docker = useDockerState();
@@ -306,14 +311,15 @@ function App(): React.ReactElement {
 
   // Stop yolium from StatusBar (per CONTEXT.md: "After stopping, tab closes automatically")
   const handleStopYolium = useCallback(async (tabId: string) => {
-    const confirmed = await window.electronAPI.dialog.confirmOkCancel(
-      'Stop Container',
-      'Stop this yolium container?'
-    );
+    const confirmed = await confirmAction({
+      title: 'Stop Container',
+      message: 'Stop this yolium container?',
+      confirmLabel: 'Stop',
+    });
     if (!confirmed) return;
 
     handleCloseTab(tabId);
-  }, [handleCloseTab]);
+  }, [handleCloseTab, confirmAction]);
 
   // Delete Docker image — close all tabs with proper cleanup, then remove image
   const handleDeleteImage = useCallback(async () => {
@@ -751,6 +757,9 @@ function App(): React.ReactElement {
           </div>
         </div>
       )}
+      {/* Shared confirm dialogs */}
+      <ConfirmDialog {...confirmDialogProps} />
+      <ConfirmDialog {...docker.confirmDialogProps} />
     </div>
     </VimModeProvider>
   );

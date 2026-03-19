@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { X, FileText, FilePlus, FileMinus, FileEdit, Loader2, AlertTriangle } from 'lucide-react'
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts'
+import { useSuspendVimNavigation } from '@renderer/context/VimModeContext'
 
 interface GitDiffDialogProps {
   isOpen: boolean
@@ -127,6 +128,8 @@ export function GitDiffDialog({
   projectPath,
   branchName,
 }: GitDiffDialogProps): React.ReactElement | null {
+  useSuspendVimNavigation(isOpen)
+
   const [files, setFiles] = useState<ChangedFile[]>([])
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [diffLines, setDiffLines] = useState<SideBySideLine[]>([])

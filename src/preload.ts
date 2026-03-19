@@ -64,19 +64,7 @@ const events: ElectronAPI['events'] = {
   onScheduleShow: (callback) => listen('schedule:show', callback),
 };
 
-const dialog: ElectronAPI['dialog'] = {
-  confirmClose: invoke('dialog:confirm-close') as ElectronAPI['dialog']['confirmClose'],
-  confirmOkCancel: invoke(
-    'dialog:confirm-ok-cancel',
-  ) as ElectronAPI['dialog']['confirmOkCancel'],
-  confirmCloseMultiple: invoke(
-    'dialog:confirm-close-multiple',
-  ) as ElectronAPI['dialog']['confirmCloseMultiple'],
-  worktreeCleanup: invoke(
-    'dialog:worktree-cleanup',
-  ) as ElectronAPI['dialog']['worktreeCleanup'],
-  selectFolder: invoke('dialog:select-folder') as ElectronAPI['dialog']['selectFolder'],
-};
+const dialog: ElectronAPI['dialog'] = {};
 
 const fs: ElectronAPI['fs'] = {
   listDirectory: invoke('fs:list-directory') as ElectronAPI['fs']['listDirectory'],

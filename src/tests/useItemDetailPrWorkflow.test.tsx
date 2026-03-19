@@ -2,12 +2,17 @@
  * @vitest-environment jsdom
  */
 import React, { useState } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useItemDetailPrWorkflow } from '@renderer/components/kanban/item-detail/useItemDetailPrWorkflow'
+import { ConfirmDialog } from '@renderer/components/shared/ConfirmDialog'
 import type { KanbanItem } from '@shared/types/kanban'
 
-const mockConfirmOkCancel = vi.fn()
+// Mock VimModeContext (needed by ConfirmDialog)
+vi.mock('@renderer/context/VimModeContext', () => ({
+  useSuspendVimNavigation: vi.fn(),
+}))
+
 const mockWorktreeDiffStats = vi.fn()
 const mockMergeAndPushPR = vi.fn()
 const mockCheckMergeConflicts = vi.fn()
@@ -70,13 +75,13 @@ function PrWorkflowHarness({
       <button data-testid="merge-pr" onClick={() => void workflow.mergePr()}>
         Merge PR
       </button>
+      <ConfirmDialog {...workflow.confirmDialogProps} />
     </div>
   )
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockConfirmOkCancel.mockResolvedValue(true)
   mockWorktreeDiffStats.mockResolvedValue({ filesChanged: 1, insertions: 2, deletions: 1 })
   mockMergeAndPushPR.mockResolvedValue({ success: true, prBranch: 'feature/pr-branch', prUrl: 'https://example.test/pr/1' })
   mockCheckMergeConflicts.mockResolvedValue({ clean: true, conflictingFiles: [] })
@@ -88,9 +93,6 @@ beforeEach(() => {
 
   Object.defineProperty(window, 'electronAPI', {
     value: {
-      dialog: {
-        confirmOkCancel: mockConfirmOkCancel,
-      },
       git: {
         worktreeDiffStats: mockWorktreeDiffStats,
         mergeAndPushPR: mockMergeAndPushPR,
@@ -112,7 +114,14 @@ describe('useItemDetailPrWorkflow', () => {
   it('should persist mergeStatus "merged", the returned prBranch, and prUrl after mergeAndPushPR succeeds', async () => {
     render(<PrWorkflowHarness />)
 
-    fireEvent.click(screen.getByTestId('merge'))
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('merge'))
+    })
+
+    // ConfirmDialog should now be visible — click confirm
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('confirm-dialog-confirm'))
+    })
 
     await waitFor(() => {
       expect(mockUpdateItem).toHaveBeenCalledWith('/test/project', 'item-1', {
@@ -134,7 +143,14 @@ describe('useItemDetailPrWorkflow', () => {
 
     render(<PrWorkflowHarness />)
 
-    fireEvent.click(screen.getByTestId('merge'))
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('merge'))
+    })
+
+    // ConfirmDialog should now be visible — click confirm
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('confirm-dialog-confirm'))
+    })
 
     await waitFor(() => {
       expect(mockUpdateItem).toHaveBeenCalledWith('/test/project', 'item-1', {
@@ -155,7 +171,14 @@ describe('useItemDetailPrWorkflow', () => {
 
     render(<PrWorkflowHarness />)
 
-    fireEvent.click(screen.getByTestId('merge'))
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('merge'))
+    })
+
+    // ConfirmDialog should now be visible — click confirm
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('confirm-dialog-confirm'))
+    })
 
     await waitFor(() => {
       expect(mockUpdateItem).toHaveBeenCalledWith('/test/project', 'item-1', {
@@ -199,7 +222,14 @@ describe('useItemDetailPrWorkflow', () => {
   it('should move the item to the done column after mergePR succeeds', async () => {
     render(<PrWorkflowHarness item={createMockItem({ mergeStatus: 'merged', prUrl: 'https://example.test/pr/1' })} />)
 
-    fireEvent.click(screen.getByTestId('merge-pr'))
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('merge-pr'))
+    })
+
+    // ConfirmDialog should now be visible — click confirm
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('confirm-dialog-confirm'))
+    })
 
     await waitFor(() => {
       expect(mockUpdateItem).toHaveBeenCalledWith('/test/project', 'item-1', {

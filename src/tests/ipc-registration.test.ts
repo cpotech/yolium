@@ -105,7 +105,7 @@ describe('registerAllHandlers', () => {
     expect(ipc.areIpcHandlersRegistered()).toBe(true)
 
     expect(registerAppHandlers).toHaveBeenCalledWith(ipcMain, shell)
-    expect(registerDialogHandlers).toHaveBeenCalledWith(ipcMain, dialog)
+    expect(registerDialogHandlers).toHaveBeenCalledWith(ipcMain)
     expect(registerGitHandlers).toHaveBeenCalledWith(ipcMain)
     expect(logger.info).toHaveBeenCalledWith(
       'IPC handlers ready',

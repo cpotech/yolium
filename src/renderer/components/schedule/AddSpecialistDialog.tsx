@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CronHelper } from './CronHelper';
 import type { MemoryStrategy, EscalationAction } from '@shared/types/schedule';
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts';
+import { useSuspendVimNavigation } from '@renderer/context/VimModeContext';
 
 interface AddSpecialistDialogProps {
   isOpen: boolean;
@@ -287,6 +288,8 @@ export function AddSpecialistDialog({
   onCreated,
   editingSpecialistId = null,
 }: AddSpecialistDialogProps): React.ReactElement | null {
+  useSuspendVimNavigation(isOpen);
+
   const isEditMode = Boolean(editingSpecialistId);
   const [name, setName] = useState('');
   const [services, setServices] = useState<ServiceBlock[]>([]);
