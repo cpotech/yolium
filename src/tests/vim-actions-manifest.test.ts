@@ -50,7 +50,7 @@ describe('VIM_ACTIONS manifest consistency', () => {
   it('every zone in manifest should be a valid VimActionZone', () => {
     const validZones = new Set([
       'sidebar', 'tabs', 'content', 'status-bar', 'schedule', 'global', 'dialog',
-      'dialog-sidebar', 'dialog-log', 'mode', 'electron-tabs', 'electron-app', 'electron-view',
+      'dialog-diff', 'dialog-sidebar', 'dialog-log', 'mode', 'electron-tabs', 'electron-app', 'electron-view',
       'terminal', 'mouse',
     ]);
     for (const action of VIM_ACTIONS) {
@@ -93,6 +93,7 @@ describe('VIM_ACTIONS manifest consistency', () => {
     expect(zones.has('schedule')).toBe(true);
     expect(zones.has('global')).toBe(true);
     expect(zones.has('dialog')).toBe(true);
+    expect(zones.has('dialog-diff')).toBe(true);
     expect(zones.has('dialog-sidebar')).toBe(true);
     expect(zones.has('dialog-log')).toBe(true);
     expect(zones.has('mode')).toBe(true);

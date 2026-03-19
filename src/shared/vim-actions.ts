@@ -10,6 +10,7 @@ export type VimActionZone =
   | VimZone
   | 'global'
   | 'dialog'
+  | 'dialog-diff'
   | 'dialog-sidebar'
   | 'dialog-log'
   | 'mode'
@@ -120,6 +121,11 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'dialog-close-ctrl-q', key: 'Ctrl+Q', zone: 'dialog', mode: 'ANY', category: 'vim', group: 'Dialog (Work Item)', description: 'Close dialog' },
   { id: 'dialog-comment-search', key: '/', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Dialog (Work Item)', description: 'Search comments' },
 
+  // --- Dialog Diff zone ---
+  { id: 'diff-file-down', key: 'j', zone: 'dialog-diff', mode: 'NORMAL', category: 'vim', group: 'Dialog (Diff)', description: 'Next file' },
+  { id: 'diff-file-up', key: 'k', zone: 'dialog-diff', mode: 'NORMAL', category: 'vim', group: 'Dialog (Diff)', description: 'Previous file' },
+  { id: 'diff-close', key: 'Ctrl+Q', zone: 'dialog-diff', mode: 'ANY', category: 'vim', group: 'Dialog (Diff)', description: 'Close dialog' },
+
   // --- Dialog sidebar — single-key agent shortcuts + PR/merge shortcuts + log toggle ---
   { id: 'agent-plan-sidebar', key: 'p', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Plan Agent (sidebar)' },
   { id: 'agent-code-sidebar', key: 'c', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Code Agent (sidebar)' },
@@ -190,6 +196,7 @@ export const SHORTCUT_GROUP_ORDER: string[] = [
   'Schedule (Agents)',
   'Status Bar',
   'Dialog (Work Item)',
+  'Dialog (Diff)',
   'Sidebar Focus (Work Item)',
   'Log Panel Navigation',
   'Agent Controls (Work Item)',
