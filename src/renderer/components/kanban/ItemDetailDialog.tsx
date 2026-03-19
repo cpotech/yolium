@@ -534,6 +534,9 @@ export function ItemDetailDialog({
                 <span><kbd className={kbdClass}>d</kbd> Delete</span>
                 <span><kbd className={kbdClass}>f</kbd> Diff</span>
                 <span><kbd className={kbdClass}>g</kbd> Merge</span>
+                <span><kbd className={kbdClass}>a</kbd> Approve</span>
+                <span><kbd className={kbdClass}>w</kbd> Merge PR</span>
+                <span><kbd className={kbdClass}>k</kbd> Fix Conflicts</span>
                 <span><kbd className={kbdClass}>Esc</kbd> Back</span>
               </>
             )

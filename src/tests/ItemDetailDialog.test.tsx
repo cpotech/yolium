@@ -967,6 +967,83 @@ describe('ItemDetailDialog', () => {
       expect(hintBar.textContent).toContain('Delete')
     })
 
+    it("should show 'a' (Approve) shortcut in sidebar-focused hint bar", () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem()}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      const hintBar = screen.getByTestId('shortcuts-hint-bar')
+      expect(hintBar.textContent).toContain('Approve')
+    })
+
+    it("should show 'w' (Merge PR) shortcut in sidebar-focused hint bar", () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem()}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      const hintBar = screen.getByTestId('shortcuts-hint-bar')
+      expect(hintBar.textContent).toContain('Merge PR')
+    })
+
+    it("should show 'k' (Fix Conflicts) shortcut in sidebar-focused hint bar", () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem()}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      const hintBar = screen.getByTestId('shortcuts-hint-bar')
+      expect(hintBar.textContent).toContain('Fix Conflicts')
+    })
+
+    it('should show approve, merge, and fix conflicts shortcuts alongside existing sidebar shortcuts', () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem()}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      const hintBar = screen.getByTestId('shortcuts-hint-bar')
+      // Existing shortcuts still present
+      expect(hintBar.textContent).toContain('Plan')
+      expect(hintBar.textContent).toContain('Code')
+      expect(hintBar.textContent).toContain('Verify')
+      expect(hintBar.textContent).toContain('Diff')
+      expect(hintBar.textContent).toContain('Merge')
+      // New shortcuts present
+      expect(hintBar.textContent).toContain('Approve')
+      expect(hintBar.textContent).toContain('Merge PR')
+      expect(hintBar.textContent).toContain('Fix Conflicts')
+    })
+
     it('should update hint bar to show editor shortcuts when focusZone is editor', () => {
       render(
         <ItemDetailDialog
