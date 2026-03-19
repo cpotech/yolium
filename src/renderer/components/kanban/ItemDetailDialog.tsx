@@ -193,6 +193,8 @@ export function ItemDetailDialog({
       return
     }
     // Agent shortcuts: Ctrl+Shift+{S,D,M}
+    // These modifier-key combos don't conflict with native form control behavior,
+    // so they work regardless of which element has focus.
     if (event.ctrlKey && event.shiftKey && item) {
       const agentKeyMap: Record<string, string> = {
         S: 'scout-agent',
@@ -201,11 +203,8 @@ export function ItemDetailDialog({
       }
       const agentName = agentKeyMap[event.key.toUpperCase()]
       if (agentName) {
-        const target = event.target as HTMLElement
-        const tagName = target.tagName.toLowerCase()
-        const isEditable = tagName === 'input' || tagName === 'textarea' || tagName === 'select' || target.isContentEditable
         const canStart = item.agentStatus === 'idle' || item.agentStatus === 'completed' || item.agentStatus === 'failed'
-        if (!isEditable && canStart && !lifecycle.isStartingAgent) {
+        if (canStart && !lifecycle.isStartingAgent) {
           event.preventDefault()
           void lifecycle.startAgent(agentName)
         }
@@ -235,12 +234,7 @@ export function ItemDetailDialog({
 
     // NORMAL mode navigation and sidebar shortcuts
     if (vim.mode === 'NORMAL') {
-      const target = event.target as HTMLElement
-      const tagName = target.tagName.toLowerCase()
-      const isEditable = tagName === 'input' || tagName === 'textarea' || tagName === 'select' || target.isContentEditable
-      if (isEditable) return
-
-      // Tab toggles focus zone between editor and sidebar
+      // 1. Tab zone toggle — always works regardless of focused element
       if (event.key === 'Tab' && !event.shiftKey) {
         event.preventDefault()
         setFocusZone(prev => prev === 'editor' ? 'sidebar' : 'editor')
@@ -248,7 +242,8 @@ export function ItemDetailDialog({
         return
       }
 
-      // Single-key sidebar shortcuts
+      // 2. Single-key sidebar shortcuts — process BEFORE isEditable guard
+      // so they work even when a sidebar <select>, <input>, or <textarea> has focus
       if (focusZone === 'sidebar' && item) {
         const canStart = (item.agentStatus === 'idle' || item.agentStatus === 'completed' || item.agentStatus === 'failed') && !lifecycle.isStartingAgent
         const sidebarAgentKeyMap: Record<string, string> = {
@@ -262,11 +257,13 @@ export function ItemDetailDialog({
         const agentName = sidebarAgentKeyMap[event.key]
         if (agentName && canStart) {
           event.preventDefault()
+          dialogRef.current?.focus()
           void lifecycle.startAgent(agentName)
           return
         }
         if (event.key === 'x' && item.agentStatus === 'running' && agentSession.currentSessionId) {
           event.preventDefault()
+          dialogRef.current?.focus()
           void lifecycle.stopAgent()
           return
         }
@@ -278,48 +275,62 @@ export function ItemDetailDialog({
         }
         if (event.key === 'd' && !event.shiftKey && !isDeleting) {
           event.preventDefault()
+          dialogRef.current?.focus()
           void handleDelete()
           return
         }
         // Merge/PR shortcuts
         if (event.key === 'f' && item.branch && item.mergeStatus) {
           event.preventDefault()
+          dialogRef.current?.focus()
           setShowDiffViewer(true)
           return
         }
         if (event.key === 'r' && item.worktreePath && !prWorkflow.isRebasing) {
           event.preventDefault()
+          dialogRef.current?.focus()
           void prWorkflow.rebaseOntoDefault()
           return
         }
         if (event.key === 'k' && item.mergeStatus && !prWorkflow.isCheckingConflicts) {
           event.preventDefault()
+          dialogRef.current?.focus()
           void prWorkflow.checkConflicts()
           return
         }
         if (event.key === 'g' && (item.agentStatus === 'completed' || item.column === 'done' || item.column === 'verify') && !prWorkflow.isMerging) {
           event.preventDefault()
+          dialogRef.current?.focus()
           void prWorkflow.mergeAndPushPr()
           return
         }
         if (event.key === 'a' && item.mergeStatus === 'merged' && prWorkflow.prUrl && !prWorkflow.isApprovingPr && !prWorkflow.isMergingPr) {
           event.preventDefault()
+          dialogRef.current?.focus()
           void prWorkflow.approvePr()
           return
         }
         if (event.key === 'w' && item.mergeStatus === 'merged' && prWorkflow.prUrl && !prWorkflow.isMergingPr && !prWorkflow.isApprovingPr) {
           event.preventDefault()
+          dialogRef.current?.focus()
           void prWorkflow.mergePr()
           return
         }
         if (event.key === 'o' && prWorkflow.prUrl) {
           event.preventDefault()
+          dialogRef.current?.focus()
           window.electronAPI.app.openExternal(prWorkflow.prUrl)
           return
         }
       }
 
-      // Editor zone field navigation
+      // 3. isEditable guard — only blocks editor zone navigation
+      const target = event.target as HTMLElement
+      const tagName = target.tagName.toLowerCase()
+      const isEditable = tagName === 'input' || tagName === 'textarea' || tagName === 'select' || target.isContentEditable
+      if (isEditable) return
+
+      // 4. Editor zone field navigation
       if (focusZone === 'editor') {
         if (event.key === 'j' || event.key === 'ArrowDown') {
           event.preventDefault()
