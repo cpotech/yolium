@@ -50,7 +50,7 @@ describe('VIM_ACTIONS manifest consistency', () => {
   it('every zone in manifest should be a valid VimActionZone', () => {
     const validZones = new Set([
       'sidebar', 'tabs', 'content', 'status-bar', 'schedule', 'global', 'dialog',
-      'dialog-sidebar', 'mode', 'electron-tabs', 'electron-app', 'electron-view',
+      'dialog-sidebar', 'dialog-log', 'mode', 'electron-tabs', 'electron-app', 'electron-view',
       'terminal', 'mouse',
     ]);
     for (const action of VIM_ACTIONS) {
@@ -94,6 +94,7 @@ describe('VIM_ACTIONS manifest consistency', () => {
     expect(zones.has('global')).toBe(true);
     expect(zones.has('dialog')).toBe(true);
     expect(zones.has('dialog-sidebar')).toBe(true);
+    expect(zones.has('dialog-log')).toBe(true);
     expect(zones.has('mode')).toBe(true);
     expect(zones.has('electron-tabs')).toBe(true);
     expect(zones.has('electron-app')).toBe(true);
@@ -250,5 +251,35 @@ describe('VIM_ACTIONS manifest consistency', () => {
     // Specifically verify R is present and unique
     expect(keyMap.has('R')).toBe(true);
     expect(keyMap.get('R')).toBe('agent-resume-sidebar');
+  });
+
+  it('manifest should include log-toggle-sidebar action with key l in dialog-sidebar zone', () => {
+    const action = VIM_ACTIONS.find(a => a.id === 'log-toggle-sidebar');
+    expect(action).toBeDefined();
+    expect(action?.key).toBe('l');
+    expect(action?.zone).toBe('dialog-sidebar');
+    expect(action?.mode).toBe('NORMAL');
+    expect(action?.category).toBe('vim');
+    expect(action?.group).toBe('Sidebar Focus (Work Item)');
+  });
+
+  it('manifest should include dialog-log zone with log navigation actions', () => {
+    const logActions = getActionsForZone('dialog-log');
+    expect(logActions.length).toBeGreaterThanOrEqual(3);
+    const keys = logActions.map(a => a.key);
+    expect(keys).toContain('j');
+    expect(keys).toContain('k');
+    expect(keys).toContain('Escape');
+    const ids = logActions.map(a => a.id);
+    expect(ids).toContain('log-down');
+    expect(ids).toContain('log-up');
+    expect(ids).toContain('log-exit');
+  });
+
+  it('manifest should include Log Panel Navigation group', () => {
+    const groupMap = getActionsByGroup();
+    expect(groupMap.has('Log Panel Navigation')).toBe(true);
+    const logNavActions = groupMap.get('Log Panel Navigation')!;
+    expect(logNavActions.length).toBeGreaterThanOrEqual(3);
   });
 });

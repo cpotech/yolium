@@ -3,34 +3,65 @@
  * Agent output log panel with auto-scroll and clear functionality.
  */
 
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react'
 import { Trash2, Terminal, ChevronRight, ChevronDown } from 'lucide-react'
 
 /** Regex to match timestamp prefix like "[12:34:56] " at start of line */
 const TIMESTAMP_RE = /^(\[\d{2}:\d{2}:\d{2}\]) (.*)$/
 
+export interface AgentLogPanelHandle {
+  pauseAutoScroll: () => void
+  resumeAutoScroll: () => void
+  scrollBy: (delta: number) => void
+}
+
 interface AgentLogPanelProps {
   outputLines: string[]
   onClear: () => void
+  isExpanded?: boolean
+  onToggle?: () => void
 }
 
-/**
- * Display agent log with collapsible panel and auto-scroll.
- * Collapsed by default.
- * @param props - Component props
- */
-export function AgentLogPanel({
+export const AgentLogPanel = forwardRef<AgentLogPanelHandle, AgentLogPanelProps>(function AgentLogPanel({
   outputLines,
   onClear,
-}: AgentLogPanelProps): React.ReactElement {
-  const [isExpanded, setIsExpanded] = useState(false)
+  isExpanded: controlledExpanded,
+  onToggle,
+}: AgentLogPanelProps, ref): React.ReactElement {
+  const [internalExpanded, setInternalExpanded] = useState(false)
+  const isControlled = controlledExpanded !== undefined
+  const isExpanded = isControlled ? controlledExpanded : internalExpanded
+
   const logEndRef = useRef<HTMLDivElement>(null)
   const logContainerRef = useRef<HTMLDivElement>(null)
+  const autoScrollPausedRef = useRef(false)
 
-  // Auto-scroll to bottom when new output arrives (only when expanded)
+  const handleToggle = () => {
+    if (isControlled && onToggle) {
+      onToggle()
+    } else {
+      setInternalExpanded(prev => !prev)
+    }
+  }
+
+  useImperativeHandle(ref, () => ({
+    pauseAutoScroll: () => {
+      autoScrollPausedRef.current = true
+    },
+    resumeAutoScroll: () => {
+      autoScrollPausedRef.current = false
+    },
+    scrollBy: (delta: number) => {
+      if (logContainerRef.current) {
+        logContainerRef.current.scrollTop += delta
+      }
+    },
+  }), [])
+
   useEffect(() => {
-    if (isExpanded && logEndRef.current) {
-      logEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    if (isExpanded && logEndRef.current && !autoScrollPausedRef.current) {
+      // scrollIntoView may not be available in jsdom/test environments
+      logEndRef.current.scrollIntoView?.({ behavior: 'smooth' })
     }
   }, [outputLines, isExpanded])
 
@@ -39,7 +70,7 @@ export function AgentLogPanel({
       <div className="flex items-center justify-between px-4 py-2">
         <button
           data-testid="toggle-log-button"
-          onClick={() => setIsExpanded(prev => !prev)}
+          onClick={handleToggle}
           className="flex items-center gap-1.5 text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
         >
           {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -94,4 +125,4 @@ export function AgentLogPanel({
       )}
     </div>
   )
-}
+})

@@ -9,7 +9,7 @@ import type { KanbanItem } from '@shared/types/kanban'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
 import { useSuspendVimNavigation, useVimModeContext } from '@renderer/context/VimModeContext'
-import { AgentLogPanel } from '../agent/AgentLogPanel'
+import { AgentLogPanel, type AgentLogPanelHandle } from '../agent/AgentLogPanel'
 import { GitDiffDialog } from '../code-review/GitDiffDialog'
 import { ItemDetailEditorPane } from './item-detail/ItemDetailEditorPane'
 import { ItemDetailSidebar } from './item-detail/ItemDetailSidebar'
@@ -69,8 +69,10 @@ export function ItemDetailDialog({
   const [dialogVisualMode, setDialogVisualMode] = useState(false)
   const [selectedItemIndices, setSelectedItemIndices] = useState<Set<number>>(new Set())
   const visualAnchorRef = useRef<number>(0)
+  const [logFocused, setLogFocused] = useState(false)
   const answerInputRef = useRef<HTMLTextAreaElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
+  const logPanelRef = useRef<AgentLogPanelHandle>(null)
   const gPendingRef = useRef(false)
 
   const navigableItems: NavigableItem[] = useMemo(() => [
@@ -142,6 +144,7 @@ export function ItemDetailDialog({
       setDialogVisualMode(false)
       setSelectedItemIndices(new Set())
       visualAnchorRef.current = 0
+      setLogFocused(false)
     }
   }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -351,6 +354,43 @@ export function ItemDetailDialog({
           window.electronAPI.app.openExternal(prWorkflow.prUrl)
           return
         }
+        // l to toggle log panel
+        if (event.key === 'l' && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
+          event.preventDefault()
+          agentSession.toggleAgentLog()
+          if (agentSession.showAgentLog) {
+            // Collapsing log exits log focus mode
+            setLogFocused(false)
+          }
+          return
+        }
+        // j/k in sidebar with log open -> enter log focus and scroll
+        if ((event.key === 'j' || event.key === 'k') && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
+          if (agentSession.showAgentLog) {
+            event.preventDefault()
+            setLogFocused(true)
+            logPanelRef.current?.pauseAutoScroll()
+            logPanelRef.current?.scrollBy(event.key === 'j' ? 80 : -80)
+            return
+          }
+        }
+      }
+
+      // Log focus mode (when log is focused, j/k scroll, Escape exits)
+      if (logFocused) {
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          setLogFocused(false)
+          logPanelRef.current?.resumeAutoScroll()
+          dialogRef.current?.focus()
+          return
+        }
+        if ((event.key === 'j' || event.key === 'k') && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
+          event.preventDefault()
+          logPanelRef.current?.pauseAutoScroll()
+          logPanelRef.current?.scrollBy(event.key === 'j' ? 80 : -80)
+          return
+        }
       }
 
       // 3. isEditable guard — only blocks editor zone navigation
@@ -467,7 +507,7 @@ export function ItemDetailDialog({
     if (dialogRef.current && !(vim.mode === 'NORMAL' && event.key === 'Tab')) {
       trapFocus(event, dialogRef.current)
     }
-  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedItemIndex, focusField, focusZone, agentSession.currentSessionId, prWorkflow, navigableItems, dialogVisualMode, selectedItemIndices])
+  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedItemIndex, focusField, focusZone, agentSession.currentSessionId, prWorkflow, navigableItems, dialogVisualMode, selectedItemIndices, agentSession])
 
   if (!isOpen || !item) return null
 
@@ -612,8 +652,10 @@ export function ItemDetailDialog({
          {(agentSession.showAgentLog || agentSession.agentOutputLines.length > 0) && (
            <div className="border-t border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
              <AgentLogPanel
+               ref={logPanelRef}
                outputLines={agentSession.agentOutputLines}
                onClear={agentSession.clearAgentOutput}
+               isExpanded={agentSession.showAgentLog}
              />
            </div>
          )}
@@ -642,21 +684,29 @@ export function ItemDetailDialog({
                 <span><kbd className={kbdClass}>Ctrl+Q</kbd> Close</span>
               </>
             ) : (
-              <>
-                <span><kbd className={kbdClass}>Tab</kbd> Editor</span>
-                <span><kbd className={kbdClass}>p</kbd> Plan</span>
-                <span><kbd className={kbdClass}>c</kbd> Code</span>
-                <span><kbd className={kbdClass}>v</kbd> Verify</span>
-                <span><kbd className={kbdClass}>x</kbd> Stop</span>
-                <span><kbd className={kbdClass}>R</kbd> Resume</span>
-                <span><kbd className={kbdClass}>d</kbd> Delete</span>
-                <span><kbd className={kbdClass}>f</kbd> Diff</span>
-                <span><kbd className={kbdClass}>g</kbd> Merge</span>
-                <span><kbd className={kbdClass}>a</kbd> Approve</span>
-                <span><kbd className={kbdClass}>w</kbd> Merge PR</span>
-                <span><kbd className={kbdClass}>k</kbd> Fix Conflicts</span>
-                <span><kbd className={kbdClass}>Esc</kbd> Back</span>
-              </>
+              logFocused ? (
+                <>
+                  <span><kbd className={kbdClass}>j/k</kbd> Navigate</span>
+                  <span><kbd className={kbdClass}>Esc</kbd> Back</span>
+                </>
+              ) : (
+                <>
+                  <span><kbd className={kbdClass}>Tab</kbd> Editor</span>
+                  <span><kbd className={kbdClass}>p</kbd> Plan</span>
+                  <span><kbd className={kbdClass}>c</kbd> Code</span>
+                  <span><kbd className={kbdClass}>v</kbd> Verify</span>
+                  <span><kbd className={kbdClass}>x</kbd> Stop</span>
+                  <span><kbd className={kbdClass}>R</kbd> Resume</span>
+                  <span><kbd className={kbdClass}>d</kbd> Delete</span>
+                  <span><kbd className={kbdClass}>f</kbd> Diff</span>
+                  <span><kbd className={kbdClass}>g</kbd> Merge</span>
+                  <span><kbd className={kbdClass}>a</kbd> Approve</span>
+                  <span><kbd className={kbdClass}>w</kbd> Merge PR</span>
+                  <span><kbd className={kbdClass}>k</kbd> Fix Conflicts</span>
+                  <span><kbd className={kbdClass}>l</kbd> Log</span>
+                  <span><kbd className={kbdClass}>Esc</kbd> Back</span>
+                </>
+              )
             )
           ) : (
             <>

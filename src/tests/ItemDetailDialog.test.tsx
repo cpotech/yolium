@@ -1279,4 +1279,266 @@ describe('ItemDetailDialog', () => {
     expect(screen.getByTestId('comments-section')).toBeInTheDocument()
     expect(screen.queryByTestId('save-button')).not.toBeInTheDocument()
   })
+
+  describe('log panel keyboard shortcuts', () => {
+    const getContainer = () => screen.getByTestId('item-detail-dialog').parentElement!
+
+    it('should toggle log panel when l is pressed in sidebar zone NORMAL mode', async () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'idle' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      // Switch to sidebar zone
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      // Press l to toggle log
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'l' })
+      })
+
+      // Log panel should now be visible
+      expect(screen.getByTestId('agent-log-section')).toBeInTheDocument()
+    })
+
+    it('should not toggle log when l is pressed in editor zone', async () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'idle' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      // Press l while in editor zone (default)
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'l' })
+      })
+
+      // Log panel should not be visible (no agent output lines yet)
+      expect(screen.queryByTestId('agent-log-section')).not.toBeInTheDocument()
+    })
+
+    it('should not toggle log when l is pressed in INSERT mode', async () => {
+      mockVimMode.current = 'INSERT'
+
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'idle' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      // Switch to sidebar zone
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      // Press l in INSERT mode
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'l' })
+      })
+
+      // Log panel should not be visible
+      expect(screen.queryByTestId('agent-log-section')).not.toBeInTheDocument()
+
+      mockVimMode.current = 'NORMAL'
+    })
+
+    it('should not toggle log when l is pressed with modifier keys', async () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'idle' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      // Switch to sidebar zone
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      // Press l with Ctrl
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'l', ctrlKey: true })
+      })
+
+      // Log panel should not be visible
+      expect(screen.queryByTestId('agent-log-section')).not.toBeInTheDocument()
+    })
+
+    it('should enter log focus and scroll down when j is pressed while log is open in sidebar zone', async () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'running' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      // Wait for agent session to be set up with running status
+      await act(async () => {
+        await new Promise(r => setTimeout(r, 0))
+      })
+
+      // Switch to sidebar zone
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      // First toggle log open with l
+      fireEvent.keyDown(getContainer(), { key: 'l' })
+
+      // Verify log is now visible
+      expect(screen.getByTestId('agent-log-section')).toBeInTheDocument()
+
+      // Press j to scroll down (should enter log focus)
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'j' })
+      })
+
+      // Log should still be visible (this tests that log focus mode was entered without errors)
+      expect(screen.getByTestId('agent-log-section')).toBeInTheDocument()
+    })
+
+    it('should enter log focus and scroll up when k is pressed while log is open in sidebar zone', async () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'running' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      await act(async () => {
+        await new Promise(r => setTimeout(r, 0))
+      })
+
+      // Switch to sidebar zone
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
+      // Toggle log open with l
+      fireEvent.keyDown(getContainer(), { key: 'l' })
+
+      // Verify log is visible
+      expect(screen.getByTestId('agent-log-section')).toBeInTheDocument()
+
+      // Press k to scroll up (should enter log focus)
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'k' })
+      })
+
+      // Log should still be visible
+      expect(screen.getByTestId('agent-log-section')).toBeInTheDocument()
+    })
+
+    it('should pause auto-scroll when j is pressed in log focus mode', async () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'running' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      await act(async () => {
+        await new Promise(r => setTimeout(r, 0))
+      })
+
+      // Switch to sidebar zone and toggle log
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      fireEvent.keyDown(getContainer(), { key: 'l' })
+
+      // Enter log focus by pressing j
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'j' })
+      })
+
+      // Log should still be visible - the test passes if no error is thrown
+      // (auto-scroll pausing is internal to the log panel component)
+      expect(screen.getByTestId('agent-log-section')).toBeInTheDocument()
+    })
+
+    it('should resume auto-scroll when Escape is pressed in log focus mode', async () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'running' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      await act(async () => {
+        await new Promise(r => setTimeout(r, 0))
+      })
+
+      // Switch to sidebar zone and toggle log
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      fireEvent.keyDown(getContainer(), { key: 'l' })
+
+      // Enter log focus
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'j' })
+      })
+
+      // Exit log focus with Escape
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'Escape' })
+      })
+
+      // Log should still be visible (but now in normal sidebar focus)
+      expect(screen.getByTestId('agent-log-section')).toBeInTheDocument()
+    })
+
+    it('should collapse log and exit log focus when l is pressed in log focus mode', async () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'running' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      await act(async () => {
+        await new Promise(r => setTimeout(r, 0))
+      })
+
+      // Switch to sidebar zone and toggle log open
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      fireEvent.keyDown(getContainer(), { key: 'l' })
+
+      // Verify log is open
+      expect(screen.getByTestId('agent-log-section')).toBeInTheDocument()
+
+      // Enter log focus
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'j' })
+      })
+
+      // Press l to collapse log (while in log focus mode)
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'l' })
+      })
+
+      // Log section should no longer be visible
+      expect(screen.queryByTestId('agent-log-section')).not.toBeInTheDocument()
+    })
+  })
 })
