@@ -581,4 +581,105 @@ test.describe('Dialog Shortcuts', () => {
       await expect(page.locator('[data-testid="agent-log-section"]')).toBeVisible();
     });
   });
+
+  test.describe('Item Detail Dialog - Comment Search Shortcut', () => {
+    let testRepoPath: string;
+
+    test.beforeAll(async () => {
+      testRepoPath = await createTestRepo(os.tmpdir());
+    });
+
+    test.afterAll(async () => {
+      if (testRepoPath) {
+        await cleanupTestRepo(testRepoPath);
+      }
+    });
+
+    test.beforeEach(async () => {
+      await cleanupYoliumContainers();
+    });
+
+    test.afterEach(async () => {
+      if (ctx) {
+        await closeApp(ctx);
+      }
+    });
+
+    async function openItemDetailDialogWithComments(): Promise<void> {
+      ctx = await launchApp();
+      const page = ctx.window;
+
+      // Clear stale localStorage
+      await page.evaluate(() => {
+        localStorage.removeItem('yolium-sidebar-projects');
+        localStorage.removeItem('yolium-open-kanban-tabs');
+      });
+      await page.reload();
+      await page.waitForLoadState('domcontentloaded');
+
+      // Add project via sidebar
+      await page.click(selectors.addProjectButton);
+      await page.fill(selectors.pathInput, testRepoPath);
+      await page.click(selectors.pathNextButton);
+      await expect(page.locator(selectors.kanbanView)).toBeVisible({ timeout: 10000 });
+
+      // Create an item
+      const item = await page.evaluate(
+        async (path: string) => {
+          return window.electronAPI.kanban.addItem(path, {
+            title: 'Test Item with Comments',
+            description: 'Test description',
+            agentProvider: 'claude',
+            order: 0,
+          });
+        },
+        testRepoPath
+      ) as { id: string };
+
+      // Add comments to the item
+      await page.evaluate(
+        async (params: { path: string; id: string }) => {
+          await window.electronAPI.kanban.updateItem(params.path, params.id, {
+            comments: [
+              { id: 'c1', source: 'user' as const, text: 'First comment', timestamp: new Date().toISOString() },
+              { id: 'c2', source: 'agent' as const, text: 'Second comment', timestamp: new Date().toISOString() },
+            ],
+          });
+        },
+        { path: testRepoPath, id: item.id }
+      );
+
+      // Refresh to see the item
+      await page.click(selectors.kanbanRefreshButton);
+      await page.waitForTimeout(500);
+
+      // Click on the card to open detail dialog
+      await page.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
+      await expect(page.locator(selectors.itemDetailDialog)).toBeVisible({ timeout: 5000 });
+    }
+
+    test('should focus comment search input when / is pressed in NORMAL mode', async () => {
+      await openItemDetailDialogWithComments();
+      const page = ctx.window;
+
+      // Verify we're in NORMAL mode (dialog opens in NORMAL mode)
+      // Press / to focus comment search
+      await page.locator(selectors.itemDetailDialog).press('/');
+
+      // The comment search input should now be focused
+      const searchInput = page.locator('[data-testid="comment-search-input"]');
+      await expect(searchInput).toBeFocused();
+    });
+
+    test('should show / shortcut hint in shortcuts bar when in editor zone NORMAL mode', async () => {
+      await openItemDetailDialogWithComments();
+      const page = ctx.window;
+
+      // The shortcuts hint bar should show the / shortcut
+      const shortcutsBar = page.locator('[data-testid="shortcuts-hint-bar"]');
+      await expect(shortcutsBar).toBeVisible();
+      await expect(shortcutsBar).toContainText('/');
+      await expect(shortcutsBar).toContainText('Search comments');
+    });
+  });
 });

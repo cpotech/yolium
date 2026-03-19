@@ -3,7 +3,7 @@
  * Comments list component for displaying kanban item comments.
  */
 
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useRef, useImperativeHandle, forwardRef } from 'react'
 import Markdown from 'react-markdown'
 import type { KanbanComment, CommentSource } from '@shared/types/kanban'
 import { MockPreviewModal } from './MockPreviewModal'
@@ -345,14 +345,25 @@ interface CommentsListProps {
   selectedCommentIds?: Set<string>
 }
 
+export interface CommentsListHandle {
+  focusSearchInput: () => void
+}
+
 /**
  * Display a list of comments with source badges and timestamps.
  * @param props - Component props
  */
-export function CommentsList({ comments, onSelectOption, focusedCommentId, selectedCommentIds }: CommentsListProps): React.ReactElement {
+export const CommentsList = forwardRef<CommentsListHandle, CommentsListProps>(function CommentsList({ comments, onSelectOption, focusedCommentId, selectedCommentIds }, ref) {
   const [mockFilePath, setMockFilePath] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const markdownComponents = createMarkdownComponents(setMockFilePath)
+
+  useImperativeHandle(ref, () => ({
+    focusSearchInput: () => {
+      searchInputRef.current?.focus()
+    },
+  }), [])
 
   const filteredComments = useMemo(() => {
     if (!searchQuery) return comments
@@ -380,6 +391,7 @@ export function CommentsList({ comments, onSelectOption, focusedCommentId, selec
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
             <input
+              ref={searchInputRef}
               data-testid="comment-search-input"
               type="text"
               value={searchQuery}
@@ -498,4 +510,4 @@ export function CommentsList({ comments, onSelectOption, focusedCommentId, selec
       />
     </div>
   )
-}
+})

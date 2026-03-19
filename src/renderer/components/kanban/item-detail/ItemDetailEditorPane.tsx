@@ -1,7 +1,7 @@
-import React from 'react'
+import React, { forwardRef } from 'react'
 import type { KanbanComment } from '@shared/types/kanban'
 import type { VimMode } from '@renderer/hooks/useVimMode'
-import { CommentsList } from '../CommentsList'
+import { CommentsList, type CommentsListHandle } from '../CommentsList'
 
 interface ItemDetailEditorPaneProps {
   title: string
@@ -19,9 +19,10 @@ interface ItemDetailEditorPaneProps {
   onFieldFocus?: (index: number) => void
   focusedCommentId?: string | null
   selectedCommentIds?: Set<string>
+  commentSearchRef?: React.Ref<CommentsListHandle>
 }
 
-export function ItemDetailEditorPane({
+export const ItemDetailEditorPane = forwardRef<React.ComponentRef<'div'>, ItemDetailEditorPaneProps>(function ItemDetailEditorPane({
   title,
   description,
   comments,
@@ -37,11 +38,12 @@ export function ItemDetailEditorPane({
   onFieldFocus,
   focusedCommentId,
   selectedCommentIds,
-}: ItemDetailEditorPaneProps): React.ReactElement {
+  commentSearchRef,
+}, ref) {
   const isNormal = vimMode === 'NORMAL'
 
   return (
-    <div className="flex-1 overflow-y-auto p-6">
+    <div className="flex-1 overflow-y-auto p-6" ref={ref}>
       <div>
         <div
           data-field-index="0"
@@ -86,6 +88,7 @@ export function ItemDetailEditorPane({
         </div>
 
         <CommentsList
+          ref={commentSearchRef}
           comments={comments}
           onSelectOption={onSelectCommentOption}
           focusedCommentId={focusedCommentId}
@@ -132,4 +135,4 @@ export function ItemDetailEditorPane({
       </div>
     </div>
   )
-}
+})
