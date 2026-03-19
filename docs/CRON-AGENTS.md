@@ -253,3 +253,161 @@ Approximate monthly costs per schedule type (using `haiku` model):
 | Weekly | 4 runs/month | ~$0.10-0.50 |
 
 Actual costs depend on prompt length, memory context size, and agent output.
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Schedule Panel (Renderer)                                      │
+│  ┌──────────────┐ ┌──────────────┐ ┌─────────────────────────┐  │
+│  │ Specialist   │ │ Actions      │ │ Add/Edit/Config         │  │
+│  │ Cards        │ │ View         │ │ Dialogs                 │  │
+│  └──────┬───────┘ └──────┬───────┘ └────────────┬────────────┘  │
+│         └────────────────┴──────────┬───────────┘               │
+│                                     │ IPC (schedule:*)          │
+├─────────────────────────────────────┼───────────────────────────┤
+│  Main Process                       │                           │
+│  ┌──────────────────────────────────┴────────────────────────┐  │
+│  │ CronScheduler (singleton)                                 │  │
+│  │ ┌────────────┐ ┌──────────────┐ ┌──────────────────────┐  │  │
+│  │ │ node-cron  │ │ Pattern      │ │ Memory               │  │  │
+│  │ │ Jobs       │ │ Detection    │ │ Distillation         │  │  │
+│  │ └─────┬──────┘ └──────────────┘ └──────────────────────┘  │  │
+│  └───────┼───────────────────────────────────────────────────┘  │
+│          │ triggers                                              │
+│  ┌───────┴───────────────────────────────────────────────────┐  │
+│  │ Scheduled Agent Runner (headless)                          │  │
+│  │ ┌──────────────┐ ┌──────────────┐ ┌────────────────────┐  │  │
+│  │ │ Docker       │ │ Protocol     │ │ Cost & Token       │  │  │
+│  │ │ Container    │ │ Parser       │ │ Tracking           │  │  │
+│  │ └──────────────┘ └──────────────┘ └────────────────────┘  │  │
+│  └────────────────────────────────────────────────────────────┘  │
+│          │                                                       │
+│  ┌───────┴───────────────────────────────────────────────────┐  │
+│  │ SQLite (yolium.db)                                         │  │
+│  │ ┌───────────────┐ ┌──────┐ ┌─────────┐ ┌──────────────┐   │  │
+│  │ │schedule_state │ │ runs │ │ actions │ │ credentials  │   │  │
+│  │ └───────────────┘ └──────┘ └─────────┘ └──────────────┘   │  │
+│  └────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Key Components
+
+| Component | File | Role |
+|---|---|---|
+| `CronScheduler` | `src/main/services/scheduler.ts` | Singleton that manages `node-cron` jobs, pattern detection, escalation, and memory distillation |
+| `startScheduledAgent` | `src/main/services/agent-scheduled.ts` | Launches a headless agent container, injects credentials and memory context, parses output |
+| `specialist-loader.ts` | `src/main/services/specialist-loader.ts` | Parses `.md` files with YAML frontmatter into `SpecialistDefinition` objects |
+| `schedule-db.ts` | `src/main/stores/schedule-db.ts` | SQLite persistence for schedule state, runs, actions, and credentials |
+| `schedule-handlers.ts` | `src/main/ipc/schedule-handlers.ts` | IPC handler registration for all `schedule:*` channels |
+| `SchedulePanel.tsx` | `src/renderer/components/schedule/SchedulePanel.tsx` | Main scheduling UI with specialist cards, actions view, and configuration |
+
+### Execution Flow
+
+1. `CronScheduler.start()` loads all specialist definitions and registers `node-cron` jobs
+2. When a cron job fires, the scheduler checks: is the specialist enabled? Is another run already in progress? Should it skip (`skipEveryN`)?
+3. If the run proceeds, `startScheduledAgent()` creates a headless Docker container with:
+   - The specialist's system prompt + schedule-type prompt template
+   - Recent run history injected as context
+   - Service credentials as environment variables
+4. The agent executes, emitting `@@YOLIUM:{type,data}` protocol messages
+5. On completion, `handleRunComplete()` records the run in SQLite, checks for patterns, and triggers escalation if needed
+6. State changes are broadcast to the renderer via `schedule:state-changed` events
+
+## IPC API Reference
+
+All scheduling IPC channels use the `schedule:` namespace. Full type signatures are in [IPC.md](IPC.md).
+
+### Queries
+
+| Channel | Parameters | Returns | Description |
+|---|---|---|---|
+| `schedule:get-state` | — | `ScheduleState` | Full state: global toggle, all specialist statuses |
+| `schedule:get-specialists` | — | `SpecialistDefinition[]` | Loaded specialist metadata |
+| `schedule:get-history` | `(id, limit?)` | `ScheduledRun[]` | Recent runs for a specialist (default 50) |
+| `schedule:get-stats` | `(id)` | `RunStats` | Success rate, weekly cost, average duration |
+| `schedule:get-run-log` | `(id, runId)` | `string` | Full display output log for a run |
+| `schedule:get-raw-definition` | `(name)` | `string` | Raw markdown content of a specialist file |
+| `schedule:get-credentials` | `(id)` | `Record<string, Record<string, boolean>>` | Redacted credential flags (has-secret, not values) |
+| `schedule:get-actions` | `(id, limit?)` | `ActionRecord[]` | Recent action logs for a specialist |
+| `schedule:get-all-actions` | `(ids[], limit?)` | `ActionRecord[]` | Actions across multiple specialists |
+| `schedule:get-run-actions` | `(id, runId)` | `ActionRecord[]` | Actions from a specific run |
+| `schedule:get-action-stats` | `(id)` | `Record<string, number>` | Aggregated action type counts |
+
+### Mutations
+
+| Channel | Parameters | Returns | Description |
+|---|---|---|---|
+| `schedule:toggle-specialist` | `(id, enabled)` | `void` | Enable or disable a specialist |
+| `schedule:toggle-global` | `(enabled)` | `void` | Enable or disable all scheduling |
+| `schedule:trigger-run` | `(id, type)` | `void` | Manually trigger a run |
+| `schedule:reload` | — | `void` | Reload specialist definitions from disk |
+| `schedule:scaffold` | `(name, options?)` | `string` | Create a new specialist `.md` file, returns file path |
+| `schedule:update-definition` | `(name, content)` | `void` | Save edited specialist definition |
+| `schedule:save-credentials` | `(id, serviceId, creds)` | `void` | Save service credentials |
+| `schedule:delete-credentials` | `(id)` | `void` | Delete all credentials for a specialist |
+| `schedule:reset-specialist` | `(id)` | `void` | Clear runs, actions, logs, workspace, and counters |
+| `schedule:get-template` | `(name, description?)` | `string` | Get a default template for a new specialist |
+
+### Events (Main → Renderer)
+
+| Event | Payload | Description |
+|---|---|---|
+| `schedule:alert` | `(specialistId, message)` | Escalation alert for the UI |
+| `schedule:state-changed` | `ScheduleState` | Broadcast after run completion or state mutation |
+
+## Action Logging
+
+Every action taken by a scheduled agent is recorded in the `actions` table, providing a full audit trail.
+
+### How Actions Are Recorded
+
+Agents emit protocol messages during execution:
+```
+@@YOLIUM:{"type":"action","data":{"action":"commit","details":"Fixed CVE-2024-1234"}}
+```
+
+The scheduled agent runner parses these and persists them to SQLite with:
+- `specialist_id` — which specialist performed the action
+- `run_id` — which specific run
+- `action` — action type (e.g., `commit`, `post_tweet`, `scan_complete`)
+- `data` — JSON payload with action-specific details
+- `timestamp` — when the action occurred
+
+### Viewing Actions
+
+The **Actions View** in the Schedule Panel shows a chronological feed of all actions across specialists. You can filter by:
+- Specialist (dropdown)
+- Action type (dropdown, populated from actual recorded types)
+
+### Action Statistics
+
+Use `schedule:get-action-stats` to get aggregated counts per action type for a specialist — useful for dashboards or monitoring how frequently each action fires.
+
+## File System Layout
+
+```
+~/.yolium/
+├── yolium.db                              # SQLite database (schedule_state, runs, actions, credentials)
+└── schedules/
+    └── {specialist-id}/
+        ├── workspace/                     # Agent's working directory
+        ├── digest.md                      # Memory distillation output
+        └── runs/
+            └── {runId}.log               # Per-run display output log
+
+src/agents/cron/                           # Built-in specialist definitions (dev)
+resources/agents/cron/                     # Built-in specialist definitions (prod)
+~/.yolium/agents/cron/custom/              # User-created custom specialists
+```
+
+## Custom Specialist Locations
+
+Yolium loads specialists from multiple directories in priority order:
+
+1. **Custom** (`~/.yolium/agents/cron/custom/`) — user-created specialists, never overwritten by updates
+2. **Built-in dev** (`src/agents/cron/`) — shipped specialists during development
+3. **Built-in prod** (`resources/agents/cron/`) — shipped specialists in packaged app
+
+If a custom specialist has the same `name` as a built-in one, the custom definition takes precedence.
