@@ -435,12 +435,28 @@ export function KanbanView({
 
       if (e.key === 'h' || e.key === 'ArrowLeft') {
         e.preventDefault()
-        setFocusedColumnIndex(prev => Math.max(prev - 1, 0))
+        setFocusedColumnIndex(prev => {
+          for (let i = prev - 1; i >= 0; i--) {
+            if (getColumnItems(columns[i].id).length > 0) {
+              setFocusedCardIndex(0)
+              return i
+            }
+          }
+          return prev
+        })
         return
       }
       if (e.key === 'l' || e.key === 'ArrowRight') {
         e.preventDefault()
-        setFocusedColumnIndex(prev => Math.min(prev + 1, columns.length - 1))
+        setFocusedColumnIndex(prev => {
+          for (let i = prev + 1; i < columns.length; i++) {
+            if (getColumnItems(columns[i].id).length > 0) {
+              setFocusedCardIndex(0)
+              return i
+            }
+          }
+          return prev
+        })
         return
       }
     }

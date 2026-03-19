@@ -455,7 +455,7 @@ describe('KanbanView NORMAL mode actions', () => {
     expect(backlogCol.querySelector('[data-vim-focused="true"]')).toBeTruthy();
   });
 
-  it('l at last column stays at last column', async () => {
+  it('l at last non-empty column stays at last non-empty column', async () => {
     await act(async () => {
       renderWithVim(
         <>
@@ -466,14 +466,13 @@ describe('KanbanView NORMAL mode actions', () => {
     });
 
     const view = screen.getByTestId('kanban-view');
-    // Move right many times to reach last column (done)
+    // Move right many times — should stop at the last column with items (ready)
     for (let i = 0; i < 10; i++) {
       fireEvent.keyDown(view, { key: 'l' });
     }
-    // Should end on the last column (done) — no column after it should have focus
-    const doneCol = screen.getByTestId('kanban-column-done');
-    // done column is empty, so no focused card, but it should have keyboard focus
-    expect(doneCol.getAttribute('tabindex')).toBe('0');
+    // Should end on ready (last non-empty column) — empty columns are skipped
+    const readyCol = screen.getByTestId('kanban-column-ready');
+    expect(readyCol.querySelector('[data-vim-focused="true"]')).toBeTruthy();
   });
 });
 
