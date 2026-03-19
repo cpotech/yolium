@@ -24,6 +24,7 @@ import {
   approvePR,
   checkGhCliAvailable,
   generatePrBranchName,
+  isGitHubRemote,
   mergeBranchAndPushPR,
   mergePR,
 } from '@main/git/git-github-pr'
@@ -179,6 +180,7 @@ describe('git-github-pr', () => {
       if (command === 'git merge --squash yolium-123-abc') return {}
       if (command.startsWith('git commit -m ')) return {}
       if (command === 'git push -u origin yolium/add-auth') return {}
+      if (cmd === 'git' && args[0] === 'remote' && args[1] === 'get-url') return { stdout: 'https://github.com/yolium/repo.git\n' }
       if (cmd === 'gh' && args[0] === '--version') {
         return { error: new Error('spawn gh ENOENT') }
       }
@@ -206,6 +208,7 @@ describe('git-github-pr', () => {
       if (command === 'git merge --squash yolium-123-abc') return {}
       if (command.startsWith('git commit -m ')) return {}
       if (command === 'git push -u origin yolium/add-auth') return {}
+      if (cmd === 'git' && args[0] === 'remote' && args[1] === 'get-url') return { stdout: 'https://github.com/yolium/repo.git\n' }
       if (cmd === 'gh' && args[0] === '--version') return { stdout: 'gh version 2.0.0' }
       if (cmd === 'gh' && args[0] === 'pr') {
         return { stdout: 'https://github.com/yolium/repo/pull/42\n' }
@@ -235,6 +238,7 @@ describe('git-github-pr', () => {
       if (command === 'git merge --squash feature/custom-branch') return {}
       if (command.startsWith('git commit -m ')) return {}
       if (command === 'git push -u origin feature/custom-branch') return {}
+      if (cmd === 'git' && args[0] === 'remote' && args[1] === 'get-url') return { stdout: 'https://github.com/yolium/repo.git\n' }
       if (cmd === 'gh' && args[0] === '--version') return { stdout: 'gh version 2.0.0' }
       if (cmd === 'gh' && args[0] === 'pr') return { stdout: 'https://github.com/yolium/repo/pull/43\n' }
       if (command.startsWith('git worktree remove ')) return {}
@@ -266,6 +270,7 @@ describe('git-github-pr', () => {
         return {}
       }
       if (command === 'git push -u origin yolium/add-auth') return {}
+      if (cmd === 'git' && args[0] === 'remote' && args[1] === 'get-url') return { stdout: 'https://github.com/yolium/repo.git\n' }
       if (cmd === 'gh' && args[0] === '--version') return { stdout: 'gh version 2.0.0' }
       if (cmd === 'gh' && args[0] === 'pr') return { stdout: 'https://github.com/yolium/repo/pull/42\n' }
       if (command.startsWith('git worktree remove ')) return {}
@@ -278,6 +283,87 @@ describe('git-github-pr', () => {
     expect(capturedCommitMessage).toBe('Add auth')
     expect(capturedCommitMessage).not.toContain('yolium-')
     expect(capturedCommitMessage).not.toContain('Squash merge branch')
+  })
+
+  it('isGitHubRemote should return true for HTTPS GitHub URLs', async () => {
+    setupExecFileAsyncMock((cmd, args) => {
+      if (cmd === 'git' && args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
+        return { stdout: 'https://github.com/user/repo.git\n' }
+      }
+      return { error: new Error(`Unexpected command: ${cmd} ${args.join(' ')}`) }
+    })
+
+    await expect(isGitHubRemote('/project')).resolves.toBe(true)
+  })
+
+  it('isGitHubRemote should return true for SSH GitHub URLs', async () => {
+    setupExecFileAsyncMock((cmd, args) => {
+      if (cmd === 'git' && args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
+        return { stdout: 'git@github.com:user/repo.git\n' }
+      }
+      return { error: new Error(`Unexpected command: ${cmd} ${args.join(' ')}`) }
+    })
+
+    await expect(isGitHubRemote('/project')).resolves.toBe(true)
+  })
+
+  it('isGitHubRemote should return false for GitLab, Bitbucket, and other non-GitHub URLs', async () => {
+    for (const url of [
+      'https://gitlab.com/user/repo.git',
+      'git@bitbucket.org:user/repo.git',
+      'https://gitea.example.com/user/repo.git',
+    ]) {
+      setupExecFileAsyncMock((cmd, args) => {
+        if (cmd === 'git' && args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
+          return { stdout: `${url}\n` }
+        }
+        return { error: new Error(`Unexpected command: ${cmd} ${args.join(' ')}`) }
+      })
+
+      await expect(isGitHubRemote('/project')).resolves.toBe(false)
+    }
+  })
+
+  it('isGitHubRemote should return false when git remote get-url fails (no remote)', async () => {
+    setupExecFileAsyncMock((cmd, args) => {
+      if (cmd === 'git' && args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
+        return { error: new Error('fatal: No such remote \'origin\'') }
+      }
+      return { error: new Error(`Unexpected command: ${cmd} ${args.join(' ')}`) }
+    })
+
+    await expect(isGitHubRemote('/project')).resolves.toBe(false)
+  })
+
+  it('mergeBranchAndPushPR should skip gh pr create and return a clear message when origin is a non-GitHub remote', async () => {
+    setupSyncHelpers()
+    const calls: string[] = []
+    setupExecFileAsyncMock((cmd, args) => {
+      const command = `${cmd} ${args.join(' ')}`
+      calls.push(command)
+      if (command === 'git fetch origin') return {}
+      if (command === 'git branch -D yolium/add-auth') return {}
+      if (command === 'git branch yolium/add-auth origin/main') return {}
+      if (command.startsWith('git worktree add ')) return {}
+      if (command === 'git merge --squash yolium-123-abc') return {}
+      if (command.startsWith('git commit -m ')) return {}
+      if (command === 'git push -u origin yolium/add-auth') return {}
+      if (cmd === 'git' && args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
+        return { stdout: 'https://gitlab.com/user/repo.git\n' }
+      }
+      if (command.startsWith('git worktree remove ')) return {}
+      return {}
+    })
+
+    const result = await mergeBranchAndPushPR('/project', 'yolium-123-abc', '/agent-worktree', 'Add auth', 'Description')
+
+    expect(result).toEqual({
+      success: true,
+      prBranch: 'yolium/add-auth',
+      error: 'Branch "yolium/add-auth" pushed to origin. This remote is not GitHub — create the pull request in your provider\'s UI.',
+    })
+    expect(calls.some((call) => call.startsWith('gh pr create'))).toBe(false)
+    expect(calls.some((call) => call === 'gh --version')).toBe(false)
   })
 
   it('approvePR should return an install message when gh is not available', async () => {
