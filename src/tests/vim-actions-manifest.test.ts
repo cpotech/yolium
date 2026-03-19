@@ -225,4 +225,30 @@ describe('VIM_ACTIONS manifest consistency', () => {
       keyMap.set(action.key, action.id);
     }
   });
+
+  it('manifest should include agent-resume-sidebar action with key R in dialog-sidebar zone', () => {
+    const action = VIM_ACTIONS.find(a => a.id === 'agent-resume-sidebar');
+    expect(action).toBeDefined();
+    expect(action?.key).toBe('R');
+    expect(action?.zone).toBe('dialog-sidebar');
+    expect(action?.mode).toBe('NORMAL');
+    expect(action?.category).toBe('vim');
+    expect(action?.group).toBe('Sidebar Focus (Work Item)');
+    expect(action?.description).toContain('Resume');
+  });
+
+  it('dialog-sidebar zone should have no key conflicts after adding R', () => {
+    const sidebarActions = getActionsForZone('dialog-sidebar');
+    const keyMap = new Map<string, string>();
+    for (const action of sidebarActions) {
+      const existing = keyMap.get(action.key);
+      if (existing) {
+        expect(false, `key '${action.key}' conflicts: ${existing} and ${action.id}`).toBe(true);
+      }
+      keyMap.set(action.key, action.id);
+    }
+    // Specifically verify R is present and unique
+    expect(keyMap.has('R')).toBe(true);
+    expect(keyMap.get('R')).toBe('agent-resume-sidebar');
+  });
 });

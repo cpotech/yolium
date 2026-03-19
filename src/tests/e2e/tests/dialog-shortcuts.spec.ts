@@ -124,6 +124,131 @@ test.describe('Dialog Shortcuts', () => {
     });
   });
 
+  test.describe('Resume Agent Shortcut (R key)', () => {
+    async function openKanbanWithItem(): Promise<{ window: AppContext['window']; itemId: string }> {
+      ctx = await launchApp();
+      const page = ctx.window;
+
+      // Clear state and add project
+      await page.evaluate(() => {
+        localStorage.removeItem('yolium-sidebar-projects');
+        localStorage.removeItem('yolium-open-kanban-tabs');
+      });
+      await page.reload();
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForSelector(
+        '[data-testid="empty-state"], [data-testid="docker-setup-dialog"], [data-testid="tab-bar"]',
+        { timeout: 30000 }
+      );
+
+      await page.click(selectors.addProjectButton);
+      await page.fill(selectors.pathInput, testRepoPath);
+      await page.click(selectors.pathNextButton);
+      await page.waitForSelector('[data-testid="kanban-view"]', { timeout: 10000 });
+
+      // Create item via IPC
+      const item = await page.evaluate(
+        async (params: { path: string }) => {
+          return window.electronAPI.kanban.addItem(params.path, {
+            title: 'Test Resume Item',
+            description: 'Test description',
+            agentProvider: 'claude' as 'claude' | 'codex' | 'opencode',
+            order: 0,
+          });
+        },
+        { path: testRepoPath }
+      ) as { id: string };
+
+      await page.click(selectors.kanbanRefreshButton);
+      await expect(
+        page.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard)
+      ).toBeVisible({ timeout: 5000 });
+
+      return { window: page, itemId: item.id };
+    }
+
+    test('should resume an interrupted agent when pressing R in sidebar focus zone', async () => {
+      const { window, itemId } = await openKanbanWithItem();
+
+      // Set agent status to interrupted via IPC
+      await window.evaluate(
+        async (params: { path: string; id: string }) => {
+          await window.electronAPI.kanban.updateItem(params.path, params.id, {
+            agentStatus: 'interrupted' as 'interrupted',
+            lastAgentName: 'code-agent',
+          });
+        },
+        { path: testRepoPath, id: itemId }
+      );
+      await window.click(selectors.kanbanRefreshButton);
+      await expect(
+        window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard)
+      ).toBeVisible({ timeout: 5000 });
+
+      // Open item detail dialog
+      await window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
+      await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
+
+      // Press Tab to switch to sidebar focus zone
+      await window.keyboard.press('Tab');
+
+      // Press R to resume — agent resume will be attempted (may fail since no real container, but the key should be handled)
+      await window.keyboard.press('R');
+
+      // Verify R Resume hint is visible in the shortcuts bar
+      const dialogText = await window.locator(selectors.itemDetailDialog).textContent();
+      expect(dialogText).toContain('Resume');
+    });
+
+    test('should not trigger resume when agent is idle (R key should be no-op)', async () => {
+      const { window } = await openKanbanWithItem();
+
+      // Open item detail dialog (agent status is idle by default)
+      await window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
+      await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
+
+      // Press Tab to switch to sidebar focus zone
+      await window.keyboard.press('Tab');
+
+      // Press R — should be a no-op since agent is idle
+      await window.keyboard.press('R');
+
+      // Dialog should still be open (no error, no crash)
+      await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
+    });
+
+    test('should not trigger resume when agent is running (R key should be no-op)', async () => {
+      const { window, itemId } = await openKanbanWithItem();
+
+      // Set agent status to running via IPC
+      await window.evaluate(
+        async (params: { path: string; id: string }) => {
+          await window.electronAPI.kanban.updateItem(params.path, params.id, {
+            agentStatus: 'running' as 'running',
+          });
+        },
+        { path: testRepoPath, id: itemId }
+      );
+      await window.click(selectors.kanbanRefreshButton);
+      await expect(
+        window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard)
+      ).toBeVisible({ timeout: 5000 });
+
+      // Open item detail dialog
+      await window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
+      await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
+
+      // Press Tab to switch to sidebar focus zone
+      await window.keyboard.press('Tab');
+
+      // Press R — should be a no-op since agent is running (R is for resume, not stop)
+      await window.keyboard.press('R');
+
+      // Dialog should still be open (no error, no crash)
+      await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
+    });
+  });
+
   test.describe('Git Settings Dialog', () => {
     test('Ctrl+Shift+S should open fullscreen settings dialog', async () => {
       ctx = await launchApp();

@@ -270,6 +270,12 @@ export function ItemDetailDialog({
           void lifecycle.stopAgent()
           return
         }
+        if (event.key === 'R' && (item.agentStatus === 'interrupted' || item.agentStatus === 'waiting') && !lifecycle.isStartingAgent) {
+          event.preventDefault()
+          const resumeName = item.activeAgentName || item.lastAgentName || item.agentType || 'code-agent'
+          void lifecycle.resumeAgent(resumeName)
+          return
+        }
         if (event.key === 'd' && !event.shiftKey && !isDeleting) {
           event.preventDefault()
           void handleDelete()
@@ -513,6 +519,7 @@ export function ItemDetailDialog({
                 <span><kbd className={kbdClass}>c</kbd> Code</span>
                 <span><kbd className={kbdClass}>v</kbd> Verify</span>
                 <span><kbd className={kbdClass}>x</kbd> Stop</span>
+                <span><kbd className={kbdClass}>R</kbd> Resume</span>
                 <span><kbd className={kbdClass}>d</kbd> Delete</span>
                 <span><kbd className={kbdClass}>f</kbd> Diff</span>
                 <span><kbd className={kbdClass}>g</kbd> Merge</span>
