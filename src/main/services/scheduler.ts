@@ -10,7 +10,7 @@ import * as os from 'node:os';
 import cron from 'node-cron';
 import { BrowserWindow } from 'electron';
 import { createLogger } from '@main/lib/logger';
-import { listSpecialists, loadSpecialist, getSpecialistsDir, getCustomSpecialistsDir } from '@main/services/specialist-loader';
+import { listSpecialists, loadSpecialist, getSpecialistsDir, getCustomSpecialistsDir, validateSchedules } from '@main/services/specialist-loader';
 import { startScheduledAgent } from '@main/services/agent-runner';
 import {
   getScheduleState,
@@ -335,12 +335,21 @@ export class CronScheduler {
     for (const schedule of specialist.schedules) {
       if (!schedule.enabled) continue;
 
-      const job = cron.schedule(schedule.cron, () => {
-        this.executeScheduledRun(id, schedule.type);
-      });
+      if (!cron.validate(schedule.cron)) {
+        logger.error('Invalid cron expression, skipping schedule', { specialistId: id, type: schedule.type, cron: schedule.cron });
+        continue;
+      }
 
-      jobList.push(job);
-      logger.info('Registered cron job', { specialistId: id, type: schedule.type, cron: schedule.cron });
+      try {
+        const job = cron.schedule(schedule.cron, () => {
+          this.executeScheduledRun(id, schedule.type);
+        });
+
+        jobList.push(job);
+        logger.info('Registered cron job', { specialistId: id, type: schedule.type, cron: schedule.cron });
+      } catch (err) {
+        logger.error('Failed to register cron job', { specialistId: id, type: schedule.type, cron: schedule.cron, error: err instanceof Error ? err.message : String(err) });
+      }
     }
 
     this.jobs.set(id, jobList);
