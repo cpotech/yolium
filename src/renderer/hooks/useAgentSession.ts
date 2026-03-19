@@ -22,6 +22,7 @@ export interface AgentSessionActions {
   prepareForRun: () => void
   appendOutputLine: (line: string) => void
   setRunStatus: (status: LiveAgentStatus, message?: string | null) => void
+  toggleAgentLog: () => void
 }
 
 export interface UseAgentSessionOptions {
@@ -267,6 +268,10 @@ export function useAgentSession({
     }
   }, [itemId, projectPath])
 
+  const toggleAgentLog = useCallback(() => {
+    setShowAgentLog(prev => !prev)
+  }, [])
+
   return {
     agentOutputLines,
     showAgentLog,
@@ -278,5 +283,6 @@ export function useAgentSession({
     prepareForRun,
     appendOutputLine,
     setRunStatus,
+    toggleAgentLog,
   }
 }

@@ -476,4 +476,109 @@ test.describe('Dialog Shortcuts', () => {
       expect(dialogText).not.toContain('Ctrl+Shift+V');
     });
   });
+
+  test.describe('Item Detail Dialog - Log Panel', () => {
+    let testRepoPath: string;
+
+    test.beforeAll(async () => {
+      testRepoPath = await createTestRepo(os.tmpdir());
+    });
+
+    test.afterAll(async () => {
+      if (testRepoPath) {
+        await cleanupTestRepo(testRepoPath);
+      }
+    });
+
+    test.beforeEach(async () => {
+      await cleanupYoliumContainers();
+    });
+
+    test.afterEach(async () => {
+      if (ctx) {
+        await closeApp(ctx);
+      }
+    });
+
+    async function openItemDetailDialog(): Promise<void> {
+      ctx = await launchApp();
+      const page = ctx.window;
+
+      // Clear stale localStorage
+      await page.evaluate(() => {
+        localStorage.removeItem('yolium-sidebar-projects');
+        localStorage.removeItem('yolium-open-kanban-tabs');
+      });
+      await page.reload();
+      await page.waitForLoadState('domcontentloaded');
+
+      // Add project via sidebar
+      await page.click(selectors.addProjectButton);
+      await page.fill(selectors.pathInput, testRepoPath);
+      await page.click(selectors.pathNextButton);
+      await expect(page.locator(selectors.kanbanView)).toBeVisible({ timeout: 10000 });
+
+      // Create an item first
+      await page.evaluate(
+        async (path: string) => {
+          return window.electronAPI.kanban.addItem(path, {
+            title: 'Test Item for Log Panel',
+            description: 'Testing log panel shortcuts',
+            agentProvider: 'claude',
+            order: 0,
+          });
+        },
+        testRepoPath
+      );
+
+      // Refresh to see the new item
+      await page.click(selectors.kanbanRefreshButton);
+      await page.waitForTimeout(500);
+
+      // Click on the card to open detail dialog
+      await page.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
+      await expect(page.locator(selectors.itemDetailDialog)).toBeVisible({ timeout: 5000 });
+    }
+
+    test('should expand log panel when l is pressed in sidebar zone', async () => {
+      await openItemDetailDialog();
+      const page = ctx.window;
+
+      // Press Tab to switch to sidebar zone
+      await page.locator(selectors.itemDetailDialog).press('Tab');
+
+      // Press l to toggle log panel
+      await page.locator(selectors.itemDetailDialog).press('l');
+
+      // Log panel should now be visible
+      const logSection = page.locator('[data-testid="agent-log-section"]');
+      await expect(logSection).toBeVisible();
+    });
+
+    test('should scroll log panel when j/k is pressed after opening log', async () => {
+      await openItemDetailDialog();
+      const page = ctx.window;
+
+      // Press Tab to switch to sidebar zone
+      await page.locator(selectors.itemDetailDialog).press('Tab');
+
+      // Press l to open log panel
+      await page.locator(selectors.itemDetailDialog).press('l');
+
+      // Verify log is open
+      await expect(page.locator('[data-testid="agent-log-section"]')).toBeVisible();
+
+      // Press j to scroll down (should enter log focus mode)
+      await page.locator(selectors.itemDetailDialog).press('j');
+
+      // Log should still be visible (just testing that no error occurs)
+      await expect(page.locator('[data-testid="agent-log-section"]')).toBeVisible();
+
+      // Press k to scroll up
+      await page.locator(selectors.itemDetailDialog).press('k');
+
+      // Log should still be visible
+      await expect(page.locator('[data-testid="agent-log-section"]')).toBeVisible();
+    });
+  });
 });

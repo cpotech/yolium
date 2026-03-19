@@ -11,6 +11,7 @@ export type VimActionZone =
   | 'global'
   | 'dialog'
   | 'dialog-sidebar'
+  | 'dialog-log'
   | 'mode'
   | 'electron-tabs'
   | 'electron-app'
@@ -118,7 +119,7 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'dialog-yank', key: 'y', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Dialog (Work Item)', description: 'Yank (copy) selected text' },
   { id: 'dialog-close-ctrl-q', key: 'Ctrl+Q', zone: 'dialog', mode: 'ANY', category: 'vim', group: 'Dialog (Work Item)', description: 'Close dialog' },
 
-  // --- Dialog sidebar — single-key agent shortcuts ---
+  // --- Dialog sidebar — single-key agent shortcuts + PR/merge shortcuts + log toggle ---
   { id: 'agent-plan-sidebar', key: 'p', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Plan Agent (sidebar)' },
   { id: 'agent-code-sidebar', key: 'c', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Code Agent (sidebar)' },
   { id: 'agent-verify-sidebar', key: 'v', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Verify Agent (sidebar)' },
@@ -135,6 +136,12 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'dialog-approve-pr', key: 'a', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Approve PR' },
   { id: 'dialog-merge-pr', key: 'w', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Merge PR (finalize)' },
   { id: 'dialog-open-pr', key: 'o', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Open PR (external)' },
+  { id: 'log-toggle-sidebar', key: 'l', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Toggle log panel (sidebar)' },
+
+  // --- Dialog log — log panel navigation ---
+  { id: 'log-down', key: 'j', zone: 'dialog-log', mode: 'NORMAL', category: 'vim', group: 'Log Panel Navigation', description: 'Scroll down log panel' },
+  { id: 'log-up', key: 'k', zone: 'dialog-log', mode: 'NORMAL', category: 'vim', group: 'Log Panel Navigation', description: 'Scroll up log panel' },
+  { id: 'log-exit', key: 'Escape', zone: 'dialog-log', mode: 'NORMAL', category: 'vim', group: 'Log Panel Navigation', description: 'Exit log focus mode' },
 
   // --- Agent Controls — Ctrl+Shift shortcuts ---
   { id: 'agent-scout', key: 'Ctrl+Shift+S', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Agent Controls (Work Item)', description: 'Scout Agent' },
@@ -183,6 +190,7 @@ export const SHORTCUT_GROUP_ORDER: string[] = [
   'Status Bar',
   'Dialog (Work Item)',
   'Sidebar Focus (Work Item)',
+  'Log Panel Navigation',
   'Agent Controls (Work Item)',
   'Kanban Selection',
   'Tab Management',
