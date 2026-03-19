@@ -72,4 +72,30 @@ test.describe('App Launch', () => {
     await window.click(selectors.shortcutsCloseButton);
     await expect(window.locator(selectors.shortcutsDialog)).not.toBeVisible();
   });
+
+  test('should render sidebar expanded by default', async () => {
+    ctx = await launchApp();
+    const { window } = ctx;
+
+    // Sidebar should be visible and expanded (w-48 class)
+    await expect(window.locator(selectors.sidebar)).toBeVisible();
+    await expect(window.locator(selectors.sidebar)).toHaveClass(/w-48/);
+
+    // Collapse toggle should be visible
+    await expect(window.locator(selectors.sidebarCollapseToggle)).toBeVisible();
+  });
+
+  test('should collapse sidebar when E is pressed', async () => {
+    ctx = await launchApp();
+    const { window } = ctx;
+
+    // Sidebar should be expanded initially
+    await expect(window.locator(selectors.sidebar)).toHaveClass(/w-48/);
+
+    // Press E to collapse
+    await window.keyboard.press('E');
+
+    // Sidebar should now be collapsed (w-10 class)
+    await expect(window.locator(selectors.sidebar)).toHaveClass(/w-10/);
+  });
 });

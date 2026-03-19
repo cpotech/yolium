@@ -70,7 +70,7 @@ function App(): React.ReactElement {
   const dialogs = useDialogState();
 
   // State for sidebar (must be declared before useAgentCreation which uses setSidebarProjects)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarProjects, setSidebarProjects] = useState<SidebarProject[]>(() => getSidebarProjects());
   const [sidebarItems, setSidebarItems] = useState<SidebarWorkItem[]>([]);
 
