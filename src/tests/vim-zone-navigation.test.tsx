@@ -150,7 +150,7 @@ describe('TabBar vim navigation', () => {
 describe('Sidebar ProjectList vim navigation', () => {
   const onProjectClick = vi.fn();
   const onProjectRemove = vi.fn();
-  const onAddProject = vi.fn();
+  const onOpenProject = vi.fn();
   const onAnswerAndResume = vi.fn();
 
   beforeEach(() => {
@@ -167,7 +167,7 @@ describe('Sidebar ProjectList vim navigation', () => {
           sidebarItems={[]}
           onProjectClick={onProjectClick}
           onProjectRemove={onProjectRemove}
-          onAddProject={onAddProject}
+          onOpenProject={onOpenProject}
           onAnswerAndResume={onAnswerAndResume}
         />
       </>
@@ -190,7 +190,7 @@ describe('Sidebar ProjectList vim navigation', () => {
           sidebarItems={[]}
           onProjectClick={onProjectClick}
           onProjectRemove={onProjectRemove}
-          onAddProject={onAddProject}
+          onOpenProject={onOpenProject}
           onAnswerAndResume={onAnswerAndResume}
         />
       </>
@@ -215,7 +215,7 @@ describe('Sidebar ProjectList vim navigation', () => {
           sidebarItems={[]}
           onProjectClick={onProjectClick}
           onProjectRemove={onProjectRemove}
-          onAddProject={onAddProject}
+          onOpenProject={onOpenProject}
           onAnswerAndResume={onAnswerAndResume}
         />
       </>
@@ -237,7 +237,7 @@ describe('Sidebar ProjectList vim navigation', () => {
           sidebarItems={[]}
           onProjectClick={onProjectClick}
           onProjectRemove={onProjectRemove}
-          onAddProject={onAddProject}
+          onOpenProject={onOpenProject}
           onAnswerAndResume={onAnswerAndResume}
         />
       </>

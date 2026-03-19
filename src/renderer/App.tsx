@@ -121,8 +121,8 @@ function App(): React.ReactElement {
   }, [dialogs]);
 
   // Add a project to sidebar (opens path dialog, then kanban tab)
-  const handleAddProject = useCallback(() => {
-    dialogs.openPathDialog('addProject');
+  const handleOpenProject = useCallback(() => {
+    dialogs.openPathDialog('openProject');
   }, [dialogs]);
 
   // Click a project in sidebar - opens/focuses its kanban tab
@@ -379,7 +379,7 @@ function App(): React.ReactElement {
     onCloseAllTabs: handleCloseAllTabs,
     onShowShortcuts: dialogs.openShortcutsDialog,
     onOpenGitConfig: dialogs.openGitConfigDialog,
-    onAddProject: handleAddProject,
+    onOpenProject: handleOpenProject,
     onToggleRecording: stableToggleRecording,
     onOpenSchedule: addScheduleTab,
   });
@@ -563,7 +563,7 @@ function App(): React.ReactElement {
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
           onProjectClick={handleProjectClick}
           onProjectRemove={handleProjectRemove}
-          onAddProject={handleAddProject}
+          onOpenProject={handleOpenProject}
           onAnswerAndResume={handleAnswerAndResume}
           onOpenSchedule={addScheduleTab}
         />
@@ -573,7 +573,7 @@ function App(): React.ReactElement {
           {tabs.length === 0 ? (
             <>
               <div className="flex-1 min-h-0">
-                <EmptyState onNewTab={handleNewYolium} onCreateProject={handleAddProject} projects={sidebarProjects} onProjectClick={handleProjectClick} />
+                <EmptyState onNewTab={handleNewYolium} onOpenProject={handleOpenProject} projects={sidebarProjects} onProjectClick={handleProjectClick} />
               </div>
               {/* Minimal status bar for empty state */}
               <StatusBar

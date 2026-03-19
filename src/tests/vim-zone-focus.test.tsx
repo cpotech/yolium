@@ -56,7 +56,7 @@ describe('Vim zone focus management', () => {
           sidebarItems={[]}
           onProjectClick={vi.fn()}
           onProjectRemove={vi.fn()}
-          onAddProject={vi.fn()}
+          onOpenProject={vi.fn()}
           onAnswerAndResume={vi.fn()}
         />
       </>
@@ -118,7 +118,7 @@ describe('Vim zone focus management', () => {
             sidebarItems={[]}
             onProjectClick={vi.fn()}
             onProjectRemove={vi.fn()}
-            onAddProject={vi.fn()}
+            onOpenProject={vi.fn()}
             onAnswerAndResume={vi.fn()}
           />
         </>
@@ -163,7 +163,7 @@ describe('Vim zone focus management', () => {
           sidebarItems={[]}
           onProjectClick={vi.fn()}
           onProjectRemove={vi.fn()}
-          onAddProject={vi.fn()}
+          onOpenProject={vi.fn()}
           onAnswerAndResume={vi.fn()}
         />
         <TabBar

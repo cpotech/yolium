@@ -50,7 +50,7 @@ test.describe('Kanban Sidebar Integration', () => {
    */
   async function addProject(): Promise<void> {
     const { window } = ctx;
-    await window.click(selectors.addProjectButton);
+    await window.click(selectors.openProjectButton);
     await window.fill(selectors.pathInput, testRepoPath);
     await window.click(selectors.pathNextButton);
     await expect(window.locator(selectors.kanbanView)).toBeVisible({ timeout: 10000 });
@@ -157,7 +157,7 @@ test.describe('Kanban Sidebar Integration', () => {
     await launchCleanApp();
     const { window } = ctx;
 
-    await expect(window.locator(selectors.addProjectButton)).toBeVisible();
+    await expect(window.locator(selectors.openProjectButton)).toBeVisible();
   });
 
   test('should toggle sidebar collapse', async () => {
@@ -191,7 +191,7 @@ test.describe('Kanban Sidebar Integration', () => {
     await launchCleanApp();
     const { window } = ctx;
 
-    await window.click(selectors.addProjectButton);
+    await window.click(selectors.openProjectButton);
     await expect(window.locator(selectors.pathDialog)).toBeVisible();
   });
 
@@ -199,7 +199,7 @@ test.describe('Kanban Sidebar Integration', () => {
     await launchCleanApp();
     const { window } = ctx;
 
-    await window.click(selectors.addProjectButton);
+    await window.click(selectors.openProjectButton);
     await expect(window.locator(selectors.pathDialog)).toBeVisible();
 
     await window.fill(selectors.pathInput, testRepoPath);

@@ -271,7 +271,7 @@ export interface TabsAPI {
 export interface EventsAPI {
   onShortcutsShow: (callback: () => void) => CleanupFunction;
   onGitSettingsShow: (callback: () => void) => CleanupFunction;
-  onProjectNew: (callback: () => void) => CleanupFunction;
+  onProjectOpen: (callback: () => void) => CleanupFunction;
   onRecordingToggle: (callback: () => void) => CleanupFunction;
   onScheduleShow: (callback: () => void) => CleanupFunction;
 }

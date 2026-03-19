@@ -6,12 +6,12 @@ import { getFolderName } from '@renderer/lib/path-utils';
 
 interface EmptyStateProps {
   onNewTab: () => void;
-  onCreateProject?: () => void;
+  onOpenProject?: () => void;
   projects?: SidebarProject[];
   onProjectClick?: (path: string) => void;
 }
 
-export function EmptyState({ onNewTab, onCreateProject, projects, onProjectClick }: EmptyStateProps): React.ReactElement {
+export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }: EmptyStateProps): React.ReactElement {
   const { theme, toggleTheme } = useTheme();
   const hasProjects = projects && projects.length > 0;
 
@@ -266,14 +266,14 @@ export function EmptyState({ onNewTab, onCreateProject, projects, onProjectClick
 
       {/* CTA buttons */}
       <div className="flex items-center gap-3 mb-8">
-        {onCreateProject && (
+        {onOpenProject && (
           <button
-            onClick={onCreateProject}
+            onClick={onOpenProject}
             className="flex flex-col items-center gap-1 px-5 py-2.5 bg-[var(--color-accent-primary)] hover:bg-[var(--color-accent-hover)] text-white font-medium rounded-lg transition-colors"
           >
             <span className="flex items-center gap-2">
               <FolderPlus size={18} />
-              Create Project
+              Open Project
             </span>
             <kbd className="text-[10px] opacity-70 font-mono">Ctrl+Shift+N</kbd>
           </button>

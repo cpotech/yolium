@@ -15,7 +15,7 @@ export interface UseKeyboardShortcutsOptions {
   onCloseAllTabs: () => void
   onShowShortcuts: () => void
   onOpenGitConfig: () => void
-  onAddProject: () => void
+  onOpenProject: () => void
   onToggleRecording: () => void
   onOpenSchedule?: () => void
 }
@@ -34,7 +34,7 @@ export function useKeyboardShortcuts({
   onCloseAllTabs,
   onShowShortcuts,
   onOpenGitConfig,
-  onAddProject,
+  onOpenProject,
   onToggleRecording,
   onOpenSchedule,
 }: UseKeyboardShortcutsOptions): void {
@@ -48,7 +48,7 @@ export function useKeyboardShortcuts({
     const cleanupCloseAll = window.electronAPI.tabs.onCloseAll(onCloseAllTabs)
     const cleanupShortcuts = window.electronAPI.events.onShortcutsShow(onShowShortcuts)
     const cleanupGitSettings = window.electronAPI.events.onGitSettingsShow(onOpenGitConfig)
-    const cleanupProjectNew = window.electronAPI.events.onProjectNew(onAddProject)
+    const cleanupProjectOpen = window.electronAPI.events.onProjectOpen(onOpenProject)
     const cleanupRecording = window.electronAPI.events.onRecordingToggle(onToggleRecording)
     const cleanupSchedule = onOpenSchedule
       ? window.electronAPI.events.onScheduleShow(onOpenSchedule)
@@ -64,7 +64,7 @@ export function useKeyboardShortcuts({
       cleanupCloseAll()
       cleanupShortcuts()
       cleanupGitSettings()
-      cleanupProjectNew()
+      cleanupProjectOpen()
       cleanupRecording()
       cleanupSchedule?.()
     }
@@ -78,7 +78,7 @@ export function useKeyboardShortcuts({
     onCloseAllTabs,
     onShowShortcuts,
     onOpenGitConfig,
-    onAddProject,
+    onOpenProject,
     onToggleRecording,
     onOpenSchedule,
   ])

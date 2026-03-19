@@ -55,7 +55,7 @@ test.describe('Kanban Board', () => {
     );
 
     // Add project via sidebar
-    await page.click(selectors.addProjectButton);
+    await page.click(selectors.openProjectButton);
     await page.fill(selectors.pathInput, testRepoPath);
     await page.click(selectors.pathNextButton);
     await expect(page.locator(selectors.kanbanView)).toBeVisible({ timeout: 10000 });

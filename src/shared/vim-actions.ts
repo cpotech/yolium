@@ -77,8 +77,8 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'project-up', key: 'k', zone: 'sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar', description: 'Previous project' },
   { id: 'project-open', key: 'Enter', zone: 'sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar', description: 'Open project' },
   { id: 'project-remove', key: 'x', zone: 'sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar', description: 'Remove project' },
-  { id: 'project-add', key: 'a', zone: 'sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar', description: 'Add project', testId: 'add-project-button' },
-  { id: 'project-add-alt', key: '+', zone: 'sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar', description: 'Add project (alt)' },
+  { id: 'project-open-dialog', key: 'a', zone: 'sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar', description: 'Open project', testId: 'open-project-button' },
+  { id: 'project-open-dialog-alt', key: '+', zone: 'sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar', description: 'Open project (alt)' },
   { id: 'project-scheduled', key: 'h', zone: 'sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar', description: 'Scheduled agents' },
 
   // --- Schedule zone — Scheduled Agents panel ---
@@ -159,7 +159,7 @@ export const VIM_ACTIONS: VimAction[] = [
   // --- Electron App ---
   { id: 'electron-shortcuts', key: 'Ctrl+?', zone: 'electron-app', mode: 'ANY', category: 'electron', group: 'Application', description: 'Keyboard shortcuts' },
   { id: 'electron-settings', key: 'Ctrl+Shift+,', zone: 'electron-app', mode: 'ANY', category: 'electron', group: 'Application', description: 'Settings' },
-  { id: 'electron-new-project', key: 'Ctrl+Shift+N', zone: 'electron-app', mode: 'ANY', category: 'electron', group: 'Application', description: 'New project' },
+  { id: 'electron-open-project', key: 'Ctrl+Shift+N', zone: 'electron-app', mode: 'ANY', category: 'electron', group: 'Application', description: 'Open project' },
   { id: 'electron-scheduled', key: 'Ctrl+Shift+H', zone: 'electron-app', mode: 'ANY', category: 'electron', group: 'Application', description: 'Scheduled agents' },
   { id: 'electron-record', key: 'Ctrl+Shift+R', zone: 'electron-app', mode: 'ANY', category: 'electron', group: 'Application', description: 'Toggle recording' },
 

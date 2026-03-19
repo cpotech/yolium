@@ -12,7 +12,7 @@ const defaultProps = {
   onToggleCollapse: vi.fn(),
   onProjectClick: vi.fn(),
   onProjectRemove: vi.fn(),
-  onAddProject: vi.fn(),
+  onOpenProject: vi.fn(),
   onAnswerAndResume: vi.fn(),
 }
 
@@ -35,7 +35,7 @@ describe('Sidebar', () => {
     expect(screen.getByText('project2')).toBeInTheDocument()
   })
 
-  it('should show add project button', () => {
+  it('should show open project button', () => {
     render(
       <Sidebar
         projects={[]}
@@ -44,22 +44,22 @@ describe('Sidebar', () => {
       />
     )
 
-    expect(screen.getByTestId('add-project-button')).toBeInTheDocument()
+    expect(screen.getByTestId('open-project-button')).toBeInTheDocument()
   })
 
-  it('should call onAddProject when add button clicked', () => {
-    const onAddProject = vi.fn()
+  it('should call onOpenProject when add button clicked', () => {
+    const onOpenProject = vi.fn()
     render(
       <Sidebar
         projects={[]}
         collapsed={false}
         {...defaultProps}
-        onAddProject={onAddProject}
+        onOpenProject={onOpenProject}
       />
     )
 
-    fireEvent.click(screen.getByTestId('add-project-button'))
-    expect(onAddProject).toHaveBeenCalled()
+    fireEvent.click(screen.getByTestId('open-project-button'))
+    expect(onOpenProject).toHaveBeenCalled()
   })
 
   it('should call onProjectClick when project clicked', () => {
@@ -402,7 +402,7 @@ describe('Sidebar', () => {
         />
       )
 
-      const addButton = screen.getByTestId('add-project-button')
+      const addButton = screen.getByTestId('open-project-button')
       const kbd = addButton.querySelector('kbd')
       expect(kbd).not.toBeNull()
       expect(kbd?.textContent).toBe('A')

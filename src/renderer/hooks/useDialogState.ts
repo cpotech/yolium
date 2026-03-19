@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react'
 import type { GitConfigWithPat } from '@renderer/components/settings/GitConfigDialog'
 import { normalizePath } from '@shared/lib/path-utils'
 
-export type PathDialogMode = 'newTab' | 'addProject'
+export type PathDialogMode = 'newTab' | 'openProject'
 
 export interface UseDialogStateResult {
   /** Whether path input dialog is open */

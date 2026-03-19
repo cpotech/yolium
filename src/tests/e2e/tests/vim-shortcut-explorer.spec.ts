@@ -43,7 +43,7 @@ test.describe('Vim Shortcut Explorer', () => {
       { timeout: 30000 }
     );
 
-    await page.click(selectors.addProjectButton);
+    await page.click(selectors.openProjectButton);
     await page.fill(selectors.pathInput, testRepoPath);
     await page.click(selectors.pathNextButton);
     await page.waitForSelector('[data-testid="kanban-view"]', { timeout: 10000 });
@@ -88,7 +88,7 @@ test.describe('Vim Shortcut Explorer', () => {
     await openKanbanBoard();
     const page = ctx.window;
 
-    const buttons = await page.$$('[data-vim-zone="sidebar"] button, [data-testid="add-project-button"]');
+    const buttons = await page.$$('[data-vim-zone="sidebar"] button, [data-testid="open-project-button"]');
     const missing: string[] = [];
     for (const btn of buttons) {
       const vimKey = await btn.getAttribute('data-vim-key');

@@ -24,7 +24,7 @@ interface ProjectListProps {
   sidebarItems: SidebarWorkItem[];
   onProjectClick: (path: string) => void;
   onProjectRemove: (path: string) => void;
-  onAddProject: () => void;
+  onOpenProject: () => void;
   onAnswerAndResume: (projectPath: string, itemId: string, answer: string, agentName: string) => Promise<void> | void;
   onOpenSchedule?: () => void;
 }
@@ -35,7 +35,7 @@ export function ProjectList({
   sidebarItems,
   onProjectClick,
   onProjectRemove,
-  onAddProject,
+  onOpenProject,
   onAnswerAndResume,
   onOpenSchedule,
 }: ProjectListProps): React.ReactElement {
@@ -77,12 +77,12 @@ export function ProjectList({
       onProjectRemove(projects[idx].path);
     } else if (e.key === '+' || e.key === 'a') {
       e.preventDefault();
-      onAddProject();
+      onOpenProject();
     } else if (e.key === 'h') {
       e.preventDefault();
       onOpenSchedule?.();
     }
-  }, [isZoneActive, projects, focusedIndex, onProjectClick, onProjectRemove, onAddProject, onOpenSchedule]);
+  }, [isZoneActive, projects, focusedIndex, onProjectClick, onProjectRemove, onOpenProject, onOpenSchedule]);
 
   return (
     <div ref={containerRef} className="flex flex-col h-full" onKeyDown={handleVimKeyDown} tabIndex={isZoneActive ? 0 : undefined}>
@@ -94,9 +94,9 @@ export function ProjectList({
           </span>
         )}
         <button
-          data-testid="add-project-button"
+          data-testid="open-project-button"
           data-vim-key="a"
-          onClick={onAddProject}
+          onClick={onOpenProject}
           className="flex items-center gap-0.5 p-1 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
         >
           <Plus size={16} />
