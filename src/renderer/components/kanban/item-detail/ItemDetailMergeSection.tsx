@@ -146,6 +146,7 @@ export function ItemDetailMergeSection({
           >
             <Wrench size={12} />
             {isFixingConflicts ? 'Fixing...' : 'Fix Conflicts (Run Agent)'}
+            {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-status-info)]/10 rounded border border-[var(--color-status-info)]/30 font-mono ml-auto">k</kbd>}
           </button>
           <button
             data-testid="retry-merge-button"
@@ -210,7 +211,7 @@ export function ItemDetailMergeSection({
           >
             <AlertTriangle size={12} />
             {isCheckingConflicts ? 'Checking...' : 'Check Conflicts'}
-            {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-primary)] rounded border border-[var(--color-border-primary)] font-mono ml-auto">k</kbd>}
+            {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-primary)] rounded border border-[var(--color-border-primary)] font-mono ml-auto">K</kbd>}
           </button>
 
           {conflictCheck && (
