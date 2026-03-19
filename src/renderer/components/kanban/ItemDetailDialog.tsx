@@ -259,6 +259,10 @@ export function ItemDetailDialog({
       if (vim.mode === 'INSERT') {
         vim.exitToNormal()
         dialogRef.current?.focus()
+      } else if (logFocused) {
+        setLogFocused(false)
+        logPanelRef.current?.resumeAutoScroll()
+        dialogRef.current?.focus()
       } else if (focusZone === 'sidebar') {
         // Sidebar zone Escape -> return to editor zone
         setFocusZone('editor')
@@ -280,13 +284,6 @@ export function ItemDetailDialog({
       // 2. Log focus mode — must be checked BEFORE sidebar shortcuts
       // so j/k always scroll the log when in log-focus mode
       if (logFocused) {
-        if (event.key === 'Escape') {
-          event.preventDefault()
-          setLogFocused(false)
-          logPanelRef.current?.resumeAutoScroll()
-          dialogRef.current?.focus()
-          return
-        }
         if ((event.key === 'j' || event.key === 'k') && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
           event.preventDefault()
           logPanelRef.current?.pauseAutoScroll()

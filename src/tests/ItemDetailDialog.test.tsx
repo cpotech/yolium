@@ -1542,5 +1542,180 @@ describe('ItemDetailDialog', () => {
       // Log section should no longer be visible
       expect(screen.queryByTestId('agent-log-section')).not.toBeInTheDocument()
     })
+
+    it('should exit log focus mode (not switch to editor zone) when Escape is pressed while logFocused is true', async () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'running' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      await act(async () => {
+        await new Promise(r => setTimeout(r, 0))
+      })
+
+      // Switch to sidebar zone and toggle log open
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      fireEvent.keyDown(getContainer(), { key: 'l' })
+
+      // Enter log focus by pressing j
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'j' })
+      })
+
+      // Press Escape to exit log focus
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'Escape' })
+      })
+
+      // Should still be in sidebar zone (not switched to editor)
+      expect(screen.getByTestId('sidebar-zone')).toHaveClass('ring-1')
+      expect(screen.getByTestId('editor-zone')).not.toHaveClass('ring-1')
+      // Log should still be visible
+      expect(screen.getByTestId('agent-log-section')).toBeInTheDocument()
+    })
+
+    it('should resume auto-scroll when exiting log focus via Escape', async () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'running' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      await act(async () => {
+        await new Promise(r => setTimeout(r, 0))
+      })
+
+      // Switch to sidebar zone and toggle log open
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      fireEvent.keyDown(getContainer(), { key: 'l' })
+
+      // Enter log focus by pressing j
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'j' })
+      })
+
+      // Exit log focus with Escape
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'Escape' })
+      })
+
+      // Log should still be visible (auto-scroll resumption is internal)
+      expect(screen.getByTestId('agent-log-section')).toBeInTheDocument()
+      // Focus zone should still be sidebar
+      expect(screen.getByTestId('sidebar-zone')).toHaveClass('ring-1')
+    })
+
+    it('should set logFocused to false when Escape is pressed in log focus mode', async () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'running' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      await act(async () => {
+        await new Promise(r => setTimeout(r, 0))
+      })
+
+      // Switch to sidebar zone and toggle log open
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      fireEvent.keyDown(getContainer(), { key: 'l' })
+
+      // Enter log focus by pressing j
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'j' })
+      })
+
+      // Verify log focus hint bar is shown (j/k Navigate, Esc Back)
+      const hintBar = screen.getByTestId('shortcuts-hint-bar')
+      expect(hintBar.textContent).toContain('Navigate')
+      expect(hintBar.textContent).toContain('Back')
+      // Should NOT contain sidebar-specific hints like "Agent" or "Log"
+      expect(hintBar.textContent).not.toContain('Agent')
+
+      // Exit log focus with Escape
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'Escape' })
+      })
+
+      // Hint bar should now show sidebar hints (not log focus hints)
+      expect(hintBar.textContent).toContain('Agent')
+      expect(hintBar.textContent).toContain('Log')
+    })
+
+    it('should switch from sidebar to editor zone when Escape is pressed in sidebar zone without log focus', async () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'running' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      await act(async () => {
+        await new Promise(r => setTimeout(r, 0))
+      })
+
+      // Switch to sidebar zone (no log focus)
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      expect(screen.getByTestId('sidebar-zone')).toHaveClass('ring-1')
+
+      // Press Escape — should switch to editor zone
+      fireEvent.keyDown(getContainer(), { key: 'Escape' })
+
+      expect(screen.getByTestId('editor-zone')).toHaveClass('ring-1')
+      expect(screen.getByTestId('sidebar-zone')).not.toHaveClass('ring-1')
+    })
+
+    it('should show log-focus hint bar (j/k Navigate, Esc Back) when in log focus mode', async () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem({ agentStatus: 'running' })}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      await act(async () => {
+        await new Promise(r => setTimeout(r, 0))
+      })
+
+      // Switch to sidebar zone and toggle log open
+      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      fireEvent.keyDown(getContainer(), { key: 'l' })
+
+      // Verify sidebar hint bar before entering log focus
+      const hintBar = screen.getByTestId('shortcuts-hint-bar')
+      expect(hintBar.textContent).toContain('Agent')
+      expect(hintBar.textContent).toContain('Log')
+
+      // Enter log focus by pressing j
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'j' })
+      })
+
+      // Hint bar should show log focus hints
+      expect(hintBar.textContent).toContain('Navigate')
+      expect(hintBar.textContent).toContain('Back')
+      // Should NOT contain sidebar-specific hints
+      expect(hintBar.textContent).not.toContain('Agent')
+      expect(hintBar.textContent).not.toContain('Log')
+    })
   })
 })
