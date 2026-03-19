@@ -39,7 +39,7 @@ No other host config directories (e.g., `~/.codex`) are mounted into the contain
 - **Node package manager**: `$NODE_PACKAGE_MANAGER` (if provided by host)
 - **Persistent caches**: npm, pip, maven, gradle, nuget caches persist across sessions
 - **Languages**: Python (uv), Node.js (nvm), Java (SDKMAN), .NET (dotnet)
-- **Network**: Restricted to HTTPS, DNS only (unless YOLIUM_NETWORK_FULL=true)
+- **Network**: Restricted to HTTPS (443), IMAPS (993), SMTP (587), and DNS (53) only (unless YOLIUM_NETWORK_FULL=true)
 
 ## Important Paths
 

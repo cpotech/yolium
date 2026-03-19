@@ -32,10 +32,16 @@ setup_network_restrictions() {
     # Allow HTTPS (port 443) - APIs, package registries, HTTPS git
     sudo iptables -A OUTPUT -p tcp --dport 443 -j ACCEPT
 
+    # Allow IMAPS (port 993) - Secure IMAP for email integration
+    sudo iptables -A OUTPUT -p tcp --dport 993 -j ACCEPT
+
+    # Allow SMTP submission (port 587) - Email sending via STARTTLS
+    sudo iptables -A OUTPUT -p tcp --dport 587 -j ACCEPT
+
     # Drop everything else
     sudo iptables -A OUTPUT -j DROP
 
-    add_status "🔒 Network restrictions applied (HTTPS/DNS only)"
+    add_status "🔒 Network restrictions applied (HTTPS/DNS/IMAPS/SMTP only)"
 }
 
 # Apply network restrictions if available
