@@ -66,7 +66,7 @@ Each agent is a single Markdown file with YAML frontmatter and a system prompt, 
 - **Flexible Auth** - API keys or OAuth for Claude Code (Claude Max) and Codex (ChatGPT)
 - **Pre-configured Environment** - Python, Node.js, Java, and common dev tools ready to use ([details](docs/TECHNICAL.md#container-environment))
 - **Persistent Caches** - Package manager caches survive across sessions ([details](docs/TECHNICAL.md#file-mounts--cache))
-- **Network Restrictions** - Only outbound HTTPS allowed
+- **Network Restrictions** - Outbound limited to HTTPS, IMAPS, and SMTP only ([details](docs/TECHNICAL.md#network-restrictions))
 - **Cross-Platform** - Windows, macOS, and Linux
 
 > **[Technical Documentation](docs/TECHNICAL.md)** - Detailed architecture, mount paths, and development guide

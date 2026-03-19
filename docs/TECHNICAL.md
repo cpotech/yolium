@@ -7,6 +7,7 @@ This document contains detailed technical information about Yolium's architectur
 - [Git Worktrees](#git-worktrees)
 - [Container Environment](#container-environment)
 - [File Mounts & Cache](#file-mounts--cache)
+  - [Network Restrictions](#network-restrictions)
 - [Development](#development)
 
 ---
@@ -145,6 +146,23 @@ Yolium supports two authentication methods for Codex agents:
 | **Codex OAuth (ChatGPT)** | `~/.codex/auth.json` mounted read-only, copied into `~/.codex/auth.json` inside container | ChatGPT subscription login via `codex login` |
 
 These are mutually exclusive -- toggling OAuth on in Settings clears the API key, and vice versa. Only `auth.json` is mounted (not the entire `~/.codex` directory): mounted read-only at `/home/agent/.codex-auth.json`, copied to `/home/agent/.codex/auth.json` with restricted permissions (directory: 700, file: 600), and cleaned up on container exit.
+
+### Network Restrictions
+
+Containers enforce outbound network restrictions via iptables (requires Docker `NET_ADMIN` capability). Only essential ports are allowed — everything else is dropped.
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| 53 | TCP/UDP | DNS resolution |
+| 443 | TCP | HTTPS — APIs, package registries, git |
+| 587 | TCP | SMTP submission (STARTTLS) — email sending |
+| 993 | TCP | IMAPS — secure email fetching |
+
+Localhost and established/related connections are always allowed.
+
+**Disabling restrictions:** Set `YOLIUM_NETWORK_FULL=true` as an environment variable to allow all outbound traffic. This is useful for projects that need access to non-standard ports but reduces container isolation.
+
+**Implementation:** `src/docker/entrypoint.d/10-network.sh` applies iptables rules at container startup. If iptables or NET_ADMIN capability is unavailable, restrictions are skipped gracefully.
 
 ### Cache Retention Policy
 
