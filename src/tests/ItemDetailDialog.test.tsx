@@ -427,7 +427,7 @@ describe('ItemDetailDialog', () => {
       expect(mockStart).not.toHaveBeenCalled()
     })
 
-    it('should not start an agent when Ctrl+Shift+S is pressed while focus is in a textarea', async () => {
+    it('should start scout-agent when Ctrl+Shift+S is pressed while focus is in a textarea', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
 
@@ -452,7 +452,9 @@ describe('ItemDetailDialog', () => {
         })
       })
 
-      expect(mockStart).not.toHaveBeenCalled()
+      expect(mockStart).toHaveBeenCalledWith(
+        expect.objectContaining({ agentName: 'scout-agent' }),
+      )
     })
   })
 

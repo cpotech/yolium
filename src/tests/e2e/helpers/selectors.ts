@@ -143,6 +143,9 @@ export const selectors = {
   detailCreatedAt: '[data-testid="item-detail-dialog"] [data-testid="created-at"]',
   detailCommentsSection: '[data-testid="item-detail-dialog"] [data-testid="comments-section"]',
   detailNoComments: '[data-testid="item-detail-dialog"] [data-testid="no-comments"]',
+  detailModelSelect: '[data-testid="item-detail-dialog"] [data-testid="model-select"]',
+  detailVerifiedCheckbox: '[data-testid="item-detail-dialog"] [data-testid="verified-checkbox"]',
+  detailAnswerInput: '[data-testid="item-detail-dialog"] [data-testid="answer-input"]',
 
   // Confirmation dialogs (native, use Electron dialog API in tests)
   // These are handled via electronAPI mocking
