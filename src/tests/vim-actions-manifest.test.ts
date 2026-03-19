@@ -11,7 +11,7 @@ describe('VIM_ACTIONS manifest consistency', () => {
   });
 
   it('should export at least 80 actions covering all shortcut categories', () => {
-    expect(VIM_ACTIONS.length).toBeGreaterThanOrEqual(87);
+    expect(VIM_ACTIONS.length).toBeGreaterThanOrEqual(92);
     const categories = new Set(VIM_ACTIONS.map(a => a.category));
     expect(categories.has('vim')).toBe(true);
     expect(categories.has('electron')).toBe(true);
@@ -50,7 +50,7 @@ describe('VIM_ACTIONS manifest consistency', () => {
   it('every zone in manifest should be a valid VimActionZone', () => {
     const validZones = new Set([
       'sidebar', 'tabs', 'content', 'status-bar', 'schedule', 'global', 'dialog',
-      'dialog-diff', 'dialog-sidebar', 'dialog-log', 'mode', 'electron-tabs', 'electron-app', 'electron-view',
+      'dialog-diff', 'dialog-sidebar', 'dialog-log', 'dialog-scroll', 'mode', 'electron-tabs', 'electron-app', 'electron-view',
       'terminal', 'mouse',
     ]);
     for (const action of VIM_ACTIONS) {
@@ -96,6 +96,7 @@ describe('VIM_ACTIONS manifest consistency', () => {
     expect(zones.has('dialog-diff')).toBe(true);
     expect(zones.has('dialog-sidebar')).toBe(true);
     expect(zones.has('dialog-log')).toBe(true);
+    expect(zones.has('dialog-scroll')).toBe(true);
     expect(zones.has('mode')).toBe(true);
     expect(zones.has('electron-tabs')).toBe(true);
     expect(zones.has('electron-app')).toBe(true);

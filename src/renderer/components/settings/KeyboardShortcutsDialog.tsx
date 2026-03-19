@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useEffect } from 'react';
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts';
 import { getActionsByGroup, SHORTCUT_GROUP_ORDER } from '@shared/vim-actions';
 import { useSuspendVimNavigation } from '@renderer/context/VimModeContext';
+import { useDialogScroll } from '@renderer/hooks/useDialogScroll';
 
 interface KeyboardShortcutsDialogProps {
   isOpen: boolean;
@@ -14,6 +15,8 @@ export function KeyboardShortcutsDialog({
 }: KeyboardShortcutsDialogProps): React.ReactElement | null {
   useSuspendVimNavigation(isOpen);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { handleKeyDown: scrollKeyDown } = useDialogScroll(scrollRef);
 
   // Auto-focus dialog when opened
   useEffect(() => {
@@ -24,11 +27,12 @@ export function KeyboardShortcutsDialog({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      scrollKeyDown(e);
       if (isCloseShortcut(e)) {
         onClose();
       }
     },
-    [onClose]
+    [onClose, scrollKeyDown]
   );
 
   const handleBackdropClick = useCallback(
@@ -52,7 +56,7 @@ export function KeyboardShortcutsDialog({
       onClick={handleBackdropClick}
       tabIndex={-1}
     >
-      <div className="bg-[var(--color-bg-secondary)] rounded-lg shadow-xl border border-[var(--color-border-primary)] p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto" data-testid="shortcuts-dialog">
+      <div className="bg-[var(--color-bg-secondary)] rounded-lg shadow-xl border border-[var(--color-border-primary)] p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto" ref={scrollRef} data-testid="shortcuts-dialog">
         <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">Keyboard Shortcuts</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
