@@ -209,7 +209,7 @@ export function GitDiffDialog({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (isCloseShortcut(e)) {
+      if (isCloseShortcut(e) || e.key.toLowerCase() === 'q') {
         e.preventDefault()
         onClose()
       }
@@ -239,7 +239,7 @@ export function GitDiffDialog({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">Ctrl+Q</kbd>
+          <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">q</kbd>
           <button
             data-testid="diff-dialog-close"
             onClick={onClose}

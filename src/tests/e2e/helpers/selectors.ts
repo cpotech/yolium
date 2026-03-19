@@ -131,6 +131,8 @@ export const selectors = {
 
   // Item Detail Dialog
   itemDetailDialog: '[data-testid="item-detail-dialog"]',
+  gitDiffDialog: '[data-testid="git-diff-dialog"]',
+  diffDialogClose: '[data-testid="diff-dialog-close"]',
   detailTitle: '[data-testid="item-detail-dialog"] [data-testid="title-input"]',
   detailDescription: '[data-testid="item-detail-dialog"] [data-testid="description-input"]',
   detailColumnSelect: '[data-testid="item-detail-dialog"] [data-testid="column-select"]',
