@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useEffect, useState } from 'react';
 import type { GitConfigWithPat } from '@shared/types/git';
 import { trapFocus } from '@shared/lib/focus-trap';
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts';
+import { useDialogScroll } from '@renderer/hooks/useDialogScroll';
 
 export type { GitConfigWithPat } from '@shared/types/git';
 
@@ -46,6 +47,8 @@ export function GitConfigDialog({
 }: GitConfigDialogProps): React.ReactElement | null {
   const dialogRef = useRef<HTMLFormElement>(null);
   const patInputRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const { handleKeyDown: scrollKeyDown } = useDialogScroll(bodyRef);
 
   const [githubPat, setGithubPat] = useState('');
   const [showPat, setShowPat] = useState(false);
@@ -229,6 +232,7 @@ export function GitConfigDialog({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      scrollKeyDown(e);
       if (isCloseShortcut(e)) {
         e.preventDefault();
         onClose();
@@ -238,7 +242,7 @@ export function GitConfigDialog({
         trapFocus(e, dialogRef.current);
       }
     },
-    [onClose]
+    [onClose, scrollKeyDown]
   );
 
     const handleSubmit = useCallback(
@@ -335,7 +339,7 @@ export function GitConfigDialog({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto" data-testid="git-config-body">
+        <div className="flex-1 overflow-y-auto" ref={bodyRef} data-testid="git-config-body">
           <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
             <div className="grid gap-6 lg:grid-cols-2">
               <section className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)]/50 p-4 sm:p-5 lg:col-span-2">

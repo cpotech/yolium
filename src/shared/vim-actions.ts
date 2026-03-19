@@ -13,6 +13,7 @@ export type VimActionZone =
   | 'dialog-diff'
   | 'dialog-sidebar'
   | 'dialog-log'
+  | 'dialog-scroll'
   | 'mode'
   | 'electron-tabs'
   | 'electron-app'
@@ -126,6 +127,10 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'diff-file-up', key: 'k', zone: 'dialog-diff', mode: 'NORMAL', category: 'vim', group: 'Dialog (Diff)', description: 'Previous file' },
   { id: 'diff-close', key: 'Ctrl+Q', zone: 'dialog-diff', mode: 'ANY', category: 'vim', group: 'Dialog (Diff)', description: 'Close dialog' },
 
+  // --- Dialog scrolling — scrollable settings/shortcuts dialogs ---
+  { id: 'dialog-scroll-down', key: 'j', zone: 'dialog-scroll', mode: 'NORMAL', category: 'vim', group: 'Dialog Scrolling', description: 'Scroll down' },
+  { id: 'dialog-scroll-up', key: 'k', zone: 'dialog-scroll', mode: 'NORMAL', category: 'vim', group: 'Dialog Scrolling', description: 'Scroll up' },
+
   // --- Dialog sidebar — single-key agent shortcuts + PR/merge shortcuts + log toggle ---
   { id: 'agent-plan-sidebar', key: 'p', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Plan Agent (sidebar)' },
   { id: 'agent-code-sidebar', key: 'c', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Code Agent (sidebar)' },
@@ -197,6 +202,7 @@ export const SHORTCUT_GROUP_ORDER: string[] = [
   'Status Bar',
   'Dialog (Work Item)',
   'Dialog (Diff)',
+  'Dialog Scrolling',
   'Sidebar Focus (Work Item)',
   'Log Panel Navigation',
   'Agent Controls (Work Item)',
