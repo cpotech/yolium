@@ -227,6 +227,88 @@ test.describe('Dialog Sidebar Shortcuts with focused form controls', () => {
     await expect(page.locator('[data-testid="editor-zone"]')).toHaveClass(/ring-1/);
   });
 
+  test('should cycle agent provider select when pressing 1 in sidebar zone', async () => {
+    await setupItemDetailDialog();
+    const page = ctx.window;
+
+    // Switch to sidebar zone with Tab
+    await page.keyboard.press('Tab');
+
+    // Verify initial provider is claude
+    const providerSelect = page.locator('[data-testid="agent-provider-select"]');
+    await expect(providerSelect).toHaveValue('claude');
+
+    // Press 1 to cycle to opencode
+    await page.keyboard.press('1');
+    await expect(providerSelect).toHaveValue('opencode');
+
+    // Press 1 again to cycle to codex
+    await page.keyboard.press('1');
+    await expect(providerSelect).toHaveValue('codex');
+
+    // Press 1 again to wrap back to claude
+    await page.keyboard.press('1');
+    await expect(providerSelect).toHaveValue('claude');
+  });
+
+  test('should cycle column select when pressing 3 in sidebar zone', async () => {
+    await setupItemDetailDialog();
+    const page = ctx.window;
+
+    // Switch to sidebar zone with Tab
+    await page.keyboard.press('Tab');
+
+    // Verify initial column is backlog
+    const columnSelect = page.locator('[data-testid="column-select"]');
+    await expect(columnSelect).toHaveValue('backlog');
+
+    // Press 3 to cycle to ready
+    await page.keyboard.press('3');
+    await expect(columnSelect).toHaveValue('ready');
+
+    // Press 3 to cycle to done (skipping in-progress and verify)
+    await page.keyboard.press('3');
+    await expect(columnSelect).toHaveValue('done');
+
+    // Press 3 to wrap back to backlog
+    await page.keyboard.press('3');
+    await expect(columnSelect).toHaveValue('backlog');
+  });
+
+  test('should toggle verified checkbox when pressing V in sidebar zone', async () => {
+    await setupItemDetailDialog();
+    const page = ctx.window;
+
+    // Switch to sidebar zone with Tab
+    await page.keyboard.press('Tab');
+
+    const checkbox = page.locator('[data-testid="verified-checkbox"]');
+    await expect(checkbox).not.toBeChecked();
+
+    // Press Shift+V to toggle verified on
+    await page.keyboard.press('Shift+v');
+    await expect(checkbox).toBeChecked();
+
+    // Press Shift+V again to toggle verified off
+    await page.keyboard.press('Shift+v');
+    await expect(checkbox).not.toBeChecked();
+  });
+
+  test('should show shortcut hint badges on dropdown controls when sidebar is focused', async () => {
+    await setupItemDetailDialog();
+    const page = ctx.window;
+
+    // Switch to sidebar zone with Tab
+    await page.keyboard.press('Tab');
+
+    // Verify kbd hints are visible for dropdown controls
+    const sidebarZone = page.locator('[data-testid="sidebar-zone"]');
+    await expect(sidebarZone.locator('kbd:text-is("1")')).toBeVisible();
+    await expect(sidebarZone.locator('kbd:text-is("2")')).toBeVisible();
+    await expect(sidebarZone.locator('kbd:text-is("3")')).toBeVisible();
+    await expect(sidebarZone.locator('kbd:text-is("V")')).toBeVisible();
+  });
+
   test('should refocus dialog container after sidebar shortcut fires from a focused select', async () => {
     await setupItemDetailDialog();
     const page = ctx.window;

@@ -258,3 +258,259 @@ describe('ItemDetailDialog sidebar form control shortcuts', () => {
     expect(document.activeElement).toBe(container)
   })
 })
+
+describe('dropdown cycling shortcuts', () => {
+  const mockUpdateItem = vi.fn()
+  const getContainer = () => screen.getByTestId('item-detail-dialog').parentElement!
+
+  function renderDialog(overrides: Partial<KanbanItem> = {}) {
+    return render(
+      <ItemDetailDialog
+        isOpen={true}
+        item={createMockItem(overrides)}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />,
+    )
+  }
+
+  function switchToSidebar(container: HTMLElement) {
+    fireEvent.keyDown(container, { key: 'Tab' })
+  }
+
+  beforeEach(() => {
+    mockUpdateItem.mockResolvedValue(undefined)
+    window.electronAPI.kanban.updateItem = mockUpdateItem
+  })
+
+  it('should cycle agent provider from claude to opencode when pressing 1 in sidebar zone', async () => {
+    renderDialog({ agentProvider: 'claude', agentStatus: 'idle' })
+    const container = getContainer()
+    switchToSidebar(container)
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: '1' })
+    })
+
+    const select = screen.getByTestId('agent-provider-select') as HTMLSelectElement
+    expect(select.value).toBe('opencode')
+  })
+
+  it('should cycle agent provider from opencode to codex when pressing 1 in sidebar zone', async () => {
+    renderDialog({ agentProvider: 'opencode', agentStatus: 'idle' })
+    const container = getContainer()
+    switchToSidebar(container)
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: '1' })
+    })
+
+    const select = screen.getByTestId('agent-provider-select') as HTMLSelectElement
+    expect(select.value).toBe('codex')
+  })
+
+  it('should cycle agent provider from codex back to claude when pressing 1 in sidebar zone', async () => {
+    renderDialog({ agentProvider: 'codex', agentStatus: 'idle' })
+    const container = getContainer()
+    switchToSidebar(container)
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: '1' })
+    })
+
+    const select = screen.getByTestId('agent-provider-select') as HTMLSelectElement
+    expect(select.value).toBe('claude')
+  })
+
+  it('should not cycle agent provider when agent is running', async () => {
+    renderDialog({ agentProvider: 'claude', agentStatus: 'running' })
+    const container = getContainer()
+    switchToSidebar(container)
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: '1' })
+    })
+
+    // When running, the provider is displayed as text not a select
+    const display = screen.getByTestId('agent-provider-display')
+    expect(display).toBeInTheDocument()
+  })
+
+  it('should not cycle agent provider when agent is waiting', async () => {
+    renderDialog({ agentProvider: 'claude', agentStatus: 'waiting', agentQuestion: 'How?' })
+    const container = getContainer()
+    switchToSidebar(container)
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: '1' })
+    })
+
+    const display = screen.getByTestId('agent-provider-display')
+    expect(display).toBeInTheDocument()
+  })
+
+  it('should cycle model forward when pressing 2 in sidebar zone', async () => {
+    await act(async () => {
+      renderDialog({ agentProvider: 'claude', model: '', agentStatus: 'idle' })
+    })
+    const container = getContainer()
+    switchToSidebar(container)
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: '2' })
+    })
+
+    const select = screen.getByTestId('model-select') as HTMLSelectElement
+    expect(select.value).toBe('sonnet')
+  })
+
+  it('should cycle model from last model back to empty (provider default) when pressing 2', async () => {
+    await act(async () => {
+      renderDialog({ agentProvider: 'claude', model: 'sonnet', agentStatus: 'idle' })
+    })
+    const container = getContainer()
+    switchToSidebar(container)
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: '2' })
+    })
+
+    const select = screen.getByTestId('model-select') as HTMLSelectElement
+    expect(select.value).toBe('')
+  })
+
+  it('should cycle column from backlog to ready when pressing 3 in sidebar zone', async () => {
+    renderDialog({ column: 'backlog', agentStatus: 'idle' })
+    const container = getContainer()
+    switchToSidebar(container)
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: '3' })
+    })
+
+    const select = screen.getByTestId('column-select') as HTMLSelectElement
+    expect(select.value).toBe('ready')
+  })
+
+  it('should cycle column from ready to done when pressing 3 (skipping in-progress and verify)', async () => {
+    renderDialog({ column: 'ready', agentStatus: 'idle' })
+    const container = getContainer()
+    switchToSidebar(container)
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: '3' })
+    })
+
+    const select = screen.getByTestId('column-select') as HTMLSelectElement
+    expect(select.value).toBe('done')
+  })
+
+  it('should cycle column from done back to backlog when pressing 3', async () => {
+    renderDialog({ column: 'done', agentStatus: 'idle' })
+    const container = getContainer()
+    switchToSidebar(container)
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: '3' })
+    })
+
+    const select = screen.getByTestId('column-select') as HTMLSelectElement
+    expect(select.value).toBe('backlog')
+  })
+
+  it('should not cycle column away from in-progress (read-only when agent-assigned)', async () => {
+    renderDialog({ column: 'in-progress', agentStatus: 'idle' })
+    const container = getContainer()
+    switchToSidebar(container)
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: '3' })
+    })
+
+    const select = screen.getByTestId('column-select') as HTMLSelectElement
+    expect(select.value).toBe('in-progress')
+  })
+
+  it('should not cycle column away from verify (read-only when agent-assigned)', async () => {
+    renderDialog({ column: 'verify', agentStatus: 'idle' })
+    const container = getContainer()
+    switchToSidebar(container)
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: '3' })
+    })
+
+    const select = screen.getByTestId('column-select') as HTMLSelectElement
+    expect(select.value).toBe('verify')
+  })
+
+  it('should toggle verified from false to true when pressing V in sidebar zone', async () => {
+    renderDialog({ verified: false, agentStatus: 'idle' })
+    const container = getContainer()
+    switchToSidebar(container)
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: 'V' })
+    })
+
+    const checkbox = screen.getByTestId('verified-checkbox') as HTMLInputElement
+    expect(checkbox.checked).toBe(true)
+  })
+
+  it('should toggle verified from true to false when pressing V in sidebar zone', async () => {
+    renderDialog({ verified: true, agentStatus: 'idle' })
+    const container = getContainer()
+    switchToSidebar(container)
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: 'V' })
+    })
+
+    const checkbox = screen.getByTestId('verified-checkbox') as HTMLInputElement
+    expect(checkbox.checked).toBe(false)
+  })
+
+  it('should refocus dialog container after dropdown cycling shortcut fires', async () => {
+    renderDialog({ agentProvider: 'claude', agentStatus: 'idle' })
+    const container = getContainer()
+    switchToSidebar(container)
+
+    // Focus a select before pressing the shortcut
+    const providerSelect = screen.getByTestId('agent-provider-select')
+    providerSelect.focus()
+    expect(document.activeElement).toBe(providerSelect)
+
+    await act(async () => {
+      fireEvent.keyDown(providerSelect, { key: '1' })
+    })
+
+    expect(document.activeElement).toBe(container)
+  })
+
+  it('should not process dropdown shortcuts when focusZone is editor', async () => {
+    renderDialog({ agentProvider: 'claude', agentStatus: 'idle' })
+    const container = getContainer()
+    // Stay in editor zone (default)
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: '1' })
+    })
+
+    const select = screen.getByTestId('agent-provider-select') as HTMLSelectElement
+    expect(select.value).toBe('claude')
+  })
+
+  it('should not process dropdown shortcuts in INSERT mode', async () => {
+    mockVimMode.current = 'INSERT'
+    renderDialog({ agentProvider: 'claude', agentStatus: 'idle' })
+    const container = getContainer()
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: '1' })
+    })
+
+    const select = screen.getByTestId('agent-provider-select') as HTMLSelectElement
+    expect(select.value).toBe('claude')
+  })
+})

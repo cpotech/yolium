@@ -960,11 +960,13 @@ describe('ItemDetailDialog', () => {
 
       const hintBar = screen.getByTestId('shortcuts-hint-bar')
       expect(hintBar.textContent).toContain('Editor')
-      expect(hintBar.textContent).toContain('Plan')
-      expect(hintBar.textContent).toContain('Code')
-      expect(hintBar.textContent).toContain('Verify')
+      expect(hintBar.textContent).toContain('Agent')
       expect(hintBar.textContent).toContain('Stop')
       expect(hintBar.textContent).toContain('Delete')
+      expect(hintBar.textContent).toContain('Provider')
+      expect(hintBar.textContent).toContain('Model')
+      expect(hintBar.textContent).toContain('Column')
+      expect(hintBar.textContent).toContain('Verified')
     })
 
     it("should show 'a' (Approve) shortcut in sidebar-focused hint bar", () => {
@@ -1033,15 +1035,15 @@ describe('ItemDetailDialog', () => {
 
       const hintBar = screen.getByTestId('shortcuts-hint-bar')
       // Existing shortcuts still present
-      expect(hintBar.textContent).toContain('Plan')
-      expect(hintBar.textContent).toContain('Code')
-      expect(hintBar.textContent).toContain('Verify')
+      expect(hintBar.textContent).toContain('Agent')
       expect(hintBar.textContent).toContain('Diff')
       expect(hintBar.textContent).toContain('Merge')
       // New shortcuts present
       expect(hintBar.textContent).toContain('Approve')
       expect(hintBar.textContent).toContain('Merge PR')
       expect(hintBar.textContent).toContain('Fix Conflicts')
+      expect(hintBar.textContent).toContain('Rebase')
+      expect(hintBar.textContent).toContain('Open PR')
     })
 
     it('should update hint bar to show editor shortcuts when focusZone is editor', () => {
