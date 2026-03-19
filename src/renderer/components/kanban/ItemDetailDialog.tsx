@@ -5,7 +5,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { X } from 'lucide-react'
-import type { KanbanItem } from '@shared/types/kanban'
+import type { KanbanColumn, KanbanItem } from '@shared/types/kanban'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
 import { useSuspendVimNavigation, useVimModeContext } from '@renderer/context/VimModeContext'
@@ -354,6 +354,38 @@ export function ItemDetailDialog({
           window.electronAPI.app.openExternal(prWorkflow.prUrl)
           return
         }
+        // Dropdown cycling shortcuts
+        if (event.key === '1' && item.agentStatus !== 'running' && item.agentStatus !== 'waiting') {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          const providers: KanbanItem['agentProvider'][] = ['claude', 'opencode', 'codex']
+          const currentIndex = providers.indexOf(draft.agentProvider)
+          draft.setAgentProvider(providers[(currentIndex + 1) % providers.length])
+          return
+        }
+        if (event.key === '2') {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          const models = ['', ...(draft.providerModels[draft.agentProvider] || [])]
+          const currentIndex = models.indexOf(draft.model)
+          draft.setModel(models[(currentIndex + 1) % models.length])
+          return
+        }
+        if (event.key === '3') {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          const userColumns: KanbanColumn[] = ['backlog', 'ready', 'done']
+          if (draft.column === 'in-progress' || draft.column === 'verify') return
+          const currentIndex = userColumns.indexOf(draft.column)
+          draft.setColumn(userColumns[(currentIndex + 1) % userColumns.length])
+          return
+        }
+        if (event.key === 'V') {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          draft.setVerified(!draft.verified)
+          return
+        }
         // l to toggle log panel
         if (event.key === 'l' && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
           event.preventDefault()
@@ -692,18 +724,22 @@ export function ItemDetailDialog({
               ) : (
                 <>
                   <span><kbd className={kbdClass}>Tab</kbd> Editor</span>
-                  <span><kbd className={kbdClass}>p</kbd> Plan</span>
-                  <span><kbd className={kbdClass}>c</kbd> Code</span>
-                  <span><kbd className={kbdClass}>v</kbd> Verify</span>
+                  <span><kbd className={kbdClass}>p/c/v/s/D/m</kbd> Agent</span>
                   <span><kbd className={kbdClass}>x</kbd> Stop</span>
                   <span><kbd className={kbdClass}>R</kbd> Resume</span>
-                  <span><kbd className={kbdClass}>d</kbd> Delete</span>
+                  <span><kbd className={kbdClass}>1</kbd> Provider</span>
+                  <span><kbd className={kbdClass}>2</kbd> Model</span>
+                  <span><kbd className={kbdClass}>3</kbd> Column</span>
+                  <span><kbd className={kbdClass}>V</kbd> Verified</span>
                   <span><kbd className={kbdClass}>f</kbd> Diff</span>
+                  <span><kbd className={kbdClass}>r</kbd> Rebase</span>
                   <span><kbd className={kbdClass}>g</kbd> Merge</span>
                   <span><kbd className={kbdClass}>a</kbd> Approve</span>
                   <span><kbd className={kbdClass}>w</kbd> Merge PR</span>
+                  <span><kbd className={kbdClass}>o</kbd> Open PR</span>
                   <span><kbd className={kbdClass}>k</kbd> Fix Conflicts</span>
                   <span><kbd className={kbdClass}>l</kbd> Log</span>
+                  <span><kbd className={kbdClass}>d</kbd> Delete</span>
                   <span><kbd className={kbdClass}>Esc</kbd> Back</span>
                 </>
               )

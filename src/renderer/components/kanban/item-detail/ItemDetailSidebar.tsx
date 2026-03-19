@@ -145,6 +145,7 @@ export function ItemDetailSidebar({
             className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
           >
             Agent Provider
+            {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-primary)] rounded border border-[var(--color-border-primary)] font-mono ml-1">1</kbd>}
           </label>
           {item.agentStatus !== 'running' && item.agentStatus !== 'waiting' ? (
             <select
@@ -171,6 +172,7 @@ export function ItemDetailSidebar({
             className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
           >
             Model
+            {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-primary)] rounded border border-[var(--color-border-primary)] font-mono ml-1">2</kbd>}
           </label>
           <select
             id="detail-model"
@@ -197,6 +199,7 @@ export function ItemDetailSidebar({
             className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
           >
             Column
+            {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-primary)] rounded border border-[var(--color-border-primary)] font-mono ml-1">3</kbd>}
           </label>
           <select
             id="detail-column"
@@ -230,6 +233,7 @@ export function ItemDetailSidebar({
             className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
           >
             Verified
+            {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-primary)] rounded border border-[var(--color-border-primary)] font-mono ml-1">V</kbd>}
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
