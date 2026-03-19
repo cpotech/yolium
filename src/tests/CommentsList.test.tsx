@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { CommentsList } from '@renderer/components/kanban/CommentsList'
 import type { KanbanComment } from '@shared/types/kanban'
+import React from 'react'
 
 // Mock electronAPI for MockPreviewModal, openExternal, and report
 beforeEach(() => {
@@ -664,6 +665,17 @@ describe('CommentsList', () => {
       expect((screen.getByTestId('comment-search-input') as HTMLInputElement).value).toBe('hello')
       expect(screen.getByText('Hello world')).toBeInTheDocument()
       expect(screen.queryByText('Found 5 relevant files')).not.toBeInTheDocument()
+    })
+
+    it('should focus search input when focusSearchInput is called via ref', () => {
+      const ref = { current: null as { focusSearchInput: () => void } | null }
+      render(<CommentsList comments={searchComments} ref={ref} />)
+
+      expect(document.activeElement).not.toBe(screen.getByTestId('comment-search-input'))
+
+      ref.current?.focusSearchInput()
+
+      expect(document.activeElement).toBe(screen.getByTestId('comment-search-input'))
     })
   })
 })

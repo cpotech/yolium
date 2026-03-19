@@ -16,6 +16,7 @@ import { ItemDetailSidebar } from './item-detail/ItemDetailSidebar'
 import { useItemDetailDraft } from './item-detail/useItemDetailDraft'
 import { useItemDetailAgentLifecycle } from './item-detail/useItemDetailAgentLifecycle'
 import { useItemDetailPrWorkflow } from './item-detail/useItemDetailPrWorkflow'
+import type { CommentsListHandle } from './CommentsList'
 import { StatusBar } from '@renderer/components/StatusBar'
 import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper'
 import type { ClaudeUsageState } from '@shared/types/agent'
@@ -73,6 +74,7 @@ export function ItemDetailDialog({
   const answerInputRef = useRef<HTMLTextAreaElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const logPanelRef = useRef<AgentLogPanelHandle>(null)
+  const commentSearchRef = useRef<CommentsListHandle>(null)
   const gPendingRef = useRef(false)
 
   const navigableItems: NavigableItem[] = useMemo(() => [
@@ -429,6 +431,14 @@ export function ItemDetailDialog({
       const target = event.target as HTMLElement
       const tagName = target.tagName.toLowerCase()
       const isEditable = tagName === 'input' || tagName === 'textarea' || tagName === 'select' || target.isContentEditable
+
+      // / to focus comment search input
+      if (event.key === '/' && vim.mode === 'NORMAL') {
+        event.preventDefault()
+        commentSearchRef.current?.focusSearchInput()
+        return
+      }
+
       if (isEditable) return
 
       // 4. Editor zone navigation (NORMAL or dialog VISUAL mode)
@@ -539,7 +549,7 @@ export function ItemDetailDialog({
     if (dialogRef.current && !(vim.mode === 'NORMAL' && event.key === 'Tab')) {
       trapFocus(event, dialogRef.current)
     }
-  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedItemIndex, focusField, focusZone, agentSession.currentSessionId, prWorkflow, navigableItems, dialogVisualMode, selectedItemIndices, agentSession])
+  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedItemIndex, focusField, focusZone, agentSession.currentSessionId, prWorkflow, navigableItems, dialogVisualMode, selectedItemIndices, agentSession, commentSearchRef])
 
   if (!isOpen || !item) return null
 
@@ -596,6 +606,7 @@ export function ItemDetailDialog({
           >
           <ItemDetailEditorPane
             title={draft.title}
+            commentSearchRef={commentSearchRef}
             description={draft.description}
             comments={item.comments}
             commentText={lifecycle.commentText}
@@ -711,6 +722,7 @@ export function ItemDetailDialog({
                 <span><kbd className={kbdClass}>gg</kbd> First</span>
                 <span><kbd className={kbdClass}>G</kbd> Last</span>
                 <span><kbd className={kbdClass}>i</kbd> Edit field</span>
+                <span><kbd className={kbdClass}>/</kbd> Search comments</span>
                 <span><kbd className={kbdClass}>V</kbd> Visual</span>
                 <span><kbd className={kbdClass}>Tab</kbd> Sidebar</span>
                 <span><kbd className={kbdClass}>Ctrl+Q</kbd> Close</span>

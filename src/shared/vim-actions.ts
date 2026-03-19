@@ -118,6 +118,7 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'dialog-visual', key: 'V', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Dialog (Work Item)', description: 'Visual mode (select & yank)' },
   { id: 'dialog-yank', key: 'y', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Dialog (Work Item)', description: 'Yank (copy) selected text' },
   { id: 'dialog-close-ctrl-q', key: 'Ctrl+Q', zone: 'dialog', mode: 'ANY', category: 'vim', group: 'Dialog (Work Item)', description: 'Close dialog' },
+  { id: 'dialog-comment-search', key: '/', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Dialog (Work Item)', description: 'Search comments' },
 
   // --- Dialog sidebar — single-key agent shortcuts + PR/merge shortcuts + log toggle ---
   { id: 'agent-plan-sidebar', key: 'p', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Plan Agent (sidebar)' },
