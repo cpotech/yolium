@@ -134,9 +134,11 @@ export function GitDiffDialog({
   const [isLoadingDiff, setIsLoadingDiff] = useState(false)
   const [filesError, setFilesError] = useState<string | null>(null)
   const [diffError, setDiffError] = useState<string | null>(null)
+  const [focusedFileIndex, setFocusedFileIndex] = useState(0)
 
   const leftScrollRef = useRef<HTMLDivElement>(null)
   const rightScrollRef = useRef<HTMLDivElement>(null)
+  const fileListRef = useRef<HTMLDivElement>(null)
   const isSyncing = useRef(false)
 
   // Load changed files on open
@@ -149,11 +151,13 @@ export function GitDiffDialog({
     setDiffLines([])
     setFilesError(null)
     setDiffError(null)
+    setFocusedFileIndex(0)
 
     window.electronAPI.git.worktreeChangedFiles(projectPath, branchName)
       .then((result) => {
         setFiles(result.files)
         setFilesError(result.error ?? null)
+        setFocusedFileIndex(0)
         if (!result.error && result.files.length > 0) {
           setSelectedFile(result.files[0].path)
         }
@@ -211,10 +215,36 @@ export function GitDiffDialog({
     (e: React.KeyboardEvent) => {
       if (isCloseShortcut(e) || e.key.toLowerCase() === 'q') {
         e.preventDefault()
+        e.stopPropagation()
         onClose()
+        return
+      }
+
+      if (files.length === 0) return
+
+      if (e.key === 'j') {
+        e.preventDefault()
+        const newIndex = (focusedFileIndex + 1) % files.length
+        setFocusedFileIndex(newIndex)
+        const targetFile = files[newIndex]
+        setSelectedFile(targetFile.path)
+        const fileEl = fileListRef.current?.querySelector(`[data-testid="diff-file-${CSS.escape(targetFile.path)}"]`)
+        if (fileEl) {
+          fileEl.scrollIntoView({ block: 'nearest' })
+        }
+      } else if (e.key === 'k') {
+        e.preventDefault()
+        const newIndex = (focusedFileIndex - 1 + files.length) % files.length
+        setFocusedFileIndex(newIndex)
+        const targetFile = files[newIndex]
+        setSelectedFile(targetFile.path)
+        const fileEl = fileListRef.current?.querySelector(`[data-testid="diff-file-${CSS.escape(targetFile.path)}"]`)
+        if (fileEl) {
+          fileEl.scrollIntoView({ block: 'nearest' })
+        }
       }
     },
-    [onClose],
+    [onClose, files, focusedFileIndex],
   )
 
   if (!isOpen) return null
@@ -239,6 +269,11 @@ export function GitDiffDialog({
           )}
         </div>
         <div className="flex items-center gap-2">
+          <span className="text-xs text-[var(--color-text-tertiary)]">
+            <kbd className="inline-block px-1 py-0.5 bg-[var(--color-bg-tertiary)] rounded text-[var(--color-text-muted)]">j</kbd>
+            {' '}<kbd className="inline-block px-1 py-0.5 bg-[var(--color-bg-tertiary)] rounded text-[var(--color-text-muted)]">k</kbd>
+            {' '}navigate
+          </span>
           <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">q</kbd>
           <button
             data-testid="diff-dialog-close"
@@ -270,18 +305,22 @@ export function GitDiffDialog({
               No files changed
             </div>
           ) : (
-            <div className="py-1">
-              {files.map((file) => {
+            <div className="py-1" ref={fileListRef}>
+              {files.map((file, index) => {
                 const statusInfo = statusIcons[file.status] || statusIcons.M
                 const isSelected = file.path === selectedFile
+                const isFocused = index === focusedFileIndex
                 return (
                   <button
                     key={file.path}
                     data-testid={`diff-file-${file.path}`}
-                    onClick={() => setSelectedFile(file.path)}
+                    onClick={() => {
+                      setSelectedFile(file.path)
+                      setFocusedFileIndex(index)
+                    }}
                     className={`w-full text-left px-3 py-1.5 flex items-center gap-2 text-xs hover:bg-[var(--color-bg-hover)] transition-colors ${
                       isSelected ? 'bg-[var(--color-bg-primary)]' : ''
-                    }`}
+                    } ${isFocused ? 'ring-1 ring-[var(--color-border-secondary)]' : ''}`}
                   >
                     <span className={`flex-shrink-0 ${statusInfo.color}`}>
                       {statusInfo.icon}
