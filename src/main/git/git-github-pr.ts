@@ -25,6 +25,19 @@ export function _resetGhCliCache(): void {
   ghCliAvailable = null
 }
 
+export async function isGitHubRemote(projectPath: string): Promise<boolean> {
+  try {
+    const { stdout } = await execFileAsync('git', ['remote', 'get-url', 'origin'], {
+      cwd: projectPath,
+      encoding: 'utf-8',
+    })
+    const url = stdout.trim().toLowerCase()
+    return url.includes('github.com')
+  } catch { /* Remote URL lookup failed (no remote, no git repo, etc.) — treat as non-GitHub. */
+    return false
+  }
+}
+
 export interface MergeAndPushResult {
   success: boolean
   prUrl?: string
@@ -132,6 +145,16 @@ export async function mergeBranchAndPushPR(
     const stderr = error.stderr || error.message || 'Unknown error'
     await cleanupTemp()
     return { success: false, error: `Failed to push branch: ${stderr}` }
+  }
+
+  const isGitHub = await isGitHubRemote(projectPath)
+  if (!isGitHub) {
+    await removeWorktreeBestEffortAsync(projectPath, tempWorktreePath)
+    return {
+      success: true,
+      prBranch,
+      error: `Branch "${prBranch}" pushed to origin. This remote is not GitHub — create the pull request in your provider's UI.`,
+    }
   }
 
   const ghAvailable = await checkGhCliAvailable()
