@@ -276,7 +276,25 @@ export function ItemDetailDialog({
         return
       }
 
-      // 2. Single-key sidebar shortcuts — process BEFORE isEditable guard
+      // 2. Log focus mode — must be checked BEFORE sidebar shortcuts
+      // so j/k always scroll the log when in log-focus mode
+      if (logFocused) {
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          setLogFocused(false)
+          logPanelRef.current?.resumeAutoScroll()
+          dialogRef.current?.focus()
+          return
+        }
+        if ((event.key === 'j' || event.key === 'k') && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
+          event.preventDefault()
+          logPanelRef.current?.pauseAutoScroll()
+          logPanelRef.current?.scrollBy(event.key === 'j' ? 80 : -80)
+          return
+        }
+      }
+
+      // 3. Single-key sidebar shortcuts — process BEFORE isEditable guard
       // so they work even when a sidebar <select>, <input>, or <textarea> has focus
       if (focusZone === 'sidebar' && item) {
         const canStart = (item.agentStatus === 'idle' || item.agentStatus === 'completed' || item.agentStatus === 'failed') && !lifecycle.isStartingAgent
@@ -326,7 +344,13 @@ export function ItemDetailDialog({
           void prWorkflow.rebaseOntoDefault()
           return
         }
-        if (event.key === 'k' && item.mergeStatus && !prWorkflow.isCheckingConflicts) {
+        if (event.key === 'k' && item.mergeStatus === 'conflict' && canStart && !prWorkflow.isFixingConflicts) {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          void handleFixConflicts()
+          return
+        }
+        if (event.key === 'K' && item.mergeStatus && !prWorkflow.isCheckingConflicts) {
           event.preventDefault()
           dialogRef.current?.focus()
           void prWorkflow.checkConflicts()
@@ -410,24 +434,7 @@ export function ItemDetailDialog({
         }
       }
 
-      // Log focus mode (when log is focused, j/k scroll, Escape exits)
-      if (logFocused) {
-        if (event.key === 'Escape') {
-          event.preventDefault()
-          setLogFocused(false)
-          logPanelRef.current?.resumeAutoScroll()
-          dialogRef.current?.focus()
-          return
-        }
-        if ((event.key === 'j' || event.key === 'k') && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
-          event.preventDefault()
-          logPanelRef.current?.pauseAutoScroll()
-          logPanelRef.current?.scrollBy(event.key === 'j' ? 80 : -80)
-          return
-        }
-      }
-
-      // 3. isEditable guard — only blocks editor zone navigation
+      // 4. isEditable guard — only blocks editor zone navigation
       const target = event.target as HTMLElement
       const tagName = target.tagName.toLowerCase()
       const isEditable = tagName === 'input' || tagName === 'textarea' || tagName === 'select' || target.isContentEditable
@@ -750,6 +757,7 @@ export function ItemDetailDialog({
                   <span><kbd className={kbdClass}>w</kbd> Merge PR</span>
                   <span><kbd className={kbdClass}>o</kbd> Open PR</span>
                   <span><kbd className={kbdClass}>k</kbd> Fix Conflicts</span>
+                  <span><kbd className={kbdClass}>K</kbd> Check Conflicts</span>
                   <span><kbd className={kbdClass}>l</kbd> Log</span>
                   <span><kbd className={kbdClass}>d</kbd> Delete</span>
                   <span><kbd className={kbdClass}>Esc</kbd> Back</span>

@@ -309,6 +309,178 @@ test.describe('Dialog Sidebar Shortcuts with focused form controls', () => {
     await expect(sidebarZone.locator('kbd:text-is("V")')).toBeVisible();
   });
 
+  test('should trigger fix-conflicts (run agent) when pressing k in sidebar zone with mergeStatus conflict', async () => {
+    await setupItemDetailDialog({
+      mergeStatus: 'conflict',
+      branch: 'test-branch',
+      worktreePath: '/tmp/test-worktree',
+      agentStatus: 'idle',
+    });
+    const page = ctx.window;
+
+    // Mock agent start and fix-conflicts
+    await ctx.app.evaluate(({ ipcMain }) => {
+      (globalThis as { __agentStartCalls?: unknown[] }).__agentStartCalls = [];
+      ipcMain.removeHandler('agent:start');
+      ipcMain.handle('agent:start', async (_event, params: Record<string, unknown>) => {
+        (globalThis as { __agentStartCalls?: unknown[] }).__agentStartCalls!.push(params);
+        return { sessionId: 'test-session' };
+      });
+      // Mock fix-conflicts IPC
+      ipcMain.removeHandler('kanban:fix-conflicts');
+      ipcMain.handle('kanban:fix-conflicts', async () => ({ success: true }));
+    });
+
+    // Switch to sidebar zone
+    await page.keyboard.press('Tab');
+
+    // Press 'k' — should trigger fix conflicts (run agent), not check conflicts
+    await page.keyboard.press('k');
+
+    // Verify agent:start was called (fix conflicts runs an agent)
+    const calls = await ctx.app.evaluate(() => {
+      return (globalThis as { __agentStartCalls?: unknown[] }).__agentStartCalls ?? [];
+    });
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls[0]).toEqual(expect.objectContaining({ agentName: 'code-agent' }));
+  });
+
+  test('should trigger check-conflicts when pressing K (Shift+K) in sidebar zone with mergeStatus unmerged', async () => {
+    await setupItemDetailDialog({
+      mergeStatus: 'unmerged',
+      branch: 'test-branch',
+      worktreePath: '/tmp/test-worktree',
+      agentStatus: 'idle',
+    });
+    const page = ctx.window;
+
+    // Mock check-conflicts IPC
+    await ctx.app.evaluate(({ ipcMain }) => {
+      (globalThis as { __checkConflictsCalls?: number }).__checkConflictsCalls = 0;
+      ipcMain.removeHandler('kanban:check-conflicts');
+      ipcMain.handle('kanban:check-conflicts', async () => {
+        (globalThis as { __checkConflictsCalls?: number }).__checkConflictsCalls!++;
+        return { clean: true, conflictingFiles: [] };
+      });
+    });
+
+    // Switch to sidebar zone
+    await page.keyboard.press('Tab');
+
+    // Press Shift+K — should trigger check conflicts
+    await page.keyboard.press('Shift+k');
+
+    // Verify check-conflicts was called
+    const callCount = await ctx.app.evaluate(() => {
+      return (globalThis as { __checkConflictsCalls?: number }).__checkConflictsCalls ?? 0;
+    });
+    expect(callCount).toBeGreaterThan(0);
+  });
+
+  test('should scroll agent log up with k when in log-focus mode even if item has mergeStatus', async () => {
+    await setupItemDetailDialog({
+      mergeStatus: 'unmerged',
+      branch: 'test-branch',
+      worktreePath: '/tmp/test-worktree',
+      agentStatus: 'completed',
+      activeAgentName: 'code-agent',
+    });
+    const page = ctx.window;
+
+    // Mock check-conflicts so we can detect if it fires
+    await ctx.app.evaluate(({ ipcMain }) => {
+      (globalThis as { __checkConflictsCalls?: number }).__checkConflictsCalls = 0;
+      ipcMain.removeHandler('kanban:check-conflicts');
+      ipcMain.handle('kanban:check-conflicts', async () => {
+        (globalThis as { __checkConflictsCalls?: number }).__checkConflictsCalls!++;
+        return { clean: true, conflictingFiles: [] };
+      });
+    });
+
+    // Switch to sidebar zone
+    await page.keyboard.press('Tab');
+
+    // Open the log panel with 'l'
+    await page.keyboard.press('l');
+
+    // Press 'j' to enter log-focus mode and scroll down
+    await page.keyboard.press('j');
+
+    // Now press 'k' — should scroll log, NOT trigger check/fix conflicts
+    await page.keyboard.press('k');
+
+    // Verify check-conflicts was NOT called
+    const callCount = await ctx.app.evaluate(() => {
+      return (globalThis as { __checkConflictsCalls?: number }).__checkConflictsCalls ?? 0;
+    });
+    expect(callCount).toBe(0);
+
+    // Verify hint bar shows log-focus mode hints
+    const hintBar = page.locator('[data-testid="shortcuts-hint-bar"]');
+    await expect(hintBar).toContainText('Back');
+  });
+
+  test('should enter log-focus mode with j/k when agent log is open and not trigger sidebar actions', async () => {
+    await setupItemDetailDialog({
+      mergeStatus: 'unmerged',
+      branch: 'test-branch',
+      worktreePath: '/tmp/test-worktree',
+      agentStatus: 'completed',
+      activeAgentName: 'code-agent',
+    });
+    const page = ctx.window;
+
+    // Switch to sidebar zone
+    await page.keyboard.press('Tab');
+
+    // Open the log panel with 'l'
+    await page.keyboard.press('l');
+
+    // Press 'j' to enter log-focus mode
+    await page.keyboard.press('j');
+
+    // Verify hint bar shows log-focus hints (Navigate + Back)
+    const hintBar = page.locator('[data-testid="shortcuts-hint-bar"]');
+    await expect(hintBar).toContainText('Navigate');
+    await expect(hintBar).toContainText('Back');
+  });
+
+  test('should show K kbd hint on Check Conflicts button when sidebar is focused', async () => {
+    await setupItemDetailDialog({
+      mergeStatus: 'unmerged',
+      branch: 'test-branch',
+      worktreePath: '/tmp/test-worktree',
+      agentStatus: 'idle',
+    });
+    const page = ctx.window;
+
+    // Switch to sidebar zone
+    await page.keyboard.press('Tab');
+
+    // Check Conflicts button should show 'K' kbd hint
+    const checkConflictsButton = page.locator('[data-testid="check-conflicts-button"]');
+    await expect(checkConflictsButton).toBeVisible();
+    await expect(checkConflictsButton.locator('kbd')).toContainText('K');
+  });
+
+  test('should show k kbd hint on Fix Conflicts button when sidebar is focused', async () => {
+    await setupItemDetailDialog({
+      mergeStatus: 'conflict',
+      branch: 'test-branch',
+      worktreePath: '/tmp/test-worktree',
+      agentStatus: 'idle',
+    });
+    const page = ctx.window;
+
+    // Switch to sidebar zone
+    await page.keyboard.press('Tab');
+
+    // Fix Conflicts button should show 'k' kbd hint
+    const fixConflictsButton = page.locator('[data-testid="fix-conflicts-button"]');
+    await expect(fixConflictsButton).toBeVisible();
+    await expect(fixConflictsButton.locator('kbd')).toContainText('k');
+  });
+
   test('should refocus dialog container after sidebar shortcut fires from a focused select', async () => {
     await setupItemDetailDialog();
     const page = ctx.window;
