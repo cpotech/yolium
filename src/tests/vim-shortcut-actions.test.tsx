@@ -727,7 +727,7 @@ describe('TabBar NORMAL mode actions', () => {
 describe('ProjectList NORMAL mode actions', () => {
   const onProjectClick = vi.fn();
   const onProjectRemove = vi.fn();
-  const onAddProject = vi.fn();
+  const onOpenProject = vi.fn();
   const onAnswerAndResume = vi.fn();
   const onOpenSchedule = vi.fn();
 
@@ -735,7 +735,7 @@ describe('ProjectList NORMAL mode actions', () => {
     vi.clearAllMocks();
   });
 
-  it('a opens add project dialog', () => {
+  it('a opens open project dialog', () => {
     renderWithVim(
       <>
         <ZoneSetter zone="sidebar" />
@@ -745,7 +745,7 @@ describe('ProjectList NORMAL mode actions', () => {
           sidebarItems={[]}
           onProjectClick={onProjectClick}
           onProjectRemove={onProjectRemove}
-          onAddProject={onAddProject}
+          onOpenProject={onOpenProject}
           onAnswerAndResume={onAnswerAndResume}
           onOpenSchedule={onOpenSchedule}
         />
@@ -755,10 +755,10 @@ describe('ProjectList NORMAL mode actions', () => {
     const projectList = screen.getByTestId(`project-item-${mockProjects[0].path}`).parentElement!.parentElement!;
     fireEvent.keyDown(projectList, { key: 'a' });
 
-    expect(onAddProject).toHaveBeenCalled();
+    expect(onOpenProject).toHaveBeenCalled();
   });
 
-  it('+ opens add project dialog', () => {
+  it('+ opens open project dialog', () => {
     renderWithVim(
       <>
         <ZoneSetter zone="sidebar" />
@@ -768,7 +768,7 @@ describe('ProjectList NORMAL mode actions', () => {
           sidebarItems={[]}
           onProjectClick={onProjectClick}
           onProjectRemove={onProjectRemove}
-          onAddProject={onAddProject}
+          onOpenProject={onOpenProject}
           onAnswerAndResume={onAnswerAndResume}
           onOpenSchedule={onOpenSchedule}
         />
@@ -778,7 +778,7 @@ describe('ProjectList NORMAL mode actions', () => {
     const projectList = screen.getByTestId(`project-item-${mockProjects[0].path}`).parentElement!.parentElement!;
     fireEvent.keyDown(projectList, { key: '+' });
 
-    expect(onAddProject).toHaveBeenCalled();
+    expect(onOpenProject).toHaveBeenCalled();
   });
 
   it('h opens scheduled agents', () => {
@@ -791,7 +791,7 @@ describe('ProjectList NORMAL mode actions', () => {
           sidebarItems={[]}
           onProjectClick={onProjectClick}
           onProjectRemove={onProjectRemove}
-          onAddProject={onAddProject}
+          onOpenProject={onOpenProject}
           onAnswerAndResume={onAnswerAndResume}
           onOpenSchedule={onOpenSchedule}
         />

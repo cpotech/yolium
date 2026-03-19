@@ -12,7 +12,7 @@ interface SidebarProps {
   onToggleCollapse: () => void;
   onProjectClick: (path: string) => void;
   onProjectRemove: (path: string) => void;
-  onAddProject: () => void;
+  onOpenProject: () => void;
   onAnswerAndResume: (projectPath: string, itemId: string, answer: string, agentName: string) => void;
   onOpenSchedule?: () => void;
 }
@@ -24,7 +24,7 @@ export function Sidebar({
   onToggleCollapse,
   onProjectClick,
   onProjectRemove,
-  onAddProject,
+  onOpenProject,
   onAnswerAndResume,
   onOpenSchedule,
 }: SidebarProps): React.ReactElement {
@@ -47,7 +47,7 @@ export function Sidebar({
           sidebarItems={sidebarItems}
           onProjectClick={onProjectClick}
           onProjectRemove={onProjectRemove}
-          onAddProject={onAddProject}
+          onOpenProject={onOpenProject}
           onAnswerAndResume={onAnswerAndResume}
           onOpenSchedule={onOpenSchedule}
         />

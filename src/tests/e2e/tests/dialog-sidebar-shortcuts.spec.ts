@@ -46,7 +46,7 @@ test.describe('Dialog Sidebar Shortcuts with focused form controls', () => {
     );
 
     // Add project
-    await page.click(selectors.addProjectButton);
+    await page.click(selectors.openProjectButton);
     await page.fill(selectors.pathInput, testRepoPath);
     await page.click(selectors.pathNextButton);
     await expect(page.locator(selectors.kanbanView)).toBeVisible({ timeout: 10000 });

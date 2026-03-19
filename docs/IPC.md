@@ -117,7 +117,7 @@ Menu-triggered application events.
 |--------|---------|-----------|-------------|
 | `onShortcutsShow(cb)` | `shortcuts:show` | event | Show keyboard shortcuts dialog |
 | `onGitSettingsShow(cb)` | `git-settings:show` | event | Show git settings dialog |
-| `onProjectNew(cb)` | `project:new` | event | Show new project dialog |
+| `onProjectOpen(cb)` | `project:open` | event | Show open project dialog |
 | `onRecordingToggle(cb)` | `recording:toggle` | event | Toggle speech recording |
 
 ### Types
@@ -125,7 +125,7 @@ Menu-triggered application events.
 ```typescript
 onShortcutsShow(callback: () => void): CleanupFn
 onGitSettingsShow(callback: () => void): CleanupFn
-onProjectNew(callback: () => void): CleanupFn
+onProjectOpen(callback: () => void): CleanupFn
 onRecordingToggle(callback: () => void): CleanupFn
 ```
 

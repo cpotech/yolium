@@ -201,7 +201,7 @@ export function useAgentCreation({
     closePathDialog()
 
     // Handle based on mode
-    if (pathDialogMode === 'addProject') {
+    if (pathDialogMode === 'openProject') {
       // Add project to sidebar and open its kanban tab
       addSidebarProject(normalizedPath)
       setSidebarProjects(getSidebarProjects())

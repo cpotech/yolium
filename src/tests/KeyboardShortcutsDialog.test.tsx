@@ -32,13 +32,13 @@ describe('KeyboardShortcutsDialog', () => {
     expect(text).toContain('Ctrl+Shift+M')
   })
 
-  it('should render New Project as Ctrl+Shift+N', () => {
+  it('should render Open Project as Ctrl+Shift+N', () => {
     render(<KeyboardShortcutsDialog isOpen={true} onClose={() => {}} />)
 
     const dialog = screen.getByTestId('shortcuts-dialog')
     const text = dialog.textContent ?? ''
 
-    expect(text).toContain('New project')
+    expect(text).toContain('Open project')
     expect(text).toContain('Ctrl+Shift+N')
 
     // Ctrl+Shift+P should NOT appear anywhere

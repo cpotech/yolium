@@ -59,7 +59,7 @@ const tabs: ElectronAPI['tabs'] = {
 const events: ElectronAPI['events'] = {
   onShortcutsShow: (callback) => listen('shortcuts:show', callback),
   onGitSettingsShow: (callback) => listen('git-settings:show', callback),
-  onProjectNew: (callback) => listen('project:new', callback),
+  onProjectOpen: (callback) => listen('project:open', callback),
   onRecordingToggle: (callback) => listen('recording:toggle', callback),
   onScheduleShow: (callback) => listen('schedule:show', callback),
 };

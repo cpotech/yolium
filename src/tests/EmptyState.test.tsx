@@ -10,7 +10,7 @@ import type { SidebarProject } from '@renderer/stores/sidebar-store';
 // Wrap component with ThemeProvider for tests
 function renderEmptyState(props: {
   onNewTab: () => void;
-  onCreateProject?: () => void;
+  onOpenProject?: () => void;
   projects?: SidebarProject[];
   onProjectClick?: (path: string) => void;
 }) {
@@ -35,26 +35,26 @@ describe('EmptyState', () => {
     expect(onNewTab).toHaveBeenCalled();
   });
 
-  it('should render the Create Project button when onCreateProject is provided', () => {
-    renderEmptyState({ onNewTab: vi.fn(), onCreateProject: vi.fn() });
-    expect(screen.getByText('Create Project')).toBeInTheDocument();
+  it('should render the Open Project button when onOpenProject is provided', () => {
+    renderEmptyState({ onNewTab: vi.fn(), onOpenProject: vi.fn() });
+    expect(screen.getByText('Open Project')).toBeInTheDocument();
   });
 
-  it('should call onCreateProject when Create Project button is clicked', () => {
-    const onCreateProject = vi.fn();
-    renderEmptyState({ onNewTab: vi.fn(), onCreateProject });
+  it('should call onOpenProject when Open Project button is clicked', () => {
+    const onOpenProject = vi.fn();
+    renderEmptyState({ onNewTab: vi.fn(), onOpenProject });
 
-    fireEvent.click(screen.getByText('Create Project'));
-    expect(onCreateProject).toHaveBeenCalled();
+    fireEvent.click(screen.getByText('Open Project'));
+    expect(onOpenProject).toHaveBeenCalled();
   });
 
-  it('should not render Create Project button when onCreateProject is not provided', () => {
+  it('should not render Open Project button when onOpenProject is not provided', () => {
     renderEmptyState({ onNewTab: vi.fn() });
-    expect(screen.queryByText('Create Project')).not.toBeInTheDocument();
+    expect(screen.queryByText('Open Project')).not.toBeInTheDocument();
   });
 
   it('should render getting started steps when no projects exist', () => {
-    renderEmptyState({ onNewTab: vi.fn(), onCreateProject: vi.fn() });
+    renderEmptyState({ onNewTab: vi.fn(), onOpenProject: vi.fn() });
     expect(screen.getByText('Get started')).toBeInTheDocument();
   });
 
@@ -65,7 +65,7 @@ describe('EmptyState', () => {
     ];
     const onProjectClick = vi.fn();
 
-    renderEmptyState({ onNewTab: vi.fn(), onCreateProject: vi.fn(), projects, onProjectClick });
+    renderEmptyState({ onNewTab: vi.fn(), onOpenProject: vi.fn(), projects, onProjectClick });
 
     expect(screen.getByText('Recent Projects')).toBeInTheDocument();
     expect(screen.getByText('my-app')).toBeInTheDocument();

@@ -54,9 +54,9 @@ function createAppMenu(window: BrowserWindow): void {
           click: () => window.webContents.send('git-settings:show'),
         },
         {
-          label: 'New Project',
+          label: 'Open Project',
           accelerator: 'CmdOrCtrl+Shift+N',
-          click: () => window.webContents.send('project:new'),
+          click: () => window.webContents.send('project:open'),
         },
         { type: 'separator' },
         {

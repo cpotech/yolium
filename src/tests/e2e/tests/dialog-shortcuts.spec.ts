@@ -141,7 +141,7 @@ test.describe('Dialog Shortcuts', () => {
         { timeout: 30000 }
       );
 
-      await page.click(selectors.addProjectButton);
+      await page.click(selectors.openProjectButton);
       await page.fill(selectors.pathInput, testRepoPath);
       await page.click(selectors.pathNextButton);
       await page.waitForSelector('[data-testid="kanban-view"]', { timeout: 10000 });
@@ -441,7 +441,7 @@ test.describe('Dialog Shortcuts', () => {
       await expect(window.locator(selectors.shortcutsDialog)).not.toBeVisible();
     });
 
-    test('should show Ctrl+Shift+N for New Project and Ctrl+Shift+, for Settings', async () => {
+    test('should show Ctrl+Shift+N for Open Project and Ctrl+Shift+, for Settings', async () => {
       ctx = await launchApp();
       const { window } = ctx;
 
@@ -454,7 +454,7 @@ test.describe('Dialog Shortcuts', () => {
       expect(dialogText).toContain('Ctrl+Shift+,');
       expect(dialogText).toContain('Settings');
       expect(dialogText).toContain('Ctrl+Shift+N');
-      expect(dialogText).toContain('New project');
+      expect(dialogText).toContain('Open project');
     });
 
     test('should show Agent Controls section with Ctrl+Shift+S for Scout Agent', async () => {
