@@ -60,7 +60,7 @@ function App(): React.ReactElement {
   const whisper = useWhisper();
 
   // Claude OAuth usage data
-  const claudeUsage = useClaudeUsage();
+  const { state: claudeUsage, refresh: refreshClaudeUsage } = useClaudeUsage();
 
   // Stable ref for toggleRecording to avoid IPC listener re-registration
   const stableToggleRecording = useCallback(() => whisper.toggleRecording(), [whisper]);
@@ -388,6 +388,7 @@ function App(): React.ReactElement {
     onOpenProject: handleOpenProject,
     onToggleRecording: stableToggleRecording,
     onOpenSchedule: addScheduleTab,
+    onRefreshUsage: refreshClaudeUsage,
   });
 
   // Listen for container exit events to update state
@@ -590,6 +591,7 @@ function App(): React.ReactElement {
                 onToggleRecording={whisper.toggleRecording}
                 onOpenModelDialog={whisper.openModelDialog}
                 claudeUsage={claudeUsage}
+                onRefreshUsage={refreshClaudeUsage}
               />
             </>
           ) : (

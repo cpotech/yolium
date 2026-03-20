@@ -7,6 +7,7 @@ import { useClaudeUsage } from '@renderer/hooks/useClaudeUsage';
 import type { ClaudeUsageData, ClaudeUsageSnapshot } from '@shared/types/agent';
 
 const mockGetClaude = vi.fn();
+const mockRefreshClaude = vi.fn();
 
 const sampleUsage: ClaudeUsageData = {
   fiveHour: { utilization: 42, resetsAt: '2026-03-12T12:00:00.000Z' },
@@ -35,6 +36,10 @@ describe('useClaudeUsage', () => {
       value: {
         usage: {
           getClaude: mockGetClaude,
+          refreshClaude: mockRefreshClaude,
+        },
+        events: {
+          onUsageRefresh: vi.fn(() => vi.fn()),
         },
       },
       writable: true,
@@ -56,11 +61,26 @@ describe('useClaudeUsage', () => {
 
     const { result } = renderHook(() => useClaudeUsage());
 
-    expect(result.current).toEqual({
+    expect(result.current.state).toEqual({
       status: 'loading',
       hasOAuth: true,
       usage: null,
     });
+  });
+
+  it('should return state and refresh function', async () => {
+    mockGetClaude.mockResolvedValueOnce({
+      hasOAuth: true,
+      usage: sampleUsage,
+    });
+
+    const { result } = renderHook(() => useClaudeUsage());
+
+    await waitFor(() => {
+      expect(result.current.state.status).toBe('ready');
+    });
+
+    expect(typeof result.current.refresh).toBe('function');
   });
 
   it('should return status ready with usage data when usage:get-claude resolves with usage', async () => {
@@ -72,7 +92,7 @@ describe('useClaudeUsage', () => {
     const { result } = renderHook(() => useClaudeUsage());
 
     await waitFor(() => {
-      expect(result.current).toEqual({
+      expect(result.current.state).toEqual({
         status: 'ready',
         hasOAuth: true,
         usage: sampleUsage,
@@ -89,7 +109,7 @@ describe('useClaudeUsage', () => {
     const { result } = renderHook(() => useClaudeUsage());
 
     await waitFor(() => {
-      expect(result.current).toEqual({
+      expect(result.current.state).toEqual({
         status: 'unavailable',
         hasOAuth: true,
         usage: null,
@@ -106,7 +126,7 @@ describe('useClaudeUsage', () => {
     const { result } = renderHook(() => useClaudeUsage());
 
     await waitFor(() => {
-      expect(result.current).toEqual({
+      expect(result.current.state).toEqual({
         status: 'no-oauth',
         hasOAuth: false,
         usage: null,
@@ -129,7 +149,7 @@ describe('useClaudeUsage', () => {
       await Promise.resolve();
     });
 
-    expect(result.current).toEqual({
+    expect(result.current.state).toEqual({
         status: 'ready',
         hasOAuth: true,
         usage: sampleUsage,
@@ -142,7 +162,7 @@ describe('useClaudeUsage', () => {
 
     expect(mockGetClaude).toHaveBeenCalledTimes(2);
 
-    expect(result.current).toEqual({
+    expect(result.current.state).toEqual({
       status: 'ready',
       hasOAuth: true,
       usage: sampleUsage,
@@ -155,7 +175,7 @@ describe('useClaudeUsage', () => {
     // First call succeeds with usage data
     mockGetClaude
       .mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage })
-      // Second call returns null usage (e.g., expired token → 401 on backend)
+      // Second call returns null usage (e.g., expired token -> 401 on backend)
       .mockResolvedValueOnce({ hasOAuth: true, usage: null });
 
     const { result } = renderHook(() => useClaudeUsage());
@@ -164,7 +184,7 @@ describe('useClaudeUsage', () => {
       await Promise.resolve();
     });
 
-    expect(result.current).toEqual({
+    expect(result.current.state).toEqual({
       status: 'ready',
       hasOAuth: true,
       usage: sampleUsage,
@@ -178,7 +198,7 @@ describe('useClaudeUsage', () => {
 
     expect(mockGetClaude).toHaveBeenCalledTimes(2);
     // Should preserve the previous usage rather than showing unavailable
-    expect(result.current).toEqual({
+    expect(result.current.state).toEqual({
       status: 'ready',
       hasOAuth: true,
       usage: sampleUsage,
@@ -192,7 +212,7 @@ describe('useClaudeUsage', () => {
     const { result } = renderHook(() => useClaudeUsage());
 
     await waitFor(() => {
-      expect(result.current).toEqual({
+      expect(result.current.state).toEqual({
         status: 'unavailable',
         hasOAuth: true,
         usage: null,
@@ -219,7 +239,7 @@ describe('useClaudeUsage', () => {
       await Promise.resolve();
     });
 
-    expect(result.current.usage).toEqual(sampleUsage);
+    expect(result.current.state.status === 'ready' && result.current.state.usage).toEqual(sampleUsage);
 
     // Advance to second poll — null usage, should preserve stale data
     await act(async () => {
@@ -227,7 +247,7 @@ describe('useClaudeUsage', () => {
       await Promise.resolve();
     });
 
-    expect(result.current.usage).toEqual(sampleUsage);
+    expect(result.current.state.status === 'ready' && result.current.state.usage).toEqual(sampleUsage);
 
     // Advance to third poll — new valid data
     await act(async () => {
@@ -235,7 +255,7 @@ describe('useClaudeUsage', () => {
       await Promise.resolve();
     });
 
-    expect(result.current.usage).toEqual(updatedUsage);
+    expect(result.current.state.status === 'ready' && result.current.state.usage).toEqual(updatedUsage);
   });
 
   it('should still show no-oauth when hasOAuth is false even with cached usage', async () => {
@@ -251,7 +271,7 @@ describe('useClaudeUsage', () => {
       await Promise.resolve();
     });
 
-    expect(result.current.status).toBe('ready');
+    expect(result.current.state.status).toBe('ready');
 
     // Advance to next poll — hasOAuth is now false (user logged out)
     await act(async () => {
@@ -260,7 +280,7 @@ describe('useClaudeUsage', () => {
     });
 
     // Should show no-oauth even though we have cached usage
-    expect(result.current).toEqual({
+    expect(result.current.state).toEqual({
       status: 'no-oauth',
       hasOAuth: false,
       usage: null,
@@ -299,5 +319,117 @@ describe('useClaudeUsage', () => {
     await waitFor(() => {
       expect(mockGetClaude).toHaveBeenCalledTimes(2);
     });
+  });
+
+  // --- New test specs for manual refresh ---
+
+  it('should set status to loading during manual refresh', async () => {
+    mockGetClaude.mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage });
+
+    const { result } = renderHook(() => useClaudeUsage());
+
+    await waitFor(() => {
+      expect(result.current.state.status).toBe('ready');
+    });
+
+    // Start refresh but don't resolve yet
+    const deferred = createDeferred<ClaudeUsageSnapshot>();
+    mockRefreshClaude.mockReturnValueOnce(deferred.promise);
+
+    act(() => {
+      result.current.refresh();
+    });
+
+    expect(result.current.state.status).toBe('loading');
+
+    // Resolve
+    await act(async () => {
+      deferred.resolve({ hasOAuth: true, usage: sampleUsage });
+    });
+
+    expect(result.current.state.status).toBe('ready');
+  });
+
+  it('should update state after successful manual refresh', async () => {
+    mockGetClaude.mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage });
+
+    const { result } = renderHook(() => useClaudeUsage());
+
+    await waitFor(() => {
+      expect(result.current.state.status).toBe('ready');
+    });
+
+    const updatedUsage: ClaudeUsageData = {
+      fiveHour: { utilization: 80, resetsAt: '2026-02-01T00:00:00Z' },
+      sevenDay: { utilization: 50, resetsAt: '2026-02-07T00:00:00Z' },
+    };
+    mockRefreshClaude.mockResolvedValueOnce({ hasOAuth: true, usage: updatedUsage });
+
+    await act(async () => {
+      result.current.refresh();
+    });
+
+    await waitFor(() => {
+      expect(result.current.state.status).toBe('ready');
+      if (result.current.state.status === 'ready') {
+        expect(result.current.state.usage.fiveHour.utilization).toBe(80);
+      }
+    });
+  });
+
+  it('should preserve last-known-good data during failed refresh', async () => {
+    mockGetClaude.mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage });
+
+    const { result } = renderHook(() => useClaudeUsage());
+
+    await waitFor(() => {
+      expect(result.current.state.status).toBe('ready');
+    });
+
+    // Refresh fails (returns unavailable)
+    mockRefreshClaude.mockResolvedValueOnce({ hasOAuth: true, usage: null });
+
+    await act(async () => {
+      result.current.refresh();
+    });
+
+    await waitFor(() => {
+      // Should preserve last-known-good data
+      expect(result.current.state.status).toBe('ready');
+      if (result.current.state.status === 'ready') {
+        expect(result.current.state.usage.fiveHour.utilization).toBe(42);
+      }
+    });
+  });
+
+  it('should poll automatically every 60 seconds', async () => {
+    vi.useFakeTimers();
+
+    mockGetClaude
+      .mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage })
+      .mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage })
+      .mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage });
+
+    renderHook(() => useClaudeUsage());
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mockGetClaude).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(60_000);
+      await Promise.resolve();
+    });
+
+    expect(mockGetClaude).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      vi.advanceTimersByTime(60_000);
+      await Promise.resolve();
+    });
+
+    expect(mockGetClaude).toHaveBeenCalledTimes(3);
   });
 });

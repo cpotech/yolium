@@ -67,58 +67,87 @@ export async function refreshClaudeOAuthTokenSerialized(): Promise<boolean> {
   return claudeRefreshLock;
 }
 
-export async function fetchClaudeUsage(): Promise<ClaudeUsageData | null> {
-  try {
-    const credPath = path.join(os.homedir(), '.claude', '.credentials.json');
-    if (!fs.existsSync(credPath)) return null;
+function isTransientError(response: Response): boolean {
+  return response.status >= 500 && response.status < 600;
+}
 
-    let content = fs.readFileSync(credPath, 'utf-8');
-    let creds = JSON.parse(content);
-    let accessToken = creds?.claudeAiOauth?.accessToken;
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
-    if (!accessToken) return null;
+export interface FetchClaudeUsageOptions {
+  retries?: number;
+}
 
-    let response = await fetch('https://api.anthropic.com/api/oauth/usage', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'anthropic-beta': 'oauth-2025-04-20',
-      },
-    });
+export async function fetchClaudeUsage(options?: FetchClaudeUsageOptions): Promise<ClaudeUsageData | null> {
+  const maxRetries = options?.retries ?? 0;
 
-    if (response.status === 401) {
-      const refreshed = await refreshClaudeOAuthTokenSerialized();
-      if (refreshed) {
-        content = fs.readFileSync(credPath, 'utf-8');
-        creds = JSON.parse(content);
-        accessToken = creds?.claudeAiOauth?.accessToken;
-        if (accessToken) {
-          response = await fetch('https://api.anthropic.com/api/oauth/usage', {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'anthropic-beta': 'oauth-2025-04-20',
-            },
-          });
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const credPath = path.join(os.homedir(), '.claude', '.credentials.json');
+      if (!fs.existsSync(credPath)) return null;
+
+      let content = fs.readFileSync(credPath, 'utf-8');
+      let creds = JSON.parse(content);
+      let accessToken = creds?.claudeAiOauth?.accessToken;
+
+      if (!accessToken) return null;
+
+      let response = await fetch('https://api.anthropic.com/api/oauth/usage', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'anthropic-beta': 'oauth-2025-04-20',
+        },
+      });
+
+      if (response.status === 401) {
+        const refreshed = await refreshClaudeOAuthTokenSerialized();
+        if (refreshed) {
+          content = fs.readFileSync(credPath, 'utf-8');
+          creds = JSON.parse(content);
+          accessToken = creds?.claudeAiOauth?.accessToken;
+          if (accessToken) {
+            response = await fetch('https://api.anthropic.com/api/oauth/usage', {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'anthropic-beta': 'oauth-2025-04-20',
+              },
+            });
+          }
         }
       }
+
+      if (!response.ok) {
+        // Retry on transient 5xx errors
+        if (isTransientError(response) && attempt < maxRetries) {
+          await delay((attempt + 1) * 1000);
+          continue;
+        }
+        return null;
+      }
+
+      const data = await response.json();
+
+      return {
+        fiveHour: {
+          utilization: data.five_hour?.utilization ?? 0,
+          resetsAt: data.five_hour?.resets_at ?? '',
+        },
+        sevenDay: {
+          utilization: data.seven_day?.utilization ?? 0,
+          resetsAt: data.seven_day?.resets_at ?? '',
+        },
+      };
+    } catch { /* Network error or credential file unreadable — retry if attempts remain. */
+      if (attempt < maxRetries) {
+        await delay((attempt + 1) * 1000);
+        continue;
+      }
+      return null;
     }
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
-
-    return {
-      fiveHour: {
-        utilization: data.five_hour?.utilization ?? 0,
-        resetsAt: data.five_hour?.resets_at ?? '',
-      },
-      sevenDay: {
-        utilization: data.seven_day?.utilization ?? 0,
-        resetsAt: data.seven_day?.resets_at ?? '',
-      },
-    };
-  } catch { /* Network error, credential file unreadable, or malformed JSON — usage data unavailable. */
-    return null;
   }
+
+  return null;
 }
 
 export function getHostClaudeCredentialsPath(): string | null {

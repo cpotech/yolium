@@ -62,6 +62,7 @@ const events: ElectronAPI['events'] = {
   onProjectOpen: (callback) => listen('project:open', callback),
   onRecordingToggle: (callback) => listen('recording:toggle', callback),
   onScheduleShow: (callback) => listen('schedule:show', callback),
+  onUsageRefresh: (callback) => listen('usage:refresh', callback),
 };
 
 const dialog: ElectronAPI['dialog'] = {};
@@ -215,6 +216,7 @@ const report: ElectronAPI['report'] = {
 
 const usage: ElectronAPI['usage'] = {
   getClaude: invoke('usage:get-claude') as ElectronAPI['usage']['getClaude'],
+  refreshClaude: invoke('usage:refresh-claude') as ElectronAPI['usage']['refreshClaude'],
 };
 
 const schedule: ElectronAPI['schedule'] = {

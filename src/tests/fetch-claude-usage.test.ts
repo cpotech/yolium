@@ -351,4 +351,78 @@ describe('fetchClaudeUsage', () => {
 
     expect(result).toBe(false);
   });
+
+  // --- Retry logic tests ---
+
+  it('should retry on network error when retries > 0', async () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(makeCredentialsJson());
+
+    mockFetch
+      .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+      .mockResolvedValueOnce({ ok: true, json: async () => makeApiResponse() });
+
+    const result = await fetchClaudeUsage({ retries: 1 });
+
+    expect(result).not.toBeNull();
+    expect(result?.fiveHour.utilization).toBe(37.0);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('should retry on 5xx response when retries > 0', async () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(makeCredentialsJson());
+
+    mockFetch
+      .mockResolvedValueOnce({ ok: false, status: 503, statusText: 'Service Unavailable' })
+      .mockResolvedValueOnce({ ok: true, json: async () => makeApiResponse() });
+
+    const result = await fetchClaudeUsage({ retries: 1 });
+
+    expect(result).not.toBeNull();
+    expect(result?.fiveHour.utilization).toBe(37.0);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('should not retry on 4xx (non-401) response even with retries > 0', async () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(makeCredentialsJson());
+
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 403, statusText: 'Forbidden' });
+
+    const result = await fetchClaudeUsage({ retries: 2 });
+
+    expect(result).toBeNull();
+    expect(mockFetch).toHaveBeenCalledOnce();
+  });
+
+  it('should succeed on second attempt after transient failure', async () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(makeCredentialsJson());
+
+    mockFetch
+      .mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Internal Server Error' })
+      .mockResolvedValueOnce({ ok: true, json: async () => makeApiResponse({ five_hour: { utilization: 75.0, resets_at: '2026-01-01T00:00:00Z' } }) });
+
+    const result = await fetchClaudeUsage({ retries: 2 });
+
+    expect(result).not.toBeNull();
+    expect(result?.fiveHour.utilization).toBe(75.0);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('should return null after exhausting all retries', async () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(makeCredentialsJson());
+
+    mockFetch
+      .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+      .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+      .mockRejectedValueOnce(new Error('ECONNREFUSED'));
+
+    const result = await fetchClaudeUsage({ retries: 2 });
+
+    expect(result).toBeNull();
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+  });
 });

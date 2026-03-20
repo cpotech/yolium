@@ -270,6 +270,7 @@ export interface EventsAPI {
   onProjectOpen: (callback: () => void) => CleanupFunction;
   onRecordingToggle: (callback: () => void) => CleanupFunction;
   onScheduleShow: (callback: () => void) => CleanupFunction;
+  onUsageRefresh: (callback: () => void) => CleanupFunction;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -455,6 +456,7 @@ export interface ReportAPI {
 
 export interface UsageAPI {
   getClaude: () => Promise<ClaudeUsageSnapshot>;
+  refreshClaude: () => Promise<ClaudeUsageSnapshot>;
 }
 
 export interface ScheduleAPI {
