@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Folder, X, Plus } from 'lucide-react';
 import type { SidebarProject } from '@renderer/stores/sidebar-store';
 import type { AgentStatus, KanbanColumn } from '@shared/types/kanban';
@@ -58,34 +58,51 @@ export function ProjectList({
     await onAnswerAndResume(item.projectPath, item.itemId, option, item.agentName || 'code-agent');
   };
 
-  const handleVimKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (!isZoneActive || projects.length === 0) return;
+  // Capture-phase document listener: fires before the global vim handler (bubble phase)
+  // and calls stopPropagation to prevent 'a' key from switching zone to 'schedule'.
+  // This also removes the dependency on DOM focus for key handling.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!isZoneActive || projects.length === 0) return;
 
-    if (e.key === 'j' || e.key === 'ArrowDown') {
-      e.preventDefault();
-      setFocusedIndex(prev => (prev + 1) % projects.length);
-    } else if (e.key === 'k' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      setFocusedIndex(prev => (prev - 1 + projects.length) % projects.length);
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      const idx = Math.min(focusedIndex, projects.length - 1);
-      onProjectClick(projects[idx].path);
-    } else if (e.key === 'x') {
-      e.preventDefault();
-      const idx = Math.min(focusedIndex, projects.length - 1);
-      onProjectRemove(projects[idx].path);
-    } else if (e.key === '+' || e.key === 'a') {
-      e.preventDefault();
-      onOpenProject();
-    } else if (e.key === 'h') {
-      e.preventDefault();
-      onOpenSchedule?.();
-    }
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
+
+      let handled = false;
+      if (e.key === 'j' || e.key === 'ArrowDown') {
+        setFocusedIndex(prev => (prev + 1) % projects.length);
+        handled = true;
+      } else if (e.key === 'k' || e.key === 'ArrowUp') {
+        setFocusedIndex(prev => (prev - 1 + projects.length) % projects.length);
+        handled = true;
+      } else if (e.key === 'Enter') {
+        const idx = Math.min(focusedIndex, projects.length - 1);
+        onProjectClick(projects[idx].path);
+        handled = true;
+      } else if (e.key === 'x') {
+        const idx = Math.min(focusedIndex, projects.length - 1);
+        onProjectRemove(projects[idx].path);
+        handled = true;
+      } else if (e.key === '+' || e.key === 'a') {
+        onOpenProject();
+        handled = true;
+      } else if (e.key === 'h') {
+        onOpenSchedule?.();
+        handled = true;
+      }
+
+      if (handled) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    document.addEventListener('keydown', handler, true); // capture phase
+    return () => document.removeEventListener('keydown', handler, true);
   }, [isZoneActive, projects, focusedIndex, onProjectClick, onProjectRemove, onOpenProject, onOpenSchedule]);
 
   return (
-    <div ref={containerRef} className="flex flex-col h-full" onKeyDown={handleVimKeyDown} tabIndex={isZoneActive ? 0 : undefined}>
+    <div ref={containerRef} className="flex flex-col h-full" tabIndex={isZoneActive ? 0 : undefined}>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border-primary)]">
         {!collapsed && (
