@@ -62,6 +62,11 @@ function ZoneSetter({ zone }: { zone: string }) {
   return null;
 }
 
+function ZoneDisplay() {
+  const { activeZone } = useVimModeContext();
+  return <div data-testid="current-zone">{activeZone}</div>;
+}
+
 function createSpecialist(id: string, name: string) {
   return {
     [id]: {
@@ -497,6 +502,104 @@ describe('SchedulePanel vim shortcuts', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
+    });
+  });
+
+  it('should not switch zone when pressing t to toggle specialist', async () => {
+    renderWithVim(
+      <>
+        <ZoneSetter zone="schedule" />
+        <ZoneDisplay />
+        <SchedulePanel />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
+    });
+
+    const panel = screen.getByTestId('schedule-panel');
+    fireEvent.keyDown(panel, { key: 't' });
+
+    await waitFor(() => {
+      expect(mockToggleSpecialist).toHaveBeenCalledWith('spec-1', false);
+    });
+    expect(screen.getByTestId('current-zone')).toHaveTextContent('schedule');
+  });
+
+  it('should not switch zone when pressing c to configure specialist', async () => {
+    renderWithVim(
+      <>
+        <ZoneSetter zone="schedule" />
+        <ZoneDisplay />
+        <SchedulePanel />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
+    });
+
+    const panel = screen.getByTestId('schedule-panel');
+    fireEvent.keyDown(panel, { key: 'c' });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-add-specialist-dialog')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('current-zone')).toHaveTextContent('schedule');
+  });
+
+  it('should allow t to switch zone when no specialists exist (no conflict)', async () => {
+    mockGetSpecialists.mockResolvedValue({});
+    mockGetState.mockResolvedValue({ specialists: {}, globalEnabled: true });
+
+    renderWithVim(
+      <>
+        <ZoneSetter zone="schedule" />
+        <ZoneDisplay />
+        <SchedulePanel />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('schedule-panel')).toBeInTheDocument();
+    });
+
+    const panel = screen.getByTestId('schedule-panel');
+    fireEvent.keyDown(panel, { key: 't' });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('current-zone')).toHaveTextContent('tabs');
+    });
+  });
+
+  it('should allow c to switch zone when in actions view (no conflict)', async () => {
+    renderWithVim(
+      <>
+        <ZoneSetter zone="schedule" />
+        <ZoneDisplay />
+        <SchedulePanel />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
+    });
+
+    const panel = screen.getByTestId('schedule-panel');
+    // Switch to actions view
+    fireEvent.keyDown(panel, { key: '2' });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-actions-view')).toBeInTheDocument();
+    });
+
+    // In actions view, 'c' is not handled by the schedule panel for specialists,
+    // so it should fall through to the global handler and switch to content zone
+    fireEvent.keyDown(panel, { key: 'c' });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('current-zone')).toHaveTextContent('content');
     });
   });
 

@@ -58,6 +58,8 @@ export function VimModeProvider({
   // Attach global keydown listener
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // If a zone-specific handler already processed this key, don't override
+      if (e.defaultPrevented) return;
       // Don't intercept keys when focus is on an input/textarea/select
       const target = e.target as HTMLElement;
       if (
