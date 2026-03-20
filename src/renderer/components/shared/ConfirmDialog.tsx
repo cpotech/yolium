@@ -38,6 +38,7 @@ export function ConfirmDialog({
     (e: React.KeyboardEvent) => {
       if (isCloseShortcut(e)) {
         e.preventDefault()
+        e.stopPropagation()
         onCancel()
         return
       }

@@ -185,6 +185,7 @@ export function useDirectoryNavigation({
       // Ctrl+Q to cancel
       if (isCloseShortcut(e)) {
         e.preventDefault()
+        e.stopPropagation()
         onCancel()
         return
       }

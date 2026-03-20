@@ -59,6 +59,7 @@ export function MockPreviewModal({ filePath, isOpen, onClose }: MockPreviewModal
     (e: React.KeyboardEvent) => {
       if (isCloseShortcut(e)) {
         e.preventDefault()
+        e.stopPropagation()
         onClose()
       }
     },

@@ -113,6 +113,7 @@ export function AgentSelectDialog({
     (e: React.KeyboardEvent) => {
       if (isCloseShortcut(e)) {
         e.preventDefault();
+        e.stopPropagation();
         onBack();
       } else if (e.key === 'Enter') {
         void handleConfirm();

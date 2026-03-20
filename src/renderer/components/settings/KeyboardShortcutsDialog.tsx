@@ -29,6 +29,8 @@ export function KeyboardShortcutsDialog({
     (e: React.KeyboardEvent) => {
       scrollKeyDown(e);
       if (isCloseShortcut(e)) {
+        e.preventDefault();
+        e.stopPropagation();
         onClose();
       }
     },

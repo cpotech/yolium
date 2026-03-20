@@ -244,6 +244,7 @@ export function ItemDetailDialog({
     // Ctrl+Q to close dialog
     if (isCloseShortcut(event)) {
       event.preventDefault()
+      event.stopPropagation()
       handleClose()
       return
     }
