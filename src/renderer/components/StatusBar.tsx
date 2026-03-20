@@ -24,6 +24,7 @@ interface StatusBarProps {
   onOpenModelDialog?: () => void;
   // Claude OAuth usage state (auth status + usage data)
   claudeUsage?: ClaudeUsageState;
+  onRefreshUsage?: () => void;
 }
 
 function formatResetTime(resetsAt: string): string {
@@ -86,6 +87,7 @@ function UsageBar({
 function renderClaudeUsage(
   claudeUsage: ClaudeUsageState,
   onOpenSettings: () => void,
+  onRefreshUsage?: () => void,
 ): React.ReactNode {
   switch (claudeUsage.status) {
     case 'no-oauth':
@@ -103,7 +105,14 @@ function renderClaudeUsage(
       );
     case 'ready':
       return (
-        <>
+        <span
+          role="button"
+          aria-label="Claude usage"
+          data-testid="claude-usage-display"
+          className="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={onRefreshUsage}
+          title="Click to refresh (Ctrl+Shift+U)"
+        >
           <span className="text-[var(--color-text-secondary)]">Claude</span>
           <UsageBar
             label="5h"
@@ -116,16 +125,17 @@ function renderClaudeUsage(
             utilization={claudeUsage.usage.sevenDay.utilization}
             resetsAt={claudeUsage.usage.sevenDay.resetsAt}
           />
-        </>
+        </span>
       );
     case 'unavailable':
       return (
         <span
           role="button"
           aria-label="Claude unavailable"
+          data-testid="claude-usage-display"
           className="flex items-center gap-1 cursor-pointer text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
-          onClick={onOpenSettings}
-          title="Usage unavailable. Open Settings."
+          onClick={onRefreshUsage ?? onOpenSettings}
+          title="Click to retry (Ctrl+Shift+U)"
         >
           <span className="text-[var(--color-text-secondary)]">Claude</span>
           <span>&middot;</span>
@@ -162,6 +172,7 @@ export function StatusBar({
   onToggleRecording,
   onOpenModelDialog,
   claudeUsage,
+  onRefreshUsage,
 }: StatusBarProps): React.ReactElement {
   const stateDisplay: Record<ContainerState, { text: string; className: string }> = {
     starting: { text: 'Starting...', className: 'text-[var(--color-status-warning)]' },
@@ -221,11 +232,14 @@ export function StatusBar({
     } else if (e.key === 'w') {
       e.preventDefault();
       onToggleRecording?.();
+    } else if (e.key === 'u') {
+      e.preventDefault();
+      onRefreshUsage?.();
     } else if (e.key === 'L') {
       e.preventDefault();
       toggleTheme();
     }
-  }, [isZoneActive, focusedButtonIndex, getButtons, onOpenSettings, onOpenProjectSettings, onStop, onToggleRecording, toggleTheme]);
+  }, [isZoneActive, focusedButtonIndex, getButtons, onOpenSettings, onOpenProjectSettings, onStop, onToggleRecording, onRefreshUsage, toggleTheme]);
 
   // Update data-vim-focused attributes on buttons
   useEffect(() => {
@@ -310,7 +324,7 @@ export function StatusBar({
         {claudeUsage && (
           <>
             {hasContextMetadata && <span className="text-[var(--color-text-muted)]">|</span>}
-            {renderClaudeUsage(claudeUsage, onOpenSettings)}
+            {renderClaudeUsage(claudeUsage, onOpenSettings, onRefreshUsage)}
           </>
         )}
       </div>

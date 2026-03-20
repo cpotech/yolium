@@ -105,6 +105,7 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'status-project', key: 'p', zone: 'status-bar', mode: 'NORMAL', category: 'vim', group: 'Status Bar', description: 'Project settings', testId: 'project-settings-button' },
   { id: 'status-stop', key: 'q', zone: 'status-bar', mode: 'NORMAL', category: 'vim', group: 'Status Bar', description: 'Stop container', testId: 'stop-button' },
   { id: 'status-record', key: 'w', zone: 'status-bar', mode: 'NORMAL', category: 'vim', group: 'Status Bar', description: 'Toggle recording' },
+  { id: 'status-refresh-usage', key: 'u', zone: 'status-bar', mode: 'NORMAL', category: 'vim', group: 'Status Bar', description: 'Refresh usage' },
   { id: 'status-theme', key: 'L', zone: 'status-bar', mode: 'NORMAL', category: 'vim', group: 'Status Bar', description: 'Toggle theme', testId: 'theme-toggle' },
 
   // --- Dialog zone — ItemDetailDialog ---
@@ -174,6 +175,7 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'electron-open-project', key: 'Ctrl+Shift+N', zone: 'electron-app', mode: 'ANY', category: 'electron', group: 'Application', description: 'Open project' },
   { id: 'electron-scheduled', key: 'Ctrl+Shift+H', zone: 'electron-app', mode: 'ANY', category: 'electron', group: 'Application', description: 'Scheduled agents' },
   { id: 'electron-record', key: 'Ctrl+Shift+R', zone: 'electron-app', mode: 'ANY', category: 'electron', group: 'Application', description: 'Toggle recording' },
+  { id: 'electron-refresh-usage', key: 'Ctrl+Shift+U', zone: 'electron-app', mode: 'ANY', category: 'electron', group: 'Application', description: 'Refresh usage' },
 
   // --- Electron View ---
   { id: 'electron-devtools', key: 'Ctrl+Shift+I', zone: 'electron-view', mode: 'ANY', category: 'electron', group: 'View', description: 'Developer tools' },

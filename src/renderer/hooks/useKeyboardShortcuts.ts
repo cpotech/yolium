@@ -18,6 +18,7 @@ export interface UseKeyboardShortcutsOptions {
   onOpenProject: () => void
   onToggleRecording: () => void
   onOpenSchedule?: () => void
+  onRefreshUsage?: () => void
 }
 
 /**
@@ -37,6 +38,7 @@ export function useKeyboardShortcuts({
   onOpenProject,
   onToggleRecording,
   onOpenSchedule,
+  onRefreshUsage,
 }: UseKeyboardShortcutsOptions): void {
   useEffect(() => {
     const cleanupNew = window.electronAPI.tabs.onNew(onNewTab)
@@ -53,6 +55,9 @@ export function useKeyboardShortcuts({
     const cleanupSchedule = onOpenSchedule
       ? window.electronAPI.events.onScheduleShow(onOpenSchedule)
       : undefined
+    const cleanupUsageRefresh = onRefreshUsage
+      ? window.electronAPI.events.onUsageRefresh(onRefreshUsage)
+      : undefined
 
     return () => {
       cleanupNew()
@@ -67,6 +72,7 @@ export function useKeyboardShortcuts({
       cleanupProjectOpen()
       cleanupRecording()
       cleanupSchedule?.()
+      cleanupUsageRefresh?.()
     }
   }, [
     onNewTab,
@@ -81,5 +87,6 @@ export function useKeyboardShortcuts({
     onOpenProject,
     onToggleRecording,
     onOpenSchedule,
+    onRefreshUsage,
   ])
 }

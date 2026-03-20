@@ -11,6 +11,7 @@ const logger = createLogger('usage-handlers');
 
 export const USAGE_CHANNELS = {
   getClaudeUsage: 'usage:get-claude',
+  refreshClaudeUsage: 'usage:refresh-claude',
 } as const;
 
 export const USAGE_IPC_CHANNELS = Object.values(USAGE_CHANNELS);
@@ -27,6 +28,14 @@ export function registerUsageHandlers(ipcMain: IpcMain): void {
     logger.debug('IPC: usage:get-claude');
     const hasOAuth = hasHostClaudeOAuth();
     const usage = hasOAuth ? await fetchClaudeUsage() : null;
+    return { hasOAuth, usage };
+  });
+
+  // Manual refresh with retry logic (triggered by Ctrl+Shift+U or click)
+  ipcMain.handle(USAGE_CHANNELS.refreshClaudeUsage, async () => {
+    logger.debug('IPC: usage:refresh-claude');
+    const hasOAuth = hasHostClaudeOAuth();
+    const usage = hasOAuth ? await fetchClaudeUsage({ retries: 2 }) : null;
     return { hasOAuth, usage };
   });
 }

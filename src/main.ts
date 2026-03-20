@@ -69,6 +69,12 @@ function createAppMenu(window: BrowserWindow): void {
           accelerator: 'CmdOrCtrl+Shift+H',
           click: () => window.webContents.send('schedule:show'),
         },
+        { type: 'separator' },
+        {
+          label: 'Refresh Usage',
+          accelerator: 'CmdOrCtrl+Shift+U',
+          click: () => window.webContents.send('usage:refresh'),
+        },
       ],
     },
     {

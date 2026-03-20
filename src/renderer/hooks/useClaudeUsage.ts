@@ -17,37 +17,66 @@ function toClaudeUsageState(snapshot: ClaudeUsageSnapshot): ClaudeUsageState {
   return { status: 'unavailable', hasOAuth: true, usage: null };
 }
 
+export interface UseClaudeUsageResult {
+  state: ClaudeUsageState;
+  refresh: () => void;
+}
+
 /**
  * Hook to fetch and poll Claude OAuth usage data.
  * Polls every 60 seconds and on window focus.
+ * Returns { state, refresh } where refresh triggers a manual refresh with retries.
  */
-export function useClaudeUsage(): ClaudeUsageState {
+export function useClaudeUsage(): UseClaudeUsageResult {
   const [state, setState] = useState<ClaudeUsageState>(INITIAL_STATE);
   const lastReadyUsageRef = useRef<ClaudeUsageData | null>(null);
+
+  const applySnapshot = useCallback((snapshot: ClaudeUsageSnapshot) => {
+    if (snapshot.usage) {
+      lastReadyUsageRef.current = snapshot.usage;
+    }
+    const newState = toClaudeUsageState(snapshot);
+    // Preserve last-known-good usage on transient unavailable (e.g., expired token -> 401)
+    if (newState.status === 'unavailable' && lastReadyUsageRef.current) {
+      setState({ status: 'ready', hasOAuth: true, usage: lastReadyUsageRef.current });
+    } else {
+      setState(newState);
+    }
+  }, []);
 
   const fetchUsage = useCallback(async () => {
     try {
       const snapshot = await window.electronAPI.usage.getClaude();
-      if (snapshot.usage) {
-        lastReadyUsageRef.current = snapshot.usage;
-      }
-      const newState = toClaudeUsageState(snapshot);
-      // Preserve last-known-good usage on transient unavailable (e.g., expired token → 401)
-      if (newState.status === 'unavailable' && lastReadyUsageRef.current) {
+      applySnapshot(snapshot);
+    } catch {
+      if (lastReadyUsageRef.current) {
         setState({ status: 'ready', hasOAuth: true, usage: lastReadyUsageRef.current });
       } else {
-        setState(newState);
+        setState({ status: 'unavailable', hasOAuth: true, usage: null });
       }
-    } catch {
-      setState(() => {
-        if (lastReadyUsageRef.current) {
-          return { status: 'ready', hasOAuth: true, usage: lastReadyUsageRef.current };
-        }
-
-        return { status: 'unavailable', hasOAuth: true, usage: null };
-      });
     }
-  }, []);
+  }, [applySnapshot]);
+
+  const refresh = useCallback(() => {
+    setState(prev => {
+      // Keep last-known-good data while showing loading
+      if (prev.status === 'ready') {
+        return { status: 'loading', hasOAuth: true, usage: null };
+      }
+      return { status: 'loading', hasOAuth: true, usage: null };
+    });
+
+    window.electronAPI.usage.refreshClaude().then(
+      (snapshot) => applySnapshot(snapshot),
+      () => {
+        if (lastReadyUsageRef.current) {
+          setState({ status: 'ready', hasOAuth: true, usage: lastReadyUsageRef.current });
+        } else {
+          setState({ status: 'unavailable', hasOAuth: true, usage: null });
+        }
+      },
+    );
+  }, [applySnapshot]);
 
   useEffect(() => {
     void fetchUsage();
@@ -69,5 +98,5 @@ export function useClaudeUsage(): ClaudeUsageState {
     };
   }, [fetchUsage]);
 
-  return state;
+  return { state, refresh };
 }
