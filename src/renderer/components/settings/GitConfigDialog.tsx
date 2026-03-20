@@ -238,6 +238,7 @@ export function GitConfigDialog({
       scrollKeyDown(e);
       if (isCloseShortcut(e)) {
         e.preventDefault();
+        e.stopPropagation();
         onClose();
         return;
       }

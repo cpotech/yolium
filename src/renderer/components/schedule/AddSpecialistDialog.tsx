@@ -467,6 +467,7 @@ export function AddSpecialistDialog({
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (isCloseShortcut(e)) {
       e.preventDefault();
+      e.stopPropagation();
       onClose();
     }
   }, [onClose]);

@@ -125,6 +125,7 @@ export function NewItemDialog({
     (e: React.KeyboardEvent) => {
       if (isCloseShortcut(e)) {
         e.preventDefault()
+        e.stopPropagation()
         onClose()
       }
       if (e.key === 'Enter' && e.ctrlKey && canSubmit && !isSubmitting) {
