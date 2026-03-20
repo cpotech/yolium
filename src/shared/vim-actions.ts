@@ -96,6 +96,10 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'specialist-view-specialists', key: '1', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Specialists view' },
   { id: 'specialist-view-actions', key: '2', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Actions view' },
   { id: 'schedule-help', key: '?', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Keyboard shortcuts' },
+  // Sub-view keys (Run History: j/k/gg/G/Enter/Escape, Actions: j/k/gg/G) reuse the same
+  // bindings as the specialist grid — context determines which handler runs.
+  // Documented in SchedulePanel shortcuts overlay under "Sub-view Navigation".
+  { id: 'run-back', key: 'Backspace', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Back (from history/detail)' },
 
   // --- Status bar zone ---
   { id: 'status-next', key: 'l', zone: 'status-bar', mode: 'NORMAL', category: 'vim', group: 'Status Bar', description: 'Next button' },

@@ -57,6 +57,8 @@ const OUTCOME_LABELS: Record<string, string> = {
 
 interface RunHistoryTableProps {
   specialistId: string;
+  isVimActive?: boolean;
+  onBack?: () => void;
 }
 
 function formatDuration(startedAt: string, completedAt: string): string {
@@ -321,13 +323,16 @@ function RunDetailView({
   );
 }
 
-export function RunHistoryTable({ specialistId }: RunHistoryTableProps): React.ReactElement {
+export function RunHistoryTable({ specialistId, isVimActive = false, onBack }: RunHistoryTableProps): React.ReactElement {
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [stats, setStats] = useState<RunStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [filterType, setFilterType] = useState<string>('all');
   const [filterOutcome, setFilterOutcome] = useState<string>('all');
   const [selectedRun, setSelectedRun] = useState<RunRecord | null>(null);
+  const [focusedRunIndex, setFocusedRunIndex] = useState(0);
+  const gPendingRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -364,9 +369,89 @@ export function RunHistoryTable({ specialistId }: RunHistoryTableProps): React.R
     return true;
   });
 
+  // Clamp focusedRunIndex when filteredRuns changes
+  useEffect(() => {
+    if (filteredRuns.length === 0) {
+      setFocusedRunIndex(0);
+    } else if (focusedRunIndex >= filteredRuns.length) {
+      setFocusedRunIndex(filteredRuns.length - 1);
+    }
+  }, [filteredRuns.length, focusedRunIndex]);
+
+  // Auto-scroll focused row into view
+  useEffect(() => {
+    if (!isVimActive || filteredRuns.length === 0) return;
+    const row = containerRef.current?.querySelector('[data-vim-focused="true"]') as HTMLElement | null;
+    row?.scrollIntoView({ block: 'nearest' });
+  }, [focusedRunIndex, isVimActive, filteredRuns.length]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
+    if (!isVimActive) return;
+
+    if (selectedRun) {
+      if (e.key === 'Escape' || e.key === 'Backspace') {
+        e.preventDefault();
+        setSelectedRun(null);
+      }
+      return;
+    }
+
+    if (filteredRuns.length === 0) {
+      if ((e.key === 'Escape' || e.key === 'Backspace') && onBack) {
+        e.preventDefault();
+        onBack();
+      }
+      return;
+    }
+
+    if (e.key === 'j' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      setFocusedRunIndex((focusedRunIndex + 1) % filteredRuns.length);
+      gPendingRef.current = false;
+      return;
+    }
+    if (e.key === 'k' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      setFocusedRunIndex((focusedRunIndex - 1 + filteredRuns.length) % filteredRuns.length);
+      gPendingRef.current = false;
+      return;
+    }
+    if (e.key === 'g') {
+      if (gPendingRef.current) {
+        e.preventDefault();
+        setFocusedRunIndex(0);
+        gPendingRef.current = false;
+        return;
+      } else {
+        gPendingRef.current = true;
+        return;
+      }
+    }
+    if (e.key === 'G') {
+      e.preventDefault();
+      setFocusedRunIndex(filteredRuns.length - 1);
+      gPendingRef.current = false;
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setSelectedRun(filteredRuns[focusedRunIndex]);
+      gPendingRef.current = false;
+      return;
+    }
+    if (e.key === 'Escape' || e.key === 'Backspace') {
+      e.preventDefault();
+      gPendingRef.current = false;
+      onBack?.();
+      return;
+    }
+  }, [isVimActive, selectedRun, filteredRuns, focusedRunIndex, onBack]);
+
   if (selectedRun) {
     return (
-      <div className="h-full min-h-0 overflow-hidden" data-testid="run-history-detail-shell">
+      <div className="h-full min-h-0 overflow-hidden outline-none" data-testid="run-history-detail-shell" tabIndex={0} onKeyDown={handleKeyDown}>
         <RunDetailView
           run={selectedRun}
           specialistId={specialistId}
@@ -388,7 +473,7 @@ export function RunHistoryTable({ specialistId }: RunHistoryTableProps): React.R
   const outcomeLabels: Record<string, string> = { all: 'All', completed: 'Completed', no_action: 'No action', failed: 'Failed', skipped: 'Skipped', timeout: 'Timeout' };
 
   return (
-    <div className="flex h-full min-h-0 flex-col" data-testid="run-history-table">
+    <div ref={containerRef} className="flex h-full min-h-0 flex-col outline-none" data-testid="run-history-table" tabIndex={0} onKeyDown={handleKeyDown}>
       {/* Compact stats summary — single flowing line, not hero cards */}
       {stats && stats.totalRuns > 0 && (
         <div className="flex shrink-0 items-center gap-4 px-3 pt-3 text-xs text-[var(--color-text-muted)]">
@@ -441,13 +526,20 @@ export function RunHistoryTable({ specialistId }: RunHistoryTableProps): React.R
           </div>
         ) : (
           <div className="space-y-px">
-            {filteredRuns.map(run => (
+            {filteredRuns.map((run, index) => {
+              const isFocused = isVimActive && focusedRunIndex === index;
+              return (
               <button
                 key={run.id}
                 type="button"
                 data-testid={`run-row-${run.id}`}
+                data-vim-focused={isFocused ? 'true' : undefined}
                 onClick={() => setSelectedRun(run)}
-                className="w-full cursor-pointer text-left flex items-center gap-2.5 rounded px-2.5 py-2 transition-colors group hover:bg-[var(--color-bg-tertiary)]"
+                className={`w-full cursor-pointer text-left flex items-center gap-2.5 rounded px-2.5 py-2 transition-colors group hover:bg-[var(--color-bg-tertiary)] ${
+                  isFocused
+                    ? 'ring-2 ring-[var(--color-accent-primary)] ring-offset-1 ring-offset-[var(--color-bg-primary)] bg-[var(--color-bg-tertiary)]'
+                    : ''
+                }`}
               >
                 {/* Outcome dot */}
                 <span
@@ -481,7 +573,8 @@ export function RunHistoryTable({ specialistId }: RunHistoryTableProps): React.R
                 {/* Chevron */}
                 <ChevronRight size={13} className="flex-shrink-0 text-[var(--color-text-muted)] opacity-0 transition-opacity group-hover:opacity-100" />
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
