@@ -105,8 +105,22 @@ function normalizeSpecialistContent(name: string, content: string): string {
   parseSpecialistDefinition(normalizedContent);
 
   const parsed = matter(normalizedContent);
-  parsed.data.name = name;
-  return normalizeLineEndings(matter.stringify(parsed.content, parsed.data));
+  if (parsed.data.name === name) {
+    // Name already correct — return as-is to avoid matter.stringify()
+    // corrupting multi-line YAML block scalars (promptTemplates, cron, etc.)
+    return normalizedContent;
+  }
+
+  // Patch the name field directly in the raw frontmatter to avoid re-serialization.
+  // matter.stringify() destroys multi-line `|` blocks and cascades quote escaping.
+  const patched = normalizedContent.replace(
+    /^(name:\s*).+$/m,
+    `$1${name}`
+  );
+
+  // Validate the patched result still parses
+  parseSpecialistDefinition(patched);
+  return patched;
 }
 
 function writeSpecialistDefinition(

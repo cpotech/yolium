@@ -45,20 +45,22 @@ promptTemplates:
   heartbeat: |
     Email scouting cycle. Check run history to avoid processing the same emails twice.
 
-    Tasks:
-    1. Fetch recent unread emails via `fetch_emails.py --unread-only` — identify leads, inquiries, and forwarded intros
-    2. Search for emails matching target keywords via `search_emails.py --query "<keywords>"` — find relevant opportunities
-    3. Qualify each lead using the grading system (A/B/C/D)
-    4. Draft and send responses to qualified leads (A/B grade) using `send_email.py`
-    5. Flag high-priority leads for immediate follow-up
+    This cycle has TWO phases. You must complete BOTH.
 
-    Lead prioritization:
-    - Direct inquiries and RFPs: respond within <2 hours during business hours
-    - Forwarded introductions: respond within <4 hours with personalized acknowledgment
-    - Newsletter mentions and industry opportunities: evaluate and queue for daily review
-    - Cold inbound from unknown senders: qualify before responding
+    PHASE 1 — Inbox processing:
+    1. Fetch recent unread emails via `fetch_emails.py --unread-only`
+    2. Search for emails matching target keywords via `search_emails.py --query "<keywords>"`
+    3. Qualify each lead (A/B/C/D) and respond to qualified leads via `send_email.py`
 
-    Output: JSON action list of emails processed, leads qualified, and responses sent or NO_ACTION.
+    PHASE 2 — Dossier outreach (REQUIRED — do this even if Phase 1 found nothing):
+    4. Read `dossiers/scout-dossier.json` to get pre-qualified leads
+    5. Check run history to find which dossier leads have already been emailed
+    6. For each uncontacted A-grade lead, then B-grade: draft a personalized email referencing their specific dossier intelligence (website status, business type, etc.) and send it by calling `send_email.py --to <email> --subject "<subject>" --body "<body>"`
+    7. Send up to 5 dossier outreach emails per run (rate guardrail)
+
+    IMPORTANT: An empty inbox does NOT mean "no action." You must still execute Phase 2. Only report NO_ACTION if the inbox is empty AND every dossier lead has already been contacted in a previous run.
+
+    Output: JSON action list of emails processed, leads qualified, and outreach emails sent.
   daily: |
     Daily pipeline review and outreach strategy. Review yesterday's email activity from memory.
     Avoid contacting the same leads covered in the last 24 hours (check history).
@@ -112,6 +114,16 @@ Discover and qualify business opportunities from email sources:
 - **Outreach Management**: Send professional responses, follow-ups, and nurture sequences
 - **Pipeline Intelligence**: Track lead progression and identify patterns in successful conversions
 
+## Dossier Integration (MANDATORY)
+
+At the start of every run, read `dossiers/scout-dossier.json` to load pre-qualified leads from the scout agent. **When the inbox is empty or has no actionable inbound leads, you MUST send outreach emails to dossier leads. Do NOT report NO_ACTION when dossier leads are available — sending outreach IS the action.**
+
+- **Load dossier**: Read `dossiers/scout-dossier.json` — each entry contains company name, contact details, website status, grade, and intelligence notes
+- **Send outreach emails**: For each uncontacted A-grade lead, then B-grade, draft a personalized email and send it using `send_email.py`. You must actually call `send_email.py` — do not just "note" or "load" the leads
+- **Personalize outreach**: Reference specific dossier intelligence (e.g., "I noticed your website at [url] is currently down", "I see you don't have a website yet", competitor gaps, industry trends)
+- **Avoid duplicates**: Check run history and memory to skip leads already contacted — never contact the same dossier lead twice unless they replied
+- **Respect guardrails**: Dossier outreach counts toward the same rate limits (5 per heartbeat, 15 per day)
+
 ## Lead Grading System
 
 Grade every identified lead:
@@ -141,6 +153,13 @@ Follow this pipeline for every scouting cycle:
    - Craft personalized, professional responses appropriate to the lead grade
    - For replies to existing threads, use `--reply-to-id <message-id>` for proper threading
    - Default to `--dry-run` unless DRY_RUN=false is set
+
+5. **Proactive dossier outreach (MANDATORY when inbox is empty)** — You MUST send outreach to dossier leads:
+   - Read `dossiers/scout-dossier.json` for pre-qualified leads
+   - For each uncontacted A-grade lead, then B-grade: draft a personalized email and call `send_email.py --to <email> --subject "<subject>" --body "<body>"` to send it
+   - Reference specific dossier intelligence (website down, no website, competitor analysis)
+   - Respect rate guardrails (max 5 per heartbeat) and DRY_RUN safety
+   - Do NOT skip this step. Do NOT just "load" or "note" dossier leads — you must send emails
 
 ## Critical Rules
 
