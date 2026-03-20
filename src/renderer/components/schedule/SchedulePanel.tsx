@@ -167,7 +167,7 @@ export function SchedulePanel(): React.ReactElement {
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
-    if (showAddDialog || editingSpecialistId !== null || selectedSpecialist) return;
+    if (showAddDialog || editingSpecialistId !== null) return;
 
     const specialistIds = Object.keys(specialists);
     const currentIndex = Math.min(focusedSpecialistIndex, Math.max(specialistIds.length - 1, 0));
@@ -177,7 +177,7 @@ export function SchedulePanel(): React.ReactElement {
     const enabledSchedules = spec?.schedules.filter(s => s.enabled) ?? [];
     const isRunning = runningIds.includes(currentId ?? '');
 
-    if (isVimScheduleActive && specialistIds.length > 0) {
+    if (viewMode === 'specialists' && isVimScheduleActive && specialistIds.length > 0) {
       if (e.key === 'j' || e.key === 'ArrowDown') {
         e.preventDefault();
         setFocusedSpecialistIndex((focusedSpecialistIndex + 1) % specialistIds.length);
@@ -252,7 +252,7 @@ export function SchedulePanel(): React.ReactElement {
       e.preventDefault();
       setShowShortcutsHelp(prev => !prev);
     }
-  }, [isVimScheduleActive, specialists, focusedSpecialistIndex, state, runningIds, showAddDialog, editingSpecialistId, selectedSpecialist, handleTriggerRun, handleToggleSpecialist]);
+  }, [isVimScheduleActive, specialists, focusedSpecialistIndex, state, runningIds, showAddDialog, editingSpecialistId, viewMode, handleTriggerRun, handleToggleSpecialist]);
 
   if (isLoading) {
     return (
@@ -264,7 +264,7 @@ export function SchedulePanel(): React.ReactElement {
 
   if (selectedSpecialist) {
     return (
-      <div className="h-full flex flex-col overflow-hidden" data-testid="schedule-panel-history">
+      <div className="h-full flex flex-col overflow-hidden outline-none" data-testid="schedule-panel-history" tabIndex={0}>
         <div className="flex items-center gap-2 p-3 border-b border-[var(--color-border-primary)]">
           <button
             onClick={() => setSelectedSpecialist(null)}
@@ -277,7 +277,11 @@ export function SchedulePanel(): React.ReactElement {
           </h2>
         </div>
         <div className="flex-1 min-h-0 overflow-hidden">
-          <RunHistoryTable specialistId={selectedSpecialist} />
+          <RunHistoryTable
+            specialistId={selectedSpecialist}
+            isVimActive={isVimScheduleActive}
+            onBack={() => setSelectedSpecialist(null)}
+          />
         </div>
       </div>
     );
@@ -313,6 +317,15 @@ export function SchedulePanel(): React.ReactElement {
             <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">1</kbd> Specialists view</div>
             <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">2</kbd> Actions view</div>
             <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">?</kbd> Toggle shortcuts</div>
+          </div>
+          <div className="mt-2 pt-2 border-t border-[var(--color-border-primary)]">
+            <h4 className="text-[11px] font-medium text-[var(--color-text-primary)] mb-1">Sub-view Navigation (History / Actions)</h4>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-[var(--color-text-secondary)]">
+              <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Escape</kbd> Back (from history/detail)</div>
+              <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">j/k</kbd> Navigate runs/actions</div>
+              <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">gg/G</kbd> First/last run/action</div>
+              <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Enter</kbd> Open run detail</div>
+            </div>
           </div>
         </div>
       )}
@@ -404,6 +417,7 @@ export function SchedulePanel(): React.ReactElement {
               Object.entries(specialists).map(([id, spec]) => [id, spec.name])
             )}
             initialSpecialist={actionsFilterSpecialist}
+            isVimActive={isVimScheduleActive}
           />
         </div>
       ) : (

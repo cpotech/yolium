@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { RefreshCw } from 'lucide-react';
 import type { ActionLogEntry } from '@shared/types/schedule';
 import { formatActionTimestamp, getActionSummary, getActionContent, getExtraFields } from './action-helpers';
@@ -7,17 +7,22 @@ interface ActionsViewProps {
   specialistIds: string[];
   specialistNames: Record<string, string>;
   initialSpecialist?: string | null;
+  isVimActive?: boolean;
 }
 
 export function ActionsView({
   specialistIds,
   specialistNames,
   initialSpecialist,
+  isVimActive = false,
 }: ActionsViewProps): React.ReactElement {
   const [actions, setActions] = useState<ActionLogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filterSpecialist, setFilterSpecialist] = useState<string>(initialSpecialist ?? 'all');
   const [filterActionType, setFilterActionType] = useState<string>('all');
+  const [focusedActionIndex, setFocusedActionIndex] = useState(0);
+  const gPendingRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsLoading(true);
@@ -35,14 +40,6 @@ export function ActionsView({
       });
   }, [specialistIds]);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-8" data-testid="actions-view-loading">
-        <RefreshCw className="w-5 h-5 text-[var(--color-text-muted)] animate-spin" />
-      </div>
-    );
-  }
-
   const actionTypes = [...new Set(actions.map((a) => a.action))].sort();
 
   const filteredActions = actions.filter((action) => {
@@ -50,6 +47,66 @@ export function ActionsView({
     if (filterActionType !== 'all' && action.action !== filterActionType) return false;
     return true;
   });
+
+  // Clamp focusedActionIndex when filteredActions changes
+  useEffect(() => {
+    if (filteredActions.length === 0) {
+      setFocusedActionIndex(0);
+    } else if (focusedActionIndex >= filteredActions.length) {
+      setFocusedActionIndex(filteredActions.length - 1);
+    }
+  }, [filteredActions.length, focusedActionIndex]);
+
+  // Auto-scroll focused card into view
+  useEffect(() => {
+    if (!isVimActive || filteredActions.length === 0) return;
+    const card = containerRef.current?.querySelector('[data-vim-focused="true"]') as HTMLElement | null;
+    card?.scrollIntoView({ block: 'nearest' });
+  }, [focusedActionIndex, isVimActive, filteredActions.length]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
+    if (!isVimActive || filteredActions.length === 0) return;
+
+    if (e.key === 'j' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      setFocusedActionIndex((focusedActionIndex + 1) % filteredActions.length);
+      gPendingRef.current = false;
+      return;
+    }
+    if (e.key === 'k' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      setFocusedActionIndex((focusedActionIndex - 1 + filteredActions.length) % filteredActions.length);
+      gPendingRef.current = false;
+      return;
+    }
+    if (e.key === 'g') {
+      if (gPendingRef.current) {
+        e.preventDefault();
+        setFocusedActionIndex(0);
+        gPendingRef.current = false;
+        return;
+      } else {
+        gPendingRef.current = true;
+        return;
+      }
+    }
+    if (e.key === 'G') {
+      e.preventDefault();
+      setFocusedActionIndex(filteredActions.length - 1);
+      gPendingRef.current = false;
+      return;
+    }
+  }, [isVimActive, filteredActions, focusedActionIndex]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8" data-testid="actions-view-loading">
+        <RefreshCw className="w-5 h-5 text-[var(--color-text-muted)] animate-spin" />
+      </div>
+    );
+  }
 
   if (actions.length === 0) {
     return (
@@ -60,7 +117,7 @@ export function ActionsView({
   }
 
   return (
-    <div className="p-3" data-testid="actions-view">
+    <div ref={containerRef} className="p-3 outline-none" data-testid="actions-view" tabIndex={0} onKeyDown={handleKeyDown}>
       {/* Filters */}
       <div className="flex items-center gap-2 mb-3">
         <select
@@ -96,7 +153,7 @@ export function ActionsView({
 
       {/* Action cards */}
       <div className="space-y-2">
-        {filteredActions.map((action) => {
+        {filteredActions.map((action, index) => {
           const dryRun = action.data.dryRun === true;
           const externalId =
             typeof action.data.externalId === 'string'
@@ -108,12 +165,18 @@ export function ActionsView({
           const content = getActionContent(action.data);
           const extraFields = getExtraFields(action.data);
           const hasExtraFields = Object.keys(extraFields).length > 0;
+          const isFocused = isVimActive && focusedActionIndex === index;
 
           return (
             <div
               key={action.id}
-              className="rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-2"
+              className={`rounded border bg-[var(--color-bg-secondary)] p-2 ${
+                isFocused
+                  ? 'border-[var(--color-accent-primary)] ring-2 ring-[var(--color-accent-primary)] ring-offset-1 ring-offset-[var(--color-bg-primary)]'
+                  : 'border-[var(--color-border-primary)]'
+              }`}
               data-testid={`action-card-${action.id}`}
+              data-vim-focused={isFocused ? 'true' : undefined}
             >
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] text-[var(--color-text-muted)]">
