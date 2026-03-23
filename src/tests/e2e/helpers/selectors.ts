@@ -85,6 +85,13 @@ export const selectors = {
   shortcutsDialog: '[data-testid="shortcuts-dialog"]',
   shortcutsCloseButton: '[data-testid="shortcuts-close"]',
 
+  // Vim mode indicator
+  vimModeIndicator: '[data-testid="vim-mode-indicator"]',
+
+  // Schedule panel
+  schedulePanel: '[data-testid="schedule-panel"]',
+  scheduleShortcutsOverlay: '[data-testid="schedule-shortcuts-overlay"]',
+
   // Build progress overlay
   buildProgressOverlay: '[data-testid="build-progress-overlay"]',
   buildProgressText: '[data-testid="build-progress-text"]',
