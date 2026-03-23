@@ -96,3 +96,10 @@ fi
 if [ -n "$PROJECT_DIR" ] && { [ -f "$PROJECT_DIR/.mcp.json" ] || [ -f "$PROJECT_DIR/mcp.json" ]; }; then
     add_status "🔌 MCP configuration detected. To enable MCP servers, see Yolium documentation."
 fi
+
+# Copy generated CLAUDE.md as AGENTS.md into the project directory so that
+# OpenCode and Codex (which read AGENTS.md from cwd, not CLAUDE.md from ~)
+# also receive Yolium environment instructions.
+if [ -n "$PROJECT_DIR" ] && [ -d "$PROJECT_DIR" ]; then
+    cp /home/agent/CLAUDE.md "$PROJECT_DIR/AGENTS.md"
+fi

@@ -128,6 +128,34 @@ describe('entrypoint.sh', () => {
       expect(entrypointContent).toContain('rm -f /tmp/.git-credentials');
     });
 
+    it('should copy generated CLAUDE.md to AGENTS.md in project directory', () => {
+      expect(entrypointContent).toContain('cp /home/agent/CLAUDE.md "$PROJECT_DIR/AGENTS.md"');
+    });
+
+    it('should create AGENTS.md even when project has no existing AGENTS.md', () => {
+      // The copy should be unconditional — no check for an existing AGENTS.md file
+      const copyLine = 'cp /home/agent/CLAUDE.md "$PROJECT_DIR/AGENTS.md"';
+      const copyIndex = entrypointContent.indexOf(copyLine);
+      expect(copyIndex).toBeGreaterThan(-1);
+
+      // Get the surrounding context (the if-block) to verify there's no -f AGENTS.md guard
+      const blockStart = entrypointContent.lastIndexOf('if ', copyIndex);
+      const block = entrypointContent.slice(blockStart, copyIndex);
+      expect(block).not.toContain('-f "$PROJECT_DIR/AGENTS.md"');
+    });
+
+    it('should not create AGENTS.md when PROJECT_DIR is not set', () => {
+      // The copy must be inside a $PROJECT_DIR guard
+      const copyLine = 'cp /home/agent/CLAUDE.md "$PROJECT_DIR/AGENTS.md"';
+      const copyIndex = entrypointContent.indexOf(copyLine);
+      expect(copyIndex).toBeGreaterThan(-1);
+
+      // Find the enclosing if-block and verify it checks $PROJECT_DIR
+      const blockStart = entrypointContent.lastIndexOf('if ', copyIndex);
+      const block = entrypointContent.slice(blockStart, copyIndex);
+      expect(block).toContain('$PROJECT_DIR');
+    });
+
     it('should include testing instructions for E2E and sample data', () => {
       // CLAUDE.md should include E2E testing, sample data, and authentication instructions
       expect(entrypointContent).toContain('E2E');
