@@ -49,7 +49,7 @@ const COVERED_ACTIONS = new Set([
   'card-down', 'card-up', 'col-left', 'col-right',
   'card-first', 'card-last', 'card-open', 'card-delete',
   'new-item', 'refresh', 'search', 'help',
-  'delete-selected', 'visual-select', 'clear-selection',
+  'delete-selected', 'visual-select', 'clear-selection', 'go-schedule',
   // Tabs
   'tab-next', 'tab-prev', 'tab-activate', 'tab-close',
   'tab-first', 'tab-last', 'tab-new',

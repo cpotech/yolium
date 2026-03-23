@@ -630,6 +630,7 @@ function App(): React.ReactElement {
                            onToggleRecording={whisper.toggleRecording}
                            onOpenModelDialog={whisper.openModelDialog}
                            claudeUsage={claudeUsage}
+                           onOpenSchedule={addScheduleTab}
                          />
                       </ErrorBoundary>
                       <StatusBar
