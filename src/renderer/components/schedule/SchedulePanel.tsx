@@ -33,7 +33,7 @@ interface ScheduleState {
   globalEnabled: boolean;
 }
 
-export function SchedulePanel(): React.ReactElement {
+export function SchedulePanel({ onGoToKanban }: { onGoToKanban?: () => void }): React.ReactElement {
   const [state, setState] = useState<ScheduleState | null>(null);
   const [specialists, setSpecialists] = useState<Record<string, SpecialistInfo>>({});
   const [actionStats, setActionStats] = useState<Record<string, ActionStats>>({});
@@ -233,6 +233,12 @@ export function SchedulePanel(): React.ReactElement {
       }
     }
 
+    if (e.key === 'K') {
+      e.preventDefault();
+      onGoToKanban?.();
+      return;
+    }
+
     if (e.key === 'n') {
       e.preventDefault();
       setEditingSpecialistId(null);
@@ -252,7 +258,7 @@ export function SchedulePanel(): React.ReactElement {
       e.preventDefault();
       setShowShortcutsHelp(prev => !prev);
     }
-  }, [isVimScheduleActive, specialists, focusedSpecialistIndex, state, runningIds, showAddDialog, editingSpecialistId, viewMode, handleTriggerRun, handleToggleSpecialist]);
+  }, [isVimScheduleActive, specialists, focusedSpecialistIndex, state, runningIds, showAddDialog, editingSpecialistId, viewMode, handleTriggerRun, handleToggleSpecialist, onGoToKanban]);
 
   if (isLoading) {
     return (

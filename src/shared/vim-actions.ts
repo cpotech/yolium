@@ -102,6 +102,7 @@ export const VIM_ACTIONS: VimAction[] = [
   // bindings as the specialist grid — context determines which handler runs.
   // Documented in SchedulePanel shortcuts overlay under "Sub-view Navigation".
   { id: 'run-back', key: 'Backspace', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Back (from history/detail)' },
+  { id: 'go-kanban', key: 'K', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Go to kanban board' },
 
   // --- Status bar zone ---
   { id: 'status-next', key: 'l', zone: 'status-bar', mode: 'NORMAL', category: 'vim', group: 'Status Bar', description: 'Next button' },

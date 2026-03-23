@@ -656,7 +656,7 @@ function App(): React.ReactElement {
                       className={`absolute inset-0 flex flex-col ${isActive ? '' : 'hidden'}`}
                     >
                       <div className="flex-1 min-h-0 relative overflow-hidden">
-                        <SchedulePanel />
+                        <SchedulePanel onGoToKanban={handleGoToKanban} />
                       </div>
                       <StatusBar
                         contextLabel="Scheduled Agents"

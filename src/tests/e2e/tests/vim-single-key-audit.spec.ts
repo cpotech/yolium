@@ -61,7 +61,7 @@ const COVERED_ACTIONS = new Set([
   'specialist-run', 'specialist-toggle', 'specialist-history',
   'specialist-configure', 'specialist-add',
   'specialist-view-specialists', 'specialist-view-actions',
-  'schedule-help', 'run-back',
+  'schedule-help', 'run-back', 'go-kanban',
   // Status bar
   'status-next', 'status-prev', 'status-activate',
   'status-settings', 'status-project', 'status-stop',
