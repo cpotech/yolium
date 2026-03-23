@@ -43,8 +43,6 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'zone-tabs', key: 't', zone: 'global', mode: 'NORMAL', category: 'vim', group: 'Zone Switching', description: 'Focus tab bar' },
   { id: 'zone-content', key: 'c', zone: 'global', mode: 'NORMAL', category: 'vim', group: 'Zone Switching', description: 'Focus content' },
   { id: 'zone-status', key: 's', zone: 'global', mode: 'NORMAL', category: 'vim', group: 'Zone Switching', description: 'Focus status bar' },
-  { id: 'zone-cycle-forward', key: 'Tab', zone: 'global', mode: 'NORMAL', category: 'vim', group: 'Zone Switching', description: 'Cycle zones forward' },
-  { id: 'zone-cycle-backward', key: 'Shift+Tab', zone: 'global', mode: 'NORMAL', category: 'vim', group: 'Zone Switching', description: 'Cycle zones backward' },
   { id: 'go-to-kanban', key: 'b', zone: 'global', mode: 'NORMAL', category: 'vim', group: 'Zone Switching', description: 'Go to kanban board' },
   { id: 'leader-key', key: 'Space', zone: 'global', mode: 'NORMAL', category: 'vim', group: 'Zone Switching', description: 'Leader key (which-key)' },
   { id: 'show-shortcuts-dialog', key: '?', zone: 'global', mode: 'NORMAL', category: 'vim', group: 'Zone Switching', description: 'Keyboard shortcuts dialog' },

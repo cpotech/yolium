@@ -189,7 +189,7 @@ describe('VimModeProvider dialog suspension', () => {
     expect(screen.getByTestId('vim-zone')).toHaveTextContent('content')
   })
 
-  it('should ignore Tab-based zone cycling while the new item dialog is open', () => {
+  it('should ignore Tab while the new item dialog is open (Tab cycling removed globally)', () => {
     renderWithVim(
       <NewItemDialog
         isOpen={true}
@@ -316,7 +316,7 @@ describe('ItemDetailDialog vim-aware navigation', () => {
     expect(screen.getByTestId('vim-zone')).toHaveTextContent('content')
   })
 
-  it('should still block Tab-based zone cycling while the item detail dialog is open', () => {
+  it('should not change zone with Tab while the item detail dialog is open (Tab cycling removed globally)', () => {
     renderItemDetailDialog()
 
     fireEvent.keyDown(document, { key: 'Tab' })

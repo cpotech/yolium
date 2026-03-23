@@ -87,7 +87,7 @@ export function WhichKeyPopup({ zone, onAction, onDismiss }: WhichKeyPopupProps)
       className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)] rounded-lg shadow-xl p-3 min-w-[280px] max-w-[520px]"
     >
       <div className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
-        {zone} shortcuts
+        Leader
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-1">
         {actions.map(action => (
