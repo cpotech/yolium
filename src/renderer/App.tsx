@@ -36,6 +36,25 @@ import { ErrorBoundary } from '@renderer/components/ErrorBoundary';
 import { VimModeProvider } from '@renderer/context/VimModeContext';
 import { useConfirmDialog } from '@renderer/hooks/useConfirmDialog';
 import { ConfirmDialog } from '@renderer/components/shared/ConfirmDialog';
+import { WhichKeyPopup } from '@renderer/components/WhichKeyPopup';
+import { useVimModeContext } from '@renderer/context/VimModeContext';
+
+function WhichKeyPopupWired(): React.ReactElement | null {
+  const vim = useVimModeContext();
+  if (!vim.leaderPending || !vim.leaderZone) return null;
+
+  return (
+    <WhichKeyPopup
+      zone={vim.leaderZone}
+      onAction={() => {
+        // Action is dispatched by the zone's own keydown handler;
+        // we just dismiss the popup here.
+        vim.clearLeader();
+      }}
+      onDismiss={vim.clearLeader}
+    />
+  );
+}
 
 function App(): React.ReactElement {
   // Restore kanban tabs that were open in the previous session
@@ -763,6 +782,8 @@ function App(): React.ReactElement {
       {/* Shared confirm dialogs */}
       <ConfirmDialog {...confirmDialogProps} />
       <ConfirmDialog {...docker.confirmDialogProps} />
+      {/* Which-key popup (leader key) */}
+      <WhichKeyPopupWired />
     </div>
     </VimModeProvider>
   );

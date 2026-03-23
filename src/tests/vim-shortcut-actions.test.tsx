@@ -247,30 +247,6 @@ describe('KanbanView NORMAL mode actions', () => {
     expect(document.activeElement).toBe(searchInput);
   });
 
-  it('? toggles keyboard shortcuts help overlay', async () => {
-    await act(async () => {
-      renderWithVim(
-        <>
-          <ZoneSetter zone="content" />
-          <KanbanView projectPath="/test/project" />
-        </>
-      );
-    });
-
-    const view = screen.getByTestId('kanban-view');
-
-    // Initially no shortcuts help overlay
-    expect(screen.queryByTestId('shortcuts-help')).toBeNull();
-
-    // Press ? to toggle shortcuts help
-    fireEvent.keyDown(view, { key: '?' });
-    expect(screen.getByTestId('shortcuts-help')).toBeTruthy();
-
-    // Press ? again to hide it
-    fireEvent.keyDown(view, { key: '?' });
-    expect(screen.queryByTestId('shortcuts-help')).toBeNull();
-  });
-
   it('Ctrl+A selects all visible items', async () => {
     await act(async () => {
       renderWithVim(

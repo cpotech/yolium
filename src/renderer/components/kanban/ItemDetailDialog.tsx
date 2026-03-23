@@ -274,6 +274,14 @@ export function ItemDetailDialog({
 
     // NORMAL mode navigation and sidebar shortcuts
     if (vim.mode === 'NORMAL') {
+      // 0. Space → leader key for current dialog zone
+      if (event.key === ' ') {
+        event.preventDefault()
+        const zone = focusZone === 'sidebar' ? 'dialog-sidebar' : 'dialog'
+        vim.triggerLeader(zone)
+        return
+      }
+
       // 1. Tab zone toggle — always works regardless of focused element
       if (event.key === 'Tab' && !event.shiftKey) {
         event.preventDefault()

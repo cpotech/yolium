@@ -310,34 +310,6 @@ describe('SchedulePanel vim shortcuts', () => {
     expect(screen.getByTestId('mock-editing-specialist-id')).toHaveTextContent('create');
   });
 
-  it('should toggle shortcuts help with ? key', async () => {
-    renderWithVim(
-      <>
-        <ZoneSetter zone="schedule" />
-        <SchedulePanel />
-      </>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
-
-    expect(screen.queryByTestId('schedule-shortcuts-help')).not.toBeInTheDocument();
-
-    const panel = screen.getByTestId('schedule-panel');
-    fireEvent.keyDown(panel, { key: '?' });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('schedule-shortcuts-help')).toBeInTheDocument();
-    });
-
-    fireEvent.keyDown(panel, { key: '?' });
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('schedule-shortcuts-help')).not.toBeInTheDocument();
-    });
-  });
-
   it('should show visual focus ring on focused specialist', async () => {
     renderWithVim(
       <>

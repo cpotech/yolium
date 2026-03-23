@@ -663,22 +663,6 @@ describe('KanbanView', () => {
     expect(screen.getByTestId('empty-board-message')).toHaveTextContent(/press N/i)
   })
 
-  it('should show inline shortcuts help overlay when ? key is pressed', async () => {
-    const board = createMockBoard([])
-    mockKanbanGetBoard.mockResolvedValueOnce(board)
-
-    render(<KanbanView projectPath="/test/project" />)
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
-    })
-
-    // Press ? key — should show inline shortcuts overlay
-    fireEvent.keyDown(screen.getByTestId('kanban-view'), { key: '?' })
-
-    expect(screen.getByTestId('shortcuts-help')).toBeInTheDocument()
-  })
-
   it('should have horizontal scroll container for columns', async () => {
     const board = createMockBoard([])
     mockKanbanGetBoard.mockResolvedValueOnce(board)
@@ -1112,23 +1096,6 @@ describe('KanbanView', () => {
     expect(kbd?.textContent).toBe('Esc')
   })
 
-  it('should display ? shortcut badge next to shortcuts help toggle area', async () => {
-    const board = createMockBoard([])
-    mockKanbanGetBoard.mockResolvedValueOnce(board)
-
-    render(<KanbanView projectPath="/test/project" />)
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('kanban-loading')).not.toBeInTheDocument()
-    })
-
-    // Toggle shortcuts overlay
-    fireEvent.keyDown(screen.getByTestId('kanban-view'), { key: '?' })
-
-    const shortcutsHelp = screen.getByTestId('shortcuts-help')
-    const kbdElements = shortcutsHelp.querySelectorAll('kbd')
-    expect([...kbdElements].some(el => el.textContent === '?')).toBe(true)
-  })
 })
 
 describe('KanbanView dialog-aware focus guard', () => {

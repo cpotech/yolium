@@ -6,6 +6,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useVimMode, type VimMode, type VimZone, type UseVimModeOptions } from '@renderer/hooks/useVimMode';
+import type { VimActionZone } from '@shared/vim-actions';
 
 interface VimModeContextValue {
   mode: VimMode;
@@ -15,6 +16,14 @@ interface VimModeContextValue {
   enterVisualMode: () => void;
   exitToNormal: () => void;
   suspendNavigation: () => () => void;
+  /** Whether the leader key (Space) has been pressed and is awaiting a follow-up key */
+  leaderPending: boolean;
+  /** The zone that was active when leader was triggered (may be a dialog zone) */
+  leaderZone: VimActionZone | null;
+  /** Clear leader state (dismiss which-key popup) */
+  clearLeader: () => void;
+  /** Trigger leader mode for an arbitrary zone (used by dialogs to bypass dialogOpen guard) */
+  triggerLeader: (zone: VimActionZone) => void;
 }
 
 const VimModeContext = createContext<VimModeContextValue | null>(null);
@@ -93,6 +102,10 @@ export function VimModeProvider({
         enterVisualMode: vim.enterVisualMode,
         exitToNormal: vim.exitToNormal,
         suspendNavigation,
+        leaderPending: vim.leaderPending,
+        leaderZone: vim.leaderZone,
+        clearLeader: vim.clearLeader,
+        triggerLeader: vim.triggerLeader,
       }}
     >
       {children}
@@ -124,6 +137,10 @@ export function useVimModeContext(): VimModeContextValue {
       enterVisualMode: () => {},
       exitToNormal: () => {},
       suspendNavigation: () => noopRelease,
+      leaderPending: false,
+      leaderZone: null,
+      clearLeader: () => {},
+      triggerLeader: () => {},
     };
   }
   return context;
