@@ -32,6 +32,11 @@ describe('code-agent', () => {
     expect(agent.tools).toContain('Edit');
   });
 
+  it('should include Agent tool for sub-agent parallelism', () => {
+    const agent = parseAgentDefinition(agentMarkdown);
+    expect(agent.tools).toContain('Agent');
+  });
+
   it('should require in-scope dead-code removal and simplification', () => {
     const agent = parseAgentDefinition(agentMarkdown);
     expect(agent.systemPrompt).toContain('Remove dead code and unnecessary complexity encountered in the touched scope');

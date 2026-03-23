@@ -31,6 +31,11 @@ describe('plan-agent', () => {
     expect(agent.tools).toContain('Edit');
   });
 
+  it('should include Agent tool for sub-agent parallelism', () => {
+    const agent = parseAgentDefinition(agentMarkdown);
+    expect(agent.tools).toContain('Agent');
+  });
+
   it('should require simplification and dead-code analysis in planning', () => {
     const agent = parseAgentDefinition(agentMarkdown);
     expect(agent.systemPrompt).toContain('in-scope simplification/dead-code opportunities');
