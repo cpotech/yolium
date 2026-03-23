@@ -131,11 +131,13 @@ export function GitDiffDialog({
   useSuspendVimNavigation(isOpen)
 
   const previousFocusRef = useRef<HTMLElement | null>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   // Capture focus on open, restore on close
   useEffect(() => {
     if (isOpen) {
       previousFocusRef.current = document.activeElement as HTMLElement | null
+      setTimeout(() => dialogRef.current?.focus(), 0)
     }
     return () => {
       previousFocusRef.current?.focus()
@@ -267,8 +269,10 @@ export function GitDiffDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex flex-col bg-[var(--color-bg-secondary)]"
+      ref={dialogRef}
+      className="fixed inset-0 z-[70] flex flex-col bg-[var(--color-bg-secondary)] outline-none"
       onKeyDown={handleKeyDown}
+      tabIndex={-1}
       data-testid="git-diff-dialog"
     >
       {/* Header */}
