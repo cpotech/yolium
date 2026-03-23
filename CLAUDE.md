@@ -329,6 +329,7 @@ E2E tests live in `src/tests/e2e/tests/`:
 - User-facing workflows (tab creation, settings changes)
 - Integration points (Docker, terminal, IPC)
 - **Keyboard shortcuts and vim actions** — any new or modified shortcut must have an E2E test verifying the actual keyboard interaction works end-to-end (not just unit-level synthetic events). Use Playwright's `keyboard.press()` to simulate real key presses. Reference existing patterns in `src/tests/e2e/tests/vim-shortcut-explorer.spec.ts` and `src/tests/e2e/tests/dialog-shortcuts.spec.ts`.
+- **Vim audit coverage** — when adding a new single-key vim action to `VIM_ACTIONS` in `src/shared/vim-actions.ts`, you MUST also add it to the `COVERED_ACTIONS` set in `src/tests/e2e/tests/vim-single-key-audit.spec.ts`. The manifest completeness test will fail otherwise. The bidirectional audit (`src/tests/e2e/tests/vim-single-key-audit.spec.ts`) automatically verifies all declared keys produce DOM effects (forward) and all undeclared keys are inert (reverse).
 
 ### E2E Test Isolation
 

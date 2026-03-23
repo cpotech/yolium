@@ -106,6 +106,7 @@ Each spec string should be a concrete, implementable `it(...)` or `test(...)` de
 - Integration-level tests if appropriate
 - Tests for any cleanup/simplification changes in the plan
 - **E2E tests for keyboard shortcuts** — if the plan adds or modifies any keyboard shortcut or vim action, include E2E test specs (in `src/tests/e2e/tests/`) that verify the shortcut works via Playwright `keyboard.press()`. Unit tests alone are not sufficient for keyboard interactions.
+- **Vim audit coverage** — if the plan adds new single-key vim actions to `VIM_ACTIONS`, include a step to add them to the `COVERED_ACTIONS` set in `src/tests/e2e/tests/vim-single-key-audit.spec.ts`. The manifest completeness test will fail otherwise.
 
 Output the test specs as a protocol message:
 

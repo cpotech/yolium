@@ -101,6 +101,7 @@ Output these two messages (with your real changes):
 - Add any additional tests needed for comprehensive coverage
 - If the project has E2E tests, write E2E tests too — use real samples from `/Samples` when available
 - **Keyboard shortcuts require E2E tests** — any new or modified keyboard shortcut/vim action MUST have an E2E test using Playwright's `keyboard.press()` to verify the real interaction works. Add tests to the appropriate file in `src/tests/e2e/tests/` (e.g., `vim-shortcut-explorer.spec.ts` for vim actions, `dialog-shortcuts.spec.ts` for dialog shortcuts). Unit tests alone are not sufficient for keyboard shortcuts.
+- **Vim audit coverage** — when adding a new single-key vim action to `VIM_ACTIONS`, also add it to the `COVERED_ACTIONS` set in `src/tests/e2e/tests/vim-single-key-audit.spec.ts`. The manifest completeness test fails if any single-key vim action is missing from this set.
 
 Output: `@@YOLIUM:{"type":"progress","step":"additional-tests","detail":"Added N additional tests in test-file.ts"}`
 
