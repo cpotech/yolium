@@ -66,9 +66,14 @@ export function VimModeProvider({
   const effectiveDialogOpen = dialogOpen || dialogSuspensionCount > 0;
   const vim = useVimMode({ dialogOpen: effectiveDialogOpen, isTerminalActive, onZoneChange, onGoToKanban, onShowShortcuts });
 
-  // Attach global keydown listener
+  // Stable ref for the handler so we register the listener once
+  const vimRef = useRef(vim);
+  vimRef.current = vim;
+
+  // Attach global keydown listener once (ref-based to avoid re-registration)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const v = vimRef.current;
       // If a zone-specific handler already processed this key, don't override
       if (e.defaultPrevented) return;
       // Don't intercept keys when focus is on an input/textarea/select
@@ -80,17 +85,17 @@ export function VimModeProvider({
         target.isContentEditable
       ) {
         // Still allow Escape to exit to NORMAL from any element
-        if (e.key === 'Escape' && vim.mode === 'INSERT') {
-          vim.handleKeyDown(e);
+        if (e.key === 'Escape' && v.mode === 'INSERT') {
+          v.handleKeyDown(e);
         }
         return;
       }
-      vim.handleKeyDown(e);
+      v.handleKeyDown(e);
     };
 
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [vim]);
+  }, []);
 
   return (
     <VimModeContext.Provider

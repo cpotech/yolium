@@ -10,7 +10,6 @@ import type { VimActionZone } from '@shared/vim-actions';
 describe('WhichKeyPopup', () => {
   const defaultProps = {
     zone: 'content' as VimActionZone,
-    onAction: vi.fn(),
     onDismiss: vi.fn(),
   };
 
@@ -36,13 +35,13 @@ describe('WhichKeyPopup', () => {
     expect(popup.textContent).not.toContain('Ctrl+Click');
   });
 
-  it('should call onAction when a valid key is pressed', () => {
-    const onAction = vi.fn();
-    render(<WhichKeyPopup {...defaultProps} zone="content" onAction={onAction} />);
+  it('should dismiss and let key propagate when a valid action key is pressed', () => {
+    const onDismiss = vi.fn();
+    render(<WhichKeyPopup {...defaultProps} zone="content" onDismiss={onDismiss} />);
 
-    // Press 'j' which is card-down in content zone
+    // Press 'j' which is card-down in content zone — popup dismisses, key propagates
     fireEvent.keyDown(document, { key: 'j' });
-    expect(onAction).toHaveBeenCalledWith('j');
+    expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
   it('should call onDismiss when Escape is pressed', () => {

@@ -46,11 +46,6 @@ function WhichKeyPopupWired(): React.ReactElement | null {
   return (
     <WhichKeyPopup
       zone={vim.leaderZone}
-      onAction={() => {
-        // Action is dispatched by the zone's own keydown handler;
-        // we just dismiss the popup here.
-        vim.clearLeader();
-      }}
       onDismiss={vim.clearLeader}
     />
   );

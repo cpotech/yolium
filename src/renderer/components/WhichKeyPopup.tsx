@@ -10,13 +10,11 @@ import { VIM_ACTIONS, type VimActionZone } from '@shared/vim-actions';
 interface WhichKeyPopupProps {
   /** The zone to show actions for */
   zone: VimActionZone;
-  /** Called when a valid action key is pressed */
-  onAction: (key: string) => void;
   /** Called when the popup should be dismissed */
   onDismiss: () => void;
 }
 
-export function WhichKeyPopup({ zone, onAction, onDismiss }: WhichKeyPopupProps): React.ReactElement {
+export function WhichKeyPopup({ zone, onDismiss }: WhichKeyPopupProps): React.ReactElement {
   const popupRef = useRef<HTMLDivElement>(null);
 
   // Get actions for this zone — vim category, NORMAL mode, single-key only
@@ -31,42 +29,26 @@ export function WhichKeyPopup({ zone, onAction, onDismiss }: WhichKeyPopupProps)
     );
   }, [zone]);
 
-  // Build a set of valid keys for quick lookup
-  const validKeys = useMemo(() => {
-    return new Set(actions.map(a => a.key));
-  }, [actions]);
-
-  // Keyboard handler
+  // Display-only keyboard handler: only consume Escape/Ctrl+Q,
+  // all other keys dismiss popup and propagate to zone handlers (LazyVim-style).
+  // Space is excluded — the useVimMode toggle handles Space dismissal directly.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Ctrl+Q dismisses
-      if (e.ctrlKey && e.key === 'q') {
+      if (e.key === 'Escape' || (e.ctrlKey && e.key === 'q')) {
         e.preventDefault();
         e.stopPropagation();
         onDismiss();
         return;
       }
-
-      // Escape dismisses
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        onDismiss();
-        return;
-      }
-
-      // Valid action key — execute and dismiss
-      if (validKeys.has(e.key)) {
-        e.preventDefault();
-        e.stopPropagation();
-        onAction(e.key);
-        return;
-      }
+      // Space toggle is handled by useVimMode — don't interfere
+      if (e.key === ' ') return;
+      // Any other key: dismiss popup, let event propagate to zone handlers
+      onDismiss();
     };
 
     document.addEventListener('keydown', handler, true);
     return () => document.removeEventListener('keydown', handler, true);
-  }, [validKeys, onAction, onDismiss]);
+  }, [onDismiss]);
 
   // Click outside dismisses
   useEffect(() => {
