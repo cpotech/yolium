@@ -261,7 +261,7 @@ describe('useVimMode', () => {
     expect(result.current.leaderZone).toBe('sidebar');
   });
 
-  it('should activate leader mode with leaderZone=sidebar when Space pressed and activeZone is content', () => {
+  it('should activate leader mode with leaderZone=content when Space pressed and activeZone is content', () => {
     const { result } = renderHook(() => useVimMode());
     // Default activeZone is 'content'
     expect(result.current.activeZone).toBe('content');
@@ -272,10 +272,10 @@ describe('useVimMode', () => {
     });
 
     expect(result.current.leaderPending).toBe(true);
-    expect(result.current.leaderZone).toBe('sidebar');
+    expect(result.current.leaderZone).toBe('content');
   });
 
-  it('should activate leader mode with leaderZone=sidebar when Space pressed and activeZone is tabs', () => {
+  it('should activate leader mode with leaderZone=tabs when Space pressed and activeZone is tabs', () => {
     const { result } = renderHook(() => useVimMode());
 
     act(() => {
@@ -290,10 +290,10 @@ describe('useVimMode', () => {
     });
 
     expect(result.current.leaderPending).toBe(true);
-    expect(result.current.leaderZone).toBe('sidebar');
+    expect(result.current.leaderZone).toBe('tabs');
   });
 
-  it('should activate leader mode with leaderZone=sidebar when Space pressed and activeZone is status-bar', () => {
+  it('should activate leader mode with leaderZone=status-bar when Space pressed and activeZone is status-bar', () => {
     const { result } = renderHook(() => useVimMode());
 
     act(() => {
@@ -308,7 +308,7 @@ describe('useVimMode', () => {
     });
 
     expect(result.current.leaderPending).toBe(true);
-    expect(result.current.leaderZone).toBe('sidebar');
+    expect(result.current.leaderZone).toBe('status-bar');
   });
 
   it('should clear leader state when clearLeader is called', () => {

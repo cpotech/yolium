@@ -189,7 +189,7 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
         clearLeader();
       } else {
         setLeaderPending(true);
-        setLeaderZone('sidebar');
+        setLeaderZone(activeZone);
       }
       return;
     }

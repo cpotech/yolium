@@ -37,6 +37,17 @@ export function KeyboardShortcutsDialog({
     [onClose, scrollKeyDown]
   );
 
+  // Focus sentinel: reclaim focus when it escapes the dialog container
+  const handleBlur = useCallback((event: React.FocusEvent) => {
+    if (!event.relatedTarget || !dialogRef.current?.contains(event.relatedTarget as Node)) {
+      requestAnimationFrame(() => {
+        if (isOpen && dialogRef.current && !dialogRef.current.contains(document.activeElement)) {
+          dialogRef.current.focus();
+        }
+      });
+    }
+  }, [isOpen]);
+
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent) => {
       if (e.target === e.currentTarget) {
@@ -56,6 +67,7 @@ export function KeyboardShortcutsDialog({
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60"
       onKeyDown={handleKeyDown}
       onClick={handleBackdropClick}
+      onBlur={handleBlur}
       tabIndex={-1}
     >
       <div className="bg-[var(--color-bg-secondary)] rounded-lg shadow-xl border border-[var(--color-border-primary)] p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto" ref={scrollRef} data-testid="shortcuts-dialog">
