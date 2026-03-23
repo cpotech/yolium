@@ -94,6 +94,7 @@ export function KeyboardShortcutsDialog({
           >
             OK
           </button>
+          <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">Space</kbd>
           <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">Ctrl+Q</kbd>
         </div>
       </div>

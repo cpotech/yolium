@@ -432,7 +432,7 @@ function App(): React.ReactElement {
 
   // Normal app UI when Docker is ready
   return (
-    <VimModeProvider onGoToKanban={handleGoToKanban}>
+    <VimModeProvider onGoToKanban={handleGoToKanban} onShowShortcuts={dialogs.openShortcutsDialog}>
     <div className="flex flex-col h-screen bg-[var(--color-bg-primary)]">
       {/* Path input dialog */}
       <PathInputDialog

@@ -255,6 +255,17 @@ describe('VIM_ACTIONS manifest consistency', () => {
     expect(keyMap.get('R')).toBe('agent-resume-sidebar');
   });
 
+  it('should include show-shortcuts action with Space key in global zone', () => {
+    const action = VIM_ACTIONS.find(a => a.id === 'show-shortcuts');
+    expect(action).toBeDefined();
+    expect(action?.key).toBe('Space');
+    expect(action?.zone).toBe('global');
+    expect(action?.mode).toBe('NORMAL');
+    expect(action?.category).toBe('vim');
+    expect(action?.group).toBe('Zone Switching');
+    expect(action?.description).toContain('shortcut');
+  });
+
   it('manifest should include log-toggle-sidebar action with key l in dialog-sidebar zone', () => {
     const action = VIM_ACTIONS.find(a => a.id === 'log-toggle-sidebar');
     expect(action).toBeDefined();
