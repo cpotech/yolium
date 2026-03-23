@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Clock, Play, History, Settings, Power, PowerOff, RefreshCw, AlertTriangle, ChevronDown, Plus, RotateCcw, Keyboard, X } from 'lucide-react';
+import { Clock, Play, History, Settings, Power, PowerOff, RefreshCw, AlertTriangle, ChevronDown, Plus, RotateCcw, X } from 'lucide-react';
 import { RunHistoryTable } from './RunHistoryTable';
 import { ActionsView } from './ActionsView';
 import { AddSpecialistDialog } from './AddSpecialistDialog';
@@ -47,7 +47,6 @@ export function SchedulePanel({ onGoToKanban }: { onGoToKanban?: () => void }): 
   const [viewMode, setViewMode] = useState<'specialists' | 'actions'>('specialists');
   const [actionsFilterSpecialist, setActionsFilterSpecialist] = useState<string | null>(null);
   const [focusedSpecialistIndex, setFocusedSpecialistIndex] = useState(0);
-  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const viewRef = useRef<HTMLDivElement>(null);
   const gPendingRef = useRef(false);
   const { confirm: confirmAction, dialogProps: confirmDialogProps } = useConfirmDialog();
@@ -254,10 +253,6 @@ export function SchedulePanel({ onGoToKanban }: { onGoToKanban?: () => void }): 
       setViewMode('actions');
       setActionsFilterSpecialist(null);
     }
-    if (e.key === '?') {
-      e.preventDefault();
-      setShowShortcutsHelp(prev => !prev);
-    }
   }, [isVimScheduleActive, specialists, focusedSpecialistIndex, state, runningIds, showAddDialog, editingSpecialistId, viewMode, handleTriggerRun, handleToggleSpecialist, onGoToKanban]);
 
   if (isLoading) {
@@ -295,46 +290,6 @@ export function SchedulePanel({ onGoToKanban }: { onGoToKanban?: () => void }): 
 
   return (
     <div ref={viewRef} data-testid="schedule-panel" data-vim-zone="schedule" tabIndex={0} onKeyDown={handleKeyDown} className="h-full flex flex-col overflow-hidden outline-none">
-      {/* Shortcuts help overlay */}
-      {showShortcutsHelp && (
-        <div
-          data-testid="schedule-shortcuts-help"
-          className="px-4 py-3 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border-primary)] text-sm"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-medium text-[var(--color-text-primary)] flex items-center gap-2">
-              <Keyboard size={14} />
-              Keyboard Shortcuts
-            </h3>
-            <button onClick={() => setShowShortcutsHelp(false)} className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">
-              <X size={14} />
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-[var(--color-text-secondary)]">
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">J</kbd> Next specialist</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">K</kbd> Previous specialist</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">gg</kbd> First specialist</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">G</kbd> Last specialist</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">R</kbd> Trigger run</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">T</kbd> Toggle enabled</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Enter</kbd> Open history</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">C</kbd> Configure specialist</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">N</kbd> Add specialist</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">1</kbd> Specialists view</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">2</kbd> Actions view</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">?</kbd> Toggle shortcuts</div>
-          </div>
-          <div className="mt-2 pt-2 border-t border-[var(--color-border-primary)]">
-            <h4 className="text-[11px] font-medium text-[var(--color-text-primary)] mb-1">Sub-view Navigation (History / Actions)</h4>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-[var(--color-text-secondary)]">
-              <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Escape</kbd> Back (from history/detail)</div>
-              <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">j/k</kbd> Navigate runs/actions</div>
-              <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">gg/G</kbd> First/last run/action</div>
-              <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Enter</kbd> Open run detail</div>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-[var(--color-border-primary)]">
         <div className="flex items-center gap-2">

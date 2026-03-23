@@ -232,19 +232,141 @@ describe('useVimMode', () => {
     expect(onGoToKanban).not.toHaveBeenCalled();
   });
 
-  it('should call onShowShortcuts when Space is pressed in NORMAL mode', () => {
-    const onShowShortcuts = vi.fn();
-    const { result } = renderHook(() => useVimMode({ onShowShortcuts }));
+  // --- Leader-key state machine tests ---
+
+  it('should set leaderPending=true when Space pressed in NORMAL mode', () => {
+    const { result } = renderHook(() => useVimMode());
 
     act(() => {
       const event = new KeyboardEvent('keydown', { key: ' ' });
       result.current.handleKeyDown(event);
     });
 
+    expect(result.current.leaderPending).toBe(true);
+  });
+
+  it('should store leaderZone as current activeZone when entering leader', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    // Switch to sidebar first
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'e' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.activeZone).toBe('sidebar');
+
+    // Press Space to enter leader
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: ' ' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(result.current.leaderPending).toBe(true);
+    expect(result.current.leaderZone).toBe('sidebar');
+  });
+
+  it('should clear leader state when clearLeader is called', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    // Enter leader
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: ' ' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.leaderPending).toBe(true);
+
+    // Clear leader
+    act(() => {
+      result.current.clearLeader();
+    });
+
+    expect(result.current.leaderPending).toBe(false);
+    expect(result.current.leaderZone).toBeNull();
+  });
+
+  it('should auto-clear leader state after timeout (2s)', () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useVimMode());
+
+    // Enter leader
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: ' ' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.leaderPending).toBe(true);
+
+    // Advance timer past 2s
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    expect(result.current.leaderPending).toBe(false);
+    expect(result.current.leaderZone).toBeNull();
+
+    vi.useRealTimers();
+  });
+
+  it('should not enter leader when dialogOpen is true', () => {
+    const { result } = renderHook(() => useVimMode({ dialogOpen: true }));
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: ' ' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(result.current.leaderPending).toBe(false);
+  });
+
+  it('should not enter leader in INSERT mode', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    // Enter INSERT mode
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'i' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.mode).toBe('INSERT');
+
+    // Press Space - should not trigger leader
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: ' ' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(result.current.leaderPending).toBe(false);
+  });
+
+  it('should toggle leader off when Space pressed while leaderPending', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    // Enter leader
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: ' ' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.leaderPending).toBe(true);
+
+    // Press Space again to toggle off
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: ' ' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.leaderPending).toBe(false);
+  });
+
+  it('should call onShowShortcuts when ? is pressed in NORMAL mode', () => {
+    const onShowShortcuts = vi.fn();
+    const { result } = renderHook(() => useVimMode({ onShowShortcuts }));
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: '?' });
+      result.current.handleKeyDown(event);
+    });
+
     expect(onShowShortcuts).toHaveBeenCalledTimes(1);
   });
 
-  it('should not call onShowShortcuts when Space is pressed in INSERT mode', () => {
+  it('should not call onShowShortcuts when ? is pressed in INSERT mode', () => {
     const onShowShortcuts = vi.fn();
     const { result } = renderHook(() => useVimMode({ onShowShortcuts }));
 
@@ -255,30 +377,56 @@ describe('useVimMode', () => {
     });
     expect(result.current.mode).toBe('INSERT');
 
-    // Press Space - should not trigger
+    // Press ? - should not trigger
     act(() => {
-      const event = new KeyboardEvent('keydown', { key: ' ' });
+      const event = new KeyboardEvent('keydown', { key: '?' });
       result.current.handleKeyDown(event);
     });
 
     expect(onShowShortcuts).not.toHaveBeenCalled();
   });
 
-  it('should not call onShowShortcuts when Space is pressed and dialogOpen is true', () => {
-    const onShowShortcuts = vi.fn();
-    const { result } = renderHook(() => useVimMode({ onShowShortcuts, dialogOpen: true }));
+  it('should trigger leader for arbitrary zone via triggerLeader', () => {
+    const { result } = renderHook(() => useVimMode());
 
     act(() => {
-      const event = new KeyboardEvent('keydown', { key: ' ' });
-      result.current.handleKeyDown(event);
+      result.current.triggerLeader('dialog-sidebar');
     });
 
-    expect(onShowShortcuts).not.toHaveBeenCalled();
+    expect(result.current.leaderPending).toBe(true);
+    expect(result.current.leaderZone).toBe('dialog-sidebar');
   });
 
-  it('should not call onShowShortcuts when Space is pressed in VISUAL mode', () => {
-    const onShowShortcuts = vi.fn();
-    const { result } = renderHook(() => useVimMode({ onShowShortcuts }));
+  it('should toggle leader off when triggerLeader called while leaderPending', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    // Enter leader
+    act(() => {
+      result.current.triggerLeader('dialog-sidebar');
+    });
+    expect(result.current.leaderPending).toBe(true);
+
+    // Toggle off
+    act(() => {
+      result.current.triggerLeader('dialog-sidebar');
+    });
+    expect(result.current.leaderPending).toBe(false);
+    expect(result.current.leaderZone).toBeNull();
+  });
+
+  it('should allow triggerLeader even when dialogOpen is true', () => {
+    const { result } = renderHook(() => useVimMode({ dialogOpen: true }));
+
+    act(() => {
+      result.current.triggerLeader('dialog-sidebar');
+    });
+
+    expect(result.current.leaderPending).toBe(true);
+    expect(result.current.leaderZone).toBe('dialog-sidebar');
+  });
+
+  it('should not enter leader in VISUAL mode', () => {
+    const { result } = renderHook(() => useVimMode());
 
     // Enter VISUAL mode
     act(() => {
@@ -287,12 +435,12 @@ describe('useVimMode', () => {
     });
     expect(result.current.mode).toBe('VISUAL');
 
-    // Press Space - should not trigger
+    // Press Space - should not trigger leader
     act(() => {
       const event = new KeyboardEvent('keydown', { key: ' ' });
       result.current.handleKeyDown(event);
     });
 
-    expect(onShowShortcuts).not.toHaveBeenCalled();
+    expect(result.current.leaderPending).toBe(false);
   });
 });

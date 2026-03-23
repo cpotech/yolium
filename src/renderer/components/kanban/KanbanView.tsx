@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { FolderOpen, RefreshCw, Plus, Loader2, X, AlertTriangle, Search, GitBranch, Trash2, CheckSquare, Keyboard } from 'lucide-react'
+import { FolderOpen, RefreshCw, Plus, Loader2, X, AlertTriangle, Search, GitBranch, Trash2, CheckSquare } from 'lucide-react'
 import { KanbanColumn } from './KanbanColumn'
 import { NewItemDialog } from './NewItemDialog'
 import { ItemDetailDialog } from './ItemDetailDialog'
@@ -75,7 +75,6 @@ export function KanbanView({
   const isVimContentActive = (vim.mode === 'NORMAL' || isVisualMode) && vim.activeZone === 'content'
   const [focusedColumnIndex, setFocusedColumnIndex] = useState(0)
   const [focusedCardIndex, setFocusedCardIndex] = useState(0)
-  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
   const gPendingRef = useRef(false)
   const visualAnchorIndexRef = useRef(-1)
   // Ref to track dialog open state without stale closures
@@ -435,6 +434,7 @@ export function KanbanView({
           visualAnchorIndexRef.current = globalIdx
           setSelectedIds(new Set([focusedCard.id]))
         }
+        vim.enterVisualMode()
         return
       }
 
@@ -484,10 +484,6 @@ export function KanbanView({
       searchInputRef.current?.focus()
       vim.enterInsertMode()
     }
-    if (e.key === '?') {
-      e.preventDefault()
-      setShowShortcutsHelp(prev => !prev)
-    }
     if (e.key === 'x' && isVimContentActive) {
       // Delete focused card (single card via vim focus) with confirmation
       e.preventDefault()
@@ -536,7 +532,7 @@ export function KanbanView({
         viewRef.current?.focus()
       }
     }
-  }, [newItemDialogOpen, selectedItem, loadBoard, showShortcutsHelp, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, isVisualMode, board, vim, columns, focusedColumnIndex, focusedCardIndex, getColumnItems, handleCardClick, projectPath])
+  }, [newItemDialogOpen, selectedItem, loadBoard, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, isVisualMode, board, vim, columns, focusedColumnIndex, focusedCardIndex, getColumnItems, handleCardClick, projectPath])
 
   const handleCardDrop = useCallback(async (itemId: string, targetColumn: ColumnId) => {
     if (!projectPath || !board) return
@@ -877,39 +873,6 @@ export function KanbanView({
         </div>
       )}
 
-      {/* Shortcuts help overlay */}
-      {showShortcutsHelp && (
-        <div
-          data-testid="shortcuts-help"
-          className="px-4 py-3 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border-primary)] text-sm"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-medium text-[var(--color-text-primary)] flex items-center gap-2">
-              <Keyboard size={14} />
-              Keyboard Shortcuts
-            </h3>
-            <button onClick={() => setShowShortcutsHelp(false)} className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">
-              <X size={14} />
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-[var(--color-text-secondary)]">
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">N</kbd> New item</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">R</kbd> Refresh board</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">/</kbd> Search items</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">?</kbd> Toggle shortcuts</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Ctrl+Click</kbd> Multi-select</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Shift+Click</kbd> Range select</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Ctrl+A</kbd> Select all</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Delete</kbd> Delete selected</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Esc</kbd> Clear selection / close</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">h</kbd>/<kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">l</kbd> Navigate columns</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">j</kbd>/<kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">k</kbd> Navigate cards</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">gg</kbd>/<kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">G</kbd> First/Last card</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">Enter</kbd> Open focused card</div>
-            <div><kbd className="px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]">V</kbd> Visual select</div>
-          </div>
-        </div>
-      )}
       {/* Empty board welcome message */}
       {board && totalItems === 0 && (
         <div

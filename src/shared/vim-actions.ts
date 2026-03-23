@@ -1,7 +1,7 @@
 /**
  * @module src/shared/vim-actions
  * Centralized manifest of all keyboard actions across zones.
- * Single source of truth for shortcuts — used by KeyboardShortcutsDialog and tests.
+ * Single source of truth for shortcuts — used by KeyboardShortcutsDialog, WhichKeyPopup, and tests.
  */
 
 import type { VimZone } from '@renderer/hooks/useVimMode';
@@ -46,7 +46,8 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'zone-cycle-forward', key: 'Tab', zone: 'global', mode: 'NORMAL', category: 'vim', group: 'Zone Switching', description: 'Cycle zones forward' },
   { id: 'zone-cycle-backward', key: 'Shift+Tab', zone: 'global', mode: 'NORMAL', category: 'vim', group: 'Zone Switching', description: 'Cycle zones backward' },
   { id: 'go-to-kanban', key: 'b', zone: 'global', mode: 'NORMAL', category: 'vim', group: 'Zone Switching', description: 'Go to kanban board' },
-  { id: 'show-shortcuts', key: 'Space', zone: 'global', mode: 'NORMAL', category: 'vim', group: 'Zone Switching', description: 'Keyboard shortcuts (which-key)' },
+  { id: 'leader-key', key: 'Space', zone: 'global', mode: 'NORMAL', category: 'vim', group: 'Zone Switching', description: 'Leader key (which-key)' },
+  { id: 'show-shortcuts-dialog', key: '?', zone: 'global', mode: 'NORMAL', category: 'vim', group: 'Zone Switching', description: 'Keyboard shortcuts dialog' },
 
   // --- Content zone — Kanban board ---
   { id: 'card-down', key: 'j', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Next card' },
@@ -60,7 +61,6 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'new-item', key: 'n', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'New item', testId: 'new-item-button' },
   { id: 'refresh', key: 'r', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Refresh board', testId: 'refresh-button' },
   { id: 'search', key: '/', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Search' },
-  { id: 'help', key: '?', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Keyboard shortcuts' },
   { id: 'select-all', key: 'Ctrl+A', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Select all items' },
   { id: 'delete-selected', key: 'Delete', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Delete selected items' },
   { id: 'visual-select', key: 'v', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Visual select' },
@@ -97,7 +97,6 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'specialist-add', key: 'n', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Add specialist' },
   { id: 'specialist-view-specialists', key: '1', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Specialists view' },
   { id: 'specialist-view-actions', key: '2', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Actions view' },
-  { id: 'schedule-help', key: '?', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Keyboard shortcuts' },
   // Sub-view keys (Run History: j/k/gg/G/Enter/Escape, Actions: j/k/gg/G) reuse the same
   // bindings as the specialist grid — context determines which handler runs.
   // Documented in SchedulePanel shortcuts overlay under "Sub-view Navigation".

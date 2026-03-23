@@ -44,11 +44,11 @@ const COVERED_ACTIONS = new Set([
   'mode-insert', 'mode-normal',
   // Global zone switching
   'zone-sidebar', 'zone-tabs', 'zone-content', 'zone-status',
-  'zone-cycle-forward', 'go-to-kanban',
+  'zone-cycle-forward', 'go-to-kanban', 'leader-key', 'show-shortcuts-dialog',
   // Content (kanban)
   'card-down', 'card-up', 'col-left', 'col-right',
   'card-first', 'card-last', 'card-open', 'card-delete',
-  'new-item', 'refresh', 'search', 'help',
+  'new-item', 'refresh', 'search',
   'delete-selected', 'visual-select', 'clear-selection', 'go-schedule',
   // Tabs
   'tab-next', 'tab-prev', 'tab-activate', 'tab-close',
@@ -61,7 +61,7 @@ const COVERED_ACTIONS = new Set([
   'specialist-run', 'specialist-toggle', 'specialist-history',
   'specialist-configure', 'specialist-add',
   'specialist-view-specialists', 'specialist-view-actions',
-  'schedule-help', 'run-back', 'go-kanban',
+  'run-back', 'go-kanban',
   // Status bar
   'status-next', 'status-prev', 'status-activate',
   'status-settings', 'status-project', 'status-stop',

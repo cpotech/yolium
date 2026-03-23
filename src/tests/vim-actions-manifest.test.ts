@@ -255,10 +255,20 @@ describe('VIM_ACTIONS manifest consistency', () => {
     expect(keyMap.get('R')).toBe('agent-resume-sidebar');
   });
 
-  it('should include show-shortcuts action with Space key in global zone', () => {
-    const action = VIM_ACTIONS.find(a => a.id === 'show-shortcuts');
+  it('should include leader-key action with Space key in global zone', () => {
+    const action = VIM_ACTIONS.find(a => a.id === 'leader-key');
     expect(action).toBeDefined();
     expect(action?.key).toBe('Space');
+    expect(action?.zone).toBe('global');
+    expect(action?.mode).toBe('NORMAL');
+    expect(action?.category).toBe('vim');
+    expect(action?.group).toBe('Zone Switching');
+  });
+
+  it('should include show-shortcuts-dialog action with ? key in global zone', () => {
+    const action = VIM_ACTIONS.find(a => a.id === 'show-shortcuts-dialog');
+    expect(action).toBeDefined();
+    expect(action?.key).toBe('?');
     expect(action?.zone).toBe('global');
     expect(action?.mode).toBe('NORMAL');
     expect(action?.category).toBe('vim');
