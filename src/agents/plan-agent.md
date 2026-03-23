@@ -10,6 +10,7 @@ tools:
   - Bash
   - Write
   - Edit
+  - Agent
   - WebSearch
   - WebFetch
 ---

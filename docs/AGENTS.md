@@ -31,7 +31,7 @@ The Plan Agent analyzes the codebase and produces a structured implementation pl
 3. **Write Plan** — Produces a structured plan: context, approach, ordered steps with file references (including cleanup/simplification and dead-code removal when applicable), files-to-modify table, and acceptance criteria with checkboxes.
 4. **Deliver** — Posts the plan as a comment, writes it to the work item description (so Code Agent can read it), and signals completion.
 
-**Tools:** Read, Glob, Grep, Bash, Write, Edit, WebSearch, WebFetch
+**Tools:** Read, Glob, Grep, Bash, Write, Edit, Agent, WebSearch, WebFetch
 **Model:** opus
 **Definition:** [`src/agents/plan-agent.md`](../src/agents/plan-agent.md)
 
@@ -49,7 +49,7 @@ The Code Agent implements changes autonomously: writes code and tests, runs test
 6. **Commit** — Stages and commits with conventional commit messages (`feat:`, `fix:`, `test:`, etc.). Does not push to remote.
 7. **Signal Completion** — Posts a summary of all changes made and signals completion.
 
-**Tools:** Read, Glob, Grep, Bash, Write, Edit, WebSearch, WebFetch
+**Tools:** Read, Glob, Grep, Bash, Write, Edit, Agent, WebSearch, WebFetch
 **Model:** opus | **Timeout:** 60 min
 **Definition:** [`src/agents/code-agent.md`](../src/agents/code-agent.md)
 
@@ -118,6 +118,45 @@ This means:
 - Any agent can be **resumed** after being paused (e.g., after answering a question) and it picks up with full context.
 
 Agent output is also persisted to per-work-item log files via the workitem log store ([`workitem-log-store.ts`](../src/main/stores/workitem-log-store.ts)), providing a durable record of each agent's activity.
+
+## Sub-Agents (Claude Code Only)
+
+The Plan Agent and Code Agent can spawn **sub-agents** — parallel child processes that handle independent subtasks within a single agent run. This is Claude Code's built-in `Agent` tool, which launches specialized child processes inside the same Docker container.
+
+### How It Works
+
+When Claude Code's `Agent` tool is in the `--allowedTools` list, the agent can autonomously decide to delegate work to sub-agents. For example, a Code Agent might spawn sub-agents to:
+
+- Research multiple parts of the codebase in parallel
+- Run searches across different file patterns simultaneously
+- Explore architectural questions without polluting the main context window
+
+Sub-agents run as child processes of the main agent process, sharing the same container, filesystem, and git worktree. They report results back to the parent agent, which synthesizes them into its own work.
+
+### Provider Support
+
+| Provider | Sub-Agents? | Mechanism |
+|----------|-------------|-----------|
+| **Claude Code** | Yes | Built-in `Agent` tool spawns child processes. Enabled by including `Agent` in the agent definition's tools list. |
+| **OpenCode** | No | No built-in sub-agent mechanism. Single-process execution only. |
+| **Codex** | No | No built-in sub-agent mechanism. Single-process execution only. |
+
+### Configuration
+
+Sub-agents are enabled purely through the agent definition's YAML frontmatter — no Yolium infrastructure changes are needed. The existing pipeline (agent-loader parses tools from frontmatter -> agent-container-config passes them as `AGENT_TOOLS` env var -> agent.sh builds `--allowedTools` flag) handles the `Agent` tool like any other.
+
+```yaml
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Bash
+  - Write
+  - Edit
+  - Agent        # Enables sub-agents (Claude Code only)
+  - WebSearch
+  - WebFetch
+```
 
 ## The Protocol
 
