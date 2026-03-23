@@ -130,6 +130,19 @@ export function GitDiffDialog({
 }: GitDiffDialogProps): React.ReactElement | null {
   useSuspendVimNavigation(isOpen)
 
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+
+  // Capture focus on open, restore on close
+  useEffect(() => {
+    if (isOpen) {
+      previousFocusRef.current = document.activeElement as HTMLElement | null
+    }
+    return () => {
+      previousFocusRef.current?.focus()
+      previousFocusRef.current = null
+    }
+  }, [isOpen])
+
   const [files, setFiles] = useState<ChangedFile[]>([])
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [diffLines, setDiffLines] = useState<SideBySideLine[]>([])

@@ -29,7 +29,7 @@ def main():
     from_address = require_env("EMAIL_FROM_ADDRESS")
     from_name = os.environ.get("EMAIL_FROM_NAME", "").strip()
 
-    effective_dry_run = args.dry_run or os.environ.get("DRY_RUN", "").lower() != "false"
+    effective_dry_run = os.environ.get("DRY_RUN", "").strip().lower() != "false"
 
     if effective_dry_run:
         digest = hashlib.sha256(
