@@ -44,7 +44,7 @@ const COVERED_ACTIONS = new Set([
   'mode-insert', 'mode-normal',
   // Global zone switching
   'zone-sidebar', 'zone-tabs', 'zone-content', 'zone-status',
-  'zone-cycle-forward', 'go-to-kanban', 'leader-key', 'show-shortcuts-dialog',
+  'go-to-kanban', 'leader-key', 'show-shortcuts-dialog',
   // Content (kanban)
   'card-down', 'card-up', 'col-left', 'col-right',
   'card-first', 'card-last', 'card-open', 'card-delete',
@@ -324,34 +324,6 @@ test.describe('Vim Single-Key Audit', () => {
       });
 
       expect(activeZone).toBe('content');
-    });
-
-    test('Tab cycles active zone forward through zone order', async () => {
-      const page = ctx.window;
-      const ZONE_ORDER = ['sidebar', 'tabs', 'content', 'status-bar', 'schedule'];
-
-      // Start from sidebar
-      await page.keyboard.press('e');
-      await page.waitForTimeout(100);
-
-      // Cycle through zones with Tab
-      for (let i = 1; i < ZONE_ORDER.length; i++) {
-        await page.keyboard.press('Tab');
-        await page.waitForTimeout(150);
-
-        const activeZone = await page.evaluate(() => {
-          const zones = document.querySelectorAll('[data-vim-zone]');
-          for (const z of zones) {
-            if ((z as HTMLElement).className.includes('ring-1')) {
-              return z.getAttribute('data-vim-zone');
-            }
-          }
-          return null;
-        });
-
-        // After Tab from sidebar, the next zone should be tabs, then content, etc.
-        expect(activeZone, `Tab press ${i} should cycle to '${ZONE_ORDER[i]}'`).toBe(ZONE_ORDER[i]);
-      }
     });
 
     test('reverse audit — global zone: undeclared keys produce no DOM change', async () => {

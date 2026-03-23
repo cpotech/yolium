@@ -1028,38 +1028,26 @@ describe('Mode transitions', () => {
     expect(screen.getByTestId('vim-zone')).toHaveTextContent('content');
   });
 
-  it('Tab cycles zones: sidebar -> tabs -> content -> status-bar -> schedule', () => {
+  it('Tab should NOT cycle zones (removed behavior)', () => {
     renderWithVim(<VimProbe />);
 
     // Start at content (default)
     expect(screen.getByTestId('vim-zone')).toHaveTextContent('content');
 
-    // Tab from content -> status-bar
+    // Tab should be a no-op — zone cycling removed
     fireEvent.keyDown(document, { key: 'Tab' });
-    expect(screen.getByTestId('vim-zone')).toHaveTextContent('status-bar');
-
-    // Tab from status-bar -> schedule
-    fireEvent.keyDown(document, { key: 'Tab' });
-    expect(screen.getByTestId('vim-zone')).toHaveTextContent('schedule');
-
-    // Tab from schedule -> sidebar
-    fireEvent.keyDown(document, { key: 'Tab' });
-    expect(screen.getByTestId('vim-zone')).toHaveTextContent('sidebar');
-
-    // Tab from sidebar -> tabs
-    fireEvent.keyDown(document, { key: 'Tab' });
-    expect(screen.getByTestId('vim-zone')).toHaveTextContent('tabs');
+    expect(screen.getByTestId('vim-zone')).toHaveTextContent('content');
   });
 
-  it('Shift+Tab reverse cycles zones', () => {
+  it('Shift+Tab should NOT reverse cycle zones (removed behavior)', () => {
     renderWithVim(<VimProbe />);
 
     // Start at content (default)
     expect(screen.getByTestId('vim-zone')).toHaveTextContent('content');
 
-    // Shift+Tab from content -> tabs
+    // Shift+Tab should be a no-op — zone cycling removed
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
-    expect(screen.getByTestId('vim-zone')).toHaveTextContent('tabs');
+    expect(screen.getByTestId('vim-zone')).toHaveTextContent('content');
   });
 });
 

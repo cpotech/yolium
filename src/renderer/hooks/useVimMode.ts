@@ -10,8 +10,6 @@ import type { VimActionZone } from '@shared/vim-actions';
 export type VimMode = 'NORMAL' | 'INSERT' | 'VISUAL';
 export type VimZone = 'sidebar' | 'tabs' | 'content' | 'status-bar' | 'schedule';
 
-const ZONE_ORDER: VimZone[] = ['sidebar', 'tabs', 'content', 'status-bar', 'schedule'];
-
 const ZONE_KEYS: Record<string, VimZone> = {
   e: 'sidebar',
   t: 'tabs',
@@ -191,7 +189,7 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
         clearLeader();
       } else {
         setLeaderPending(true);
-        setLeaderZone(activeZone);
+        setLeaderZone('sidebar');
       }
       return;
     }
@@ -226,19 +224,6 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
       return;
     }
 
-    // Tab cycling
-    if (key === 'Tab') {
-      event.preventDefault();
-      const currentIndex = ZONE_ORDER.indexOf(activeZone);
-      if (event.shiftKey) {
-        const prevIndex = (currentIndex - 1 + ZONE_ORDER.length) % ZONE_ORDER.length;
-        setActiveZone(ZONE_ORDER[prevIndex]);
-      } else {
-        const nextIndex = (currentIndex + 1) % ZONE_ORDER.length;
-        setActiveZone(ZONE_ORDER[nextIndex]);
-      }
-      return;
-    }
   }, [dialogOpen, mode, activeZone, setActiveZone, leaderPending, clearLeader]);
 
   return {

@@ -107,7 +107,7 @@ describe('useVimMode', () => {
     expect(result.current.activeZone).toBe('content');
   });
 
-  it('should cycle zones with Tab in NORMAL mode', () => {
+  it('should NOT cycle zones with Tab in NORMAL mode (Tab is now a no-op)', () => {
     const { result } = renderHook(() => useVimMode());
     // Default is 'content'
 
@@ -115,16 +115,11 @@ describe('useVimMode', () => {
       const event = new KeyboardEvent('keydown', { key: 'Tab' });
       result.current.handleKeyDown(event);
     });
-    expect(result.current.activeZone).toBe('status-bar');
-
-    act(() => {
-      const event = new KeyboardEvent('keydown', { key: 'Tab' });
-      result.current.handleKeyDown(event);
-    });
-    expect(result.current.activeZone).toBe('schedule');
+    // Zone should remain unchanged — Tab cycling removed
+    expect(result.current.activeZone).toBe('content');
   });
 
-  it('should reverse-cycle zones with Shift+Tab in NORMAL mode', () => {
+  it('should NOT reverse-cycle zones with Shift+Tab in NORMAL mode', () => {
     const { result } = renderHook(() => useVimMode());
     // Default is 'content'
 
@@ -132,7 +127,8 @@ describe('useVimMode', () => {
       const event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true });
       result.current.handleKeyDown(event);
     });
-    expect(result.current.activeZone).toBe('tabs');
+    // Zone should remain unchanged — Shift+Tab cycling removed
+    expect(result.current.activeZone).toBe('content');
   });
 
   it('should not change zone when already in INSERT mode', () => {
@@ -245,7 +241,7 @@ describe('useVimMode', () => {
     expect(result.current.leaderPending).toBe(true);
   });
 
-  it('should store leaderZone as current activeZone when entering leader', () => {
+  it('should activate leader mode with leaderZone=sidebar when Space pressed and activeZone is sidebar', () => {
     const { result } = renderHook(() => useVimMode());
 
     // Switch to sidebar first
@@ -256,6 +252,56 @@ describe('useVimMode', () => {
     expect(result.current.activeZone).toBe('sidebar');
 
     // Press Space to enter leader
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: ' ' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(result.current.leaderPending).toBe(true);
+    expect(result.current.leaderZone).toBe('sidebar');
+  });
+
+  it('should activate leader mode with leaderZone=sidebar when Space pressed and activeZone is content', () => {
+    const { result } = renderHook(() => useVimMode());
+    // Default activeZone is 'content'
+    expect(result.current.activeZone).toBe('content');
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: ' ' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(result.current.leaderPending).toBe(true);
+    expect(result.current.leaderZone).toBe('sidebar');
+  });
+
+  it('should activate leader mode with leaderZone=sidebar when Space pressed and activeZone is tabs', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 't' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.activeZone).toBe('tabs');
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: ' ' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(result.current.leaderPending).toBe(true);
+    expect(result.current.leaderZone).toBe('sidebar');
+  });
+
+  it('should activate leader mode with leaderZone=sidebar when Space pressed and activeZone is status-bar', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 's' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.activeZone).toBe('status-bar');
+
     act(() => {
       const event = new KeyboardEvent('keydown', { key: ' ' });
       result.current.handleKeyDown(event);
