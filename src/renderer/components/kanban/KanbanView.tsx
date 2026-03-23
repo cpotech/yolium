@@ -24,6 +24,7 @@ interface KanbanViewProps {
   onToggleRecording?: () => void
   onOpenModelDialog?: () => void
   claudeUsage?: ClaudeUsageState
+  onOpenSchedule?: () => void
 }
 
 const columns: { id: ColumnId; title: string }[] = [
@@ -51,6 +52,7 @@ export function KanbanView({
   onToggleRecording,
   onOpenModelDialog,
   claudeUsage,
+  onOpenSchedule,
 }: KanbanViewProps): React.ReactElement {
   const [board, setBoard] = useState<KanbanBoard | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -436,6 +438,11 @@ export function KanbanView({
         return
       }
 
+      if (e.key === 'H') {
+        e.preventDefault()
+        onOpenSchedule?.()
+        return
+      }
       if (e.key === 'h' || e.key === 'ArrowLeft') {
         e.preventDefault()
         setFocusedColumnIndex(prev => {

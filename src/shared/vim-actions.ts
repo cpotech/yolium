@@ -65,6 +65,7 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'delete-selected', key: 'Delete', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Delete selected items' },
   { id: 'visual-select', key: 'v', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Visual select' },
   { id: 'clear-selection', key: 'Escape', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Clear selection / close search' },
+  { id: 'go-schedule', key: 'H', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Scheduled agents' },
 
   // --- Tab bar zone ---
   { id: 'tab-next', key: 'l', zone: 'tabs', mode: 'NORMAL', category: 'vim', group: 'Tab Bar', description: 'Next tab' },
