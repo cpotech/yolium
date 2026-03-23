@@ -46,6 +46,7 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'zone-cycle-forward', key: 'Tab', zone: 'global', mode: 'NORMAL', category: 'vim', group: 'Zone Switching', description: 'Cycle zones forward' },
   { id: 'zone-cycle-backward', key: 'Shift+Tab', zone: 'global', mode: 'NORMAL', category: 'vim', group: 'Zone Switching', description: 'Cycle zones backward' },
   { id: 'go-to-kanban', key: 'b', zone: 'global', mode: 'NORMAL', category: 'vim', group: 'Zone Switching', description: 'Go to kanban board' },
+  { id: 'show-shortcuts', key: 'Space', zone: 'global', mode: 'NORMAL', category: 'vim', group: 'Zone Switching', description: 'Keyboard shortcuts (which-key)' },
 
   // --- Content zone — Kanban board ---
   { id: 'card-down', key: 'j', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Next card' },

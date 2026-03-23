@@ -231,4 +231,68 @@ describe('useVimMode', () => {
 
     expect(onGoToKanban).not.toHaveBeenCalled();
   });
+
+  it('should call onShowShortcuts when Space is pressed in NORMAL mode', () => {
+    const onShowShortcuts = vi.fn();
+    const { result } = renderHook(() => useVimMode({ onShowShortcuts }));
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: ' ' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(onShowShortcuts).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not call onShowShortcuts when Space is pressed in INSERT mode', () => {
+    const onShowShortcuts = vi.fn();
+    const { result } = renderHook(() => useVimMode({ onShowShortcuts }));
+
+    // Enter INSERT mode
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'i' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.mode).toBe('INSERT');
+
+    // Press Space - should not trigger
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: ' ' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(onShowShortcuts).not.toHaveBeenCalled();
+  });
+
+  it('should not call onShowShortcuts when Space is pressed and dialogOpen is true', () => {
+    const onShowShortcuts = vi.fn();
+    const { result } = renderHook(() => useVimMode({ onShowShortcuts, dialogOpen: true }));
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: ' ' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(onShowShortcuts).not.toHaveBeenCalled();
+  });
+
+  it('should not call onShowShortcuts when Space is pressed in VISUAL mode', () => {
+    const onShowShortcuts = vi.fn();
+    const { result } = renderHook(() => useVimMode({ onShowShortcuts }));
+
+    // Enter VISUAL mode
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'v' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.mode).toBe('VISUAL');
+
+    // Press Space - should not trigger
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: ' ' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(onShowShortcuts).not.toHaveBeenCalled();
+  });
 });

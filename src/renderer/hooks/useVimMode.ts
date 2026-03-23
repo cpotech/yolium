@@ -28,6 +28,8 @@ export interface UseVimModeOptions {
   isTerminalActive?: boolean;
   /** Called when 'b' is pressed to navigate to kanban board */
   onGoToKanban?: () => void;
+  /** Called when Space is pressed to show keyboard shortcuts */
+  onShowShortcuts?: () => void;
 }
 
 export interface UseVimModeResult {
@@ -41,13 +43,15 @@ export interface UseVimModeResult {
 }
 
 export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
-  const { dialogOpen = false, onZoneChange, isTerminalActive = false, onGoToKanban } = options;
+  const { dialogOpen = false, onZoneChange, isTerminalActive = false, onGoToKanban, onShowShortcuts } = options;
   const [mode, setMode] = useState<VimMode>('NORMAL');
   const [activeZone, setActiveZoneState] = useState<VimZone>('content');
   const onZoneChangeRef = useRef(onZoneChange);
   onZoneChangeRef.current = onZoneChange;
   const onGoToKanbanRef = useRef(onGoToKanban);
   onGoToKanbanRef.current = onGoToKanban;
+  const onShowShortcutsRef = useRef(onShowShortcuts);
+  onShowShortcutsRef.current = onShowShortcuts;
 
   const setActiveZone = useCallback((zone: VimZone) => {
     setActiveZoneState(zone);
@@ -129,6 +133,13 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
 
     // Block zone switching and Tab cycling when dialogs are open
     if (dialogOpen) return;
+
+    // Show keyboard shortcuts (which-key)
+    if (key === ' ') {
+      event.preventDefault();
+      onShowShortcutsRef.current?.();
+      return;
+    }
 
     // Enter visual mode with v
     if (key === 'v') {

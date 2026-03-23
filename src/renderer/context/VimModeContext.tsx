@@ -26,6 +26,7 @@ interface VimModeProviderProps {
   isTerminalActive?: boolean;
   onZoneChange?: UseVimModeOptions['onZoneChange'];
   onGoToKanban?: UseVimModeOptions['onGoToKanban'];
+  onShowShortcuts?: UseVimModeOptions['onShowShortcuts'];
 }
 
 export function VimModeProvider({
@@ -34,6 +35,7 @@ export function VimModeProvider({
   isTerminalActive = false,
   onZoneChange,
   onGoToKanban,
+  onShowShortcuts,
 }: VimModeProviderProps): React.ReactElement {
   const [dialogSuspensionCount, setDialogSuspensionCount] = useState(0);
   const nextSuspensionIdRef = useRef(0);
@@ -53,7 +55,7 @@ export function VimModeProvider({
   }, []);
 
   const effectiveDialogOpen = dialogOpen || dialogSuspensionCount > 0;
-  const vim = useVimMode({ dialogOpen: effectiveDialogOpen, isTerminalActive, onZoneChange, onGoToKanban });
+  const vim = useVimMode({ dialogOpen: effectiveDialogOpen, isTerminalActive, onZoneChange, onGoToKanban, onShowShortcuts });
 
   // Attach global keydown listener
   useEffect(() => {
