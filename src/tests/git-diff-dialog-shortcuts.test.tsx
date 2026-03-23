@@ -39,6 +39,7 @@ describe('GitDiffDialog Keyboard Shortcuts', () => {
     mockOnClose.mockClear();
     mockGitWorktreeChangedFiles.mockClear();
     mockWorktreeFileDiff.mockClear();
+    Element.prototype.scrollIntoView = vi.fn();
     (window as unknown as { electronAPI: typeof mockElectronApi }).electronAPI = mockElectronApi;
   });
 
@@ -111,5 +112,62 @@ describe('GitDiffDialog Keyboard Shortcuts', () => {
     });
     const shortcutHint = screen.getByText('q');
     expect(shortcutHint).toBeInTheDocument();
+  });
+
+  it('should auto-focus the dialog container when opened', async () => {
+    vi.useFakeTimers();
+    await act(async () => {
+      render(<GitDiffDialog {...defaultProps} />);
+    });
+    await act(async () => {
+      vi.runAllTimers();
+    });
+    const dialog = screen.getByTestId('git-diff-dialog');
+    expect(dialog).toHaveFocus();
+    vi.useRealTimers();
+  });
+
+  it('should have tabIndex=-1 on the dialog container', async () => {
+    await act(async () => {
+      render(<GitDiffDialog {...defaultProps} />);
+    });
+    const dialog = screen.getByTestId('git-diff-dialog');
+    expect(dialog).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('should navigate to next file when pressing j', async () => {
+    await act(async () => {
+      render(<GitDiffDialog {...defaultProps} />);
+    });
+    // Wait for files to load
+    await screen.findByTestId('diff-file-src/foo.ts');
+    const dialog = screen.getByTestId('git-diff-dialog');
+    // First file should be selected initially
+    const firstFile = screen.getByTestId('diff-file-src/foo.ts');
+    expect(firstFile.className).toContain('bg-[var(--color-bg-primary)]');
+    // Press j to navigate to next file
+    await act(async () => {
+      fireEvent.keyDown(dialog, { key: 'j' });
+    });
+    const secondFile = screen.getByTestId('diff-file-src/bar.ts');
+    expect(secondFile.className).toContain('bg-[var(--color-bg-primary)]');
+  });
+
+  it('should navigate to previous file when pressing k', async () => {
+    await act(async () => {
+      render(<GitDiffDialog {...defaultProps} />);
+    });
+    await screen.findByTestId('diff-file-src/foo.ts');
+    const dialog = screen.getByTestId('git-diff-dialog');
+    // Navigate to second file first
+    await act(async () => {
+      fireEvent.keyDown(dialog, { key: 'j' });
+    });
+    // Press k to go back
+    await act(async () => {
+      fireEvent.keyDown(dialog, { key: 'k' });
+    });
+    const firstFile = screen.getByTestId('diff-file-src/foo.ts');
+    expect(firstFile.className).toContain('bg-[var(--color-bg-primary)]');
   });
 });
