@@ -150,6 +150,18 @@ export function ItemDetailDialog({
     }
   }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reset transient state when switching to a different work item
+  useEffect(() => {
+    setErrorMessage(null)
+    setShowDiffViewer(false)
+    setFocusedItemIndex(0)
+    setFocusZone('editor')
+    setDialogVisualMode(false)
+    setSelectedItemIndices(new Set())
+    setLogFocused(false)
+    setIsDeleting(false)
+  }, [item?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (item?.agentStatus === 'waiting' && item.agentQuestion && answerInputRef.current) {
       answerInputRef.current.focus()
