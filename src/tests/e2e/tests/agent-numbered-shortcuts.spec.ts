@@ -1,8 +1,7 @@
 // src/tests/e2e/tests/agent-numbered-shortcuts.spec.ts
 import { test, expect } from '@playwright/test';
 import os from 'os';
-import { launchApp, closeApp, type AppContext } from '../helpers/app';
-import { createTestRepo, cleanupTestRepo } from '../helpers/repo';
+import { launchApp, closeApp, createTestRepo, cleanupTestRepo, type AppContext } from '../helpers/app';
 import { selectors } from '../helpers/selectors';
 
 /**
