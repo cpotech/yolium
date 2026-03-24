@@ -324,7 +324,7 @@ export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }
             <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">
               Get started
             </h2>
-            <div className="flex flex-col gap-2 text-xs text-[var(--color-text-muted)]">
+            <div className="flex flex-col gap-2 text-xs text-[var(--color-text-muted)] max-w-xs mx-auto">
               <div className="flex items-start gap-2">
                 <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-[var(--color-accent-primary)]/20 text-[var(--color-accent-primary)] flex items-center justify-center text-[10px] font-bold">1</span>
                 <span><strong className="text-[var(--color-text-secondary)]">Create a project</strong> to set up a kanban board for managing work items</span>

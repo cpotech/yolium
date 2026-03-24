@@ -165,7 +165,6 @@ export function ItemDetailDialog({
     setErrorMessage(null)
     setShowDiffViewer(false)
     setFocusedItemIndex(0)
-    setFocusZone('editor')
     setDialogVisualMode(false)
     setSelectedItemIndices(new Set())
     setLogFocused(false)
