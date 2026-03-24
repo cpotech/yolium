@@ -192,6 +192,151 @@ test.describe('WhichKey Leader Navigation', () => {
     expect(activeZone).toBe('tabs');
   });
 
+  // --- Leader group drill-down tests (bug fix) ---
+
+  test('should drill into Agent group when pressing a after Space in sidebar focus', async () => {
+    ctx = await launchApp();
+    const { window } = ctx;
+
+    await openKanbanBoard(window);
+
+    // Create a work item so we can open the ItemDetailDialog
+    await window.keyboard.press('Escape');
+    await window.keyboard.press('c');
+    await window.keyboard.press('n');
+    await window.waitForSelector('[data-testid="new-item-dialog"]', { timeout: 5000 });
+
+    // Fill in title and save
+    const titleInput = window.locator('[data-testid="new-item-title"]');
+    await titleInput.fill('Test item for leader nav');
+    await window.keyboard.press('Enter');
+    await window.waitForSelector('[data-testid="new-item-dialog"]', { state: 'hidden', timeout: 5000 }).catch(() => {});
+
+    // Open the card
+    await window.keyboard.press('Enter');
+    await window.waitForSelector('[data-testid="item-detail-dialog"]', { timeout: 5000 });
+
+    // Focus sidebar with Tab
+    await window.keyboard.press('Tab');
+
+    // Press Space to open leader popup in dialog-sidebar zone
+    await window.keyboard.press('Space');
+    const popup = window.locator('[data-testid="which-key-popup"]');
+    await expect(popup).toBeVisible({ timeout: 2000 });
+
+    // Should show Agent group
+    await expect(window.locator('[data-testid="which-key-group-a"]')).toBeVisible();
+
+    // Press 'a' to drill into Agent group
+    await window.keyboard.press('a');
+
+    // Popup should still be visible but now showing Agent sub-actions
+    await expect(popup).toBeVisible({ timeout: 2000 });
+    await expect(window.locator('[data-testid="which-key-breadcrumb"]')).toContainText('Agent');
+    await expect(window.locator('[data-testid="which-key-item-agent-code-sidebar"]')).toBeVisible();
+  });
+
+  test('should drill into Git/PR group when pressing g after Space in sidebar focus', async () => {
+    ctx = await launchApp();
+    const { window } = ctx;
+
+    await openKanbanBoard(window);
+
+    await window.keyboard.press('Escape');
+    await window.keyboard.press('c');
+    await window.keyboard.press('n');
+    await window.waitForSelector('[data-testid="new-item-dialog"]', { timeout: 5000 });
+    const titleInput = window.locator('[data-testid="new-item-title"]');
+    await titleInput.fill('Test item for git nav');
+    await window.keyboard.press('Enter');
+    await window.waitForSelector('[data-testid="new-item-dialog"]', { state: 'hidden', timeout: 5000 }).catch(() => {});
+
+    await window.keyboard.press('Enter');
+    await window.waitForSelector('[data-testid="item-detail-dialog"]', { timeout: 5000 });
+    await window.keyboard.press('Tab');
+
+    await window.keyboard.press('Space');
+    const popup = window.locator('[data-testid="which-key-popup"]');
+    await expect(popup).toBeVisible({ timeout: 2000 });
+
+    // Press 'g' to drill into Git/PR group
+    await window.keyboard.press('g');
+
+    await expect(popup).toBeVisible({ timeout: 2000 });
+    await expect(window.locator('[data-testid="which-key-breadcrumb"]')).toContainText('Git/PR');
+    await expect(window.locator('[data-testid="which-key-item-dialog-compare-changes"]')).toBeVisible();
+  });
+
+  test('should return to level 1 when pressing Backspace at level 2', async () => {
+    ctx = await launchApp();
+    const { window } = ctx;
+
+    await openKanbanBoard(window);
+
+    await window.keyboard.press('Escape');
+    await window.keyboard.press('c');
+    await window.keyboard.press('n');
+    await window.waitForSelector('[data-testid="new-item-dialog"]', { timeout: 5000 });
+    const titleInput = window.locator('[data-testid="new-item-title"]');
+    await titleInput.fill('Test item for backspace');
+    await window.keyboard.press('Enter');
+    await window.waitForSelector('[data-testid="new-item-dialog"]', { state: 'hidden', timeout: 5000 }).catch(() => {});
+
+    await window.keyboard.press('Enter');
+    await window.waitForSelector('[data-testid="item-detail-dialog"]', { timeout: 5000 });
+    await window.keyboard.press('Tab');
+
+    await window.keyboard.press('Space');
+    const popup = window.locator('[data-testid="which-key-popup"]');
+    await expect(popup).toBeVisible({ timeout: 2000 });
+
+    // Drill into Agent group
+    await window.keyboard.press('a');
+    await expect(window.locator('[data-testid="which-key-breadcrumb"]')).toContainText('Agent');
+
+    // Press Backspace to return to level 1
+    await window.keyboard.press('Backspace');
+
+    // Should be back at level 1 — groups visible, no breadcrumb
+    await expect(popup).toBeVisible({ timeout: 2000 });
+    await expect(window.locator('[data-testid="which-key-group-a"]')).toBeVisible();
+    await expect(window.locator('[data-testid="which-key-group-g"]')).toBeVisible();
+  });
+
+  test('should execute agent action after drilling into group (Space -> a -> c for code agent)', async () => {
+    ctx = await launchApp();
+    const { window } = ctx;
+
+    await openKanbanBoard(window);
+
+    await window.keyboard.press('Escape');
+    await window.keyboard.press('c');
+    await window.keyboard.press('n');
+    await window.waitForSelector('[data-testid="new-item-dialog"]', { timeout: 5000 });
+    const titleInput = window.locator('[data-testid="new-item-title"]');
+    await titleInput.fill('Test item for agent action');
+    await window.keyboard.press('Enter');
+    await window.waitForSelector('[data-testid="new-item-dialog"]', { state: 'hidden', timeout: 5000 }).catch(() => {});
+
+    await window.keyboard.press('Enter');
+    await window.waitForSelector('[data-testid="item-detail-dialog"]', { timeout: 5000 });
+    await window.keyboard.press('Tab');
+
+    // Space -> a -> c (Code Agent)
+    await window.keyboard.press('Space');
+    await expect(window.locator('[data-testid="which-key-popup"]')).toBeVisible({ timeout: 2000 });
+
+    await window.keyboard.press('a');
+    await expect(window.locator('[data-testid="which-key-breadcrumb"]')).toContainText('Agent');
+
+    // Press 'c' for code agent — popup should dismiss and action should execute
+    await window.keyboard.press('c');
+    await expect(window.locator('[data-testid="which-key-popup"]')).not.toBeVisible({ timeout: 2000 });
+
+    // The agent select dialog or agent status should appear as a result
+    // (or at minimum, the popup dismissed meaning the action key propagated)
+  });
+
   test('should dismiss popup on any non-matching key without side effects', async () => {
     ctx = await launchApp();
     const { window } = ctx;

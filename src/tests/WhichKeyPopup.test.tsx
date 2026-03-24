@@ -157,6 +157,69 @@ describe('WhichKeyPopup', () => {
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
+  // --- Group key navigation tests (bug fix) ---
+
+  it('should call onSelectGroup instead of onDismiss when a group key is pressed at level 1 (dialog-sidebar zone)', () => {
+    const onDismiss = vi.fn();
+    const onSelectGroup = vi.fn();
+    render(
+      <WhichKeyPopup zone="dialog-sidebar" onDismiss={onDismiss} leaderGroupKey={null} onSelectGroup={onSelectGroup} />
+    );
+
+    // Press 'a' which is the Agent group key
+    fireEvent.keyDown(document, { key: 'a' });
+    expect(onSelectGroup).toHaveBeenCalledWith('a');
+    expect(onDismiss).not.toHaveBeenCalled();
+
+    onSelectGroup.mockClear();
+    onDismiss.mockClear();
+
+    // Press 'g' which is the Git/PR group key
+    fireEvent.keyDown(document, { key: 'g' });
+    expect(onSelectGroup).toHaveBeenCalledWith('g');
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
+  it('should call onDismiss for non-group keys at level 1 in dialog-sidebar zone', () => {
+    const onDismiss = vi.fn();
+    const onSelectGroup = vi.fn();
+    render(
+      <WhichKeyPopup zone="dialog-sidebar" onDismiss={onDismiss} leaderGroupKey={null} onSelectGroup={onSelectGroup} />
+    );
+
+    // Press 'z' which is not a group key or direct action — should dismiss
+    fireEvent.keyDown(document, { key: 'z' });
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(onSelectGroup).not.toHaveBeenCalled();
+  });
+
+  it('should call onDismiss for action keys at level 2 (let propagation handle the action)', () => {
+    const onDismiss = vi.fn();
+    const onSelectGroup = vi.fn();
+    render(
+      <WhichKeyPopup zone="dialog-sidebar" onDismiss={onDismiss} leaderGroupKey="a" onSelectGroup={onSelectGroup} />
+    );
+
+    // At level 2 (inside Agent group), pressing 'c' (code agent) should dismiss
+    // so the event propagates to the zone handler that executes the action
+    fireEvent.keyDown(document, { key: 'c' });
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(onSelectGroup).not.toHaveBeenCalled();
+  });
+
+  it('should not call onSelectGroup for keys that are not valid group keys', () => {
+    const onDismiss = vi.fn();
+    const onSelectGroup = vi.fn();
+    render(
+      <WhichKeyPopup zone="dialog-sidebar" onDismiss={onDismiss} leaderGroupKey={null} onSelectGroup={onSelectGroup} />
+    );
+
+    // 'x' is not a group key (a, g are the only groups)
+    fireEvent.keyDown(document, { key: 'x' });
+    expect(onSelectGroup).not.toHaveBeenCalled();
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
   it('should not show group items for non-dialog zones (content stays flat)', () => {
     render(<WhichKeyPopup zone="content" onDismiss={vi.fn()} />);
     // Content zone should not have any group items

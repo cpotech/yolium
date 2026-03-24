@@ -78,13 +78,23 @@ export function WhichKeyPopup({ zone, onDismiss, leaderGroupKey = null, onSelect
         onSelectGroup(null);
         return;
       }
+      // Group key at level 1: drill into group
+      if (!leaderGroupKey && hasGroups && onSelectGroup) {
+        const groupKeys = leaderGroups.map(g => g.key);
+        if (groupKeys.includes(e.key)) {
+          e.preventDefault();
+          e.stopPropagation();
+          onSelectGroup(e.key);
+          return;
+        }
+      }
       // Any other key: dismiss popup, let event propagate to zone handlers
       onDismiss();
     };
 
     document.addEventListener('keydown', handler, true);
     return () => document.removeEventListener('keydown', handler, true);
-  }, [onDismiss, hasGroups, leaderGroupKey, onSelectGroup]);
+  }, [onDismiss, hasGroups, leaderGroupKey, onSelectGroup, leaderGroups]);
 
   // Click outside dismisses
   useEffect(() => {
