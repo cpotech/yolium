@@ -16,7 +16,7 @@
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
-    "pretest": "npm rebuild better-sqlite3 --silent 2>/dev/null || true",
+    "pretest": "npm rebuild better-sqlite3 --silent || true",
     "test": "vitest run --config config/vitest.config.ts",
     "test:watch": "vitest --config config/vitest.config.ts",
     "pretest:e2e": "electron-rebuild --only better-sqlite3 --force",
