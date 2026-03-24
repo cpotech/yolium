@@ -69,7 +69,7 @@ const COVERED_ACTIONS = new Set([
   // Dialog (editor zone)
   'field-down', 'field-up', 'field-first', 'field-last',
   'field-edit', 'dialog-close',
-  'dialog-toggle-focus', 'dialog-visual', 'dialog-yank',
+  'dialog-visual', 'dialog-yank',
   'dialog-comment-search',
   // Dialog sidebar
   'agent-plan-sidebar', 'agent-code-sidebar', 'agent-verify-sidebar',

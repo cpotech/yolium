@@ -68,7 +68,6 @@ export function ItemDetailDialog({
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDiffViewer, setShowDiffViewer] = useState(false)
   const [focusedItemIndex, setFocusedItemIndex] = useState(0)
-  const [focusZone, setFocusZone] = useState<'editor' | 'sidebar'>('editor')
   const [dialogVisualMode, setDialogVisualMode] = useState(false)
   const [selectedItemIndices, setSelectedItemIndices] = useState<Set<number>>(new Set())
   const visualAnchorRef = useRef<number>(0)
@@ -144,7 +143,6 @@ export function ItemDetailDialog({
     if (isOpen) {
       dialogRef.current?.focus()
       setFocusedItemIndex(0)
-      setFocusZone('editor')
       setDialogVisualMode(false)
       setSelectedItemIndices(new Set())
       visualAnchorRef.current = 0
@@ -246,29 +244,16 @@ export function ItemDetailDialog({
         setLogFocused(false)
         logPanelRef.current?.resumeAutoScroll()
         dialogRef.current?.focus()
-      } else if (focusZone === 'sidebar') {
-        // Sidebar zone Escape -> return to editor zone
-        setFocusZone('editor')
-        dialogRef.current?.focus()
       }
       return
     }
 
     // NORMAL mode navigation and sidebar shortcuts
     if (vim.mode === 'NORMAL') {
-      // 0. Space → leader key for current dialog zone
+      // 0. Space → leader key for dialog-sidebar zone (which-key popup)
       if (event.key === ' ') {
         event.preventDefault()
-        const zone = focusZone === 'sidebar' ? 'dialog-sidebar' : 'dialog'
-        vim.triggerLeader(zone)
-        return
-      }
-
-      // 1. Tab zone toggle — always works regardless of focused element
-      if (event.key === 'Tab' && !event.shiftKey) {
-        event.preventDefault()
-        setFocusZone(prev => prev === 'editor' ? 'sidebar' : 'editor')
-        dialogRef.current?.focus()
+        vim.triggerLeader('dialog-sidebar')
         return
       }
 
@@ -290,22 +275,17 @@ export function ItemDetailDialog({
         }
       }
 
-      // 3. Leader-aware sidebar shortcuts — require Space prefix
-      // Only j/k (for log scroll entry) work without leader when log is open
-      if (focusZone === 'sidebar' && item) {
-        // j/k in sidebar with log open -> enter log focus and scroll (no leader needed)
-        if (!vim.leaderPending && (event.key === 'j' || event.key === 'k') && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
-          if (agentSession.showAgentLog) {
-            event.preventDefault()
-            setLogFocused(true)
-            logPanelRef.current?.pauseAutoScroll()
-            logPanelRef.current?.scrollBy(event.key === 'j' ? 80 : -80)
-            return
-          }
-        }
+      // 2b. j/k with agent log open → enter log focus mode (no leader needed)
+      if (!vim.leaderPending && agentSession.showAgentLog && (event.key === 'j' || event.key === 'k') && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
+        event.preventDefault()
+        setLogFocused(true)
+        logPanelRef.current?.pauseAutoScroll()
+        logPanelRef.current?.scrollBy(event.key === 'j' ? 80 : -80)
+        return
+      }
 
-        // All other sidebar shortcuts require leader (Space) prefix
-        if (vim.leaderPending) {
+      // 3. Leader-aware sidebar shortcuts — require Space prefix
+      if (item && vim.leaderPending) {
           const canStart = (item.agentStatus === 'idle' || item.agentStatus === 'completed' || item.agentStatus === 'failed') && !lifecycle.isStartingAgent
 
           if (!vim.leaderGroupKey) {
@@ -481,7 +461,6 @@ export function ItemDetailDialog({
           vim.clearLeader()
           return
         }
-      }
 
       // 4. isEditable guard — only blocks editor zone navigation
       const target = event.target as HTMLElement
@@ -498,114 +477,112 @@ export function ItemDetailDialog({
       if (isEditable) return
 
       // 4. Editor zone navigation (NORMAL or dialog VISUAL mode)
-      if (focusZone === 'editor') {
-        const lastIdx = navigableItems.length - 1
+      const lastIdx = navigableItems.length - 1
 
-        // V (Shift+V) toggles dialog-local visual mode
-        if (event.key === 'V' && event.shiftKey) {
-          event.preventDefault()
-          if (dialogVisualMode) {
-            setDialogVisualMode(false)
-            setSelectedItemIndices(new Set())
-          } else {
-            setDialogVisualMode(true)
-            visualAnchorRef.current = focusedItemIndex
-            setSelectedItemIndices(new Set([focusedItemIndex]))
-          }
-          gPendingRef.current = false
-          return
-        }
-
-        // y in visual mode: yank selected text to clipboard
-        if (dialogVisualMode && event.key === 'y') {
-          event.preventDefault()
-          const texts: string[] = []
-          const sortedIndices = Array.from(selectedItemIndices).sort((a, b) => a - b)
-          for (const idx of sortedIndices) {
-            const navItem = navigableItems[idx]
-            if (navItem.type === 'comment') {
-              texts.push(navItem.text)
-            } else if (navItem.type === 'field') {
-              const el = document.getElementById(navItem.id) as HTMLInputElement | HTMLTextAreaElement | null
-              if (el) texts.push(el.value)
-            }
-          }
-          void navigator.clipboard.writeText(texts.join('\n\n'))
+      // V (Shift+V) toggles dialog-local visual mode
+      if (event.key === 'V' && event.shiftKey) {
+        event.preventDefault()
+        if (dialogVisualMode) {
           setDialogVisualMode(false)
           setSelectedItemIndices(new Set())
-          gPendingRef.current = false
-          return
+        } else {
+          setDialogVisualMode(true)
+          visualAnchorRef.current = focusedItemIndex
+          setSelectedItemIndices(new Set([focusedItemIndex]))
         }
+        gPendingRef.current = false
+        return
+      }
 
-        const scrollToItem = (idx: number) => {
+      // y in visual mode: yank selected text to clipboard
+      if (dialogVisualMode && event.key === 'y') {
+        event.preventDefault()
+        const texts: string[] = []
+        const sortedIndices = Array.from(selectedItemIndices).sort((a, b) => a - b)
+        for (const idx of sortedIndices) {
           const navItem = navigableItems[idx]
-          if (navItem.type === 'field') {
-            document.getElementById(navItem.id)?.scrollIntoView({ block: 'nearest' })
-          } else {
-            document.querySelector(`[data-comment-id="${navItem.id}"]`)?.scrollIntoView({ block: 'nearest' })
+          if (navItem.type === 'comment') {
+            texts.push(navItem.text)
+          } else if (navItem.type === 'field') {
+            const el = document.getElementById(navItem.id) as HTMLInputElement | HTMLTextAreaElement | null
+            if (el) texts.push(el.value)
           }
         }
+        void navigator.clipboard.writeText(texts.join('\n\n'))
+        setDialogVisualMode(false)
+        setSelectedItemIndices(new Set())
+        gPendingRef.current = false
+        return
+      }
 
-        const updateVisualSelection = (newIndex: number) => {
-          if (dialogVisualMode) {
-            const anchor = visualAnchorRef.current
-            const start = Math.min(anchor, newIndex)
-            const end = Math.max(anchor, newIndex)
-            setSelectedItemIndices(new Set(Array.from({ length: end - start + 1 }, (_, i) => start + i)))
-          }
+      const scrollToItem = (idx: number) => {
+        const navItem = navigableItems[idx]
+        if (navItem.type === 'field') {
+          document.getElementById(navItem.id)?.scrollIntoView({ block: 'nearest' })
+        } else {
+          document.querySelector(`[data-comment-id="${navItem.id}"]`)?.scrollIntoView({ block: 'nearest' })
         }
+      }
 
-        if (event.key === 'j' || event.key === 'ArrowDown') {
+      const updateVisualSelection = (newIndex: number) => {
+        if (dialogVisualMode) {
+          const anchor = visualAnchorRef.current
+          const start = Math.min(anchor, newIndex)
+          const end = Math.max(anchor, newIndex)
+          setSelectedItemIndices(new Set(Array.from({ length: end - start + 1 }, (_, i) => start + i)))
+        }
+      }
+
+      if (event.key === 'j' || event.key === 'ArrowDown') {
+        event.preventDefault()
+        const next = Math.min(focusedItemIndex + 1, lastIdx)
+        setFocusedItemIndex(next)
+        scrollToItem(next)
+        updateVisualSelection(next)
+        gPendingRef.current = false
+      } else if (event.key === 'k' || event.key === 'ArrowUp') {
+        event.preventDefault()
+        const prev = Math.max(focusedItemIndex - 1, 0)
+        setFocusedItemIndex(prev)
+        scrollToItem(prev)
+        updateVisualSelection(prev)
+        gPendingRef.current = false
+      } else if (event.key === 'g') {
+        if (gPendingRef.current) {
           event.preventDefault()
-          const next = Math.min(focusedItemIndex + 1, lastIdx)
-          setFocusedItemIndex(next)
-          scrollToItem(next)
-          updateVisualSelection(next)
-          gPendingRef.current = false
-        } else if (event.key === 'k' || event.key === 'ArrowUp') {
-          event.preventDefault()
-          const prev = Math.max(focusedItemIndex - 1, 0)
-          setFocusedItemIndex(prev)
-          scrollToItem(prev)
-          updateVisualSelection(prev)
-          gPendingRef.current = false
-        } else if (event.key === 'g') {
-          if (gPendingRef.current) {
-            event.preventDefault()
-            setFocusedItemIndex(0)
-            scrollToItem(0)
-            updateVisualSelection(0)
-            gPendingRef.current = false
-          } else {
-            gPendingRef.current = true
-          }
-        } else if (event.key === 'G') {
-          event.preventDefault()
-          setFocusedItemIndex(lastIdx)
-          scrollToItem(lastIdx)
-          updateVisualSelection(lastIdx)
-          gPendingRef.current = false
-        } else if ((event.key === 'i' || event.key === 'Enter') && !dialogVisualMode) {
-          event.preventDefault()
-          const currentItem = navigableItems[focusedItemIndex]
-          if (currentItem.type === 'field') {
-            focusField(focusedItemIndex)
-          } else {
-            // Comments are read-only: block the event from reaching global vim handler
-            event.stopPropagation()
-          }
+          setFocusedItemIndex(0)
+          scrollToItem(0)
+          updateVisualSelection(0)
           gPendingRef.current = false
         } else {
-          gPendingRef.current = false
+          gPendingRef.current = true
         }
+      } else if (event.key === 'G') {
+        event.preventDefault()
+        setFocusedItemIndex(lastIdx)
+        scrollToItem(lastIdx)
+        updateVisualSelection(lastIdx)
+        gPendingRef.current = false
+      } else if ((event.key === 'i' || event.key === 'Enter') && !dialogVisualMode) {
+        event.preventDefault()
+        const currentItem = navigableItems[focusedItemIndex]
+        if (currentItem.type === 'field') {
+          focusField(focusedItemIndex)
+        } else {
+          // Comments are read-only: block the event from reaching global vim handler
+          event.stopPropagation()
+        }
+        gPendingRef.current = false
+      } else {
+        gPendingRef.current = false
       }
     }
 
-    // Only run trapFocus for Tab in INSERT mode (NORMAL mode Tab is handled above)
-    if (dialogRef.current && !(vim.mode === 'NORMAL' && event.key === 'Tab')) {
+    // Only run trapFocus in INSERT mode
+    if (dialogRef.current && vim.mode !== 'NORMAL') {
       trapFocus(event, dialogRef.current)
     }
-  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedItemIndex, focusField, focusZone, agentSession.currentSessionId, prWorkflow, navigableItems, dialogVisualMode, selectedItemIndices, agentSession, commentSearchRef])
+  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedItemIndex, focusField, agentSession.currentSessionId, prWorkflow, navigableItems, dialogVisualMode, selectedItemIndices, agentSession, commentSearchRef])
 
   if (!isOpen || !item) return null
 
@@ -658,7 +635,7 @@ export function ItemDetailDialog({
         <div className="flex flex-1 overflow-hidden">
           <div
             data-testid="editor-zone"
-            className={`flex-1 min-w-0 flex flex-col overflow-hidden${focusZone === 'editor' ? ' ring-1 ring-[var(--color-accent-primary)]' : ''}`}
+            className="flex-1 min-w-0 flex flex-col overflow-hidden"
           >
           <ItemDetailEditorPane
             title={draft.title}
@@ -696,8 +673,7 @@ export function ItemDetailDialog({
           </div>
 
           <ItemDetailSidebar
-            focusZone={focusZone}
-            showKbdHints={focusZone === 'sidebar'}
+            showKbdHints={true}
             item={item}
             agentProvider={draft.agentProvider}
             model={draft.model}
@@ -772,7 +748,12 @@ export function ItemDetailDialog({
                 <span><kbd className={kbdClass}>Esc</kbd> Exit</span>
               </>
           ) : vim.mode === 'NORMAL' ? (
-            focusZone === 'editor' ? (
+            logFocused ? (
+              <>
+                <span><kbd className={kbdClass}>j/k</kbd> Navigate</span>
+                <span><kbd className={kbdClass}>Esc</kbd> Back</span>
+              </>
+            ) : (
               <>
                 <span><kbd className={kbdClass}>j/k</kbd> Navigate</span>
                 <span><kbd className={kbdClass}>gg</kbd> First</span>
@@ -780,22 +761,9 @@ export function ItemDetailDialog({
                 <span><kbd className={kbdClass}>i</kbd> Edit field</span>
                 <span><kbd className={kbdClass}>/</kbd> Search comments</span>
                 <span><kbd className={kbdClass}>V</kbd> Visual</span>
-                <span><kbd className={kbdClass}>Tab</kbd> Sidebar</span>
+                <span><kbd className={kbdClass}>Space</kbd> Actions</span>
                 <span><kbd className={kbdClass}>Ctrl+Q</kbd> Close</span>
               </>
-            ) : (
-              logFocused ? (
-                <>
-                  <span><kbd className={kbdClass}>j/k</kbd> Navigate</span>
-                  <span><kbd className={kbdClass}>Esc</kbd> Back</span>
-                </>
-              ) : (
-                <>
-                  <span><kbd className={kbdClass}>Tab</kbd> Editor</span>
-                  <span><kbd className={kbdClass}>Space</kbd> Actions (which-key)</span>
-                  <span><kbd className={kbdClass}>Esc</kbd> Back</span>
-                </>
-              )
             )
           ) : (
             <>

@@ -134,7 +134,6 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'dialog-close', key: 'Escape', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Dialog (Work Item)', description: 'Close dialog' },
   { id: 'dialog-save', key: 'Ctrl+Enter', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Dialog (Work Item)', description: 'Save item' },
   { id: 'dialog-delete', key: 'Ctrl+Delete', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Dialog (Work Item)', description: 'Delete item' },
-  { id: 'dialog-toggle-focus', key: 'Tab', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Dialog (Work Item)', description: 'Toggle Editor/Sidebar focus' },
   { id: 'dialog-visual', key: 'V', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Dialog (Work Item)', description: 'Visual mode (select & yank)' },
   { id: 'dialog-yank', key: 'y', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Dialog (Work Item)', description: 'Yank (copy) selected text' },
   { id: 'dialog-close-ctrl-q', key: 'Ctrl+Q', zone: 'dialog', mode: 'ANY', category: 'vim', group: 'Dialog (Work Item)', description: 'Close dialog' },

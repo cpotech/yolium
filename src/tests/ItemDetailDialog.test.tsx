@@ -492,25 +492,10 @@ describe('ItemDetailDialog', () => {
     })
   })
 
-  describe('sidebar focus zone', () => {
+  describe('sidebar shortcuts (no focus zone)', () => {
     const getContainer = () => screen.getByTestId('item-detail-dialog').parentElement!
 
-    it('should initialize with focusZone set to editor', () => {
-      render(
-        <ItemDetailDialog
-          isOpen={true}
-          item={createMockItem()}
-          projectPath="/test/project"
-          onClose={vi.fn()}
-          onUpdated={vi.fn()}
-        />,
-      )
-
-      expect(screen.getByTestId('editor-zone')).toHaveClass('ring-1')
-      expect(screen.getByTestId('sidebar-zone')).not.toHaveClass('ring-1')
-    })
-
-    it('should switch focusZone to sidebar when Tab is pressed in NORMAL mode', () => {
+    it('should not have focusZone toggle on Tab press', () => {
       render(
         <ItemDetailDialog
           isOpen={true}
@@ -523,29 +508,12 @@ describe('ItemDetailDialog', () => {
 
       fireEvent.keyDown(getContainer(), { key: 'Tab' })
 
-      expect(screen.getByTestId('sidebar-zone')).toHaveClass('ring-1')
+      // No ring indicators on either zone
       expect(screen.getByTestId('editor-zone')).not.toHaveClass('ring-1')
-    })
-
-    it('should switch focusZone back to editor when Tab is pressed again in NORMAL mode', () => {
-      render(
-        <ItemDetailDialog
-          isOpen={true}
-          item={createMockItem()}
-          projectPath="/test/project"
-          onClose={vi.fn()}
-          onUpdated={vi.fn()}
-        />,
-      )
-
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
-
-      expect(screen.getByTestId('editor-zone')).toHaveClass('ring-1')
       expect(screen.getByTestId('sidebar-zone')).not.toHaveClass('ring-1')
     })
 
-    it('should show sidebar ring indicator when focusZone is sidebar', () => {
+    it('should not show ring indicator on editor or sidebar zones', () => {
       render(
         <ItemDetailDialog
           isOpen={true}
@@ -556,14 +524,11 @@ describe('ItemDetailDialog', () => {
         />,
       )
 
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
-
-      const sidebar = screen.getByTestId('sidebar-zone')
-      expect(sidebar).toHaveClass('ring-1')
-      expect(sidebar).toHaveClass('ring-[var(--color-accent-primary)]')
+      expect(screen.getByTestId('editor-zone')).not.toHaveClass('ring-1')
+      expect(screen.getByTestId('sidebar-zone')).not.toHaveClass('ring-1')
     })
 
-    it('should show editor ring indicator when focusZone is editor', () => {
+    it('should always show sidebar kbd hints', () => {
       render(
         <ItemDetailDialog
           isOpen={true}
@@ -574,9 +539,9 @@ describe('ItemDetailDialog', () => {
         />,
       )
 
-      const editor = screen.getByTestId('editor-zone')
-      expect(editor).toHaveClass('ring-1')
-      expect(editor).toHaveClass('ring-[var(--color-accent-primary)]')
+      // Sidebar kbd hints should be visible without pressing Tab
+      const sidebar = screen.getByTestId('sidebar-zone')
+      expect(sidebar).toBeInTheDocument()
     })
 
     it('should trigger plan-agent start via Space a p in sidebar zone', async () => {
@@ -588,7 +553,6 @@ describe('ItemDetailDialog', () => {
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
       await activateLeader(result, item, { pending: true, groupKey: 'a' })
 
       await act(async () => {
@@ -609,7 +573,6 @@ describe('ItemDetailDialog', () => {
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
       await activateLeader(result, item, { pending: true, groupKey: 'a' })
 
       await act(async () => {
@@ -630,7 +593,6 @@ describe('ItemDetailDialog', () => {
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
       await activateLeader(result, item, { pending: true, groupKey: 'a' })
 
       await act(async () => {
@@ -651,7 +613,6 @@ describe('ItemDetailDialog', () => {
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
       await activateLeader(result, item, { pending: true, groupKey: 'a' })
 
       await act(async () => {
@@ -672,7 +633,6 @@ describe('ItemDetailDialog', () => {
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
       await activateLeader(result, item, { pending: true, groupKey: 'a' })
 
       await act(async () => {
@@ -693,7 +653,6 @@ describe('ItemDetailDialog', () => {
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
       await activateLeader(result, item, { pending: true, groupKey: 'a' })
 
       await act(async () => {
@@ -723,7 +682,6 @@ describe('ItemDetailDialog', () => {
         await new Promise(r => setTimeout(r, 0))
       })
 
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
       await activateLeader(result, item, { pending: true, groupKey: 'a' })
 
       await act(async () => {
@@ -741,7 +699,6 @@ describe('ItemDetailDialog', () => {
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
       await activateLeader(result, item, { pending: true, groupKey: null })
 
       await act(async () => {
@@ -751,7 +708,7 @@ describe('ItemDetailDialog', () => {
       expect(mockKanbanDeleteItem).toHaveBeenCalledWith('/test/project', 'item-1')
     })
 
-    it('should not trigger single-key agent shortcuts when focusZone is editor', async () => {
+    it('should not trigger agent shortcuts without leader prefix', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
 
@@ -765,7 +722,7 @@ describe('ItemDetailDialog', () => {
         />,
       )
 
-      // Do NOT press Tab — stay in editor zone
+      // Press p without leader — should not start agent
       await act(async () => {
         fireEvent.keyDown(getContainer(), { key: 'p' })
       })
@@ -788,9 +745,8 @@ describe('ItemDetailDialog', () => {
         />,
       )
 
-      // Tab won't switch zone in INSERT mode, but even if it did, p shouldn't fire
+      // p shouldn't fire in INSERT mode
       await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: 'Tab' })
         fireEvent.keyDown(getContainer(), { key: 'p' })
       })
 
@@ -806,8 +762,6 @@ describe('ItemDetailDialog', () => {
       const result = render(
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
-
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
 
       // Activate leader → agent group, start first agent (sets isStartingAgent = true)
       await activateLeader(result, item, { pending: true, groupKey: 'a' })
@@ -839,8 +793,6 @@ describe('ItemDetailDialog', () => {
         />,
       )
 
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
-
       await act(async () => {
         fireEvent.keyDown(getContainer(), { key: 'p' })
       })
@@ -862,9 +814,6 @@ describe('ItemDetailDialog', () => {
         />,
       )
 
-      // Switch to sidebar zone
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
-
       // Ctrl+Shift+S should NOT start agent (removed)
       await act(async () => {
         fireEvent.keyDown(getContainer(), {
@@ -877,72 +826,7 @@ describe('ItemDetailDialog', () => {
       expect(mockStart).not.toHaveBeenCalled()
     })
 
-    it('should switch focusZone to editor when Escape is pressed in sidebar zone', () => {
-      const onClose = vi.fn()
-
-      render(
-        <ItemDetailDialog
-          isOpen={true}
-          item={createMockItem()}
-          projectPath="/test/project"
-          onClose={onClose}
-          onUpdated={vi.fn()}
-        />,
-      )
-
-      // Switch to sidebar
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
-      expect(screen.getByTestId('sidebar-zone')).toHaveClass('ring-1')
-
-      // Escape should return to editor zone, NOT close dialog
-      fireEvent.keyDown(getContainer(), { key: 'Escape' })
-
-      expect(screen.getByTestId('editor-zone')).toHaveClass('ring-1')
-      expect(onClose).not.toHaveBeenCalled()
-    })
-
-    it('should reset focusZone to editor when dialog re-opens', () => {
-      const { rerender } = render(
-        <ItemDetailDialog
-          isOpen={true}
-          item={createMockItem()}
-          projectPath="/test/project"
-          onClose={vi.fn()}
-          onUpdated={vi.fn()}
-        />,
-      )
-
-      // Switch to sidebar
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
-      expect(screen.getByTestId('sidebar-zone')).toHaveClass('ring-1')
-
-      // Close dialog
-      rerender(
-        <ItemDetailDialog
-          isOpen={false}
-          item={createMockItem()}
-          projectPath="/test/project"
-          onClose={vi.fn()}
-          onUpdated={vi.fn()}
-        />,
-      )
-
-      // Reopen dialog
-      rerender(
-        <ItemDetailDialog
-          isOpen={true}
-          item={createMockItem()}
-          projectPath="/test/project"
-          onClose={vi.fn()}
-          onUpdated={vi.fn()}
-        />,
-      )
-
-      expect(screen.getByTestId('editor-zone')).toHaveClass('ring-1')
-      expect(screen.getByTestId('sidebar-zone')).not.toHaveClass('ring-1')
-    })
-
-    it('should update hint bar to show which-key hint when focusZone is sidebar', () => {
+    it('should trigger leader for dialog-sidebar zone when Space pressed in NORMAL mode', () => {
       render(
         <ItemDetailDialog
           isOpen={true}
@@ -953,51 +837,45 @@ describe('ItemDetailDialog', () => {
         />,
       )
 
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      fireEvent.keyDown(getContainer(), { key: ' ' })
+
+      expect(mockTriggerLeader).toHaveBeenCalledWith('dialog-sidebar')
+    })
+
+    it('should process sidebar leader shortcuts without needing Tab first', async () => {
+      mockKanbanDeleteItem.mockResolvedValue(undefined)
+      const item = createMockItem({ agentStatus: 'idle' })
+
+      const result = render(
+        <ItemDetailDialog {...dialogPropsDefault} item={item} />,
+      )
+
+      // Space d should delete without pressing Tab first
+      await activateLeader(result, item, { pending: true, groupKey: null })
+
+      await act(async () => {
+        fireEvent.keyDown(getContainer(), { key: 'd' })
+      })
+
+      expect(mockKanbanDeleteItem).toHaveBeenCalledWith('/test/project', 'item-1')
+    })
+
+    it('should show Space in hint bar instead of Tab for sidebar actions', () => {
+      render(
+        <ItemDetailDialog
+          isOpen={true}
+          item={createMockItem()}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
 
       const hintBar = screen.getByTestId('shortcuts-hint-bar')
-      expect(hintBar.textContent).toContain('Tab')
-      expect(hintBar.textContent).toContain('Editor')
       expect(hintBar.textContent).toContain('Space')
-      expect(hintBar.textContent).toContain('Actions (which-key)')
-      expect(hintBar.textContent).toContain('Esc')
-      expect(hintBar.textContent).toContain('Back')
-    })
-
-    it('should show Space Actions hint (not individual shortcut names) in sidebar hint bar', () => {
-      render(
-        <ItemDetailDialog
-          isOpen={true}
-          item={createMockItem()}
-          projectPath="/test/project"
-          onClose={vi.fn()}
-          onUpdated={vi.fn()}
-        />,
-      )
-
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
-
-      const hintBar = screen.getByTestId('shortcuts-hint-bar')
-      // Should NOT show individual action names (they are behind which-key now)
-      expect(hintBar.textContent).not.toContain('Approve')
-      expect(hintBar.textContent).not.toContain('Merge PR')
-      expect(hintBar.textContent).not.toContain('Fix Conflicts')
-    })
-
-    it('should update hint bar to show editor shortcuts when focusZone is editor', () => {
-      render(
-        <ItemDetailDialog
-          isOpen={true}
-          item={createMockItem()}
-          projectPath="/test/project"
-          onClose={vi.fn()}
-          onUpdated={vi.fn()}
-        />,
-      )
-
-      const hintBar = screen.getByTestId('shortcuts-hint-bar')
+      expect(hintBar.textContent).toContain('Actions')
+      expect(hintBar.textContent).not.toContain('Tab')
       expect(hintBar.textContent).toContain('Navigate')
-      expect(hintBar.textContent).toContain('Sidebar')
       expect(hintBar.textContent).toContain('Edit field')
     })
   })
@@ -1156,7 +1034,7 @@ describe('ItemDetailDialog', () => {
       expect(mockEnterInsertMode).toHaveBeenCalled()
     })
 
-    it('should allow Tab to toggle zones even after focus was on a select element', async () => {
+    it('should not show ring indicators after Tab press (zone toggle removed)', async () => {
       renderDialog()
       const container = getContainer()
 
@@ -1170,26 +1048,25 @@ describe('ItemDetailDialog', () => {
         expect(document.activeElement).toBe(container)
       })
 
-      // Tab should toggle zones
+      // Tab should not toggle zones (feature removed)
       fireEvent.keyDown(container, { key: 'Tab' })
-      expect(screen.getByTestId('sidebar-zone')).toHaveClass('ring-1')
-
-      fireEvent.keyDown(container, { key: 'Tab' })
-      expect(screen.getByTestId('editor-zone')).toHaveClass('ring-1')
+      expect(screen.getByTestId('sidebar-zone')).not.toHaveClass('ring-1')
+      expect(screen.getByTestId('editor-zone')).not.toHaveClass('ring-1')
     })
 
-    it('should block trapFocus from overriding vim Tab zone switch', () => {
+    it('should not trigger trapFocus in NORMAL mode Tab', () => {
       renderDialog()
       const container = getContainer()
       container.focus()
 
-      // Press Tab in NORMAL mode — should toggle focus zone, not trigger trapFocus
+      // Press Tab in NORMAL mode — trapFocus is skipped in NORMAL mode
       fireEvent.keyDown(container, { key: 'Tab' })
 
-      // Focus should remain on the dialog container (not moved to a focusable child by trapFocus)
+      // Focus should remain on the dialog container
       expect(document.activeElement).toBe(container)
-      // And zone should have toggled to sidebar
-      expect(screen.getByTestId('sidebar-zone')).toHaveClass('ring-1')
+      // No ring indicators
+      expect(screen.getByTestId('sidebar-zone')).not.toHaveClass('ring-1')
+      expect(screen.getByTestId('editor-zone')).not.toHaveClass('ring-1')
     })
   })
 
@@ -1237,8 +1114,7 @@ describe('ItemDetailDialog', () => {
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
-      // Switch to sidebar zone
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
 
       // Activate leader and press l to toggle log
       await activateLeader(result, item, { pending: true, groupKey: null })
@@ -1283,8 +1159,7 @@ describe('ItemDetailDialog', () => {
         />,
       )
 
-      // Switch to sidebar zone
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
 
       // Press l in INSERT mode
       await act(async () => {
@@ -1308,8 +1183,7 @@ describe('ItemDetailDialog', () => {
         />,
       )
 
-      // Switch to sidebar zone
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
 
       // Press l with Ctrl
       await act(async () => {
@@ -1331,8 +1205,7 @@ describe('ItemDetailDialog', () => {
         await new Promise(r => setTimeout(r, 0))
       })
 
-      // Switch to sidebar zone
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
 
       // Toggle log open via leader
       await toggleLogViaLeader(result, item)
@@ -1359,8 +1232,7 @@ describe('ItemDetailDialog', () => {
         await new Promise(r => setTimeout(r, 0))
       })
 
-      // Switch to sidebar zone
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+
 
       // Toggle log open via leader
       await toggleLogViaLeader(result, item)
@@ -1387,8 +1259,7 @@ describe('ItemDetailDialog', () => {
         await new Promise(r => setTimeout(r, 0))
       })
 
-      // Switch to sidebar zone and toggle log via leader
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      // Toggle log via leader
       await toggleLogViaLeader(result, item)
 
       // Enter log focus by pressing j
@@ -1411,8 +1282,7 @@ describe('ItemDetailDialog', () => {
         await new Promise(r => setTimeout(r, 0))
       })
 
-      // Switch to sidebar zone and toggle log via leader
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      // Toggle log via leader
       await toggleLogViaLeader(result, item)
 
       // Enter log focus
@@ -1439,8 +1309,7 @@ describe('ItemDetailDialog', () => {
         await new Promise(r => setTimeout(r, 0))
       })
 
-      // Switch to sidebar zone and toggle log open via leader
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      // Toggle log open via leader
       await toggleLogViaLeader(result, item)
 
       // Verify log is open
@@ -1460,7 +1329,7 @@ describe('ItemDetailDialog', () => {
       expect(screen.queryByTestId('agent-log-section')).not.toBeInTheDocument()
     })
 
-    it('should exit log focus mode (not switch to editor zone) when Escape is pressed while logFocused is true', async () => {
+    it('should exit log focus mode when Escape is pressed while logFocused is true', async () => {
       const item = createMockItem({ agentStatus: 'running' })
       const result = render(
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
@@ -1470,8 +1339,7 @@ describe('ItemDetailDialog', () => {
         await new Promise(r => setTimeout(r, 0))
       })
 
-      // Switch to sidebar zone and toggle log open via leader
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      // Toggle log open via leader
       await toggleLogViaLeader(result, item)
 
       // Enter log focus by pressing j
@@ -1484,9 +1352,6 @@ describe('ItemDetailDialog', () => {
         fireEvent.keyDown(getContainer(), { key: 'Escape' })
       })
 
-      // Should still be in sidebar zone (not switched to editor)
-      expect(screen.getByTestId('sidebar-zone')).toHaveClass('ring-1')
-      expect(screen.getByTestId('editor-zone')).not.toHaveClass('ring-1')
       // Log should still be visible
       expect(screen.getByTestId('agent-log-section')).toBeInTheDocument()
     })
@@ -1501,8 +1366,7 @@ describe('ItemDetailDialog', () => {
         await new Promise(r => setTimeout(r, 0))
       })
 
-      // Switch to sidebar zone and toggle log open via leader
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      // Toggle log open via leader
       await toggleLogViaLeader(result, item)
 
       // Enter log focus by pressing j
@@ -1517,8 +1381,6 @@ describe('ItemDetailDialog', () => {
 
       // Log should still be visible (auto-scroll resumption is internal)
       expect(screen.getByTestId('agent-log-section')).toBeInTheDocument()
-      // Focus zone should still be sidebar
-      expect(screen.getByTestId('sidebar-zone')).toHaveClass('ring-1')
     })
 
     it('should set logFocused to false when Escape is pressed in log focus mode', async () => {
@@ -1531,8 +1393,7 @@ describe('ItemDetailDialog', () => {
         await new Promise(r => setTimeout(r, 0))
       })
 
-      // Switch to sidebar zone and toggle log open via leader
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      // Toggle log open via leader
       await toggleLogViaLeader(result, item)
 
       // Enter log focus by pressing j
@@ -1550,12 +1411,12 @@ describe('ItemDetailDialog', () => {
         fireEvent.keyDown(getContainer(), { key: 'Escape' })
       })
 
-      // Hint bar should now show sidebar which-key hint (not log focus hints)
-      expect(hintBar.textContent).toContain('Actions (which-key)')
-      expect(hintBar.textContent).toContain('Editor')
+      // Hint bar should now show normal NORMAL mode hints (not log focus hints)
+      expect(hintBar.textContent).toContain('Actions')
+      expect(hintBar.textContent).toContain('Navigate')
     })
 
-    it('should switch from sidebar to editor zone when Escape is pressed in sidebar zone without log focus', async () => {
+    it('should not show ring indicator after Escape is pressed in NORMAL mode without log focus', async () => {
       render(
         <ItemDetailDialog
           isOpen={true}
@@ -1570,14 +1431,10 @@ describe('ItemDetailDialog', () => {
         await new Promise(r => setTimeout(r, 0))
       })
 
-      // Switch to sidebar zone (no log focus)
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
-      expect(screen.getByTestId('sidebar-zone')).toHaveClass('ring-1')
-
-      // Press Escape — should switch to editor zone
+      // Press Escape — no ring indicators
       fireEvent.keyDown(getContainer(), { key: 'Escape' })
 
-      expect(screen.getByTestId('editor-zone')).toHaveClass('ring-1')
+      expect(screen.getByTestId('editor-zone')).not.toHaveClass('ring-1')
       expect(screen.getByTestId('sidebar-zone')).not.toHaveClass('ring-1')
     })
 
@@ -1591,13 +1448,12 @@ describe('ItemDetailDialog', () => {
         await new Promise(r => setTimeout(r, 0))
       })
 
-      // Switch to sidebar zone and toggle log open via leader
-      fireEvent.keyDown(getContainer(), { key: 'Tab' })
+      // Toggle log open via leader
       await toggleLogViaLeader(result, item)
 
-      // Verify sidebar hint bar (which-key style) before entering log focus
+      // Verify hint bar before entering log focus
       const hintBar = screen.getByTestId('shortcuts-hint-bar')
-      expect(hintBar.textContent).toContain('Actions (which-key)')
+      expect(hintBar.textContent).toContain('Actions')
 
       // Enter log focus by pressing j
       await act(async () => {
