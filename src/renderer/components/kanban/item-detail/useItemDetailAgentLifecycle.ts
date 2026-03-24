@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { LiveAgentStatus } from '@renderer/hooks/useAgentSession'
 import type { DraftFlushReason } from './useItemDetailDraft'
 import type { KanbanItem } from '@shared/types/kanban'
@@ -55,6 +55,12 @@ export function useItemDetailAgentLifecycle({
   const [isAddingComment, setIsAddingComment] = useState(false)
   const [answerText, setAnswerText] = useState('')
   const [commentText, setCommentText] = useState('')
+
+  // Reset input text when switching to a different work item
+  useEffect(() => {
+    setAnswerText('')
+    setCommentText('')
+  }, [item?.id])
 
   const runAgent = useCallback(async (
     invoker: (params: {
