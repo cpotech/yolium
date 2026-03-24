@@ -337,7 +337,7 @@ test.describe('WhichKey Leader Navigation', () => {
     // (or at minimum, the popup dismissed meaning the action key propagated)
   });
 
-  test('should dismiss popup on any non-matching key without side effects', async () => {
+  test('should keep popup visible after pressing a non-matching key (no auto-dismiss)', async () => {
     ctx = await launchApp();
     const { window } = ctx;
 
@@ -352,7 +352,7 @@ test.describe('WhichKey Leader Navigation', () => {
     // Press a key that is not a content zone action (e.g., 'z')
     await window.keyboard.press('z');
 
-    // Popup should dismiss
-    await expect(window.locator('[data-testid="which-key-popup"]')).not.toBeVisible({ timeout: 2000 });
+    // Popup should STILL be visible (not dismissed)
+    await expect(window.locator('[data-testid="which-key-popup"]')).toBeVisible({ timeout: 2000 });
   });
 });

@@ -330,7 +330,7 @@ describe('useVimMode', () => {
     expect(result.current.leaderZone).toBeNull();
   });
 
-  it('should auto-clear leader state after timeout (2s)', () => {
+  it('should NOT auto-clear leader state after any timeout (leader persists indefinitely)', () => {
     vi.useFakeTimers();
     const { result } = renderHook(() => useVimMode());
 
@@ -341,13 +341,13 @@ describe('useVimMode', () => {
     });
     expect(result.current.leaderPending).toBe(true);
 
-    // Advance timer past 2s
+    // Advance timer far beyond old timeout — leader should persist
     act(() => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(60000);
     });
 
-    expect(result.current.leaderPending).toBe(false);
-    expect(result.current.leaderZone).toBeNull();
+    expect(result.current.leaderPending).toBe(true);
+    expect(result.current.leaderZone).toBe('content');
 
     vi.useRealTimers();
   });
