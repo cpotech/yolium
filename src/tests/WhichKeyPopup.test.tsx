@@ -86,4 +86,83 @@ describe('WhichKeyPopup', () => {
     // 'Open project' is a sidebar action, not content
     expect(popup.textContent).not.toContain('Open project');
   });
+
+  // --- Nested leader group tests ---
+
+  it('should show leader groups as category items for dialog-sidebar zone', () => {
+    render(<WhichKeyPopup zone="dialog-sidebar" onDismiss={vi.fn()} />);
+    const popup = screen.getByTestId('which-key-popup');
+    // Should show Agent and Git/PR groups
+    expect(screen.getByTestId('which-key-group-a')).toBeTruthy();
+    expect(screen.getByTestId('which-key-group-g')).toBeTruthy();
+    expect(popup.textContent).toContain('Agent');
+    expect(popup.textContent).toContain('Git/PR');
+  });
+
+  it('should show direct actions alongside groups at level 1', () => {
+    render(<WhichKeyPopup zone="dialog-sidebar" onDismiss={vi.fn()} />);
+    // Direct actions like d (Delete), l (Log toggle), V (Verified), 1/2/3 should be shown
+    expect(screen.getByTestId('which-key-item-item-delete-sidebar')).toBeTruthy();
+    expect(screen.getByTestId('which-key-item-log-toggle-sidebar')).toBeTruthy();
+  });
+
+  it('should drill into sub-actions when onSelectGroup is called', () => {
+    const onSelectGroup = vi.fn();
+    const { rerender } = render(
+      <WhichKeyPopup zone="dialog-sidebar" onDismiss={vi.fn()} leaderGroupKey={null} onSelectGroup={onSelectGroup} />
+    );
+
+    // At level 1, groups should be visible
+    expect(screen.getByTestId('which-key-group-a')).toBeTruthy();
+
+    // Rerender with leaderGroupKey='a' to simulate drill-down
+    rerender(
+      <WhichKeyPopup zone="dialog-sidebar" onDismiss={vi.fn()} leaderGroupKey="a" onSelectGroup={onSelectGroup} />
+    );
+
+    // Should now show agent sub-actions
+    expect(screen.getByTestId('which-key-item-agent-plan-sidebar')).toBeTruthy();
+    expect(screen.getByTestId('which-key-item-agent-code-sidebar')).toBeTruthy();
+    expect(screen.getByTestId('which-key-item-agent-stop-sidebar')).toBeTruthy();
+    // Group items should NOT be visible at level 2
+    expect(screen.queryByTestId('which-key-group-a')).toBeNull();
+  });
+
+  it('should show breadcrumb header at level 2', () => {
+    render(
+      <WhichKeyPopup zone="dialog-sidebar" onDismiss={vi.fn()} leaderGroupKey="a" onSelectGroup={vi.fn()} />
+    );
+    const breadcrumb = screen.getByTestId('which-key-breadcrumb');
+    expect(breadcrumb.textContent).toContain('Leader');
+    expect(breadcrumb.textContent).toContain('Agent');
+  });
+
+  it('should return to level 1 when Backspace is pressed at level 2', () => {
+    const onSelectGroup = vi.fn();
+    render(
+      <WhichKeyPopup zone="dialog-sidebar" onDismiss={vi.fn()} leaderGroupKey="a" onSelectGroup={onSelectGroup} />
+    );
+
+    fireEvent.keyDown(document, { key: 'Backspace' });
+    expect(onSelectGroup).toHaveBeenCalledWith(null);
+  });
+
+  it('should dismiss entirely on Escape at level 2', () => {
+    const onDismiss = vi.fn();
+    render(
+      <WhichKeyPopup zone="dialog-sidebar" onDismiss={onDismiss} leaderGroupKey="a" onSelectGroup={vi.fn()} />
+    );
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not show group items for non-dialog zones (content stays flat)', () => {
+    render(<WhichKeyPopup zone="content" onDismiss={vi.fn()} />);
+    // Content zone should not have any group items
+    expect(screen.queryByTestId('which-key-group-a')).toBeNull();
+    expect(screen.queryByTestId('which-key-group-g')).toBeNull();
+    // But should have flat action items
+    expect(screen.getByTestId('which-key-item-card-down')).toBeTruthy();
+  });
 });

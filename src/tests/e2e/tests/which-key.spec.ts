@@ -199,10 +199,12 @@ test.describe('Which-Key Popup', () => {
     // Press Space — should show dialog-sidebar shortcuts
     await window.keyboard.press('Space');
 
-    // The which-key popup must appear with dialog-sidebar zone shortcuts
+    // The which-key popup must appear with dialog-sidebar leader groups
     const popup = window.locator('[data-testid="which-key-popup"]');
     await expect(popup).toBeVisible({ timeout: 2000 });
-    await expect(popup).toContainText('dialog-sidebar');
+    // Should show leader group categories for dialog-sidebar zone
+    await expect(popup).toContainText('Leader');
+    await expect(popup).toContainText('Agent');
   });
 
   test('should open full KeyboardShortcutsDialog when ? is pressed', async () => {

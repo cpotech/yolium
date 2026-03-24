@@ -192,8 +192,10 @@ test.describe('Dialog Shortcuts', () => {
       // Press Tab to switch to sidebar focus zone
       await window.keyboard.press('Tab');
 
-      // Press R to resume — agent resume will be attempted (may fail since no real container, but the key should be handled)
-      await window.keyboard.press('R');
+      // Press Space a R to resume — leader → agent group → Resume
+      await window.keyboard.press('Space');
+      await window.keyboard.press('a');
+      await window.keyboard.press('Shift+r');
 
       // Verify R Resume hint is visible in the shortcuts bar
       const dialogText = await window.locator(selectors.itemDetailDialog).textContent();
@@ -210,8 +212,10 @@ test.describe('Dialog Shortcuts', () => {
       // Press Tab to switch to sidebar focus zone
       await window.keyboard.press('Tab');
 
-      // Press R — should be a no-op since agent is idle
-      await window.keyboard.press('R');
+      // Press Space a R — should be a no-op since agent is idle
+      await window.keyboard.press('Space');
+      await window.keyboard.press('a');
+      await window.keyboard.press('Shift+r');
 
       // Dialog should still be open (no error, no crash)
       await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
@@ -241,8 +245,10 @@ test.describe('Dialog Shortcuts', () => {
       // Press Tab to switch to sidebar focus zone
       await window.keyboard.press('Tab');
 
-      // Press R — should be a no-op since agent is running (R is for resume, not stop)
-      await window.keyboard.press('R');
+      // Press Space a R — should be a no-op since agent is running (R is for resume, not stop)
+      await window.keyboard.press('Space');
+      await window.keyboard.press('a');
+      await window.keyboard.press('Shift+r');
 
       // Dialog should still be open (no error, no crash)
       await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
@@ -457,7 +463,7 @@ test.describe('Dialog Shortcuts', () => {
       expect(dialogText).toContain('Open project');
     });
 
-    test('should show Agent Controls section with Ctrl+Shift+S for Scout Agent', async () => {
+    test('should NOT show Ctrl+Shift agent shortcuts (removed in favor of leader groups)', async () => {
       ctx = await launchApp();
       const { window } = ctx;
 
@@ -465,15 +471,14 @@ test.describe('Dialog Shortcuts', () => {
       await window.click(selectors.shortcutsButton);
       await expect(window.locator(selectors.shortcutsDialog)).toBeVisible();
 
-      // Should contain Agent Controls group with remaining shortcuts
-      const dialogText = await window.locator(selectors.shortcutsDialog).textContent();
-      expect(dialogText).toContain('Agent Controls');
-      expect(dialogText).toContain('Scout Agent');
-      expect(dialogText).toContain('Ctrl+Shift+S');
-      // Plan/Code/Verify Ctrl+Shift shortcuts should be gone
-      expect(dialogText).not.toContain('Ctrl+Shift+P');
-      expect(dialogText).not.toContain('Ctrl+Shift+C');
-      expect(dialogText).not.toContain('Ctrl+Shift+V');
+      // All Ctrl+Shift agent shortcuts should be gone (replaced by leader groups)
+      const kbds = await window.locator(`${selectors.shortcutsDialog} kbd`).allTextContents();
+      expect(kbds).not.toContain('Ctrl+Shift+S');
+      expect(kbds).not.toContain('Ctrl+Shift+D');
+      expect(kbds).not.toContain('Ctrl+Shift+M');
+      expect(kbds).not.toContain('Ctrl+Shift+P');
+      expect(kbds).not.toContain('Ctrl+Shift+C');
+      expect(kbds).not.toContain('Ctrl+Shift+V');
     });
   });
 
@@ -540,14 +545,15 @@ test.describe('Dialog Shortcuts', () => {
       await expect(page.locator(selectors.itemDetailDialog)).toBeVisible({ timeout: 5000 });
     }
 
-    test('should expand log panel when l is pressed in sidebar zone', async () => {
+    test('should expand log panel when Space l is pressed in sidebar zone', async () => {
       await openItemDetailDialog();
       const page = ctx.window;
 
       // Press Tab to switch to sidebar zone
       await page.locator(selectors.itemDetailDialog).press('Tab');
 
-      // Press l to toggle log panel
+      // Press Space then l to toggle log panel (leader prefix required)
+      await page.locator(selectors.itemDetailDialog).press('Space');
       await page.locator(selectors.itemDetailDialog).press('l');
 
       // Log panel should now be visible
@@ -555,20 +561,21 @@ test.describe('Dialog Shortcuts', () => {
       await expect(logSection).toBeVisible();
     });
 
-    test('should scroll log panel when j/k is pressed after opening log', async () => {
+    test('should scroll log panel when j/k is pressed after opening log via Space l', async () => {
       await openItemDetailDialog();
       const page = ctx.window;
 
       // Press Tab to switch to sidebar zone
       await page.locator(selectors.itemDetailDialog).press('Tab');
 
-      // Press l to open log panel
+      // Press Space l to open log panel (leader prefix)
+      await page.locator(selectors.itemDetailDialog).press('Space');
       await page.locator(selectors.itemDetailDialog).press('l');
 
       // Verify log is open
       await expect(page.locator('[data-testid="agent-log-section"]')).toBeVisible();
 
-      // Press j to scroll down (should enter log focus mode)
+      // Press j to scroll down (should enter log focus mode — no leader needed)
       await page.locator(selectors.itemDetailDialog).press('j');
 
       // Log should still be visible (just testing that no error occurs)

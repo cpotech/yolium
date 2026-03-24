@@ -30,7 +30,20 @@ export interface VimAction {
   group: string;
   description: string;
   testId?: string;
+  /** Leader group key this action belongs to (e.g., 'a' for Agent, 'g' for Git/PR) */
+  leaderGroup?: string;
 }
+
+export interface LeaderGroup {
+  key: string;
+  label: string;
+  zone: VimActionZone;
+}
+
+export const LEADER_GROUPS: LeaderGroup[] = [
+  { key: 'a', label: 'Agent', zone: 'dialog-sidebar' },
+  { key: 'g', label: 'Git/PR', zone: 'dialog-sidebar' },
+];
 
 export const VIM_ACTIONS: VimAction[] = [
   // --- Vim Modes (zone: mode) ---
@@ -137,33 +150,37 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'dialog-scroll-up', key: 'k', zone: 'dialog-scroll', mode: 'NORMAL', category: 'vim', group: 'Dialog Scrolling', description: 'Scroll up' },
 
   // --- Dialog sidebar — single-key agent shortcuts + PR/merge shortcuts + log toggle ---
-  { id: 'agent-plan-sidebar', key: 'p', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Plan Agent (sidebar)' },
-  { id: 'agent-code-sidebar', key: 'c', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Code Agent (sidebar)' },
-  { id: 'agent-verify-sidebar', key: 'v', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Verify Agent (sidebar)' },
-  { id: 'agent-scout-sidebar', key: 's', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Scout Agent (sidebar)' },
-  { id: 'agent-design-sidebar', key: 'D', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Design Agent (sidebar)' },
-  { id: 'agent-marketing-sidebar', key: 'm', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Marketing Agent (sidebar)' },
-  { id: 'agent-stop-sidebar', key: 'x', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Stop Agent (sidebar)' },
-  { id: 'agent-resume-sidebar', key: 'R', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Resume Agent (sidebar)' },
+  // Agent actions (leader group 'a')
+  { id: 'agent-plan-sidebar', key: 'p', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Plan Agent (sidebar)', leaderGroup: 'a' },
+  { id: 'agent-code-sidebar', key: 'c', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Code Agent (sidebar)', leaderGroup: 'a' },
+  { id: 'agent-verify-sidebar', key: 'v', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Verify Agent (sidebar)', leaderGroup: 'a' },
+  { id: 'agent-scout-sidebar', key: 's', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Scout Agent (sidebar)', leaderGroup: 'a' },
+  { id: 'agent-design-sidebar', key: 'D', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Design Agent (sidebar)', leaderGroup: 'a' },
+  { id: 'agent-marketing-sidebar', key: 'm', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Marketing Agent (sidebar)', leaderGroup: 'a' },
+  { id: 'agent-stop-sidebar', key: 'x', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Stop Agent (sidebar)', leaderGroup: 'a' },
+  { id: 'agent-resume-sidebar', key: 'R', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Resume Agent (sidebar)', leaderGroup: 'a' },
+  // Direct actions (no leader group)
   { id: 'item-delete-sidebar', key: 'd', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Delete Item (sidebar)' },
-  { id: 'dialog-compare-changes', key: 'f', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Compare Changes (diff)' },
-  { id: 'dialog-rebase', key: 'r', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Pull Latest (Rebase)' },
-  { id: 'dialog-check-conflicts', key: 'k', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Check Conflicts' },
-  { id: 'dialog-merge-push-pr', key: 'g', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Squash, Merge & Push PR' },
-  { id: 'dialog-approve-pr', key: 'a', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Approve PR' },
-  { id: 'dialog-merge-pr', key: 'w', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Merge PR (finalize)' },
-  { id: 'dialog-open-pr', key: 'o', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Open PR (external)' },
+  // Git/PR actions (leader group 'g')
+  { id: 'dialog-compare-changes', key: 'f', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Compare Changes (diff)', leaderGroup: 'g' },
+  { id: 'dialog-rebase', key: 'r', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Pull Latest (Rebase)', leaderGroup: 'g' },
+  { id: 'dialog-check-conflicts', key: 'k', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Check Conflicts', leaderGroup: 'g' },
+  { id: 'dialog-merge-push-pr', key: 'm', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Squash, Merge & Push PR', leaderGroup: 'g' },
+  { id: 'dialog-approve-pr', key: 'a', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Approve PR', leaderGroup: 'g' },
+  { id: 'dialog-merge-pr', key: 'w', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Merge PR (finalize)', leaderGroup: 'g' },
+  { id: 'dialog-open-pr', key: 'o', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Open PR (external)', leaderGroup: 'g' },
+  // Direct actions (no leader group)
   { id: 'log-toggle-sidebar', key: 'l', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Toggle log panel (sidebar)' },
+  { id: 'toggle-verified-sidebar', key: 'V', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Toggle Verified (sidebar)' },
+  { id: 'cycle-provider-sidebar', key: '1', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Cycle Provider (sidebar)' },
+  { id: 'cycle-model-sidebar', key: '2', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Cycle Model (sidebar)' },
+  { id: 'cycle-column-sidebar', key: '3', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Cycle Column (sidebar)' },
 
   // --- Dialog log — log panel navigation ---
   { id: 'log-down', key: 'j', zone: 'dialog-log', mode: 'NORMAL', category: 'vim', group: 'Log Panel Navigation', description: 'Scroll down log panel' },
   { id: 'log-up', key: 'k', zone: 'dialog-log', mode: 'NORMAL', category: 'vim', group: 'Log Panel Navigation', description: 'Scroll up log panel' },
   { id: 'log-exit', key: 'Escape', zone: 'dialog-log', mode: 'NORMAL', category: 'vim', group: 'Log Panel Navigation', description: 'Exit log focus mode' },
 
-  // --- Agent Controls — Ctrl+Shift shortcuts ---
-  { id: 'agent-scout', key: 'Ctrl+Shift+S', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Agent Controls (Work Item)', description: 'Scout Agent' },
-  { id: 'agent-design', key: 'Ctrl+Shift+D', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Agent Controls (Work Item)', description: 'Design Agent' },
-  { id: 'agent-marketing', key: 'Ctrl+Shift+M', zone: 'dialog', mode: 'NORMAL', category: 'vim', group: 'Agent Controls (Work Item)', description: 'Marketing Agent' },
 
   // --- Electron Tabs ---
   { id: 'electron-tab-new', key: 'Ctrl+Shift+T', zone: 'electron-tabs', mode: 'ANY', category: 'electron', group: 'Tab Management', description: 'New tab' },
@@ -211,7 +228,6 @@ export const SHORTCUT_GROUP_ORDER: string[] = [
   'Dialog Scrolling',
   'Sidebar Focus (Work Item)',
   'Log Panel Navigation',
-  'Agent Controls (Work Item)',
   'Kanban Selection',
   'Tab Management',
   'Terminal',
@@ -234,4 +250,29 @@ export function getActionsByGroup(): Map<string, VimAction[]> {
     }
   }
   return map;
+}
+
+/** Get leader groups defined for a zone. */
+export function getLeaderGroupsForZone(zone: VimActionZone): LeaderGroup[] {
+  return LEADER_GROUPS.filter(g => g.zone === zone);
+}
+
+/** Get actions in a zone that have no leaderGroup (direct leader actions). */
+export function getDirectLeaderActions(zone: VimActionZone): VimAction[] {
+  return VIM_ACTIONS.filter(a =>
+    a.zone === zone &&
+    a.category === 'vim' &&
+    a.mode === 'NORMAL' &&
+    !a.leaderGroup &&
+    !a.key.includes('+') &&
+    a.key.length <= 2
+  );
+}
+
+/** Get actions in a zone that belong to a specific leader group. */
+export function getGroupedLeaderActions(zone: VimActionZone, groupKey: string): VimAction[] {
+  return VIM_ACTIONS.filter(a =>
+    a.zone === zone &&
+    a.leaderGroup === groupKey
+  );
 }

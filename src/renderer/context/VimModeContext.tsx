@@ -20,10 +20,14 @@ interface VimModeContextValue {
   leaderPending: boolean;
   /** The zone that was active when leader was triggered (may be a dialog zone) */
   leaderZone: VimActionZone | null;
+  /** The currently selected leader group key (e.g., 'a' for Agent, 'g' for Git/PR) */
+  leaderGroupKey: string | null;
   /** Clear leader state (dismiss which-key popup) */
   clearLeader: () => void;
   /** Trigger leader mode for an arbitrary zone (used by dialogs to bypass dialogOpen guard) */
   triggerLeader: (zone: VimActionZone) => void;
+  /** Set the leader group key (drill into a category), null to go back to level 1 */
+  setLeaderGroup: (key: string | null) => void;
 }
 
 const VimModeContext = createContext<VimModeContextValue | null>(null);
@@ -109,8 +113,10 @@ export function VimModeProvider({
         suspendNavigation,
         leaderPending: vim.leaderPending,
         leaderZone: vim.leaderZone,
+        leaderGroupKey: vim.leaderGroupKey,
         clearLeader: vim.clearLeader,
         triggerLeader: vim.triggerLeader,
+        setLeaderGroup: vim.setLeaderGroup,
       }}
     >
       {children}
@@ -144,8 +150,10 @@ export function useVimModeContext(): VimModeContextValue {
       suspendNavigation: () => noopRelease,
       leaderPending: false,
       leaderZone: null,
+      leaderGroupKey: null,
       clearLeader: () => {},
       triggerLeader: () => {},
+      setLeaderGroup: () => {},
     };
   }
   return context;

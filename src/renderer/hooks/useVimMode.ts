@@ -45,10 +45,14 @@ export interface UseVimModeResult {
   leaderPending: boolean;
   /** The zone that was active when leader was triggered (may be a dialog zone) */
   leaderZone: VimActionZone | null;
+  /** The currently selected leader group key (e.g., 'a' for Agent, 'g' for Git/PR) */
+  leaderGroupKey: string | null;
   /** Clear leader state (dismiss which-key popup) */
   clearLeader: () => void;
   /** Trigger leader mode for an arbitrary zone (used by dialogs to bypass dialogOpen guard) */
   triggerLeader: (zone: VimActionZone) => void;
+  /** Set the leader group key (drill into a category), null to go back to level 1 */
+  setLeaderGroup: (key: string | null) => void;
 }
 
 export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
@@ -57,6 +61,7 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
   const [activeZone, setActiveZoneState] = useState<VimZone>('content');
   const [leaderPending, setLeaderPending] = useState(false);
   const [leaderZone, setLeaderZone] = useState<VimActionZone | null>(null);
+  const [leaderGroupKey, setLeaderGroupKeyState] = useState<string | null>(null);
   const onZoneChangeRef = useRef(onZoneChange);
   onZoneChangeRef.current = onZoneChange;
   const onGoToKanbanRef = useRef(onGoToKanban);
@@ -68,10 +73,25 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
   const clearLeader = useCallback(() => {
     setLeaderPending(false);
     setLeaderZone(null);
+    setLeaderGroupKeyState(null);
     if (leaderTimeoutRef.current) {
       clearTimeout(leaderTimeoutRef.current);
       leaderTimeoutRef.current = null;
     }
+  }, []);
+
+  const setLeaderGroup = useCallback((key: string | null) => {
+    setLeaderGroupKeyState(key);
+    // Reset timeout when changing group level
+    if (leaderTimeoutRef.current) {
+      clearTimeout(leaderTimeoutRef.current);
+    }
+    leaderTimeoutRef.current = setTimeout(() => {
+      setLeaderPending(false);
+      setLeaderZone(null);
+      setLeaderGroupKeyState(null);
+      leaderTimeoutRef.current = null;
+    }, LEADER_TIMEOUT_MS);
   }, []);
 
   const triggerLeader = useCallback((zone: VimActionZone) => {
@@ -89,6 +109,7 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
       leaderTimeoutRef.current = setTimeout(() => {
         setLeaderPending(false);
         setLeaderZone(null);
+        setLeaderGroupKeyState(null);
         leaderTimeoutRef.current = null;
       }, LEADER_TIMEOUT_MS);
       return () => {
@@ -236,7 +257,9 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
     exitToNormal,
     leaderPending,
     leaderZone,
+    leaderGroupKey,
     clearLeader,
     triggerLeader,
+    setLeaderGroup,
   };
 }

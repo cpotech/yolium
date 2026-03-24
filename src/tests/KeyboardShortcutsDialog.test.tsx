@@ -18,18 +18,20 @@ describe('KeyboardShortcutsDialog', () => {
     expect(kbds).not.toContain('Ctrl+Shift+V')
   })
 
-  it('should still render Agent Controls group with Scout/Design/Marketing', () => {
+  it('should render sidebar agent shortcuts (via leader groups, not Ctrl+Shift)', () => {
     render(<KeyboardShortcutsDialog isOpen={true} onClose={() => {}} />)
 
     const dialog = screen.getByTestId('shortcuts-dialog')
     const text = dialog.textContent ?? ''
-    expect(text).toContain('Agent Controls')
-    expect(text).toContain('Scout Agent')
-    expect(text).toContain('Ctrl+Shift+S')
-    expect(text).toContain('Design Agent')
-    expect(text).toContain('Ctrl+Shift+D')
-    expect(text).toContain('Marketing Agent')
-    expect(text).toContain('Ctrl+Shift+M')
+    // Sidebar Focus group should contain agent shortcuts
+    expect(text).toContain('Sidebar Focus (Work Item)')
+    expect(text).toContain('Plan Agent (sidebar)')
+    expect(text).toContain('Code Agent (sidebar)')
+    // Ctrl+Shift+S/D/M should NOT be present (removed)
+    const kbds = Array.from(dialog.querySelectorAll('kbd')).map(k => k.textContent)
+    expect(kbds).not.toContain('Ctrl+Shift+S')
+    expect(kbds).not.toContain('Ctrl+Shift+D')
+    expect(kbds).not.toContain('Ctrl+Shift+M')
   })
 
   it('should render Open Project as Ctrl+Shift+N', () => {
