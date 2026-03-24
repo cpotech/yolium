@@ -2,7 +2,7 @@
  * @module src/components/WhichKeyPopup
  * Floating which-key popup that shows available shortcuts for the current zone.
  * For dialog-sidebar zone, shows nested leader groups (categories + drill-down).
- * Dismisses on: action executed, Escape, Ctrl+Q, Space (toggle), click-outside, timeout.
+ * Dismisses on: Space (toggle), Escape, Ctrl+Q, click-outside.
  */
 
 import React, { useEffect, useRef, useMemo } from 'react';
@@ -88,8 +88,7 @@ export function WhichKeyPopup({ zone, onDismiss, leaderGroupKey = null, onSelect
           return;
         }
       }
-      // Any other key: dismiss popup, let event propagate to zone handlers
-      onDismiss();
+      // Any other key: ignore (popup persists, key propagates to zone handlers)
     };
 
     document.addEventListener('keydown', handler, true);

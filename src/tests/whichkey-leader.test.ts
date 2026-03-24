@@ -102,7 +102,7 @@ describe('WhichKey leader zone assignment', () => {
     expect(result.current.leaderZone).toBeNull();
   });
 
-  it('should auto-clear leader state after LEADER_TIMEOUT_MS', () => {
+  it('should NOT auto-clear leader state after any timeout (leader persists indefinitely)', () => {
     const { result } = renderHook(() => useVimMode());
 
     act(() => {
@@ -110,12 +110,29 @@ describe('WhichKey leader zone assignment', () => {
     });
     expect(result.current.leaderPending).toBe(true);
 
-    // Advance time past timeout (2000ms)
+    // Advance time far beyond the old timeout — leader should persist
     act(() => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(60000);
+    });
+
+    expect(result.current.leaderPending).toBe(true);
+    expect(result.current.leaderZone).toBe('content');
+  });
+
+  it('should clear leader state via clearLeader() call', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    act(() => {
+      result.current.handleKeyDown(new KeyboardEvent('keydown', { key: ' ' }));
+    });
+    expect(result.current.leaderPending).toBe(true);
+
+    act(() => {
+      result.current.clearLeader();
     });
 
     expect(result.current.leaderPending).toBe(false);
     expect(result.current.leaderZone).toBeNull();
+    expect(result.current.leaderGroupKey).toBeNull();
   });
 });

@@ -35,13 +35,22 @@ describe('WhichKeyPopup', () => {
     expect(popup.textContent).not.toContain('Ctrl+Click');
   });
 
-  it('should dismiss and let key propagate when a valid action key is pressed', () => {
+  it('should NOT dismiss when a non-matching key is pressed (popup persists)', () => {
     const onDismiss = vi.fn();
     render(<WhichKeyPopup {...defaultProps} zone="content" onDismiss={onDismiss} />);
 
-    // Press 'j' which is card-down in content zone — popup dismisses, key propagates
+    // Press 'z' which is not an action — popup should NOT dismiss
+    fireEvent.keyDown(document, { key: 'z' });
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
+  it('should NOT dismiss when a valid action key is pressed (popup persists, key propagates)', () => {
+    const onDismiss = vi.fn();
+    render(<WhichKeyPopup {...defaultProps} zone="content" onDismiss={onDismiss} />);
+
+    // Press 'j' which is card-down in content zone — popup should NOT dismiss, key propagates
     fireEvent.keyDown(document, { key: 'j' });
-    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(onDismiss).not.toHaveBeenCalled();
   });
 
   it('should call onDismiss when Escape is pressed', () => {
@@ -180,30 +189,30 @@ describe('WhichKeyPopup', () => {
     expect(onDismiss).not.toHaveBeenCalled();
   });
 
-  it('should call onDismiss for non-group keys at level 1 in dialog-sidebar zone', () => {
+  it('should NOT dismiss for non-group keys at level 1 in dialog-sidebar zone (popup persists)', () => {
     const onDismiss = vi.fn();
     const onSelectGroup = vi.fn();
     render(
       <WhichKeyPopup zone="dialog-sidebar" onDismiss={onDismiss} leaderGroupKey={null} onSelectGroup={onSelectGroup} />
     );
 
-    // Press 'z' which is not a group key or direct action — should dismiss
+    // Press 'z' which is not a group key or direct action — popup persists
     fireEvent.keyDown(document, { key: 'z' });
-    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(onDismiss).not.toHaveBeenCalled();
     expect(onSelectGroup).not.toHaveBeenCalled();
   });
 
-  it('should call onDismiss for action keys at level 2 (let propagation handle the action)', () => {
+  it('should NOT dismiss for action keys at level 2 (key propagates to zone handlers)', () => {
     const onDismiss = vi.fn();
     const onSelectGroup = vi.fn();
     render(
       <WhichKeyPopup zone="dialog-sidebar" onDismiss={onDismiss} leaderGroupKey="a" onSelectGroup={onSelectGroup} />
     );
 
-    // At level 2 (inside Agent group), pressing 'c' (code agent) should dismiss
-    // so the event propagates to the zone handler that executes the action
+    // At level 2 (inside Agent group), pressing 'c' (code agent) — popup ignores,
+    // key propagates to zone handler which calls vim.clearLeader()
     fireEvent.keyDown(document, { key: 'c' });
-    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(onDismiss).not.toHaveBeenCalled();
     expect(onSelectGroup).not.toHaveBeenCalled();
   });
 
@@ -214,10 +223,10 @@ describe('WhichKeyPopup', () => {
       <WhichKeyPopup zone="dialog-sidebar" onDismiss={onDismiss} leaderGroupKey={null} onSelectGroup={onSelectGroup} />
     );
 
-    // 'x' is not a group key (a, g are the only groups)
+    // 'x' is not a group key (a, g are the only groups) — popup persists
     fireEvent.keyDown(document, { key: 'x' });
     expect(onSelectGroup).not.toHaveBeenCalled();
-    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(onDismiss).not.toHaveBeenCalled();
   });
 
   it('should not show group items for non-dialog zones (content stays flat)', () => {

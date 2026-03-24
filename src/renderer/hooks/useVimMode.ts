@@ -4,7 +4,7 @@
  * Manages NORMAL/INSERT modes, zone tracking, leader-key state, and keydown handling.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { VimActionZone } from '@shared/vim-actions';
 
 export type VimMode = 'NORMAL' | 'INSERT' | 'VISUAL';
@@ -17,8 +17,6 @@ const ZONE_KEYS: Record<string, VimZone> = {
   s: 'status-bar',
   a: 'schedule',
 };
-
-const LEADER_TIMEOUT_MS = 2000;
 
 export interface UseVimModeOptions {
   /** When true, vim navigation is suspended (keys pass through) */
@@ -68,30 +66,15 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
   onGoToKanbanRef.current = onGoToKanban;
   const onShowShortcutsRef = useRef(onShowShortcuts);
   onShowShortcutsRef.current = onShowShortcuts;
-  const leaderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearLeader = useCallback(() => {
     setLeaderPending(false);
     setLeaderZone(null);
     setLeaderGroupKeyState(null);
-    if (leaderTimeoutRef.current) {
-      clearTimeout(leaderTimeoutRef.current);
-      leaderTimeoutRef.current = null;
-    }
   }, []);
 
   const setLeaderGroup = useCallback((key: string | null) => {
     setLeaderGroupKeyState(key);
-    // Reset timeout when changing group level
-    if (leaderTimeoutRef.current) {
-      clearTimeout(leaderTimeoutRef.current);
-    }
-    leaderTimeoutRef.current = setTimeout(() => {
-      setLeaderPending(false);
-      setLeaderZone(null);
-      setLeaderGroupKeyState(null);
-      leaderTimeoutRef.current = null;
-    }, LEADER_TIMEOUT_MS);
   }, []);
 
   const triggerLeader = useCallback((zone: VimActionZone) => {
@@ -102,24 +85,6 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
       setLeaderZone(zone);
     }
   }, [leaderPending, clearLeader]);
-
-  // Auto-clear leader after timeout
-  useEffect(() => {
-    if (leaderPending) {
-      leaderTimeoutRef.current = setTimeout(() => {
-        setLeaderPending(false);
-        setLeaderZone(null);
-        setLeaderGroupKeyState(null);
-        leaderTimeoutRef.current = null;
-      }, LEADER_TIMEOUT_MS);
-      return () => {
-        if (leaderTimeoutRef.current) {
-          clearTimeout(leaderTimeoutRef.current);
-          leaderTimeoutRef.current = null;
-        }
-      };
-    }
-  }, [leaderPending]);
 
   const setActiveZone = useCallback((zone: VimZone) => {
     setActiveZoneState(zone);
