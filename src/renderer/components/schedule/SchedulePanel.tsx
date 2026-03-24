@@ -99,12 +99,19 @@ export function SchedulePanel({ onGoToKanban }: { onGoToKanban?: () => void }): 
 
   useEffect(() => {
     if (vim.activeZone === 'schedule' && !isLoading && viewRef.current) {
+      setFocusedSpecialistIndex(0);
       const active = document.activeElement;
       const tag = active?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       viewRef.current.focus();
     }
   }, [vim.activeZone, isLoading]);
+
+  useEffect(() => {
+    if (!isVimScheduleActive || Object.keys(specialists).length === 0) return;
+    const card = viewRef.current?.querySelector('[data-vim-focused="true"]') as HTMLElement | null;
+    card?.scrollIntoView({ block: 'nearest' });
+  }, [focusedSpecialistIndex, isVimScheduleActive, specialists]);
 
   // Close run type menu when clicking outside
   useEffect(() => {

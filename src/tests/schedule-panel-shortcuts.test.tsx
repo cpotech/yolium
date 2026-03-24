@@ -545,6 +545,118 @@ describe('SchedulePanel vim shortcuts', () => {
     });
   });
 
+  it('should set focus on first card (data-vim-focused) when zone transitions to schedule', async () => {
+    renderWithVim(
+      <>
+        <ZoneSetter zone="schedule" />
+        <SchedulePanel />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
+    });
+
+    const firstCard = screen.getByTestId('specialist-card-spec-1');
+    expect(firstCard.getAttribute('data-vim-focused')).toBe('true');
+  });
+
+  it('should reset focusedSpecialistIndex to 0 when zone transitions back to schedule after navigating away', async () => {
+    const { rerender } = render(
+      <ThemeProvider>
+        <VimModeProvider>
+          <ZoneSetter zone="schedule" />
+          <SchedulePanel />
+        </VimModeProvider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
+    });
+
+    // Navigate down to second card
+    const panel = screen.getByTestId('schedule-panel');
+    fireEvent.keyDown(panel, { key: 'j' });
+    expect(screen.getByTestId('specialist-card-spec-2').getAttribute('data-vim-focused')).toBe('true');
+
+    // Switch zone away
+    rerender(
+      <ThemeProvider>
+        <VimModeProvider>
+          <ZoneSetter zone="sidebar" />
+          <SchedulePanel />
+        </VimModeProvider>
+      </ThemeProvider>,
+    );
+
+    // Switch back to schedule zone
+    rerender(
+      <ThemeProvider>
+        <VimModeProvider>
+          <ZoneSetter zone="schedule" />
+          <SchedulePanel />
+        </VimModeProvider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1').getAttribute('data-vim-focused')).toBe('true');
+    });
+  });
+
+  it('should scroll focused card into view when focusedSpecialistIndex changes', async () => {
+    renderWithVim(
+      <>
+        <ZoneSetter zone="schedule" />
+        <SchedulePanel />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
+    });
+
+    (Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>).mockClear();
+
+    const panel = screen.getByTestId('schedule-panel');
+    fireEvent.keyDown(panel, { key: 'j' });
+
+    await waitFor(() => {
+      expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    });
+  });
+
+  it('should scroll focused card into view when zone transitions to schedule', async () => {
+    const { rerender } = render(
+      <ThemeProvider>
+        <VimModeProvider>
+          <ZoneSetter zone="sidebar" />
+          <SchedulePanel />
+        </VimModeProvider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
+    });
+
+    (Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>).mockClear();
+
+    rerender(
+      <ThemeProvider>
+        <VimModeProvider>
+          <ZoneSetter zone="schedule" />
+          <SchedulePanel />
+        </VimModeProvider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    });
+  });
+
   it('should allow c to switch zone when in actions view (no conflict)', async () => {
     renderWithVim(
       <>
