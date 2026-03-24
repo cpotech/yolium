@@ -167,7 +167,7 @@ test.describe('Dialog Shortcuts', () => {
       return { window: page, itemId: item.id };
     }
 
-    test('should resume an interrupted agent when pressing R in sidebar focus zone', async () => {
+    test('should resume an interrupted agent when pressing Space a R', async () => {
       const { window, itemId } = await openKanbanWithItem();
 
       // Set agent status to interrupted via IPC
@@ -189,9 +189,6 @@ test.describe('Dialog Shortcuts', () => {
       await window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
       await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
 
-      // Press Tab to switch to sidebar focus zone
-      await window.keyboard.press('Tab');
-
       // Press Space a R to resume — leader → agent group → Resume
       await window.keyboard.press('Space');
       await window.keyboard.press('a');
@@ -208,9 +205,6 @@ test.describe('Dialog Shortcuts', () => {
       // Open item detail dialog (agent status is idle by default)
       await window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
       await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
-
-      // Press Tab to switch to sidebar focus zone
-      await window.keyboard.press('Tab');
 
       // Press Space a R — should be a no-op since agent is idle
       await window.keyboard.press('Space');
@@ -241,9 +235,6 @@ test.describe('Dialog Shortcuts', () => {
       // Open item detail dialog
       await window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
       await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
-
-      // Press Tab to switch to sidebar focus zone
-      await window.keyboard.press('Tab');
 
       // Press Space a R — should be a no-op since agent is running (R is for resume, not stop)
       await window.keyboard.press('Space');
@@ -545,12 +536,9 @@ test.describe('Dialog Shortcuts', () => {
       await expect(page.locator(selectors.itemDetailDialog)).toBeVisible({ timeout: 5000 });
     }
 
-    test('should expand log panel when Space l is pressed in sidebar zone', async () => {
+    test('should expand log panel when Space l is pressed', async () => {
       await openItemDetailDialog();
       const page = ctx.window;
-
-      // Press Tab to switch to sidebar zone
-      await page.locator(selectors.itemDetailDialog).press('Tab');
 
       // Press Space then l to toggle log panel (leader prefix required)
       await page.locator(selectors.itemDetailDialog).press('Space');
@@ -564,9 +552,6 @@ test.describe('Dialog Shortcuts', () => {
     test('should scroll log panel when j/k is pressed after opening log via Space l', async () => {
       await openItemDetailDialog();
       const page = ctx.window;
-
-      // Press Tab to switch to sidebar zone
-      await page.locator(selectors.itemDetailDialog).press('Tab');
 
       // Press Space l to open log panel (leader prefix)
       await page.locator(selectors.itemDetailDialog).press('Space');

@@ -178,17 +178,13 @@ describe('ItemDetailDialog sidebar form control shortcuts', () => {
     })
   }
 
-  it('should process sidebar leader shortcuts when event.target is a <select> and focusZone is sidebar', async () => {
+  it('should process sidebar leader shortcuts when event.target is a <select>', async () => {
     const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
     window.electronAPI.agent.start = mockStart
     const itemOverrides = { agentStatus: 'idle' as const }
 
     const result = renderDialog(itemOverrides)
     const container = getContainer()
-
-    // Switch to sidebar zone
-    fireEvent.keyDown(container, { key: 'Tab' })
-    expect(screen.getByTestId('sidebar-zone')).toHaveClass('ring-1')
 
     // Focus the column select (simulates user clicking on it)
     const columnSelect = screen.getByTestId('column-select')
@@ -206,16 +202,13 @@ describe('ItemDetailDialog sidebar form control shortcuts', () => {
     )
   })
 
-  it('should process sidebar leader shortcuts when event.target is an <input> checkbox and focusZone is sidebar', async () => {
+  it('should process sidebar leader shortcuts when event.target is an <input> checkbox', async () => {
     const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
     window.electronAPI.agent.start = mockStart
     const itemOverrides = { agentStatus: 'idle' as const }
 
     const result = renderDialog(itemOverrides)
     const container = getContainer()
-
-    // Switch to sidebar zone
-    fireEvent.keyDown(container, { key: 'Tab' })
 
     // Focus the verified checkbox
     const checkbox = screen.getByTestId('verified-checkbox')
@@ -239,9 +232,6 @@ describe('ItemDetailDialog sidebar form control shortcuts', () => {
 
     renderDialog({ agentStatus: 'idle' })
     const container = getContainer()
-
-    // Switch to sidebar zone
-    fireEvent.keyDown(container, { key: 'Tab' })
 
     // Press bare 'p' without leader — should NOT trigger agent
     await act(async () => {
@@ -275,9 +265,6 @@ describe('ItemDetailDialog sidebar form control shortcuts', () => {
 
     const result = renderDialog(itemOverrides)
     const container = getContainer()
-
-    // Switch to sidebar zone
-    fireEvent.keyDown(container, { key: 'Tab' })
 
     // Focus a select
     const columnSelect = screen.getByTestId('column-select')
@@ -316,7 +303,6 @@ describe('dropdown cycling shortcuts', () => {
   }
 
   async function switchToSidebarWithLeader(result: ReturnType<typeof render>, container: HTMLElement, overrides: Partial<KanbanItem>) {
-    fireEvent.keyDown(container, { key: 'Tab' })
     mockLeaderState.pending = true
     await act(async () => {
       result.rerender(
@@ -554,27 +540,18 @@ describe('dropdown cycling shortcuts', () => {
     expect(document.activeElement).toBe(container)
   })
 
-  it('should not process dropdown shortcuts when focusZone is editor', async () => {
+  it('should process dropdown shortcuts with leader prefix (Space 1 cycles provider)', async () => {
     const overrides = { agentProvider: 'claude' as const, agentStatus: 'idle' as const }
     const result = renderDialog(overrides)
     const container = getContainer()
-    // Stay in editor zone (default)
-    mockLeaderState.pending = true
-    await act(async () => {
-      result.rerender(
-        <ItemDetailDialog
-          {...dialogProps}
-          item={createMockItem(overrides)}
-        />,
-      )
-    })
+    await switchToSidebarWithLeader(result, container, overrides)
 
     await act(async () => {
       fireEvent.keyDown(container, { key: '1' })
     })
 
     const select = screen.getByTestId('agent-provider-select') as HTMLSelectElement
-    expect(select.value).toBe('claude')
+    expect(select.value).toBe('opencode')
   })
 
   it('should not process dropdown shortcuts in INSERT mode', async () => {

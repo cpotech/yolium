@@ -10,7 +10,6 @@ import type { ConflictCheckResult, RebaseResultState } from './useItemDetailPrWo
 import type { AgentTokenUsage } from '@shared/types/agent'
 
 interface ItemDetailSidebarProps {
-  focusZone: 'editor' | 'sidebar'
   showKbdHints: boolean
   item: KanbanItem
   agentProvider: KanbanItem['agentProvider']
@@ -58,7 +57,6 @@ interface ItemDetailSidebarProps {
 }
 
 export function ItemDetailSidebar({
-  focusZone,
   showKbdHints,
   item,
   agentProvider,
@@ -105,7 +103,7 @@ export function ItemDetailSidebar({
   onUpdated,
 }: ItemDetailSidebarProps): React.ReactElement {
   return (
-    <div data-testid="sidebar-zone" className={`w-72 overflow-y-auto border-l border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]${focusZone === 'sidebar' ? ' ring-1 ring-[var(--color-accent-primary)]' : ''}`}>
+    <div data-testid="sidebar-zone" className="w-72 overflow-y-auto border-l border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
       <div className="p-4 border-b border-[var(--color-border-primary)]">
         <AgentControls
           item={item}
