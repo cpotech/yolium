@@ -26,6 +26,8 @@ export interface UseDialogStateResult {
   projectConfigDialogOpen: boolean
   /** Project path for the project config dialog */
   projectConfigProjectPath: string
+  /** Whether agent settings dialog is open */
+  agentSettingsDialogOpen: boolean
   /** Open path dialog in specified mode */
   openPathDialog: (mode: PathDialogMode) => void
   /** Close path dialog */
@@ -46,6 +48,10 @@ export interface UseDialogStateResult {
   openProjectConfigDialog: (projectPath: string) => void
   /** Close project config dialog */
   closeProjectConfigDialog: () => void
+  /** Open agent settings dialog */
+  openAgentSettingsDialog: () => void
+  /** Close agent settings dialog */
+  closeAgentSettingsDialog: () => void
 }
 
 /**
@@ -65,6 +71,7 @@ export function useDialogState(): UseDialogStateResult {
   const [gitConfig, setGitConfig] = useState<GitConfigWithPat | null>(null)
   const [projectConfigDialogOpen, setProjectConfigDialogOpen] = useState(false)
   const [projectConfigProjectPath, setProjectConfigProjectPath] = useState('')
+  const [agentSettingsDialogOpen, setAgentSettingsDialogOpen] = useState(false)
 
   // Load git config on mount
   useEffect(() => {
@@ -122,6 +129,14 @@ export function useDialogState(): UseDialogStateResult {
     setProjectConfigDialogOpen(false)
   }, [])
 
+  const openAgentSettingsDialog = useCallback(() => {
+    setAgentSettingsDialogOpen(true)
+  }, [])
+
+  const closeAgentSettingsDialog = useCallback(() => {
+    setAgentSettingsDialogOpen(false)
+  }, [])
+
   return {
     pathDialogOpen,
     lastUsedPath,
@@ -141,5 +156,8 @@ export function useDialogState(): UseDialogStateResult {
     saveGitConfig,
     openProjectConfigDialog,
     closeProjectConfigDialog,
+    agentSettingsDialogOpen,
+    openAgentSettingsDialog,
+    closeAgentSettingsDialog,
   }
 }

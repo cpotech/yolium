@@ -148,14 +148,17 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'dialog-scroll-down', key: 'j', zone: 'dialog-scroll', mode: 'NORMAL', category: 'vim', group: 'Dialog Scrolling', description: 'Scroll down' },
   { id: 'dialog-scroll-up', key: 'k', zone: 'dialog-scroll', mode: 'NORMAL', category: 'vim', group: 'Dialog Scrolling', description: 'Scroll up' },
 
-  // --- Dialog sidebar — single-key agent shortcuts + PR/merge shortcuts + log toggle ---
+  // --- Dialog sidebar — numbered agent shortcuts (1-9) + PR/merge shortcuts + log toggle ---
   // Agent actions (leader group 'a')
-  { id: 'agent-plan-sidebar', key: 'p', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Plan Agent (sidebar)', leaderGroup: 'a' },
-  { id: 'agent-code-sidebar', key: 'c', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Code Agent (sidebar)', leaderGroup: 'a' },
-  { id: 'agent-verify-sidebar', key: 'v', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Verify Agent (sidebar)', leaderGroup: 'a' },
-  { id: 'agent-scout-sidebar', key: 's', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Scout Agent (sidebar)', leaderGroup: 'a' },
-  { id: 'agent-design-sidebar', key: 'D', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Design Agent (sidebar)', leaderGroup: 'a' },
-  { id: 'agent-marketing-sidebar', key: 'm', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Marketing Agent (sidebar)', leaderGroup: 'a' },
+  { id: 'agent-1-sidebar', key: '1', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Agent 1 (by order)', leaderGroup: 'a' },
+  { id: 'agent-2-sidebar', key: '2', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Agent 2 (by order)', leaderGroup: 'a' },
+  { id: 'agent-3-sidebar', key: '3', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Agent 3 (by order)', leaderGroup: 'a' },
+  { id: 'agent-4-sidebar', key: '4', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Agent 4 (by order)', leaderGroup: 'a' },
+  { id: 'agent-5-sidebar', key: '5', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Agent 5 (by order)', leaderGroup: 'a' },
+  { id: 'agent-6-sidebar', key: '6', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Agent 6 (by order)', leaderGroup: 'a' },
+  { id: 'agent-7-sidebar', key: '7', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Agent 7 (by order)', leaderGroup: 'a' },
+  { id: 'agent-8-sidebar', key: '8', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Agent 8 (by order)', leaderGroup: 'a' },
+  { id: 'agent-9-sidebar', key: '9', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Agent 9 (by order)', leaderGroup: 'a' },
   { id: 'agent-stop-sidebar', key: 'x', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Stop Agent (sidebar)', leaderGroup: 'a' },
   { id: 'agent-resume-sidebar', key: 'R', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Resume Agent (sidebar)', leaderGroup: 'a' },
   // Direct actions (no leader group)

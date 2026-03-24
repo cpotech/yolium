@@ -1,5 +1,6 @@
 import type {
   AgentDefinition,
+  CustomAgentInput,
   KanbanAgentProvider,
   AgentTokenUsage,
   AskQuestionMessage,
@@ -392,6 +393,9 @@ export interface AgentAPI {
   ) => Promise<ActiveAgentSession | null>;
   recover: (projectPath: string) => Promise<KanbanItem[]>;
   listDefinitions: () => Promise<AgentDefinition[]>;
+  saveDefinition: (def: CustomAgentInput) => Promise<void>;
+  deleteDefinition: (name: string) => Promise<void>;
+  loadFullDefinition: (name: string) => Promise<AgentDefinition & { systemPrompt: string; isBuiltin: boolean }>;
   readLog: (projectPath: string, itemId: string) => Promise<string>;
   clearLog: (projectPath: string, itemId: string) => Promise<boolean>;
   onOutput: (callback: (sessionId: string, data: string) => void) => CleanupFunction;

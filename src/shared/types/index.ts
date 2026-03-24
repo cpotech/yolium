@@ -4,7 +4,7 @@
 export type { ContainerState, Tab, TabState, TabAction } from './tabs';
 export type { ContainerSession, ProjectCacheInfo, CacheStats, CleanupResult, DockerState, SetupStage } from './docker';
 export type { GitConfig, GitConfigWithPat } from './git';
-export type { AgentProvider, KanbanAgentProvider, ProgressMessage } from './agent';
+export type { AgentProvider, KanbanAgentProvider, ProgressMessage, CustomAgentInput } from './agent';
 export type { ThemeTokens, ThemeName } from './theme';
 export type { WhisperModelSize, WhisperModel, WhisperDownloadProgress, WhisperRecordingState, WhisperTranscription, WhisperConfig } from './whisper';
 export { WHISPER_MODELS, WHISPER_MODEL_BASE_URL } from './whisper';

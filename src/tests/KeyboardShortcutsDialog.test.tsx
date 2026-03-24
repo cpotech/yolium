@@ -25,8 +25,8 @@ describe('KeyboardShortcutsDialog', () => {
     const text = dialog.textContent ?? ''
     // Sidebar Focus group should contain agent shortcuts
     expect(text).toContain('Sidebar Focus (Work Item)')
-    expect(text).toContain('Plan Agent (sidebar)')
-    expect(text).toContain('Code Agent (sidebar)')
+    expect(text).toContain('Agent 1 (by order)')
+    expect(text).toContain('Agent 2 (by order)')
     // Ctrl+Shift+S/D/M should NOT be present (removed)
     const kbds = Array.from(dialog.querySelectorAll('kbd')).map(k => k.textContent)
     expect(kbds).not.toContain('Ctrl+Shift+S')

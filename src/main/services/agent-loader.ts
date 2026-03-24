@@ -4,6 +4,11 @@ const matter = require('gray-matter');
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { AgentDefinition } from '@shared/types/agent';
+import {
+  getCustomAgentsDir,
+  _listCustomAgentsFromDir,
+  _loadCustomAgentFromDir,
+} from '@main/stores/custom-agent-store';
 
 export interface ParsedAgent extends AgentDefinition {
   systemPrompt: string;
@@ -85,6 +90,15 @@ export function parseAgentDefinition(markdown: string): ParsedAgent {
 }
 
 export function loadAgentDefinition(agentName: string): ParsedAgent {
+  // Check custom agents directory first (user overrides)
+  const customDir = getCustomAgentsDir();
+  const customPath = path.join(customDir, `${agentName}.md`);
+  if (fs.existsSync(customPath)) {
+    const content = fs.readFileSync(customPath, 'utf-8');
+    return parseAgentDefinition(content);
+  }
+
+  // Fall back to built-in agents
   const agentsDir = getAgentsDir();
   const agentPath = path.join(agentsDir, `${agentName}.md`);
 
@@ -96,14 +110,28 @@ export function loadAgentDefinition(agentName: string): ParsedAgent {
   return parseAgentDefinition(content);
 }
 
+/**
+ * Check if an agent name exists in the built-in agents directory.
+ */
+export function isBuiltinAgent(name: string): boolean {
+  const agentsDir = getAgentsDir();
+  return fs.existsSync(path.join(agentsDir, `${name}.md`));
+}
+
 export function listAgents(): string[] {
   const agentsDir = getAgentsDir();
+  const builtinNames: string[] = [];
 
-  if (!fs.existsSync(agentsDir)) {
-    return [];
+  if (fs.existsSync(agentsDir)) {
+    builtinNames.push(
+      ...fs.readdirSync(agentsDir)
+        .filter(f => f.endsWith('.md') && !f.startsWith('_') && f !== 'README.md')
+        .map(f => f.replace('.md', ''))
+    );
   }
 
-  return fs.readdirSync(agentsDir)
-    .filter(f => f.endsWith('.md') && !f.startsWith('_') && f !== 'README.md')
-    .map(f => f.replace('.md', ''));
+  // Merge custom agents (custom names that aren't already in built-in list)
+  const customNames = _listCustomAgentsFromDir(getCustomAgentsDir());
+  const allNames = new Set([...builtinNames, ...customNames]);
+  return Array.from(allNames);
 }
