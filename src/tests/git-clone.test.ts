@@ -92,12 +92,12 @@ describe('git-clone service', () => {
 
   describe('resolveCloneTargetPath', () => {
     it('should append repo name when target ends with separator', () => {
-      expect(resolveCloneTargetPath('/tmp/projects/', 'repo')).toBe('/tmp/projects/repo')
+      expect(resolveCloneTargetPath('/tmp/projects/', 'repo')).toBe(path.join('/tmp/projects', 'repo'))
     })
 
     it('should append repo name when target is existing directory', () => {
       vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => true } as any)
-      expect(resolveCloneTargetPath('/tmp/projects', 'repo')).toBe('/tmp/projects/repo')
+      expect(resolveCloneTargetPath('/tmp/projects', 'repo')).toBe(path.join('/tmp/projects', 'repo'))
     })
 
     it('should use path as-is when target does not exist and has no trailing separator', () => {
@@ -109,7 +109,7 @@ describe('git-clone service', () => {
       const originalCwd = process.cwd;
       (process as any).cwd = () => '/current/dir';
       try {
-        expect(resolveCloneTargetPath('', 'repo')).toBe('/current/dir/repo')
+        expect(resolveCloneTargetPath('', 'repo')).toBe(path.join('/current/dir', 'repo'))
       } finally {
         (process as any).cwd = originalCwd;
       }
