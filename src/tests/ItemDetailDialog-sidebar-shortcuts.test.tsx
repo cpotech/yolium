@@ -12,8 +12,12 @@ import { ItemDetailDialog } from '@renderer/components/kanban/ItemDetailDialog'
 import type { KanbanItem } from '@shared/types/kanban'
 
 const mockVimMode = { current: 'NORMAL' as 'NORMAL' | 'INSERT' }
+const mockLeaderState = { pending: false, groupKey: null as string | null }
 const mockExitToNormal = vi.fn()
 const mockEnterInsertMode = vi.fn()
+const mockClearLeader = vi.fn(() => { mockLeaderState.pending = false; mockLeaderState.groupKey = null })
+const mockSetLeaderGroup = vi.fn((key: string | null) => { mockLeaderState.groupKey = key })
+const mockTriggerLeader = vi.fn((zone: string) => { mockLeaderState.pending = true })
 
 vi.mock('@renderer/context/VimModeContext', async () => {
   const actual = await vi.importActual<typeof import('@renderer/context/VimModeContext')>('@renderer/context/VimModeContext')
@@ -26,6 +30,13 @@ vi.mock('@renderer/context/VimModeContext', async () => {
       enterInsertMode: mockEnterInsertMode,
       exitToNormal: mockExitToNormal,
       suspendNavigation: () => () => {},
+      leaderPending: mockLeaderState.pending,
+      leaderZone: mockLeaderState.pending ? 'dialog-sidebar' : null,
+      leaderGroupKey: mockLeaderState.groupKey,
+      clearLeader: mockClearLeader,
+      triggerLeader: mockTriggerLeader,
+      setLeaderGroup: mockSetLeaderGroup,
+      enterVisualMode: vi.fn(),
     }),
   }
 })
@@ -71,6 +82,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   Element.prototype.scrollIntoView = vi.fn()
   mockVimMode.current = 'NORMAL'
+  mockLeaderState.pending = false
+  mockLeaderState.groupKey = null
   mockGetActiveSession.mockResolvedValue(null)
   mockRecover.mockResolvedValue([])
 
@@ -131,23 +144,46 @@ beforeEach(() => {
 describe('ItemDetailDialog sidebar form control shortcuts', () => {
   const getContainer = () => screen.getByTestId('item-detail-dialog').parentElement!
 
+  const dialogProps = {
+    isOpen: true,
+    projectPath: '/test/project',
+    onClose: vi.fn(),
+    onUpdated: vi.fn(),
+  }
+
   function renderDialog(overrides: Partial<KanbanItem> = {}) {
     return render(
       <ItemDetailDialog
-        isOpen={true}
+        {...dialogProps}
         item={createMockItem(overrides)}
-        projectPath="/test/project"
-        onClose={vi.fn()}
-        onUpdated={vi.fn()}
       />,
     )
   }
 
-  it('should process sidebar single-key shortcuts when event.target is a <select> and focusZone is sidebar', async () => {
+  /** Set mock leader state and re-render so the component picks up the new values */
+  async function setLeaderState(
+    result: ReturnType<typeof render>,
+    overrides: Partial<KanbanItem>,
+    state: { pending: boolean; groupKey: string | null },
+  ) {
+    mockLeaderState.pending = state.pending
+    mockLeaderState.groupKey = state.groupKey
+    await act(async () => {
+      result.rerender(
+        <ItemDetailDialog
+          {...dialogProps}
+          item={createMockItem(overrides)}
+        />,
+      )
+    })
+  }
+
+  it('should process sidebar leader shortcuts when event.target is a <select> and focusZone is sidebar', async () => {
     const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
     window.electronAPI.agent.start = mockStart
+    const itemOverrides = { agentStatus: 'idle' as const }
 
-    renderDialog({ agentStatus: 'idle' })
+    const result = renderDialog(itemOverrides)
     const container = getContainer()
 
     // Switch to sidebar zone
@@ -159,7 +195,8 @@ describe('ItemDetailDialog sidebar form control shortcuts', () => {
     columnSelect.focus()
     expect(document.activeElement).toBe(columnSelect)
 
-    // Press 'p' for plan-agent — should work even though a <select> has focus
+    // Simulate Space → a → p sequence for plan-agent
+    await setLeaderState(result, itemOverrides, { pending: true, groupKey: 'a' })
     await act(async () => {
       fireEvent.keyDown(columnSelect, { key: 'p' })
     })
@@ -169,11 +206,12 @@ describe('ItemDetailDialog sidebar form control shortcuts', () => {
     )
   })
 
-  it('should process sidebar single-key shortcuts when event.target is an <input> checkbox and focusZone is sidebar', async () => {
+  it('should process sidebar leader shortcuts when event.target is an <input> checkbox and focusZone is sidebar', async () => {
     const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
     window.electronAPI.agent.start = mockStart
+    const itemOverrides = { agentStatus: 'idle' as const }
 
-    renderDialog({ agentStatus: 'idle' })
+    const result = renderDialog(itemOverrides)
     const container = getContainer()
 
     // Switch to sidebar zone
@@ -184,7 +222,8 @@ describe('ItemDetailDialog sidebar form control shortcuts', () => {
     checkbox.focus()
     expect(document.activeElement).toBe(checkbox)
 
-    // Press 'p' for plan-agent — should work even though checkbox has focus
+    // Simulate Space → a → p sequence for plan-agent
+    await setLeaderState(result, itemOverrides, { pending: true, groupKey: 'a' })
     await act(async () => {
       fireEvent.keyDown(checkbox, { key: 'p' })
     })
@@ -194,27 +233,22 @@ describe('ItemDetailDialog sidebar form control shortcuts', () => {
     )
   })
 
-  it('should process Ctrl+Shift agent shortcuts when event.target is a <select>', async () => {
+  it('should NOT process agent shortcuts without leader prefix (bare key)', async () => {
     const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
     window.electronAPI.agent.start = mockStart
 
     renderDialog({ agentStatus: 'idle' })
+    const container = getContainer()
 
-    // Focus a select element (no need to switch zone — Ctrl+Shift is zone-independent)
-    const columnSelect = screen.getByTestId('column-select')
-    columnSelect.focus()
+    // Switch to sidebar zone
+    fireEvent.keyDown(container, { key: 'Tab' })
 
+    // Press bare 'p' without leader — should NOT trigger agent
     await act(async () => {
-      fireEvent.keyDown(columnSelect, {
-        key: 'S',
-        ctrlKey: true,
-        shiftKey: true,
-      })
+      fireEvent.keyDown(container, { key: 'p' })
     })
 
-    expect(mockStart).toHaveBeenCalledWith(
-      expect.objectContaining({ agentName: 'scout-agent' }),
-    )
+    expect(mockStart).not.toHaveBeenCalled()
   })
 
   it('should still block single-key shortcuts in editor zone when event.target is an <input> or <textarea>', async () => {
@@ -235,10 +269,11 @@ describe('ItemDetailDialog sidebar form control shortcuts', () => {
     expect(mockStart).not.toHaveBeenCalled()
   })
 
-  it('should blur the focused form control and refocus dialogRef after a sidebar shortcut fires', async () => {
+  it('should blur the focused form control and refocus dialogRef after a sidebar leader shortcut fires', async () => {
     mockKanbanDeleteItem.mockResolvedValue(undefined)
+    const itemOverrides = { agentStatus: 'idle' as const }
 
-    renderDialog({ agentStatus: 'idle' })
+    const result = renderDialog(itemOverrides)
     const container = getContainer()
 
     // Switch to sidebar zone
@@ -249,7 +284,8 @@ describe('ItemDetailDialog sidebar form control shortcuts', () => {
     columnSelect.focus()
     expect(document.activeElement).toBe(columnSelect)
 
-    // Press 'd' for delete — should fire and refocus dialog
+    // Simulate Space → d for delete (direct action at level 1)
+    await setLeaderState(result, itemOverrides, { pending: true, groupKey: null })
     await act(async () => {
       fireEvent.keyDown(columnSelect, { key: 'd' })
     })
@@ -263,20 +299,33 @@ describe('dropdown cycling shortcuts', () => {
   const mockUpdateItem = vi.fn()
   const getContainer = () => screen.getByTestId('item-detail-dialog').parentElement!
 
+  const dialogProps = {
+    isOpen: true,
+    projectPath: '/test/project',
+    onClose: vi.fn(),
+    onUpdated: vi.fn(),
+  }
+
   function renderDialog(overrides: Partial<KanbanItem> = {}) {
     return render(
       <ItemDetailDialog
-        isOpen={true}
+        {...dialogProps}
         item={createMockItem(overrides)}
-        projectPath="/test/project"
-        onClose={vi.fn()}
-        onUpdated={vi.fn()}
       />,
     )
   }
 
-  function switchToSidebar(container: HTMLElement) {
+  async function switchToSidebarWithLeader(result: ReturnType<typeof render>, container: HTMLElement, overrides: Partial<KanbanItem>) {
     fireEvent.keyDown(container, { key: 'Tab' })
+    mockLeaderState.pending = true
+    await act(async () => {
+      result.rerender(
+        <ItemDetailDialog
+          {...dialogProps}
+          item={createMockItem(overrides)}
+        />,
+      )
+    })
   }
 
   beforeEach(() => {
@@ -284,10 +333,11 @@ describe('dropdown cycling shortcuts', () => {
     window.electronAPI.kanban.updateItem = mockUpdateItem
   })
 
-  it('should cycle agent provider from claude to opencode when pressing 1 in sidebar zone', async () => {
-    renderDialog({ agentProvider: 'claude', agentStatus: 'idle' })
+  it('should cycle agent provider from claude to opencode when pressing Space 1 in sidebar zone', async () => {
+    const overrides = { agentProvider: 'claude' as const, agentStatus: 'idle' as const }
+    const result = renderDialog(overrides)
     const container = getContainer()
-    switchToSidebar(container)
+    await switchToSidebarWithLeader(result, container, overrides)
 
     await act(async () => {
       fireEvent.keyDown(container, { key: '1' })
@@ -297,10 +347,11 @@ describe('dropdown cycling shortcuts', () => {
     expect(select.value).toBe('opencode')
   })
 
-  it('should cycle agent provider from opencode to codex when pressing 1 in sidebar zone', async () => {
-    renderDialog({ agentProvider: 'opencode', agentStatus: 'idle' })
+  it('should cycle agent provider from opencode to codex when pressing Space 1 in sidebar zone', async () => {
+    const overrides = { agentProvider: 'opencode' as const, agentStatus: 'idle' as const }
+    const result = renderDialog(overrides)
     const container = getContainer()
-    switchToSidebar(container)
+    await switchToSidebarWithLeader(result, container, overrides)
 
     await act(async () => {
       fireEvent.keyDown(container, { key: '1' })
@@ -310,10 +361,11 @@ describe('dropdown cycling shortcuts', () => {
     expect(select.value).toBe('codex')
   })
 
-  it('should cycle agent provider from codex back to claude when pressing 1 in sidebar zone', async () => {
-    renderDialog({ agentProvider: 'codex', agentStatus: 'idle' })
+  it('should cycle agent provider from codex back to claude when pressing Space 1 in sidebar zone', async () => {
+    const overrides = { agentProvider: 'codex' as const, agentStatus: 'idle' as const }
+    const result = renderDialog(overrides)
     const container = getContainer()
-    switchToSidebar(container)
+    await switchToSidebarWithLeader(result, container, overrides)
 
     await act(async () => {
       fireEvent.keyDown(container, { key: '1' })
@@ -324,9 +376,10 @@ describe('dropdown cycling shortcuts', () => {
   })
 
   it('should not cycle agent provider when agent is running', async () => {
-    renderDialog({ agentProvider: 'claude', agentStatus: 'running' })
+    const overrides = { agentProvider: 'claude' as const, agentStatus: 'running' as const }
+    const result = renderDialog(overrides)
     const container = getContainer()
-    switchToSidebar(container)
+    await switchToSidebarWithLeader(result, container, overrides)
 
     await act(async () => {
       fireEvent.keyDown(container, { key: '1' })
@@ -338,9 +391,10 @@ describe('dropdown cycling shortcuts', () => {
   })
 
   it('should not cycle agent provider when agent is waiting', async () => {
-    renderDialog({ agentProvider: 'claude', agentStatus: 'waiting', agentQuestion: 'How?' })
+    const overrides = { agentProvider: 'claude' as const, agentStatus: 'waiting' as const, agentQuestion: 'How?' }
+    const result = renderDialog(overrides)
     const container = getContainer()
-    switchToSidebar(container)
+    await switchToSidebarWithLeader(result, container, overrides)
 
     await act(async () => {
       fireEvent.keyDown(container, { key: '1' })
@@ -350,12 +404,14 @@ describe('dropdown cycling shortcuts', () => {
     expect(display).toBeInTheDocument()
   })
 
-  it('should cycle model forward when pressing 2 in sidebar zone', async () => {
+  it('should cycle model forward when pressing Space 2 in sidebar zone', async () => {
+    const overrides = { agentProvider: 'claude' as const, model: '', agentStatus: 'idle' as const }
+    let result: ReturnType<typeof render>
     await act(async () => {
-      renderDialog({ agentProvider: 'claude', model: '', agentStatus: 'idle' })
+      result = renderDialog(overrides)
     })
     const container = getContainer()
-    switchToSidebar(container)
+    await switchToSidebarWithLeader(result!, container, overrides)
 
     await act(async () => {
       fireEvent.keyDown(container, { key: '2' })
@@ -365,12 +421,14 @@ describe('dropdown cycling shortcuts', () => {
     expect(select.value).toBe('sonnet')
   })
 
-  it('should cycle model from last model back to empty (provider default) when pressing 2', async () => {
+  it('should cycle model from last model back to empty (provider default) when pressing Space 2', async () => {
+    const overrides = { agentProvider: 'claude' as const, model: 'sonnet', agentStatus: 'idle' as const }
+    let result: ReturnType<typeof render>
     await act(async () => {
-      renderDialog({ agentProvider: 'claude', model: 'sonnet', agentStatus: 'idle' })
+      result = renderDialog(overrides)
     })
     const container = getContainer()
-    switchToSidebar(container)
+    await switchToSidebarWithLeader(result!, container, overrides)
 
     await act(async () => {
       fireEvent.keyDown(container, { key: '2' })
@@ -380,10 +438,11 @@ describe('dropdown cycling shortcuts', () => {
     expect(select.value).toBe('')
   })
 
-  it('should cycle column from backlog to ready when pressing 3 in sidebar zone', async () => {
-    renderDialog({ column: 'backlog', agentStatus: 'idle' })
+  it('should cycle column from backlog to ready when pressing Space 3 in sidebar zone', async () => {
+    const overrides = { column: 'backlog' as const, agentStatus: 'idle' as const }
+    const result = renderDialog(overrides)
     const container = getContainer()
-    switchToSidebar(container)
+    await switchToSidebarWithLeader(result, container, overrides)
 
     await act(async () => {
       fireEvent.keyDown(container, { key: '3' })
@@ -393,10 +452,11 @@ describe('dropdown cycling shortcuts', () => {
     expect(select.value).toBe('ready')
   })
 
-  it('should cycle column from ready to done when pressing 3 (skipping in-progress and verify)', async () => {
-    renderDialog({ column: 'ready', agentStatus: 'idle' })
+  it('should cycle column from ready to done when pressing Space 3 (skipping in-progress and verify)', async () => {
+    const overrides = { column: 'ready' as const, agentStatus: 'idle' as const }
+    const result = renderDialog(overrides)
     const container = getContainer()
-    switchToSidebar(container)
+    await switchToSidebarWithLeader(result, container, overrides)
 
     await act(async () => {
       fireEvent.keyDown(container, { key: '3' })
@@ -406,10 +466,11 @@ describe('dropdown cycling shortcuts', () => {
     expect(select.value).toBe('done')
   })
 
-  it('should cycle column from done back to backlog when pressing 3', async () => {
-    renderDialog({ column: 'done', agentStatus: 'idle' })
+  it('should cycle column from done back to backlog when pressing Space 3', async () => {
+    const overrides = { column: 'done' as const, agentStatus: 'idle' as const }
+    const result = renderDialog(overrides)
     const container = getContainer()
-    switchToSidebar(container)
+    await switchToSidebarWithLeader(result, container, overrides)
 
     await act(async () => {
       fireEvent.keyDown(container, { key: '3' })
@@ -420,9 +481,10 @@ describe('dropdown cycling shortcuts', () => {
   })
 
   it('should not cycle column away from in-progress (read-only when agent-assigned)', async () => {
-    renderDialog({ column: 'in-progress', agentStatus: 'idle' })
+    const overrides = { column: 'in-progress' as const, agentStatus: 'idle' as const }
+    const result = renderDialog(overrides)
     const container = getContainer()
-    switchToSidebar(container)
+    await switchToSidebarWithLeader(result, container, overrides)
 
     await act(async () => {
       fireEvent.keyDown(container, { key: '3' })
@@ -433,9 +495,10 @@ describe('dropdown cycling shortcuts', () => {
   })
 
   it('should not cycle column away from verify (read-only when agent-assigned)', async () => {
-    renderDialog({ column: 'verify', agentStatus: 'idle' })
+    const overrides = { column: 'verify' as const, agentStatus: 'idle' as const }
+    const result = renderDialog(overrides)
     const container = getContainer()
-    switchToSidebar(container)
+    await switchToSidebarWithLeader(result, container, overrides)
 
     await act(async () => {
       fireEvent.keyDown(container, { key: '3' })
@@ -445,10 +508,11 @@ describe('dropdown cycling shortcuts', () => {
     expect(select.value).toBe('verify')
   })
 
-  it('should toggle verified from false to true when pressing V in sidebar zone', async () => {
-    renderDialog({ verified: false, agentStatus: 'idle' })
+  it('should toggle verified from false to true when pressing Space V in sidebar zone', async () => {
+    const overrides = { verified: false, agentStatus: 'idle' as const }
+    const result = renderDialog(overrides)
     const container = getContainer()
-    switchToSidebar(container)
+    await switchToSidebarWithLeader(result, container, overrides)
 
     await act(async () => {
       fireEvent.keyDown(container, { key: 'V' })
@@ -458,10 +522,11 @@ describe('dropdown cycling shortcuts', () => {
     expect(checkbox.checked).toBe(true)
   })
 
-  it('should toggle verified from true to false when pressing V in sidebar zone', async () => {
-    renderDialog({ verified: true, agentStatus: 'idle' })
+  it('should toggle verified from true to false when pressing Space V in sidebar zone', async () => {
+    const overrides = { verified: true, agentStatus: 'idle' as const }
+    const result = renderDialog(overrides)
     const container = getContainer()
-    switchToSidebar(container)
+    await switchToSidebarWithLeader(result, container, overrides)
 
     await act(async () => {
       fireEvent.keyDown(container, { key: 'V' })
@@ -471,10 +536,11 @@ describe('dropdown cycling shortcuts', () => {
     expect(checkbox.checked).toBe(false)
   })
 
-  it('should refocus dialog container after dropdown cycling shortcut fires', async () => {
-    renderDialog({ agentProvider: 'claude', agentStatus: 'idle' })
+  it('should refocus dialog container after leader dropdown cycling shortcut fires', async () => {
+    const overrides = { agentProvider: 'claude' as const, agentStatus: 'idle' as const }
+    const result = renderDialog(overrides)
     const container = getContainer()
-    switchToSidebar(container)
+    await switchToSidebarWithLeader(result, container, overrides)
 
     // Focus a select before pressing the shortcut
     const providerSelect = screen.getByTestId('agent-provider-select')
@@ -489,9 +555,19 @@ describe('dropdown cycling shortcuts', () => {
   })
 
   it('should not process dropdown shortcuts when focusZone is editor', async () => {
-    renderDialog({ agentProvider: 'claude', agentStatus: 'idle' })
+    const overrides = { agentProvider: 'claude' as const, agentStatus: 'idle' as const }
+    const result = renderDialog(overrides)
     const container = getContainer()
     // Stay in editor zone (default)
+    mockLeaderState.pending = true
+    await act(async () => {
+      result.rerender(
+        <ItemDetailDialog
+          {...dialogProps}
+          item={createMockItem(overrides)}
+        />,
+      )
+    })
 
     await act(async () => {
       fireEvent.keyDown(container, { key: '1' })

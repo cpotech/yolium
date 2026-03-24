@@ -47,6 +47,8 @@ function WhichKeyPopupWired(): React.ReactElement | null {
     <WhichKeyPopup
       zone={vim.leaderZone}
       onDismiss={vim.clearLeader}
+      leaderGroupKey={vim.leaderGroupKey}
+      onSelectGroup={vim.setLeaderGroup}
     />
   );
 }
