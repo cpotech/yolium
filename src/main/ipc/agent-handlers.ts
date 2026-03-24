@@ -15,10 +15,11 @@ import {
   getSessionByItemId,
   recoverInterruptedAgents,
 } from '@main/services/agent-runner';
-import { listAgents, loadAgentDefinition } from '@main/services/agent-loader';
+import { listAgents, loadAgentDefinition, isBuiltinAgent } from '@main/services/agent-loader';
+import { saveCustomAgent, deleteCustomAgent } from '@main/stores/custom-agent-store';
 import { readLog, deleteLog } from '@main/stores/workitem-log-store';
 import type { KanbanItem } from '@shared/types/kanban';
-import type { AgentDefinition } from '@shared/types/agent';
+import type { AgentDefinition, CustomAgentInput } from '@shared/types/agent';
 
 const logger = createLogger('agent-handlers');
 
@@ -199,7 +200,7 @@ export function registerAgentHandlers(ipcMain: IpcMain): void {
     for (const name of agentNames) {
       try {
         const { systemPrompt: _, ...def } = loadAgentDefinition(name);
-        definitions.push(def);
+        definitions.push({ ...def, isBuiltin: isBuiltinAgent(name) });
       } catch (err) {
         logger.error('Failed to load agent definition', { name, error: String(err) });
       }
@@ -214,6 +215,25 @@ export function registerAgentHandlers(ipcMain: IpcMain): void {
       return a.name.localeCompare(b.name);
     });
     return definitions;
+  });
+
+  // Save custom agent definition
+  ipcMain.handle('agent:save-definition', (_event, def: CustomAgentInput) => {
+    logger.info('IPC: agent:save-definition', { name: def.name });
+    saveCustomAgent(def);
+  });
+
+  // Delete custom agent definition
+  ipcMain.handle('agent:delete-definition', (_event, name: string) => {
+    logger.info('IPC: agent:delete-definition', { name });
+    deleteCustomAgent(name);
+  });
+
+  // Load full agent definition (including systemPrompt and isBuiltin flag)
+  ipcMain.handle('agent:load-full-definition', (_event, name: string) => {
+    logger.info('IPC: agent:load-full-definition', { name });
+    const def = loadAgentDefinition(name);
+    return { ...def, isBuiltin: isBuiltinAgent(name) };
   });
 
   // Read persistent log for a work item

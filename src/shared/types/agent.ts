@@ -20,6 +20,18 @@ export interface AgentDefinition {
   tools: string[];
   timeout?: number; // Inactivity timeout in minutes (default: 30)
   order?: number; // SDLC order for sorting (1 = plan, 2 = code, 3 = verify, etc.)
+  isBuiltin?: boolean; // Whether this is a built-in agent (vs custom user-defined)
+}
+
+// Input type for saving custom agent definitions
+export interface CustomAgentInput {
+  name: string;
+  description: string;
+  model: 'opus' | 'sonnet' | 'haiku';
+  tools: string[];
+  timeout?: number;
+  order?: number;
+  systemPrompt: string;
 }
 
 // Protocol message types from agent stdout

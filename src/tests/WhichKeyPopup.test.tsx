@@ -130,8 +130,8 @@ describe('WhichKeyPopup', () => {
     );
 
     // Should now show agent sub-actions
-    expect(screen.getByTestId('which-key-item-agent-plan-sidebar')).toBeTruthy();
-    expect(screen.getByTestId('which-key-item-agent-code-sidebar')).toBeTruthy();
+    expect(screen.getByTestId('which-key-item-agent-1-sidebar')).toBeTruthy();
+    expect(screen.getByTestId('which-key-item-agent-2-sidebar')).toBeTruthy();
     expect(screen.getByTestId('which-key-item-agent-stop-sidebar')).toBeTruthy();
     // Group items should NOT be visible at level 2
     expect(screen.queryByTestId('which-key-group-a')).toBeNull();

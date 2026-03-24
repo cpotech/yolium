@@ -172,8 +172,16 @@ beforeEach(() => {
         readLog: mockReadLog,
         clearLog: vi.fn().mockResolvedValue(undefined),
         listDefinitions: vi.fn().mockResolvedValue([
-          { name: 'code-agent', description: 'Code', model: 'sonnet', tools: ['Read'] },
+          { name: 'plan-agent', description: 'Plans work', model: 'opus', tools: ['Read'], order: 1 },
+          { name: 'code-agent', description: 'Code', model: 'sonnet', tools: ['Read'], order: 2 },
+          { name: 'verify-agent', description: 'Verify', model: 'sonnet', tools: ['Read'], order: 3 },
+          { name: 'scout-agent', description: 'Scout', model: 'sonnet', tools: ['Read'], order: 4 },
+          { name: 'design-agent', description: 'Design', model: 'sonnet', tools: ['Read'], order: 5 },
+          { name: 'marketing-agent', description: 'Marketing', model: 'sonnet', tools: ['Read'], order: 6 },
         ]),
+        saveDefinition: vi.fn(),
+        deleteDefinition: vi.fn(),
+        loadFullDefinition: vi.fn(),
         start: vi.fn(),
         resume: vi.fn(),
         stop: vi.fn(),
@@ -544,7 +552,7 @@ describe('ItemDetailDialog', () => {
       expect(sidebar).toBeInTheDocument()
     })
 
-    it('should trigger plan-agent start via Space a p in sidebar zone', async () => {
+    it('should trigger plan-agent start via Space a 1 in sidebar zone', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
       const item = createMockItem({ agentStatus: 'idle' })
@@ -556,7 +564,7 @@ describe('ItemDetailDialog', () => {
       await activateLeader(result, item, { pending: true, groupKey: 'a' })
 
       await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: 'p' })
+        fireEvent.keyDown(getContainer(), { key: '1' })
       })
 
       expect(mockStart).toHaveBeenCalledWith(
@@ -564,7 +572,7 @@ describe('ItemDetailDialog', () => {
       )
     })
 
-    it('should trigger code-agent start via Space a c in sidebar zone', async () => {
+    it('should trigger code-agent start via Space a 2 in sidebar zone', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
       const item = createMockItem({ agentStatus: 'idle' })
@@ -576,7 +584,7 @@ describe('ItemDetailDialog', () => {
       await activateLeader(result, item, { pending: true, groupKey: 'a' })
 
       await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: 'c' })
+        fireEvent.keyDown(getContainer(), { key: '2' })
       })
 
       expect(mockStart).toHaveBeenCalledWith(
@@ -584,7 +592,7 @@ describe('ItemDetailDialog', () => {
       )
     })
 
-    it('should trigger verify-agent start via Space a v in sidebar zone', async () => {
+    it('should trigger verify-agent start via Space a 3 in sidebar zone', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
       const item = createMockItem({ agentStatus: 'idle' })
@@ -596,7 +604,7 @@ describe('ItemDetailDialog', () => {
       await activateLeader(result, item, { pending: true, groupKey: 'a' })
 
       await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: 'v' })
+        fireEvent.keyDown(getContainer(), { key: '3' })
       })
 
       expect(mockStart).toHaveBeenCalledWith(
@@ -604,7 +612,7 @@ describe('ItemDetailDialog', () => {
       )
     })
 
-    it('should trigger scout-agent start via Space a s in sidebar zone', async () => {
+    it('should trigger scout-agent start via Space a 4 in sidebar zone', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
       const item = createMockItem({ agentStatus: 'idle' })
@@ -616,7 +624,7 @@ describe('ItemDetailDialog', () => {
       await activateLeader(result, item, { pending: true, groupKey: 'a' })
 
       await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: 's' })
+        fireEvent.keyDown(getContainer(), { key: '4' })
       })
 
       expect(mockStart).toHaveBeenCalledWith(
@@ -624,7 +632,7 @@ describe('ItemDetailDialog', () => {
       )
     })
 
-    it('should trigger design-agent start via Space a D in sidebar zone', async () => {
+    it('should trigger design-agent start via Space a 5 in sidebar zone', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
       const item = createMockItem({ agentStatus: 'idle' })
@@ -636,7 +644,7 @@ describe('ItemDetailDialog', () => {
       await activateLeader(result, item, { pending: true, groupKey: 'a' })
 
       await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: 'D', shiftKey: true })
+        fireEvent.keyDown(getContainer(), { key: '5' })
       })
 
       expect(mockStart).toHaveBeenCalledWith(
@@ -644,7 +652,7 @@ describe('ItemDetailDialog', () => {
       )
     })
 
-    it('should trigger marketing-agent start via Space a m in sidebar zone', async () => {
+    it('should trigger marketing-agent start via Space a 6 in sidebar zone', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
       const item = createMockItem({ agentStatus: 'idle' })
@@ -656,7 +664,7 @@ describe('ItemDetailDialog', () => {
       await activateLeader(result, item, { pending: true, groupKey: 'a' })
 
       await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: 'm' })
+        fireEvent.keyDown(getContainer(), { key: '6' })
       })
 
       expect(mockStart).toHaveBeenCalledWith(
@@ -766,20 +774,20 @@ describe('ItemDetailDialog', () => {
       // Activate leader → agent group, start first agent (sets isStartingAgent = true)
       await activateLeader(result, item, { pending: true, groupKey: 'a' })
       await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: 'p' })
+        fireEvent.keyDown(getContainer(), { key: '1' })
       })
 
       // Try starting another while first is still pending
       await activateLeader(result, item, { pending: true, groupKey: 'a' })
       await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: 'c' })
+        fireEvent.keyDown(getContainer(), { key: '2' })
       })
 
       // Only one start call should have been made
       expect(mockStart).toHaveBeenCalledTimes(1)
     })
 
-    it('should not trigger single-key agent shortcuts when item status is running', async () => {
+    it('should not trigger numbered agent shortcuts when item status is running', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
 
@@ -794,7 +802,7 @@ describe('ItemDetailDialog', () => {
       )
 
       await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: 'p' })
+        fireEvent.keyDown(getContainer(), { key: '1' })
       })
 
       expect(mockStart).not.toHaveBeenCalled()

@@ -155,16 +155,14 @@ describe('VIM_ACTIONS manifest consistency', () => {
     }
   });
 
-  it('manifest should include dialog-sidebar zone with agent shortcuts', () => {
+  it('manifest should include dialog-sidebar zone with numbered agent shortcuts', () => {
     const dialogSidebarActions = getActionsForZone('dialog-sidebar');
     expect(dialogSidebarActions.length).toBeGreaterThanOrEqual(8);
     const keys = dialogSidebarActions.map(a => a.key);
-    expect(keys).toContain('p');
-    expect(keys).toContain('c');
-    expect(keys).toContain('v');
-    expect(keys).toContain('s');
-    expect(keys).toContain('D');
-    expect(keys).toContain('m');
+    // Numbered agent shortcuts 1-9
+    for (let i = 1; i <= 9; i++) {
+      expect(keys).toContain(String(i));
+    }
     expect(keys).toContain('x');
     expect(keys).toContain('d');
   });

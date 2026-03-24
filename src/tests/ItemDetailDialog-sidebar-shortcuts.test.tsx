@@ -58,6 +58,7 @@ vi.mock('@renderer/components/StatusBar', () => ({
 }))
 
 const mockKanbanDeleteItem = vi.fn()
+const mockUpdateItem = vi.fn()
 const mockGetActiveSession = vi.fn()
 const mockRecover = vi.fn()
 
@@ -126,7 +127,8 @@ beforeEach(() => {
         readLog: vi.fn().mockResolvedValue(''),
         clearLog: vi.fn().mockResolvedValue(undefined),
         listDefinitions: vi.fn().mockResolvedValue([
-          { name: 'code-agent', description: 'Code', model: 'sonnet', tools: ['Read'] },
+          { name: 'plan-agent', description: 'Plans work', model: 'opus', tools: ['Read'], order: 1 },
+          { name: 'code-agent', description: 'Code', model: 'sonnet', tools: ['Read'], order: 2 },
         ]),
         start: vi.fn(),
         resume: vi.fn(),
@@ -191,10 +193,10 @@ describe('ItemDetailDialog sidebar form control shortcuts', () => {
     columnSelect.focus()
     expect(document.activeElement).toBe(columnSelect)
 
-    // Simulate Space → a → p sequence for plan-agent
+    // Simulate Space → a → 1 sequence for plan-agent (should work even though a <select> has focus)
     await setLeaderState(result, itemOverrides, { pending: true, groupKey: 'a' })
     await act(async () => {
-      fireEvent.keyDown(columnSelect, { key: 'p' })
+      fireEvent.keyDown(columnSelect, { key: '1' })
     })
 
     expect(mockStart).toHaveBeenCalledWith(
@@ -215,10 +217,10 @@ describe('ItemDetailDialog sidebar form control shortcuts', () => {
     checkbox.focus()
     expect(document.activeElement).toBe(checkbox)
 
-    // Simulate Space → a → p sequence for plan-agent
+    // Simulate Space → a → 1 sequence for plan-agent (should work even though checkbox has focus)
     await setLeaderState(result, itemOverrides, { pending: true, groupKey: 'a' })
     await act(async () => {
-      fireEvent.keyDown(checkbox, { key: 'p' })
+      fireEvent.keyDown(checkbox, { key: '1' })
     })
 
     expect(mockStart).toHaveBeenCalledWith(
@@ -282,8 +284,7 @@ describe('ItemDetailDialog sidebar form control shortcuts', () => {
   })
 })
 
-describe('dropdown cycling shortcuts', () => {
-  const mockUpdateItem = vi.fn()
+describe('sidebar shortcuts (V toggle, guard tests)', () => {
   const getContainer = () => screen.getByTestId('item-detail-dialog').parentElement!
 
   const dialogProps = {
@@ -534,7 +535,7 @@ describe('dropdown cycling shortcuts', () => {
     expect(document.activeElement).toBe(providerSelect)
 
     await act(async () => {
-      fireEvent.keyDown(providerSelect, { key: '1' })
+      fireEvent.keyDown(container, { key: '1' })
     })
 
     expect(document.activeElement).toBe(container)
@@ -554,16 +555,47 @@ describe('dropdown cycling shortcuts', () => {
     expect(select.value).toBe('opencode')
   })
 
-  it('should not process dropdown shortcuts in INSERT mode', async () => {
+  it('should process sidebar numbered agent shortcuts with leader prefix (no focusZone required)', async () => {
+    const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+    window.electronAPI.agent.start = mockStart
+    const overrides = { agentStatus: 'idle' as const }
+    const result = renderDialog(overrides)
+    const container = getContainer()
+    // Set leader to agent group — no Tab/focusZone needed
+    mockLeaderState.pending = true
+    mockLeaderState.groupKey = 'a'
+    await act(async () => {
+      result.rerender(
+        <ItemDetailDialog
+          {...dialogProps}
+          item={createMockItem(overrides)}
+        />,
+      )
+    })
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: '1' })
+    })
+
+    expect(mockStart).toHaveBeenCalledWith(
+      expect.objectContaining({ agentName: 'plan-agent' }),
+    )
+  })
+
+  it('should not process sidebar numbered shortcuts in INSERT mode', async () => {
+    const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
+    window.electronAPI.agent.start = mockStart
+
     mockVimMode.current = 'INSERT'
-    renderDialog({ agentProvider: 'claude', agentStatus: 'idle' })
+    await act(async () => {
+      renderDialog({ agentStatus: 'idle' })
+    })
     const container = getContainer()
 
     await act(async () => {
       fireEvent.keyDown(container, { key: '1' })
     })
 
-    const select = screen.getByTestId('agent-provider-select') as HTMLSelectElement
-    expect(select.value).toBe('claude')
+    expect(mockStart).not.toHaveBeenCalled()
   })
 })

@@ -71,9 +71,10 @@ const COVERED_ACTIONS = new Set([
   'field-edit', 'dialog-close',
   'dialog-visual', 'dialog-yank',
   'dialog-comment-search',
-  // Dialog sidebar
-  'agent-plan-sidebar', 'agent-code-sidebar', 'agent-verify-sidebar',
-  'agent-scout-sidebar', 'agent-design-sidebar', 'agent-marketing-sidebar',
+  // Dialog sidebar (numbered agent shortcuts)
+  'agent-1-sidebar', 'agent-2-sidebar', 'agent-3-sidebar',
+  'agent-4-sidebar', 'agent-5-sidebar', 'agent-6-sidebar',
+  'agent-7-sidebar', 'agent-8-sidebar', 'agent-9-sidebar',
   'agent-stop-sidebar', 'agent-resume-sidebar',
   'item-delete-sidebar', 'dialog-compare-changes', 'dialog-rebase',
   'dialog-check-conflicts', 'dialog-merge-push-pr', 'dialog-approve-pr',

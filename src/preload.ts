@@ -160,6 +160,15 @@ const agent: ElectronAPI['agent'] = {
   listDefinitions: invoke(
     'agent:list-definitions',
   ) as ElectronAPI['agent']['listDefinitions'],
+  saveDefinition: invoke(
+    'agent:save-definition',
+  ) as ElectronAPI['agent']['saveDefinition'],
+  deleteDefinition: invoke(
+    'agent:delete-definition',
+  ) as ElectronAPI['agent']['deleteDefinition'],
+  loadFullDefinition: invoke(
+    'agent:load-full-definition',
+  ) as ElectronAPI['agent']['loadFullDefinition'],
   readLog: invoke('agent:read-log') as ElectronAPI['agent']['readLog'],
   clearLog: invoke('agent:clear-log') as ElectronAPI['agent']['clearLog'],
   onOutput: (callback) => listen('agent:output', callback),

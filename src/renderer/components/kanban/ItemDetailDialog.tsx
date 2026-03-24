@@ -6,6 +6,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import type { KanbanColumn, KanbanItem } from '@shared/types/kanban'
+import type { AgentDefinition } from '@shared/types/agent'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useAgentSession } from '@renderer/hooks/useAgentSession'
 import { useSuspendVimNavigation, useVimModeContext } from '@renderer/context/VimModeContext'
@@ -72,6 +73,7 @@ export function ItemDetailDialog({
   const [selectedItemIndices, setSelectedItemIndices] = useState<Set<number>>(new Set())
   const visualAnchorRef = useRef<number>(0)
   const [logFocused, setLogFocused] = useState(false)
+  const [sortedAgents, setSortedAgents] = useState<AgentDefinition[]>([])
   const answerInputRef = useRef<HTMLTextAreaElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const logPanelRef = useRef<AgentLogPanelHandle>(null)
@@ -84,6 +86,14 @@ export function ItemDetailDialog({
     ...(item?.comments ?? []).map(c => ({ type: 'comment' as const, id: c.id, text: c.text })),
     { type: 'field', id: 'comment-input' },
   ], [item?.comments])
+
+  // Fetch sorted agent definitions for numbered dispatch
+  useEffect(() => {
+    if (!isOpen) return
+    window.electronAPI.agent.listDefinitions().then(defs => {
+      setSortedAgents(defs) // Already sorted by order from IPC handler
+    }).catch(() => {})
+  }, [isOpen])
 
   const agentSession = useAgentSession({
     itemId: item?.id,
@@ -368,21 +378,13 @@ export function ItemDetailDialog({
 
           // Level 2: handle sub-actions within a group
           if (vim.leaderGroupKey === 'a') {
-            // Agent group
-            const agentKeyMap: Record<string, string> = {
-              p: 'plan-agent',
-              c: 'code-agent',
-              v: 'verify-agent',
-              s: 'scout-agent',
-              D: 'design-agent',
-              m: 'marketing-agent',
-            }
-            const agentName = agentKeyMap[event.key]
-            if (agentName && canStart) {
+            // Agent group — numbered dispatch: keys 1-9 map to agents by sorted order
+            const digit = parseInt(event.key, 10)
+            if (digit >= 1 && digit <= 9 && digit <= sortedAgents.length && canStart) {
               event.preventDefault()
               vim.clearLeader()
               dialogRef.current?.focus()
-              void lifecycle.startAgent(agentName)
+              void lifecycle.startAgent(sortedAgents[digit - 1].name)
               return
             }
             if (event.key === 'x' && item.agentStatus === 'running' && agentSession.currentSessionId) {
@@ -594,7 +596,7 @@ export function ItemDetailDialog({
     if (dialogRef.current && vim.mode !== 'NORMAL') {
       trapFocus(event, dialogRef.current)
     }
-  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedItemIndex, focusField, agentSession.currentSessionId, prWorkflow, navigableItems, dialogVisualMode, selectedItemIndices, agentSession, commentSearchRef])
+  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedItemIndex, focusField, agentSession.currentSessionId, prWorkflow, navigableItems, dialogVisualMode, selectedItemIndices, agentSession, commentSearchRef, sortedAgents])
 
   if (!isOpen || !item) return null
 

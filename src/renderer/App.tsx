@@ -18,6 +18,7 @@ import { KeyboardShortcutsDialog } from '@renderer/components/settings/KeyboardS
 import { DockerSetupDialog } from '@renderer/components/docker/DockerSetupDialog';
 import { GitConfigDialog } from '@renderer/components/settings/GitConfigDialog';
 import { ProjectConfigDialog } from '@renderer/components/settings/ProjectConfigDialog';
+import { AgentSettingsDialog } from '@renderer/components/settings/AgentSettingsDialog';
 import { WhisperModelDialog } from '@renderer/components/settings/WhisperModelDialog';
 import type { WhisperModelSize } from '@shared/types/whisper';
 import { Sidebar } from '@renderer/components/navigation/Sidebar';
@@ -504,6 +505,12 @@ function App(): React.ReactElement {
         isOpen={dialogs.projectConfigDialogOpen}
         projectPath={dialogs.projectConfigProjectPath}
         onClose={dialogs.closeProjectConfigDialog}
+      />
+
+      {/* Agent settings dialog */}
+      <AgentSettingsDialog
+        isOpen={dialogs.agentSettingsDialogOpen}
+        onClose={dialogs.closeAgentSettingsDialog}
       />
 
       {/* Docker image build progress overlay */}

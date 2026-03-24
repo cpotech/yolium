@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react'
-import { Code, Lightbulb, Search, ShieldCheck, Play, RotateCcw, MessageSquare, XCircle, Palette, Megaphone } from 'lucide-react'
+import { Code, Lightbulb, Search, ShieldCheck, Play, RotateCcw, MessageSquare, XCircle, Palette, Megaphone, Bot } from 'lucide-react'
 import type { KanbanItem, AgentStatus } from '@shared/types/kanban'
 import type { AgentDefinition } from '@shared/types/agent'
 
@@ -80,7 +80,7 @@ interface AgentControlsProps {
 }
 
 /**
- * Render a list of agent buttons.
+ * Render a list of agent buttons with 1-based number hints.
  */
 function AgentButtonList({
   agents,
@@ -97,16 +97,24 @@ function AgentButtonList({
 }) {
   return (
     <div className="space-y-2">
-      {agents.map((agent) => (
+      {agents.map((agent, index) => (
         <button
           key={agent.name}
           data-testid={`run-${agent.name}-button`}
           onClick={() => onClick(agent.name)}
           disabled={isStartingAgent}
-          className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border-primary)] hover:border-[var(--color-accent-primary)] border-l-4 ${agentAccentColors[agent.name] || 'border-l-[var(--color-border-primary)]'}`}
+          className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border-primary)] hover:border-[var(--color-accent-primary)] border-l-4 ${agentAccentColors[agent.name] || 'border-l-gray-500'}`}
         >
+          {index < 9 && (
+            <kbd
+              data-testid="agent-number-hint"
+              className="px-1.5 py-0.5 text-[10px] font-mono bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)] text-[var(--color-text-muted)] flex-shrink-0"
+            >
+              {index + 1}
+            </kbd>
+          )}
           <span className="flex-shrink-0 text-[var(--color-text-secondary)]">
-            {agentIcons[agent.name] || <Play size={16} />}
+            {agentIcons[agent.name] || <Bot size={16} />}
           </span>
           <span className="flex-1 text-center">
             {isStartingAgent ? startingText : `${buttonTextPrefix} ${formatAgentLabel(agent.name)}`}
