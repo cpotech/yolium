@@ -112,6 +112,12 @@ function App(): React.ReactElement {
     setLastUsedPath: dialogs.setLastUsedPath,
   });
 
+  // Navigate from Settings to Agent Settings dialog
+  const handleOpenAgentSettings = useCallback(() => {
+    dialogs.closeGitConfigDialog();
+    dialogs.openAgentSettingsDialog();
+  }, [dialogs]);
+
   // Handle Back button in agent dialog (returns to path dialog)
   const handleAgentDialogBack = useCallback(() => {
     agentCreation.handleAgentDialogCancel();
@@ -486,6 +492,7 @@ function App(): React.ReactElement {
         onBuildImage={handleBuildImage}
         imageRemoved={docker.imageRemoved}
         isRebuilding={docker.isRebuilding}
+        onOpenAgentSettings={handleOpenAgentSettings}
       />
 
       {/* Whisper model selection dialog */}
