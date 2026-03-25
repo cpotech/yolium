@@ -21,18 +21,22 @@ export function useVimListNavigation({
   wrap = true,
 }: UseVimListNavigationOptions): UseVimListNavigationResult {
   const gPendingRef = useRef(false);
+  const currentIndexRef = useRef(currentIndex);
+  currentIndexRef.current = currentIndex;
 
   const handleNavKeys = useCallback(
     (e: KeyboardEvent | React.KeyboardEvent): boolean => {
       if (!enabled || itemCount === 0) return false;
 
       const key = e.key;
+      const idx = currentIndexRef.current;
 
       if (key === 'j' || key === 'ArrowDown') {
         gPendingRef.current = false;
         const next = wrap
-          ? (currentIndex + 1) % itemCount
-          : Math.min(currentIndex + 1, itemCount - 1);
+          ? (idx + 1) % itemCount
+          : Math.min(idx + 1, itemCount - 1);
+        currentIndexRef.current = next;
         onIndexChange(next);
         return true;
       }
@@ -40,8 +44,9 @@ export function useVimListNavigation({
       if (key === 'k' || key === 'ArrowUp') {
         gPendingRef.current = false;
         const prev = wrap
-          ? (currentIndex - 1 + itemCount) % itemCount
-          : Math.max(currentIndex - 1, 0);
+          ? (idx - 1 + itemCount) % itemCount
+          : Math.max(idx - 1, 0);
+        currentIndexRef.current = prev;
         onIndexChange(prev);
         return true;
       }
@@ -49,6 +54,7 @@ export function useVimListNavigation({
       if (key === 'g') {
         if (gPendingRef.current) {
           gPendingRef.current = false;
+          currentIndexRef.current = 0;
           onIndexChange(0);
           return true;
         } else {
@@ -59,6 +65,7 @@ export function useVimListNavigation({
 
       if (key === 'G') {
         gPendingRef.current = false;
+        currentIndexRef.current = itemCount - 1;
         onIndexChange(itemCount - 1);
         return true;
       }
@@ -67,7 +74,7 @@ export function useVimListNavigation({
       gPendingRef.current = false;
       return false;
     },
-    [enabled, itemCount, currentIndex, onIndexChange, wrap],
+    [enabled, itemCount, onIndexChange, wrap],
   );
 
   return { handleNavKeys, gPending: gPendingRef.current };
