@@ -8,6 +8,7 @@ import { prepareConflictResolution } from './item-detail/useItemDetailPrWorkflow
 import { useVimModeContext } from '@renderer/context/VimModeContext'
 import { useConfirmDialog } from '@renderer/hooks/useConfirmDialog'
 import { ConfirmDialog } from '@renderer/components/shared/ConfirmDialog'
+import { useVimListNavigation } from '@renderer/hooks/useVimListNavigation'
 import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper'
 import type { ClaudeUsageState } from '@shared/types/agent'
 
@@ -75,7 +76,6 @@ export function KanbanView({
   const isVimContentActive = (vim.mode === 'NORMAL' || isVisualMode) && vim.activeZone === 'content'
   const [focusedColumnIndex, setFocusedColumnIndex] = useState(0)
   const [focusedCardIndex, setFocusedCardIndex] = useState(0)
-  const gPendingRef = useRef(false)
   const visualAnchorIndexRef = useRef(-1)
   // Ref to track dialog open state without stale closures
   const dialogOpenRef = useRef(false)
@@ -350,6 +350,30 @@ export function KanbanView({
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
   }, [board, searchQuery])
 
+  const currentColumnItems = useMemo(
+    () => board ? getColumnItems(columns[focusedColumnIndex].id) : [],
+    [board, getColumnItems, focusedColumnIndex],
+  )
+
+  const handleCardIndexChange = useCallback((newIndex: number) => {
+    setFocusedCardIndex(newIndex)
+    if (isVisualMode && currentColumnItems.length > 0) {
+      const newCard = currentColumnItems[newIndex]
+      const newGlobalIdx = allVisibleItems.findIndex(i => i.id === newCard.id)
+      const anchor = visualAnchorIndexRef.current
+      const start = Math.min(anchor, newGlobalIdx)
+      const end = Math.max(anchor, newGlobalIdx)
+      setSelectedIds(new Set(allVisibleItems.slice(start, end + 1).map(i => i.id)))
+    }
+  }, [isVisualMode, currentColumnItems, allVisibleItems])
+
+  const { handleNavKeys } = useVimListNavigation({
+    itemCount: currentColumnItems.length,
+    enabled: isVimContentActive && !!board,
+    onIndexChange: handleCardIndexChange,
+    currentIndex: focusedCardIndex,
+  })
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     // Only handle when no dialog is open and no input is focused
     const target = e.target as HTMLElement
@@ -358,61 +382,8 @@ export function KanbanView({
 
     // Vim spatial navigation (h/l for columns) in NORMAL mode
     if (isVimContentActive && board) {
-      const currentColumnItems = getColumnItems(columns[focusedColumnIndex].id)
-
-      if (e.key === 'j' || e.key === 'ArrowDown') {
+      if (handleNavKeys(e)) {
         e.preventDefault()
-        if (currentColumnItems.length > 0) {
-          const newIndex = (focusedCardIndex + 1) % currentColumnItems.length
-          setFocusedCardIndex(newIndex)
-          if (isVisualMode) {
-            const newCard = currentColumnItems[newIndex]
-            const newGlobalIdx = allVisibleItems.findIndex(i => i.id === newCard.id)
-            const anchor = visualAnchorIndexRef.current
-            const start = Math.min(anchor, newGlobalIdx)
-            const end = Math.max(anchor, newGlobalIdx)
-            setSelectedIds(new Set(allVisibleItems.slice(start, end + 1).map(i => i.id)))
-          }
-        }
-        gPendingRef.current = false
-        return
-      }
-      if (e.key === 'k' || e.key === 'ArrowUp') {
-        e.preventDefault()
-        if (currentColumnItems.length > 0) {
-          const newIndex = (focusedCardIndex - 1 + currentColumnItems.length) % currentColumnItems.length
-          setFocusedCardIndex(newIndex)
-          if (isVisualMode) {
-            const newCard = currentColumnItems[newIndex]
-            const newGlobalIdx = allVisibleItems.findIndex(i => i.id === newCard.id)
-            const anchor = visualAnchorIndexRef.current
-            const start = Math.min(anchor, newGlobalIdx)
-            const end = Math.max(anchor, newGlobalIdx)
-            setSelectedIds(new Set(allVisibleItems.slice(start, end + 1).map(i => i.id)))
-          }
-        }
-        gPendingRef.current = false
-        return
-      }
-      if (e.key === 'g') {
-        if (gPendingRef.current) {
-          e.preventDefault()
-          if (currentColumnItems.length > 0) {
-            setFocusedCardIndex(0)
-          }
-          gPendingRef.current = false
-          return
-        } else {
-          gPendingRef.current = true
-          return
-        }
-      }
-      if (e.key === 'G') {
-        e.preventDefault()
-        if (currentColumnItems.length > 0) {
-          setFocusedCardIndex(currentColumnItems.length - 1)
-        }
-        gPendingRef.current = false
         return
       }
       if (e.key === 'Enter') {
@@ -421,7 +392,6 @@ export function KanbanView({
         if (currentColumnItems[idx]) {
           handleCardClick(currentColumnItems[idx], e)
         }
-        gPendingRef.current = false
         return
       }
 

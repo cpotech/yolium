@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { RefreshCw, ArrowLeft, Clock, Zap, DollarSign, ChevronRight } from 'lucide-react';
 import type { ActionLogEntry } from '@shared/types/schedule';
 import { formatActionTimestamp, getActionSummary, getActionContent, getExtraFields } from './action-helpers';
+import { useVimListNavigation } from '@renderer/hooks/useVimListNavigation';
 
 interface RunRecord {
   id: string;
@@ -331,7 +332,6 @@ export function RunHistoryTable({ specialistId, isVimActive = false, onBack }: R
   const [filterOutcome, setFilterOutcome] = useState<string>('all');
   const [selectedRun, setSelectedRun] = useState<RunRecord | null>(null);
   const [focusedRunIndex, setFocusedRunIndex] = useState(0);
-  const gPendingRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const loadData = useCallback(async () => {
@@ -385,6 +385,13 @@ export function RunHistoryTable({ specialistId, isVimActive = false, onBack }: R
     row?.scrollIntoView({ block: 'nearest' });
   }, [focusedRunIndex, isVimActive, filteredRuns.length]);
 
+  const { handleNavKeys } = useVimListNavigation({
+    itemCount: filteredRuns.length,
+    enabled: isVimActive && !selectedRun,
+    onIndexChange: setFocusedRunIndex,
+    currentIndex: focusedRunIndex,
+  });
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
@@ -406,48 +413,21 @@ export function RunHistoryTable({ specialistId, isVimActive = false, onBack }: R
       return;
     }
 
-    if (e.key === 'j' || e.key === 'ArrowDown') {
+    if (handleNavKeys(e)) {
       e.preventDefault();
-      setFocusedRunIndex((focusedRunIndex + 1) % filteredRuns.length);
-      gPendingRef.current = false;
-      return;
-    }
-    if (e.key === 'k' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      setFocusedRunIndex((focusedRunIndex - 1 + filteredRuns.length) % filteredRuns.length);
-      gPendingRef.current = false;
-      return;
-    }
-    if (e.key === 'g') {
-      if (gPendingRef.current) {
-        e.preventDefault();
-        setFocusedRunIndex(0);
-        gPendingRef.current = false;
-        return;
-      } else {
-        gPendingRef.current = true;
-        return;
-      }
-    }
-    if (e.key === 'G') {
-      e.preventDefault();
-      setFocusedRunIndex(filteredRuns.length - 1);
-      gPendingRef.current = false;
       return;
     }
     if (e.key === 'Enter') {
       e.preventDefault();
       setSelectedRun(filteredRuns[focusedRunIndex]);
-      gPendingRef.current = false;
       return;
     }
     if (e.key === 'Escape' || e.key === 'Backspace') {
       e.preventDefault();
-      gPendingRef.current = false;
       onBack?.();
       return;
     }
-  }, [isVimActive, selectedRun, filteredRuns, focusedRunIndex, onBack]);
+  }, [isVimActive, selectedRun, filteredRuns, focusedRunIndex, onBack, handleNavKeys]);
 
   if (selectedRun) {
     return (

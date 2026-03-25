@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { RefreshCw } from 'lucide-react';
 import type { ActionLogEntry } from '@shared/types/schedule';
 import { formatActionTimestamp, getActionSummary, getActionContent, getExtraFields } from './action-helpers';
+import { useVimListNavigation } from '@renderer/hooks/useVimListNavigation';
 
 interface ActionsViewProps {
   specialistIds: string[];
@@ -23,7 +24,6 @@ export function ActionsView({
   const [filterSpecialist, setFilterSpecialist] = useState<string>(initialSpecialist ?? 'all');
   const [filterActionType, setFilterActionType] = useState<string>('all');
   const [focusedActionIndex, setFocusedActionIndex] = useState(0);
-  const gPendingRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -66,6 +66,13 @@ export function ActionsView({
     card?.scrollIntoView({ block: 'nearest' });
   }, [focusedActionIndex, isVimActive, filteredActions.length]);
 
+  const { handleNavKeys } = useVimListNavigation({
+    itemCount: filteredActions.length,
+    enabled: isVimActive,
+    onIndexChange: setFocusedActionIndex,
+    currentIndex: focusedActionIndex,
+  });
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
@@ -77,38 +84,11 @@ export function ActionsView({
       return;
     }
 
-    if (filteredActions.length === 0) return;
-
-    if (e.key === 'j' || e.key === 'ArrowDown') {
+    if (handleNavKeys(e)) {
       e.preventDefault();
-      setFocusedActionIndex((focusedActionIndex + 1) % filteredActions.length);
-      gPendingRef.current = false;
       return;
     }
-    if (e.key === 'k' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      setFocusedActionIndex((focusedActionIndex - 1 + filteredActions.length) % filteredActions.length);
-      gPendingRef.current = false;
-      return;
-    }
-    if (e.key === 'g') {
-      if (gPendingRef.current) {
-        e.preventDefault();
-        setFocusedActionIndex(0);
-        gPendingRef.current = false;
-        return;
-      } else {
-        gPendingRef.current = true;
-        return;
-      }
-    }
-    if (e.key === 'G') {
-      e.preventDefault();
-      setFocusedActionIndex(filteredActions.length - 1);
-      gPendingRef.current = false;
-      return;
-    }
-  }, [isVimActive, filteredActions, focusedActionIndex, onBack]);
+  }, [isVimActive, onBack, handleNavKeys]);
 
   if (isLoading) {
     return (
