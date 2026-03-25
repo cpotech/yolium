@@ -172,13 +172,30 @@ describe('AddSpecialistDialog', () => {
     });
   });
 
-  it('should use password input type for credential value fields', () => {
+  it('should render service credential value inputs as type text', () => {
     render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
 
     fireEvent.click(screen.getByTestId('specialist-add-service-btn'));
 
     const valueInput = screen.getByTestId('specialist-credential-value-0-0');
-    expect(valueInput).toHaveAttribute('type', 'password');
+    expect(valueInput).toHaveAttribute('type', 'text');
+  });
+
+  it('should render integration env value inputs as type text', () => {
+    render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);
+
+    // Expand the Integrations section (collapsed by default)
+    fireEvent.click(screen.getByTestId('section-integrations-toggle'));
+
+    // Add an integration, then add an env key to it
+    fireEvent.click(screen.getByText('+ Add service'));
+    fireEvent.click(screen.getByText('+ Add env key'));
+
+    // Integration env value inputs should be plain text
+    const envInputs = screen.getAllByPlaceholderText('Value');
+    envInputs.forEach((input) => {
+      expect(input).toHaveAttribute('type', 'text');
+    });
   });
 
   it('should disable Create button when name is empty', () => {

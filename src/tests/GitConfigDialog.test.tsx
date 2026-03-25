@@ -79,6 +79,85 @@ describe('GitConfigDialog', () => {
     })
   })
 
+  it('should render GitHub PAT input as type text', async () => {
+    render(
+      <GitConfigDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        initialConfig={{ name: '', email: '' }}
+      />
+    )
+
+    const patInput = screen.getByTestId('git-pat-input')
+    expect(patInput).toHaveAttribute('type', 'text')
+
+    await waitFor(() => {
+      expect(mockGetImageInfo).toHaveBeenCalled()
+    })
+  })
+
+  it('should render Anthropic API Key input as type text', async () => {
+    render(
+      <GitConfigDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        initialConfig={{ name: '', email: '' }}
+      />
+    )
+
+    const anthropicInput = screen.getByTestId('anthropic-key-input')
+    expect(anthropicInput).toHaveAttribute('type', 'text')
+
+    await waitFor(() => {
+      expect(mockGetImageInfo).toHaveBeenCalled()
+    })
+  })
+
+  it('should render OpenAI API Key input as type text', async () => {
+    render(
+      <GitConfigDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        initialConfig={{ name: '', email: '' }}
+      />
+    )
+
+    const openaiInput = screen.getByTestId('openai-key-input')
+    expect(openaiInput).toHaveAttribute('type', 'text')
+
+    await waitFor(() => {
+      expect(mockGetImageInfo).toHaveBeenCalled()
+    })
+  })
+
+  it('should not render visibility toggle buttons for key inputs', async () => {
+    render(
+      <GitConfigDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        initialConfig={{ name: '', email: '', hasPat: true, hasAnthropicKey: true, hasOpenaiKey: true }}
+      />
+    )
+
+    // No eye-icon toggle buttons should exist — look for SVG eye paths
+    const allButtons = screen.getAllByRole('button')
+    const eyeToggleButtons = allButtons.filter((btn) => {
+      const svgs = btn.querySelectorAll('svg path')
+      return Array.from(svgs).some((path) =>
+        path.getAttribute('d')?.includes('M15 12a3 3 0 11-6 0')
+      )
+    })
+    expect(eyeToggleButtons).toHaveLength(0)
+
+    await waitFor(() => {
+      expect(mockGetImageInfo).toHaveBeenCalled()
+    })
+  })
+
   it('closes on Ctrl+Q and preserves OAuth save semantics', async () => {
     const onClose = vi.fn()
     const onSave = vi.fn()
