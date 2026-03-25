@@ -27,7 +27,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Rebuild native modules for Electron
-        run: npx electron-rebuild --only node-pty
+        run: npx electron-rebuild --only better-sqlite3,node-pty
 
       - name: Build app for E2E tests
         run: npm run build

@@ -45,9 +45,27 @@ export async function launchApp(options: {
       ...(needsHeadlessLinux ? { ELECTRON_OZONE_PLATFORM_HINT: 'headless' } : {}),
       ...options.env,
     },
+    timeout: 15000,
   });
 
-  const window = await app.firstWindow();
+  // Use a race to detect if the app crashes before creating a window.
+  // Without this, firstWindow() silently waits 30s per attempt when the
+  // main process fails to load (e.g. native module ABI mismatch).
+  const window = await Promise.race([
+    app.firstWindow(),
+    new Promise<never>((_resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(
+          'Timed out waiting for first window (10s). ' +
+          'The Electron main process may have crashed during startup. ' +
+          'Check that all native modules are rebuilt for Electron ' +
+          '(npx electron-rebuild --only better-sqlite3,node-pty).'
+        ));
+      }, 10000);
+      // If firstWindow resolves first, this timer is harmless (cleared below)
+      timer.unref?.();
+    }),
+  ]);
 
   // Wait for app to be ready (either shows main UI or Docker setup)
   await window.waitForLoadState('domcontentloaded');
