@@ -53,3 +53,4 @@ export interface DockerState {
  * Stages of the Docker setup process.
  */
 export type SetupStage = 'detecting' | 'starting' | 'ready' | 'failed';
+

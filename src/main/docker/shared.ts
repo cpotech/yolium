@@ -54,3 +54,48 @@ export const CONTAINER_WORKSPACE = '/workspace';
 
 /** Whether running on Windows platform. */
 export const isWindows = os.platform() === 'win32';
+
+/** Common dev server ports to expose from containers. */
+export const DEFAULT_EXPOSED_PORTS = [3000, 5173, 4200, 8080, 8000];
+
+/**
+ * Build ExposedPorts and PortBindings config for container creation.
+ * Maps each default port to a dynamic host port (HostPort '0').
+ */
+export function buildPortConfig(): {
+  ExposedPorts: Record<string, Record<string, never>>;
+  PortBindings: Record<string, Array<{ HostPort: string }>>;
+} {
+  const ExposedPorts: Record<string, Record<string, never>> = {};
+  const PortBindings: Record<string, Array<{ HostPort: string }>> = {};
+  for (const port of DEFAULT_EXPOSED_PORTS) {
+    ExposedPorts[`${port}/tcp`] = {};
+    PortBindings[`${port}/tcp`] = [{ HostPort: '0' }];
+  }
+  return { ExposedPorts, PortBindings };
+}
+
+/**
+ * Query actual port mappings for a running container.
+ * Returns a map of containerPort → hostPort.
+ */
+export async function queryContainerPorts(containerId: string): Promise<Record<number, number>> {
+  try {
+    const container = docker.getContainer(containerId);
+    const info = await container.inspect();
+    const bindings = info.NetworkSettings?.Ports;
+    const mappings: Record<number, number> = {};
+    if (bindings) {
+      for (const [containerPort, hostBindings] of Object.entries(bindings)) {
+        const hostPortStr = (hostBindings as Array<{ HostPort: string }> | null)?.[0]?.HostPort;
+        if (hostPortStr) {
+          const port = parseInt(containerPort.split('/')[0], 10);
+          mappings[port] = parseInt(hostPortStr, 10);
+        }
+      }
+    }
+    return mappings;
+  } catch { // Container may not exist or Docker may be unreachable
+    return {};
+  }
+}

@@ -13,6 +13,7 @@ import {
   getSessionWorktreeInfo,
   deleteSessionWorktree,
 } from '@main/docker';
+import { queryContainerPorts } from '@main/docker/shared';
 
 const logger = createLogger('container-handlers');
 
@@ -52,5 +53,11 @@ export function registerContainerHandlers(ipcMain: IpcMain): void {
   // Get worktree info for a session (used for cleanup prompt)
   ipcMain.handle('yolium:get-worktree-info', (_event, sessionId: string) => {
     return getSessionWorktreeInfo(sessionId);
+  });
+
+  // Query port mappings for a container
+  ipcMain.handle('container:get-port-mappings', async (_event, containerId: string) => {
+    logger.info('IPC: container:get-port-mappings', { containerId });
+    return queryContainerPorts(containerId);
   });
 }

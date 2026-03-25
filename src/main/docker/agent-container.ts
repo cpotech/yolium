@@ -5,7 +5,7 @@
 
 import { PassThrough } from 'node:stream';
 import { createLogger } from '@main/lib/logger';
-import { docker, agentSessions, DEFAULT_IMAGE, type AgentContainerSession } from './shared';
+import { docker, agentSessions, DEFAULT_IMAGE, buildPortConfig, type AgentContainerSession } from './shared';
 import { cleanupSession, wireAgentContainerRuntime } from './agent-container-runtime';
 import { prepareAgentContainerConfig } from './agent-container-config';
 import type { ServiceIntegration } from '@shared/types/schedule';
@@ -127,6 +127,7 @@ export async function createAgentContainer(
   });
 
   const createStart = performance.now();
+  const portConfig = buildPortConfig();
   const container = await docker.createContainer({
     Image: DEFAULT_IMAGE,
     Tty: false,
@@ -136,10 +137,12 @@ export async function createAgentContainer(
     AttachStderr: true,
     WorkingDir: prepared.containerProjectPath,
     Env: prepared.env,
+    ExposedPorts: portConfig.ExposedPorts,
     HostConfig: {
       CapAdd: ['NET_ADMIN'],
       ShmSize: 268435456,
       Binds: prepared.binds,
+      PortBindings: portConfig.PortBindings,
     },
   });
   logger.info('Agent Docker container created', {

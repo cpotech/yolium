@@ -133,6 +133,9 @@ const container: ElectronAPI['container'] = {
   getWorktreeInfo: invoke(
     'yolium:get-worktree-info',
   ) as ElectronAPI['container']['getWorktreeInfo'],
+  getPortMappings: invoke(
+    'container:get-port-mappings',
+  ) as ElectronAPI['container']['getPortMappings'],
   onData: (callback) => listen('container:data', callback),
   onExit: (callback) => listen('container:exit', callback),
 };
@@ -171,6 +174,9 @@ const agent: ElectronAPI['agent'] = {
   ) as ElectronAPI['agent']['loadFullDefinition'],
   readLog: invoke('agent:read-log') as ElectronAPI['agent']['readLog'],
   clearLog: invoke('agent:clear-log') as ElectronAPI['agent']['clearLog'],
+  getPortMappings: invoke(
+    'agent:get-container-port-mappings',
+  ) as ElectronAPI['agent']['getPortMappings'],
   onOutput: (callback) => listen('agent:output', callback),
   onQuestion: (callback) => listen('agent:question', callback),
   onItemCreated: (callback) => listen('agent:item-created', callback),
