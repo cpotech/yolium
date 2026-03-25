@@ -118,8 +118,9 @@ export async function fetchClaudeUsage(options?: FetchClaudeUsageOptions): Promi
       }
 
       if (!response.ok) {
-        // Retry on transient 5xx errors
-        if (isTransientError(response) && attempt < maxRetries) {
+        // Retry on transient 5xx errors or 401 (token refresh may need another attempt)
+        const shouldRetry = isTransientError(response) || response.status === 401;
+        if (shouldRetry && attempt < maxRetries) {
           await delay((attempt + 1) * 1000);
           continue;
         }
