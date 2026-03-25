@@ -161,7 +161,7 @@ async function verifyKeysProduceEffect(
   opts?: { resetAfter?: () => Promise<void>; settleMs?: number }
 ): Promise<{ key: string; id?: string }[]> {
   const failures: { key: string; id?: string }[] = [];
-  const settleMs = opts?.settleMs ?? 150;
+  const settleMs = opts?.settleMs ?? 50;
 
   for (const key of keys) {
     const before = await captureFingerprint(page);
@@ -190,7 +190,7 @@ async function reverseAuditZone(
   page: import('@playwright/test').Page,
   zone: string,
   resetFn: () => Promise<void>,
-  settleMs = 150,
+  settleMs = 50,
 ): Promise<{ key: string; changes: FingerprintDiff[] }[]> {
   const undeclaredKeys = getUndeclaredKeys(zone, getManifest());
   const ghosts: { key: string; changes: FingerprintDiff[] }[] = [];
@@ -204,10 +204,9 @@ async function reverseAuditZone(
 
     if (diffs.length > 0) {
       ghosts.push({ key, changes: diffs });
+      // Only reset when a ghost is detected to prevent cascading
+      await resetFn();
     }
-
-    // Reset after each key to prevent cascading
-    await resetFn();
   }
 
   return ghosts;
@@ -359,16 +358,15 @@ test.describe('Vim Single-Key Audit', () => {
       for (const key of keysToTest) {
         const before = await captureFingerprint(page);
         await pressVimKey(page, key);
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(50);
         const after = await captureFingerprint(page);
         const diffs = diffFingerprint(before, after);
 
         if (diffs.length > 0) {
           ghosts.push({ key, changes: diffs });
+          // Only reset when a ghost is detected
+          await resetZoneState(page, 'content');
         }
-
-        // Reset to content zone
-        await resetZoneState(page, 'content');
       }
 
       expect(keysToTest.length).toBeGreaterThan(0);
@@ -562,7 +560,7 @@ test.describe('Vim Single-Key Audit', () => {
       // Test navigable keys first (non-destructive)
       const navKeys = keys.filter(k => ['l', 'h', 'Home', 'End'].includes(k));
       const failures = await verifyKeysProduceEffect(page, navKeys, {
-        settleMs: 150,
+        settleMs: 50,
       });
 
       // Test Enter (activate) — should produce some change
@@ -664,7 +662,7 @@ test.describe('Vim Single-Key Audit', () => {
       const sidebarActions = getActionsForZone('sidebar', getManifest());
 
       // Test navigation keys (j/k)
-      const navFailures = await verifyKeysProduceEffect(page, ['j', 'k'], { settleMs: 150 });
+      const navFailures = await verifyKeysProduceEffect(page, ['j', 'k'], { settleMs: 50 });
 
       // Test Enter (open project)
       const before = await captureFingerprint(page);
@@ -1203,16 +1201,15 @@ test.describe('Vim Single-Key Audit', () => {
       for (const key of keysToTest) {
         const before = await captureFingerprint(page);
         await pressVimKey(page, key);
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(50);
         const after = await captureFingerprint(page);
         const diffs = diffFingerprint(before, after);
 
         if (diffs.length > 0) {
           ghosts.push({ key, changes: diffs });
+          // Only reset when a ghost is detected
+          await resetDialogZoneState(page, 'editor');
         }
-
-        // Reset: re-focus dialog
-        await resetDialogZoneState(page, 'editor');
       }
 
       if (ghosts.length > 0) {
@@ -1398,16 +1395,15 @@ test.describe('Vim Single-Key Audit', () => {
       for (const key of keysToTest) {
         const before = await captureFingerprint(page);
         await pressVimKey(page, key);
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(50);
         const after = await captureFingerprint(page);
         const diffs = diffFingerprint(before, after);
 
         if (diffs.length > 0) {
           ghosts.push({ key, changes: diffs });
+          // Only reset when a ghost is detected
+          await resetDialogZoneState(page, 'sidebar');
         }
-
-        // Reset sidebar focus
-        await resetDialogZoneState(page, 'sidebar');
       }
 
       if (ghosts.length > 0) {
@@ -1523,7 +1519,7 @@ test.describe('Vim Single-Key Audit', () => {
       for (const key of keysToTest) {
         const before = await captureFingerprint(page);
         await pressVimKey(page, key);
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(50);
         const after = await captureFingerprint(page);
         const diffs = diffFingerprint(before, after);
 

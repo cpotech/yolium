@@ -300,8 +300,10 @@ export function ItemDetailDialog({
     // NORMAL mode navigation and sidebar shortcuts
     if (vim.mode === 'NORMAL') {
       // 0. Space → leader key for dialog-sidebar zone (which-key popup)
+      // stopPropagation prevents native button activation via Space keyup
       if (event.key === ' ') {
         event.preventDefault()
+        event.stopPropagation()
         vim.triggerLeader('dialog-sidebar')
         return
       }
