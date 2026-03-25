@@ -178,8 +178,9 @@ describe('SchedulePanel vim shortcuts', () => {
     fireEvent.keyDown(panel, { key: 'j' });
     fireEvent.keyDown(panel, { key: 'k' });
 
-    const focusedCard = screen.getByTestId('specialist-card-spec-1');
-    expect(focusedCard.getAttribute('data-vim-focused')).toBe('true');
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1').getAttribute('data-vim-focused')).toBe('true');
+    });
   });
 
   it('should jump to first specialist with gg', async () => {
@@ -802,7 +803,9 @@ describe('SchedulePanel vim shortcuts', () => {
     // Navigate down to second card
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 'j' });
-    expect(screen.getByTestId('specialist-card-spec-2').getAttribute('data-vim-focused')).toBe('true');
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-2').getAttribute('data-vim-focused')).toBe('true');
+    });
 
     // Switch zone away
     rerender(
