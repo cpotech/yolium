@@ -425,4 +425,94 @@ describe('fetchClaudeUsage', () => {
     expect(result).toBeNull();
     expect(mockFetch).toHaveBeenCalledTimes(3);
   });
+
+  // --- 401 retry behavior tests ---
+
+  describe('401 retry behavior', () => {
+    beforeEach(() => {
+      mockFetch.mockReset();
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReset();
+      vi.mocked(fs.readFileSync).mockReturnValue(makeCredentialsJson());
+    });
+
+    it('should retry the full 401-refresh-fetch cycle when retries > 0 and first cycle fails', async () => {
+      mockFetch
+        // Attempt 0: usage API returns 401
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' })
+        // Attempt 0: refresh fails (401)
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' })
+        // Attempt 1: usage API returns 401 again
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' })
+        // Attempt 1: refresh succeeds
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'new-token', refresh_token: 'new-refresh' }) })
+        // Attempt 1: retry usage API succeeds
+        .mockResolvedValueOnce({ ok: true, json: async () => makeApiResponse() });
+
+      // Re-read after successful refresh returns updated creds
+      vi.mocked(fs.readFileSync)
+        .mockReturnValueOnce(makeCredentialsJson()) // attempt 0: initial read
+        .mockReturnValueOnce(makeCredentialsJson()) // attempt 0: read for refresh (refreshToken)
+        .mockReturnValueOnce(makeCredentialsJson()) // attempt 1: initial read
+        .mockReturnValueOnce(makeCredentialsJson()) // attempt 1: read for refresh (refreshToken)
+        .mockReturnValueOnce(makeCredentialsJson({ accessToken: 'new-token' })); // attempt 1: re-read after refresh
+
+      const result = await fetchClaudeUsage({ retries: 1 });
+
+      expect(result).not.toBeNull();
+      expect(result?.fiveHour.utilization).toBe(37.0);
+      // 5 fetch calls: usage(401), refresh(401), usage(401), refresh(ok), usage(ok)
+      expect(mockFetch).toHaveBeenCalledTimes(5);
+    });
+
+    it('should succeed on second attempt after 401-refresh cycle fails then succeeds', async () => {
+      mockFetch
+        // Attempt 0: usage API returns 401
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' })
+        // Attempt 0: refresh fails
+        .mockResolvedValueOnce({ ok: false, status: 400, statusText: 'Bad Request' })
+        // Attempt 1: usage API succeeds directly (200)
+        .mockResolvedValueOnce({ ok: true, json: async () => makeApiResponse() });
+
+      const result = await fetchClaudeUsage({ retries: 1 });
+
+      expect(result).not.toBeNull();
+      expect(result?.fiveHour.utilization).toBe(37.0);
+      // 3 fetch calls: usage(401), refresh(fail), usage(ok)
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+    });
+
+    it('should return null after exhausting all retries on persistent 401', async () => {
+      mockFetch
+        // Attempt 0: usage 401, refresh fails
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' })
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' })
+        // Attempt 1: usage 401, refresh fails
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' })
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' })
+        // Attempt 2: usage 401, refresh fails
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' })
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' });
+
+      const result = await fetchClaudeUsage({ retries: 2 });
+
+      expect(result).toBeNull();
+      // 6 fetch calls: 3 attempts * (usage + refresh)
+      expect(mockFetch).toHaveBeenCalledTimes(6);
+    });
+
+    it('should not retry 401 when retries is 0 (default behavior unchanged)', async () => {
+      mockFetch
+        // Usage API returns 401
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' })
+        // Refresh fails
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' });
+
+      const result = await fetchClaudeUsage(); // default retries = 0
+
+      expect(result).toBeNull();
+      // Only 2 fetch calls: usage(401) + refresh(fail), no outer retry
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+  });
 });
