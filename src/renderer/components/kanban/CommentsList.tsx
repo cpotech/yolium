@@ -402,6 +402,7 @@ export const CommentsList = forwardRef<CommentsListHandle, CommentsListProps>(fu
                 if (e.key === 'Escape') {
                   e.stopPropagation()
                   setSearchQuery('')
+                  searchInputRef.current?.blur()
                 }
               }}
             />

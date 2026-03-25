@@ -686,13 +686,14 @@ export function KanbanView({
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               onFocus={() => { isUserInputActiveRef.current = true }}
-              onBlur={() => { isUserInputActiveRef.current = false }}
+              onBlur={() => { isUserInputActiveRef.current = false; vim.exitToNormal() }}
               placeholder="Search... (/)"
               className="w-40 pl-8 pr-3 py-1.5 text-sm bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:w-56 transition-all"
               onKeyDown={e => {
                 if (e.key === 'Escape') {
                   e.stopPropagation()
                   setSearchQuery('')
+                  vim.exitToNormal()
                   viewRef.current?.focus()
                 }
               }}
