@@ -888,7 +888,7 @@ export function AddSpecialistDialog({
                         spellCheck={false}
                       />
                       <input
-                        type="password"
+                        type="text"
                         value={val}
                         onChange={(e) => {
                           const updated = [...guidedForm.integrations];
@@ -1031,7 +1031,7 @@ export function AddSpecialistDialog({
                 />
                 <input
                   data-testid={`specialist-credential-value-${si}-${ci}`}
-                  type="password"
+                  type="text"
                   value={cred.value}
                   onChange={(e) => updateCredentialValue(si, ci, e.target.value)}
                   placeholder={cred.configured ? '••••••••  (configured)' : 'Enter value'}
