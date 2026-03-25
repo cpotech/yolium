@@ -291,3 +291,13 @@ export function loadSpecialistRaw(name: string): string {
   }
   return fs.readFileSync(resolved.filePath, 'utf-8');
 }
+
+/**
+ * Delete a specialist definition file.
+ * Only deletes if the file exists. Does not throw if not found.
+ */
+export function deleteSpecialistFile(name: string): void {
+  const resolved = resolveSpecialistPath(name);
+  if (!resolved) return;
+  fs.unlinkSync(resolved.filePath);
+}

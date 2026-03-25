@@ -8,6 +8,7 @@ interface ActionsViewProps {
   specialistNames: Record<string, string>;
   initialSpecialist?: string | null;
   isVimActive?: boolean;
+  onBack?: () => void;
 }
 
 export function ActionsView({
@@ -15,6 +16,7 @@ export function ActionsView({
   specialistNames,
   initialSpecialist,
   isVimActive = false,
+  onBack,
 }: ActionsViewProps): React.ReactElement {
   const [actions, setActions] = useState<ActionLogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -67,7 +69,15 @@ export function ActionsView({
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
-    if (!isVimActive || filteredActions.length === 0) return;
+    if (!isVimActive) return;
+
+    if (e.key === 'Escape' || e.key === 'Backspace') {
+      e.preventDefault();
+      onBack?.();
+      return;
+    }
+
+    if (filteredActions.length === 0) return;
 
     if (e.key === 'j' || e.key === 'ArrowDown') {
       e.preventDefault();
@@ -98,7 +108,7 @@ export function ActionsView({
       gPendingRef.current = false;
       return;
     }
-  }, [isVimActive, filteredActions, focusedActionIndex]);
+  }, [isVimActive, filteredActions, focusedActionIndex, onBack]);
 
   if (isLoading) {
     return (

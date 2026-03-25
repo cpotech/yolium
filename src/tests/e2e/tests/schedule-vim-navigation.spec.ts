@@ -78,4 +78,94 @@ test.describe('Schedule zone vim navigation', () => {
     // Schedule panel should still be the active zone (not content)
     await expect(page.locator('[data-testid="schedule-panel"]')).toBeVisible();
   });
+
+  test('should delete specialist with x key and show confirmation', async () => {
+    await openSchedulePanel();
+    const page = ctx.window;
+
+    await page.click('[data-testid="schedule-panel"]');
+
+    // Press 'x' — should show a confirmation dialog
+    await page.keyboard.press('x');
+
+    // Confirm dialog should appear with "Delete Specialist" title
+    await expect(page.locator('text=Delete Specialist')).toBeVisible({ timeout: 5000 });
+
+    // Cancel to avoid actually deleting
+    const cancelBtn = page.locator('text=Cancel');
+    if (await cancelBtn.isVisible()) {
+      await cancelBtn.click();
+    }
+  });
+
+  test('should reload specialists with Shift+R key', async () => {
+    await openSchedulePanel();
+    const page = ctx.window;
+
+    await page.click('[data-testid="schedule-panel"]');
+
+    // Press Shift+R — should trigger reload
+    await page.keyboard.press('Shift+R');
+
+    // The panel should still be visible (reload happened in-place)
+    await expect(page.locator('[data-testid="schedule-panel"]')).toBeVisible();
+  });
+
+  test('should return from actions view to specialists view with Escape', async () => {
+    await openSchedulePanel();
+    const page = ctx.window;
+
+    await page.click('[data-testid="schedule-panel"]');
+
+    // Switch to actions view with '2'
+    await page.keyboard.press('2');
+    await expect(page.locator('[data-testid="actions-view"], [data-testid="actions-view-loading"], [data-testid="actions-view-empty"]').first()).toBeVisible({ timeout: 5000 });
+
+    // Press Escape to go back
+    await page.keyboard.press('Escape');
+
+    // Should be back on specialists view
+    await expect(page.locator('[data-testid^="specialist-card-"]').first()).toBeVisible({ timeout: 5000 });
+  });
+
+  test('should not trigger shortcuts in INSERT mode on schedule panel', async () => {
+    await openSchedulePanel();
+    const page = ctx.window;
+
+    await page.click('[data-testid="schedule-panel"]');
+
+    // Enter INSERT mode with 'i'
+    await page.keyboard.press('i');
+    await page.waitForTimeout(100);
+
+    // Press '2' — should NOT switch to actions view in INSERT mode
+    await page.keyboard.press('2');
+    await page.waitForTimeout(200);
+
+    // Specialists view should still be visible (not switched to actions)
+    await expect(page.locator('[data-testid^="specialist-card-"]').first()).toBeVisible();
+  });
+
+  test('should navigate back from actions view with Backspace', async () => {
+    await openSchedulePanel();
+    const page = ctx.window;
+
+    await page.click('[data-testid="schedule-panel"]');
+
+    // Switch to actions view with '2'
+    await page.keyboard.press('2');
+    await expect(page.locator('[data-testid="actions-view"], [data-testid="actions-view-loading"], [data-testid="actions-view-empty"]').first()).toBeVisible({ timeout: 5000 });
+
+    // Focus the actions view container
+    const actionsView = page.locator('[data-testid="actions-view"], [data-testid="actions-view-empty"]').first();
+    if (await actionsView.isVisible()) {
+      await actionsView.click();
+    }
+
+    // Press Backspace to go back
+    await page.keyboard.press('Backspace');
+
+    // Should be back on specialists view
+    await expect(page.locator('[data-testid^="specialist-card-"]').first()).toBeVisible({ timeout: 5000 });
+  });
 });
