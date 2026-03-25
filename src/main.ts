@@ -237,11 +237,17 @@ app.on('ready', () => {
   clearSessions();
 
   // Start the CRON scheduler for specialist agents
-  scheduler.start();
+  try {
+    scheduler.start();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error('Failed to start scheduler (non-fatal)', { error: message });
+  }
 
   // Enable built-in spell checker
   initSpellChecker(session.defaultSession);
 
+  // Always create the window, even if non-critical services failed above
   createWindow();
 });
 
