@@ -20,9 +20,14 @@ const mockToggleSpecialist = vi.fn();
 const mockTriggerRun = vi.fn();
 const mockReload = vi.fn();
 const mockToggleGlobal = vi.fn();
+const mockDeleteSpecialist = vi.fn();
 
+let mockActionsViewOnBack: (() => void) | undefined;
 vi.mock('@renderer/components/schedule/ActionsView', () => ({
-  ActionsView: () => <div data-testid="mock-actions-view" />,
+  ActionsView: (props: { onBack?: () => void }) => {
+    mockActionsViewOnBack = props.onBack;
+    return <div data-testid="mock-actions-view" />;
+  },
 }));
 
 vi.mock('@renderer/components/schedule/AddSpecialistDialog', () => ({
@@ -67,6 +72,14 @@ function ZoneDisplay() {
   return <div data-testid="current-zone">{activeZone}</div>;
 }
 
+function InsertModeSetter() {
+  const { enterInsertMode } = useVimModeContext();
+  React.useEffect(() => {
+    enterInsertMode();
+  }, [enterInsertMode]);
+  return null;
+}
+
 function createSpecialist(id: string, name: string) {
   return {
     [id]: {
@@ -101,6 +114,7 @@ beforeEach(() => {
   mockTriggerRun.mockResolvedValue({ skipped: false });
   mockReload.mockResolvedValue(undefined);
   mockToggleGlobal.mockResolvedValue(undefined);
+  mockDeleteSpecialist.mockResolvedValue(undefined);
 
   Object.defineProperty(window, 'electronAPI', {
     value: {
@@ -120,6 +134,7 @@ beforeEach(() => {
         triggerRun: mockTriggerRun,
         reload: mockReload,
         resetSpecialist: vi.fn(),
+        deleteSpecialist: mockDeleteSpecialist,
       },
       dialog: { confirmOkCancel: vi.fn().mockResolvedValue(true) },
     },
@@ -543,6 +558,215 @@ describe('SchedulePanel vim shortcuts', () => {
     await waitFor(() => {
       expect(screen.getByTestId('current-zone')).toHaveTextContent('tabs');
     });
+  });
+
+  it('should not respond to K shortcut when not in NORMAL mode', async () => {
+    const mockGoToKanban = vi.fn();
+    renderWithVim(
+      <>
+        <ZoneSetter zone="schedule" />
+        <InsertModeSetter />
+        <SchedulePanel onGoToKanban={mockGoToKanban} />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('schedule-panel')).toBeInTheDocument();
+    });
+
+    const panel = screen.getByTestId('schedule-panel');
+    fireEvent.keyDown(panel, { key: 'K' });
+
+    expect(mockGoToKanban).not.toHaveBeenCalled();
+  });
+
+  it('should not respond to n shortcut when not in NORMAL mode', async () => {
+    renderWithVim(
+      <>
+        <ZoneSetter zone="schedule" />
+        <InsertModeSetter />
+        <SchedulePanel />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('schedule-panel')).toBeInTheDocument();
+    });
+
+    const panel = screen.getByTestId('schedule-panel');
+    fireEvent.keyDown(panel, { key: 'n' });
+
+    // Dialog should NOT have opened since we're in INSERT mode
+    expect(screen.queryByTestId('mock-add-specialist-dialog')).not.toBeInTheDocument();
+  });
+
+  it('should not respond to 1/2 view switching when not in NORMAL mode', async () => {
+    renderWithVim(
+      <>
+        <ZoneSetter zone="schedule" />
+        <InsertModeSetter />
+        <SchedulePanel />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('schedule-panel')).toBeInTheDocument();
+    });
+
+    const panel = screen.getByTestId('schedule-panel');
+    fireEvent.keyDown(panel, { key: '2' });
+
+    // Should NOT have switched to actions view
+    expect(screen.queryByTestId('mock-actions-view')).not.toBeInTheDocument();
+  });
+
+  it('should delete specialist with x key on focused specialist', async () => {
+    renderWithVim(
+      <>
+        <ZoneSetter zone="schedule" />
+        <SchedulePanel />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
+    });
+
+    const panel = screen.getByTestId('schedule-panel');
+    fireEvent.keyDown(panel, { key: 'x' });
+
+    // Confirm dialog should appear (useConfirmDialog renders ConfirmDialog)
+    await waitFor(() => {
+      expect(screen.getByText(/Delete Specialist/)).toBeInTheDocument();
+    });
+  });
+
+  it('should handle x key delete with confirmation dialog', async () => {
+    renderWithVim(
+      <>
+        <ZoneSetter zone="schedule" />
+        <SchedulePanel />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
+    });
+
+    const panel = screen.getByTestId('schedule-panel');
+    fireEvent.keyDown(panel, { key: 'x' });
+
+    // Confirm dialog should appear
+    await waitFor(() => {
+      expect(screen.getByText(/Delete Specialist/)).toBeInTheDocument();
+    });
+
+    // Click confirm button
+    const confirmBtn = screen.getByText('Delete');
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(mockDeleteSpecialist).toHaveBeenCalledWith('spec-1');
+    });
+  });
+
+  it('should not delete specialist with x when specialist is running', async () => {
+    mockGetRunning.mockResolvedValue(['spec-1']);
+
+    renderWithVim(
+      <>
+        <ZoneSetter zone="schedule" />
+        <SchedulePanel />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
+    });
+
+    const panel = screen.getByTestId('schedule-panel');
+    fireEvent.keyDown(panel, { key: 'x' });
+
+    // No confirmation dialog should appear
+    expect(screen.queryByText(/Delete Specialist/)).not.toBeInTheDocument();
+    expect(mockDeleteSpecialist).not.toHaveBeenCalled();
+  });
+
+  it('should reload specialists with R key', async () => {
+    renderWithVim(
+      <>
+        <ZoneSetter zone="schedule" />
+        <SchedulePanel />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
+    });
+
+    const panel = screen.getByTestId('schedule-panel');
+    fireEvent.keyDown(panel, { key: 'R' });
+
+    await waitFor(() => {
+      expect(mockReload).toHaveBeenCalled();
+    });
+  });
+
+  it('should switch back to specialists view with Escape from actions view', async () => {
+    renderWithVim(
+      <>
+        <ZoneSetter zone="schedule" />
+        <SchedulePanel />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
+    });
+
+    const panel = screen.getByTestId('schedule-panel');
+    // Switch to actions view
+    fireEvent.keyDown(panel, { key: '2' });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-actions-view')).toBeInTheDocument();
+    });
+
+    // Call the onBack callback that ActionsView received
+    expect(mockActionsViewOnBack).toBeDefined();
+    mockActionsViewOnBack!();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
+    });
+  });
+
+  it('should handle K shortcut from history view to go to kanban', async () => {
+    const mockGoToKanban = vi.fn();
+    renderWithVim(
+      <>
+        <ZoneSetter zone="schedule" />
+        <SchedulePanel onGoToKanban={mockGoToKanban} />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
+    });
+
+    // Open history with Enter
+    const panel = screen.getByTestId('schedule-panel');
+    fireEvent.keyDown(panel, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('schedule-panel-history')).toBeInTheDocument();
+    });
+
+    // Press K in history view
+    const historyView = screen.getByTestId('schedule-panel-history');
+    fireEvent.keyDown(historyView, { key: 'K' });
+
+    expect(mockGoToKanban).toHaveBeenCalled();
   });
 
   it('should set focus on first card (data-vim-focused) when zone transitions to schedule', async () => {

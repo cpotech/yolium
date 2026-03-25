@@ -111,6 +111,9 @@ export const VIM_ACTIONS: VimAction[] = [
   // Sub-view keys (Run History: j/k/gg/G/Enter/Escape, Actions: j/k/gg/G) reuse the same
   // bindings as the specialist grid — context determines which handler runs.
   // Documented in SchedulePanel shortcuts overlay under "Sub-view Navigation".
+  { id: 'specialist-delete', key: 'x', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Delete specialist' },
+  { id: 'specialist-reload', key: 'R', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Reload specialists' },
+  { id: 'specialist-back', key: 'Escape', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Back to specialists (from actions)' },
   { id: 'run-back', key: 'Backspace', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Back (from history/detail)' },
   { id: 'go-kanban', key: 'K', zone: 'schedule', mode: 'NORMAL', category: 'vim', group: 'Schedule (Agents)', description: 'Go to kanban board' },
 

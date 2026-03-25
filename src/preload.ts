@@ -270,6 +270,9 @@ const schedule: ElectronAPI['schedule'] = {
   resetSpecialist: invoke(
     'schedule:reset-specialist',
   ) as ElectronAPI['schedule']['resetSpecialist'],
+  deleteSpecialist: invoke(
+    'schedule:delete-specialist',
+  ) as ElectronAPI['schedule']['deleteSpecialist'],
   getRunning: invoke('schedule:get-running') as ElectronAPI['schedule']['getRunning'],
   onAlert: (callback) => listen('schedule:alert', callback),
   onStateChanged: (callback) => listen('schedule:state-changed', callback),

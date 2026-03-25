@@ -114,6 +114,27 @@ export function resetSpecialist(
   };
 }
 
+export function deleteSpecialist(
+  state: ScheduleState,
+  specialistId: string,
+): ScheduleState {
+  const database = getDb();
+
+  database.prepare('DELETE FROM runs WHERE specialist_id = ?').run(specialistId);
+  database.prepare('DELETE FROM actions WHERE specialist_id = ?').run(specialistId);
+
+  const specialistDir = path.join(getSchedulesDir(), specialistId);
+  if (fs.existsSync(specialistDir)) {
+    fs.rmSync(specialistDir, { recursive: true, force: true });
+  }
+
+  const { [specialistId]: _, ...remaining } = state.specialists;
+  return {
+    ...state,
+    specialists: remaining,
+  };
+}
+
 // ─── Run History ──────────────────────────────────────────────────────────
 
 export function appendRun(specialistId: string, run: ScheduledRun): void {

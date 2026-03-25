@@ -170,6 +170,17 @@ export function SchedulePanel({ onGoToKanban }: { onGoToKanban?: () => void }): 
     loadState();
   }, [loadState, confirmAction]);
 
+  const handleDeleteSpecialist = useCallback(async (id: string) => {
+    const confirmed = await confirmAction({
+      title: 'Delete Specialist',
+      message: 'This will permanently delete this specialist, including its definition file, run history, action logs, and workspace. This cannot be undone.',
+      confirmLabel: 'Delete',
+    });
+    if (!confirmed) return;
+    await window.electronAPI.schedule.deleteSpecialist(id);
+    loadState();
+  }, [loadState, confirmAction]);
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
@@ -237,6 +248,20 @@ export function SchedulePanel({ onGoToKanban }: { onGoToKanban?: () => void }): 
         gPendingRef.current = false;
         return;
       }
+      if (e.key === 'x' && currentId && !isRunning) {
+        e.preventDefault();
+        handleDeleteSpecialist(currentId);
+        gPendingRef.current = false;
+        return;
+      }
+    }
+
+    if (!isVimScheduleActive) return;
+
+    if (e.key === 'R') {
+      e.preventDefault();
+      handleReload();
+      return;
     }
 
     if (e.key === 'K') {
@@ -260,7 +285,7 @@ export function SchedulePanel({ onGoToKanban }: { onGoToKanban?: () => void }): 
       setViewMode('actions');
       setActionsFilterSpecialist(null);
     }
-  }, [isVimScheduleActive, specialists, focusedSpecialistIndex, state, runningIds, showAddDialog, editingSpecialistId, viewMode, handleTriggerRun, handleToggleSpecialist, onGoToKanban]);
+  }, [isVimScheduleActive, specialists, focusedSpecialistIndex, state, runningIds, showAddDialog, editingSpecialistId, viewMode, handleTriggerRun, handleToggleSpecialist, handleDeleteSpecialist, handleReload, onGoToKanban]);
 
   if (isLoading) {
     return (
@@ -271,8 +296,41 @@ export function SchedulePanel({ onGoToKanban }: { onGoToKanban?: () => void }): 
   }
 
   if (selectedSpecialist) {
+    const handleHistoryKeyDown = (e: React.KeyboardEvent) => {
+      if (!isVimScheduleActive) return;
+      if (e.key === 'K') {
+        e.preventDefault();
+        onGoToKanban?.();
+        return;
+      }
+      if (e.key === 'n') {
+        e.preventDefault();
+        setEditingSpecialistId(null);
+        setShowAddDialog(true);
+        return;
+      }
+      if (e.key === '1') {
+        e.preventDefault();
+        setSelectedSpecialist(null);
+        setViewMode('specialists');
+        setActionsFilterSpecialist(null);
+        return;
+      }
+      if (e.key === '2') {
+        e.preventDefault();
+        setSelectedSpecialist(null);
+        setViewMode('actions');
+        setActionsFilterSpecialist(null);
+        return;
+      }
+      if (e.key === 'R') {
+        e.preventDefault();
+        handleReload();
+        return;
+      }
+    };
     return (
-      <div className="h-full flex flex-col overflow-hidden outline-none" data-testid="schedule-panel-history" tabIndex={0}>
+      <div className="h-full flex flex-col overflow-hidden outline-none" data-testid="schedule-panel-history" tabIndex={0} onKeyDown={handleHistoryKeyDown}>
         <div className="flex items-center gap-2 p-3 border-b border-[var(--color-border-primary)]">
           <button
             onClick={() => setSelectedSpecialist(null)}
@@ -386,6 +444,7 @@ export function SchedulePanel({ onGoToKanban }: { onGoToKanban?: () => void }): 
             )}
             initialSpecialist={actionsFilterSpecialist}
             isVimActive={isVimScheduleActive}
+            onBack={() => { setViewMode('specialists'); setActionsFilterSpecialist(null); }}
           />
         </div>
       ) : (

@@ -21,13 +21,14 @@ import {
   saveCredentials,
   deleteCredentials,
   resetSpecialist,
+  deleteSpecialist,
 } from '@main/stores/yolium-db';
 import {
   scaffoldSpecialist,
   getDefaultTemplate,
   updateSpecialistDefinition,
 } from '@main/services/specialist-scaffold';
-import { loadSpecialistRaw } from '@main/services/specialist-loader';
+import { loadSpecialistRaw, deleteSpecialistFile } from '@main/services/specialist-loader';
 import type { ScheduleType } from '@shared/types/schedule';
 
 export function registerScheduleHandlers(ipcMain: IpcMain): void {
@@ -158,6 +159,17 @@ export function registerScheduleHandlers(ipcMain: IpcMain): void {
     let state = getScheduleState();
     state = resetSpecialist(state, id);
     saveScheduleState(state);
+    scheduler.reload();
+    return state;
+  });
+
+  // Delete a specialist: remove definition file, clear data, remove from state
+  ipcMain.handle('schedule:delete-specialist', (_event, id: string) => {
+    let state = getScheduleState();
+    state = deleteSpecialist(state, id);
+    saveScheduleState(state);
+    deleteCredentials(id);
+    deleteSpecialistFile(id);
     scheduler.reload();
     return state;
   });
