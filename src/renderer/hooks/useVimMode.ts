@@ -137,7 +137,7 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
         setMode('NORMAL');
         return;
       }
-      if (key === 'i') {
+      if (key === 'i' && !event.shiftKey) {
         event.preventDefault();
         setMode('INSERT');
         return;
@@ -158,7 +158,8 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
     const key = event.key;
 
     // Mode switching — always allowed, even when dialog open
-    if (key === 'i') {
+    // Guard against Shift+I (uppercase) which should NOT enter INSERT mode
+    if (key === 'i' && !event.shiftKey) {
       event.preventDefault();
       setMode('INSERT');
       return;

@@ -302,7 +302,7 @@ export const FULL_KEY_SET: string[] = [
  * from per-zone reverse tests.
  */
 export const GLOBAL_KEYS = new Set([
-  'i', 'v', 'Escape', 'e', 't', 'c', 's', 'a', 'b', 'Tab',
+  'i', 'v', 'Escape', 'e', 't', 'c', 's', 'a', 'b', 'Tab', 'Space',
 ]);
 
 /**
