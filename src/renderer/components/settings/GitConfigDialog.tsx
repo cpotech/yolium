@@ -16,6 +16,7 @@ interface GitConfigDialogProps {
   onBuildImage?: () => void;
   imageRemoved?: boolean;
   isRebuilding?: boolean;
+  onOpenAgentSettings?: () => void;
 }
 
 /**
@@ -45,6 +46,7 @@ export function GitConfigDialog({
   onBuildImage,
   imageRemoved = false,
   isRebuilding = false,
+  onOpenAgentSettings,
 }: GitConfigDialogProps): React.ReactElement | null {
   useSuspendVimNavigation(isOpen);
 
@@ -73,6 +75,7 @@ export function GitConfigDialog({
   const [dockerImageInfo, setDockerImageInfo] = useState<{ name: string; size: number; created: string; stale: boolean } | null>(null);
   const [dockerImageLoading, setDockerImageLoading] = useState(false);
   const [dockerImageError, setDockerImageError] = useState(false);
+  const [agentCount, setAgentCount] = useState<number | null>(null);
 
   // PAT validation: must be a valid github_pat_ or ghp_ token (alphanumeric + underscores only)
   const validatePat = (value: string): { valid: boolean; error?: string } => {
@@ -187,6 +190,15 @@ export function GitConfigDialog({
       setTimeout(() => patInputRef.current?.focus(), 50);
     }
   }, [isOpen, initialConfig, fetchDockerImageInfo]);
+
+  // Fetch agent count for the Agent Definitions section
+  useEffect(() => {
+    if (isOpen && onOpenAgentSettings) {
+      window.electronAPI.agent.listDefinitions().then((agents: { name: string }[]) => {
+        setAgentCount(agents.length);
+      }).catch(() => setAgentCount(null));
+    }
+  }, [isOpen, onOpenAgentSettings]);
 
   const handlePatChange = (value: string) => {
     setGithubPat(value);
@@ -869,6 +881,34 @@ export function GitConfigDialog({
                       </button>
                     )}
                   </div>
+                </section>
+              )}
+
+              {onOpenAgentSettings && (
+                <section className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)]/50 p-4 sm:p-5 lg:col-span-2">
+                  <div className="mb-4">
+                    <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Agent Definitions</h3>
+                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                      Create and customize agent definitions.
+                      {agentCount !== null && (
+                        <span data-testid="agent-count" className="ml-1">{agentCount} agent{agentCount !== 1 ? 's' : ''} configured.</span>
+                      )}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onOpenAgentSettings}
+                    data-testid="manage-agents-button"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-500 transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <line x1="19" y1="8" x2="19" y2="14" />
+                      <line x1="22" y1="11" x2="16" y2="11" />
+                    </svg>
+                    Manage Agents
+                  </button>
                 </section>
               )}
             </div>
