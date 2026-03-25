@@ -158,8 +158,9 @@ describe('SchedulePanel vim shortcuts', () => {
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 'j' });
 
-    const focusedCard = screen.getByTestId('specialist-card-spec-2');
-    expect(focusedCard.getAttribute('data-vim-focused')).toBe('true');
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-2').getAttribute('data-vim-focused')).toBe('true');
+    });
   });
 
   it('should navigate to previous specialist with k key', async () => {
@@ -201,8 +202,9 @@ describe('SchedulePanel vim shortcuts', () => {
     fireEvent.keyDown(panel, { key: 'g' });
     fireEvent.keyDown(panel, { key: 'g' });
 
-    const focusedCard = screen.getByTestId('specialist-card-spec-1');
-    expect(focusedCard.getAttribute('data-vim-focused')).toBe('true');
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1').getAttribute('data-vim-focused')).toBe('true');
+    });
   });
 
   it('should jump to last specialist with G', async () => {
@@ -220,8 +222,9 @@ describe('SchedulePanel vim shortcuts', () => {
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 'G' });
 
-    const focusedCard = screen.getByTestId('specialist-card-spec-3');
-    expect(focusedCard.getAttribute('data-vim-focused')).toBe('true');
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-3').getAttribute('data-vim-focused')).toBe('true');
+    });
   });
 
   it('should trigger run with r key on focused specialist', async () => {
@@ -338,9 +341,11 @@ describe('SchedulePanel vim shortcuts', () => {
       expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
     });
 
-    const focusedCard = screen.getByTestId('specialist-card-spec-1');
-    expect(focusedCard.getAttribute('data-vim-focused')).toBe('true');
-    expect(focusedCard.className).toContain('ring-2');
+    await waitFor(() => {
+      const focusedCard = screen.getByTestId('specialist-card-spec-1');
+      expect(focusedCard.getAttribute('data-vim-focused')).toBe('true');
+      expect(focusedCard.className).toContain('ring-2');
+    });
   });
 
   it('should wrap navigation from last to first specialist', async () => {
@@ -359,8 +364,9 @@ describe('SchedulePanel vim shortcuts', () => {
     fireEvent.keyDown(panel, { key: 'G' });
     fireEvent.keyDown(panel, { key: 'j' });
 
-    const focusedCard = screen.getByTestId('specialist-card-spec-1');
-    expect(focusedCard.getAttribute('data-vim-focused')).toBe('true');
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1').getAttribute('data-vim-focused')).toBe('true');
+    });
   });
 
   it('should handle empty specialist list gracefully', async () => {
@@ -782,8 +788,9 @@ describe('SchedulePanel vim shortcuts', () => {
       expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
     });
 
-    const firstCard = screen.getByTestId('specialist-card-spec-1');
-    expect(firstCard.getAttribute('data-vim-focused')).toBe('true');
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1').getAttribute('data-vim-focused')).toBe('true');
+    });
   });
 
   it('should reset focusedSpecialistIndex to 0 when zone transitions back to schedule after navigating away', async () => {
