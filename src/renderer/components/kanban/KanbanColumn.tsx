@@ -1,7 +1,8 @@
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback } from 'react'
 import { KanbanCard } from './KanbanCard'
 import type { KanbanItem, KanbanColumn as ColumnId } from '@shared/types/kanban'
 import { useVimModeContext } from '@renderer/context/VimModeContext'
+import { useVimListNavigation } from '@renderer/hooks/useVimListNavigation'
 
 interface KanbanColumnProps {
   columnId: ColumnId
@@ -44,41 +45,27 @@ export function KanbanColumn({
   const [isDragOver, setIsDragOver] = useState(false)
   const vim = useVimModeContext()
   const isVimActive = vim.mode === 'NORMAL' && vim.activeZone === 'content'
-  const gPendingRef = useRef(false)
+
+  const { handleNavKeys } = useVimListNavigation({
+    itemCount: items.length,
+    enabled: isVimActive && focusedCardIndex !== undefined,
+    onIndexChange: (idx) => onFocusedCardChange?.(idx),
+    currentIndex: focusedCardIndex ?? 0,
+  })
 
   const handleVimKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!isVimActive || items.length === 0 || focusedCardIndex === undefined) return
 
-    if (e.key === 'j' || e.key === 'ArrowDown') {
+    if (handleNavKeys(e)) {
       e.preventDefault()
-      onFocusedCardChange?.((focusedCardIndex + 1) % items.length)
-      gPendingRef.current = false
-    } else if (e.key === 'k' || e.key === 'ArrowUp') {
-      e.preventDefault()
-      onFocusedCardChange?.((focusedCardIndex - 1 + items.length) % items.length)
-      gPendingRef.current = false
-    } else if (e.key === 'g') {
-      if (gPendingRef.current) {
-        // gg - jump to first
-        e.preventDefault()
-        onFocusedCardChange?.(0)
-        gPendingRef.current = false
-      } else {
-        gPendingRef.current = true
-      }
-    } else if (e.key === 'G') {
-      e.preventDefault()
-      onFocusedCardChange?.(items.length - 1)
-      gPendingRef.current = false
-    } else if (e.key === 'Enter') {
+      return
+    }
+    if (e.key === 'Enter') {
       e.preventDefault()
       const idx = Math.min(focusedCardIndex, items.length - 1)
       onCardClick(items[idx], e as unknown as React.KeyboardEvent)
-      gPendingRef.current = false
-    } else {
-      gPendingRef.current = false
     }
-  }, [isVimActive, items, focusedCardIndex, onFocusedCardChange, onCardClick])
+  }, [isVimActive, items, focusedCardIndex, onCardClick, handleNavKeys])
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()

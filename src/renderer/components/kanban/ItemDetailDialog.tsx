@@ -24,6 +24,7 @@ import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whis
 import type { ClaudeUsageState } from '@shared/types/agent'
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts'
 import { getLeaderGroupsForZone } from '@shared/vim-actions'
+import { useVimListNavigation } from '@renderer/hooks/useVimListNavigation'
 
 type NavigableItem =
   | { type: 'field'; id: string }
@@ -78,7 +79,6 @@ export function ItemDetailDialog({
   const dialogRef = useRef<HTMLDivElement>(null)
   const logPanelRef = useRef<AgentLogPanelHandle>(null)
   const commentSearchRef = useRef<CommentsListHandle>(null)
-  const gPendingRef = useRef(false)
 
   const navigableItems: NavigableItem[] = useMemo(() => [
     { type: 'field', id: 'detail-title' },
@@ -217,6 +217,34 @@ export function ItemDetailDialog({
     }
     setFocusedItemIndex(index)
   }, [vim, navigableItems])
+
+  const scrollToItem = useCallback((idx: number) => {
+    const navItem = navigableItems[idx]
+    if (navItem?.type === 'field') {
+      document.getElementById(navItem.id)?.scrollIntoView({ block: 'nearest' })
+    } else if (navItem) {
+      document.querySelector(`[data-comment-id="${navItem.id}"]`)?.scrollIntoView({ block: 'nearest' })
+    }
+  }, [navigableItems])
+
+  const handleFieldNavIndexChange = useCallback((newIndex: number) => {
+    setFocusedItemIndex(newIndex)
+    scrollToItem(newIndex)
+    if (dialogVisualMode) {
+      const anchor = visualAnchorRef.current
+      const start = Math.min(anchor, newIndex)
+      const end = Math.max(anchor, newIndex)
+      setSelectedItemIndices(new Set(Array.from({ length: end - start + 1 }, (_, i) => start + i)))
+    }
+  }, [scrollToItem, dialogVisualMode])
+
+  const { handleNavKeys: handleFieldNavKeys } = useVimListNavigation({
+    itemCount: navigableItems.length,
+    enabled: vim.mode === 'NORMAL' && isOpen,
+    onIndexChange: handleFieldNavIndexChange,
+    currentIndex: focusedItemIndex,
+    wrap: false,
+  })
 
   // Map field DOM index (0=title, 1=desc, 2=comment-input) to navigableItems index
   const handleFieldFocus = useCallback((fieldIndex: number) => {
@@ -490,7 +518,6 @@ export function ItemDetailDialog({
       if (isEditable) return
 
       // 4. Editor zone navigation (NORMAL or dialog VISUAL mode)
-      const lastIdx = navigableItems.length - 1
 
       // V (Shift+V) toggles dialog-local visual mode
       if (event.key === 'V' && event.shiftKey) {
@@ -503,7 +530,6 @@ export function ItemDetailDialog({
           visualAnchorRef.current = focusedItemIndex
           setSelectedItemIndices(new Set([focusedItemIndex]))
         }
-        gPendingRef.current = false
         return
       }
 
@@ -524,59 +550,15 @@ export function ItemDetailDialog({
         void navigator.clipboard.writeText(texts.join('\n\n'))
         setDialogVisualMode(false)
         setSelectedItemIndices(new Set())
-        gPendingRef.current = false
         return
       }
 
-      const scrollToItem = (idx: number) => {
-        const navItem = navigableItems[idx]
-        if (navItem.type === 'field') {
-          document.getElementById(navItem.id)?.scrollIntoView({ block: 'nearest' })
-        } else {
-          document.querySelector(`[data-comment-id="${navItem.id}"]`)?.scrollIntoView({ block: 'nearest' })
-        }
+      if (handleFieldNavKeys(event)) {
+        event.preventDefault()
+        return
       }
 
-      const updateVisualSelection = (newIndex: number) => {
-        if (dialogVisualMode) {
-          const anchor = visualAnchorRef.current
-          const start = Math.min(anchor, newIndex)
-          const end = Math.max(anchor, newIndex)
-          setSelectedItemIndices(new Set(Array.from({ length: end - start + 1 }, (_, i) => start + i)))
-        }
-      }
-
-      if (event.key === 'j' || event.key === 'ArrowDown') {
-        event.preventDefault()
-        const next = Math.min(focusedItemIndex + 1, lastIdx)
-        setFocusedItemIndex(next)
-        scrollToItem(next)
-        updateVisualSelection(next)
-        gPendingRef.current = false
-      } else if (event.key === 'k' || event.key === 'ArrowUp') {
-        event.preventDefault()
-        const prev = Math.max(focusedItemIndex - 1, 0)
-        setFocusedItemIndex(prev)
-        scrollToItem(prev)
-        updateVisualSelection(prev)
-        gPendingRef.current = false
-      } else if (event.key === 'g') {
-        if (gPendingRef.current) {
-          event.preventDefault()
-          setFocusedItemIndex(0)
-          scrollToItem(0)
-          updateVisualSelection(0)
-          gPendingRef.current = false
-        } else {
-          gPendingRef.current = true
-        }
-      } else if (event.key === 'G') {
-        event.preventDefault()
-        setFocusedItemIndex(lastIdx)
-        scrollToItem(lastIdx)
-        updateVisualSelection(lastIdx)
-        gPendingRef.current = false
-      } else if ((event.key === 'i' || event.key === 'Enter') && !dialogVisualMode) {
+      if ((event.key === 'i' || event.key === 'Enter') && !dialogVisualMode) {
         event.preventDefault()
         const currentItem = navigableItems[focusedItemIndex]
         if (currentItem.type === 'field') {
@@ -585,9 +567,6 @@ export function ItemDetailDialog({
           // Comments are read-only: block the event from reaching global vim handler
           event.stopPropagation()
         }
-        gPendingRef.current = false
-      } else {
-        gPendingRef.current = false
       }
     }
 
@@ -595,7 +574,7 @@ export function ItemDetailDialog({
     if (dialogRef.current && vim.mode !== 'NORMAL') {
       trapFocus(event, dialogRef.current)
     }
-  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedItemIndex, focusField, agentSession.currentSessionId, prWorkflow, navigableItems, dialogVisualMode, selectedItemIndices, agentSession, commentSearchRef, sortedAgents])
+  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedItemIndex, focusField, agentSession.currentSessionId, prWorkflow, navigableItems, dialogVisualMode, selectedItemIndices, agentSession, commentSearchRef, sortedAgents, handleFieldNavKeys])
 
   if (!isOpen || !item) return null
 

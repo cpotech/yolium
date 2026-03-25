@@ -7,6 +7,7 @@ import type { ActionStats, ScheduleType } from '@shared/types/schedule';
 import { useVimModeContext } from '@renderer/context/VimModeContext';
 import { useConfirmDialog } from '@renderer/hooks/useConfirmDialog';
 import { ConfirmDialog } from '@renderer/components/shared/ConfirmDialog';
+import { useVimListNavigation } from '@renderer/hooks/useVimListNavigation';
 
 interface SpecialistInfo {
   name: string;
@@ -48,7 +49,6 @@ export function SchedulePanel({ onGoToKanban }: { onGoToKanban?: () => void }): 
   const [actionsFilterSpecialist, setActionsFilterSpecialist] = useState<string | null>(null);
   const [focusedSpecialistIndex, setFocusedSpecialistIndex] = useState(0);
   const viewRef = useRef<HTMLDivElement>(null);
-  const gPendingRef = useRef(false);
   const { confirm: confirmAction, dialogProps: confirmDialogProps } = useConfirmDialog();
   const vim = useVimModeContext();
   const isVimScheduleActive = vim.mode === 'NORMAL' && vim.activeZone === 'schedule';
@@ -181,12 +181,20 @@ export function SchedulePanel({ onGoToKanban }: { onGoToKanban?: () => void }): 
     loadState();
   }, [loadState, confirmAction]);
 
+  const specialistIds = Object.keys(specialists);
+
+  const { handleNavKeys } = useVimListNavigation({
+    itemCount: specialistIds.length,
+    enabled: isVimScheduleActive && viewMode === 'specialists',
+    onIndexChange: setFocusedSpecialistIndex,
+    currentIndex: focusedSpecialistIndex,
+  });
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
     if (showAddDialog || editingSpecialistId !== null) return;
 
-    const specialistIds = Object.keys(specialists);
     const currentIndex = Math.min(focusedSpecialistIndex, Math.max(specialistIds.length - 1, 0));
     const currentId = specialistIds[currentIndex];
     const spec = specialists[currentId];
@@ -195,63 +203,33 @@ export function SchedulePanel({ onGoToKanban }: { onGoToKanban?: () => void }): 
     const isRunning = runningIds.includes(currentId ?? '');
 
     if (viewMode === 'specialists' && isVimScheduleActive && specialistIds.length > 0) {
-      if (e.key === 'j' || e.key === 'ArrowDown') {
+      if (handleNavKeys(e)) {
         e.preventDefault();
-        setFocusedSpecialistIndex((focusedSpecialistIndex + 1) % specialistIds.length);
-        gPendingRef.current = false;
-        return;
-      }
-      if (e.key === 'k' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        setFocusedSpecialistIndex((focusedSpecialistIndex - 1 + specialistIds.length) % specialistIds.length);
-        gPendingRef.current = false;
-        return;
-      }
-      if (e.key === 'g') {
-        if (gPendingRef.current) {
-          e.preventDefault();
-          setFocusedSpecialistIndex(0);
-          gPendingRef.current = false;
-          return;
-        } else {
-          gPendingRef.current = true;
-          return;
-        }
-      }
-      if (e.key === 'G') {
-        e.preventDefault();
-        setFocusedSpecialistIndex(specialistIds.length - 1);
-        gPendingRef.current = false;
         return;
       }
       if (e.key === 'r' && !isRunning && currentId) {
         e.preventDefault();
         handleTriggerRun(currentId, enabledSchedules[0]?.type || 'daily');
-        gPendingRef.current = false;
         return;
       }
       if (e.key === 't' && currentId) {
         e.preventDefault();
         handleToggleSpecialist(currentId, !(status?.enabled ?? true));
-        gPendingRef.current = false;
         return;
       }
       if (e.key === 'Enter' && currentId) {
         e.preventDefault();
         setSelectedSpecialist(currentId);
-        gPendingRef.current = false;
         return;
       }
       if (e.key === 'c' && currentId) {
         e.preventDefault();
         setEditingSpecialistId(currentId);
-        gPendingRef.current = false;
         return;
       }
       if (e.key === 'x' && currentId && !isRunning) {
         e.preventDefault();
         handleDeleteSpecialist(currentId);
-        gPendingRef.current = false;
         return;
       }
     }
@@ -285,7 +263,7 @@ export function SchedulePanel({ onGoToKanban }: { onGoToKanban?: () => void }): 
       setViewMode('actions');
       setActionsFilterSpecialist(null);
     }
-  }, [isVimScheduleActive, specialists, focusedSpecialistIndex, state, runningIds, showAddDialog, editingSpecialistId, viewMode, handleTriggerRun, handleToggleSpecialist, handleDeleteSpecialist, handleReload, onGoToKanban]);
+  }, [isVimScheduleActive, specialists, specialistIds, focusedSpecialistIndex, state, runningIds, showAddDialog, editingSpecialistId, viewMode, handleTriggerRun, handleToggleSpecialist, handleDeleteSpecialist, handleReload, onGoToKanban, handleNavKeys]);
 
   if (isLoading) {
     return (
