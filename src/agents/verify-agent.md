@@ -77,10 +77,10 @@ For each acceptance criterion in the work item:
 - Look for signs of incomplete work: stub implementations, TODO comments, empty catch blocks, hardcoded values, mock-only tests that don't test real behavior
 - Verify that tests exist and actually test the claimed functionality
 - Explicitly validate whether changed files were reasonably simplified and whether in-scope dead code was removed (or intentionally retained with a defensible reason)
-- Verify tests use real samples from `/Samples` when available (not fabricated fixtures)
+- Verify tests use real samples from the mounted `samples/` directory when available (not fabricated fixtures)
 - Verify authentication is not skipped or mocked in tests
 - Verify E2E tests were run if the project has them
-- Check that `.env` credentials (`E2E_USER_EMAIL`, `E2E_USER_PASSWORD`) were used for authentication, not hardcoded test credentials
+- Check that credentials from `samples/.env` (or project root `.env`) were used for authentication, not hardcoded test credentials
 - Run `npm test` to confirm tests pass
 
 Output: `@@YOLIUM:{"type":"progress","step":"validate","detail":"N of M acceptance criteria verified, tests passing"}`
@@ -148,7 +148,7 @@ Your final comment MUST use this structure:
 - [ ] Rule violated (which rule, what specifically)
 
 ### Sample Data & Auth
-- [ ] Tests use /Samples data (not fabricated fixtures) — or /Samples not available
+- [ ] Tests use samples/ data (not fabricated fixtures) — or samples/ not available
 - [ ] Authentication not skipped or mocked
 - [ ] E2E tests executed (if project has them)
 

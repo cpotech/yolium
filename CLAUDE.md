@@ -248,17 +248,21 @@ timeout: 30
 
 When agents work on user projects (not Yolium itself), they must:
 
-### Use Real Samples
-- Projects can mount a `/Samples` directory into agent containers via `.yolium.json` `sharedDirs`
-- Agents must use data from `/Samples` for all tests — never fabricate test fixtures when real samples exist
+### Use Real Samples and Environment Files
+- Projects can mount shared directories into agent containers via `.yolium.json` `sharedDirs` (e.g., `"sharedDirs": ["samples"]`)
+- Shared dirs are mounted read-only at `<project-root>/<dir-name>/` inside the container
+- **Check `samples/.env` first** — the mounted samples directory is the primary source for environment variables (API keys, sandbox credentials, test user credentials). Agents must check `samples/.env` (relative to the project root) before searching elsewhere.
+- Agents must use data from the mounted samples directory for all tests — never fabricate test fixtures when real samples exist
 
 ### Never Skip Authentication
-- Projects requiring authenticated E2E tests must provide credentials in `.env`:
+- Projects requiring authenticated E2E tests must provide credentials. Check these locations in order:
+  1. `samples/.env` (mounted shared directory — primary source)
+  2. `.env` or `.env.local` at the project root
   ```
   E2E_USER_EMAIL="..."
   E2E_USER_PASSWORD="..."
   ```
-- Agents must check `.env` for these values before running E2E tests
+- Agents must check these files for credentials before running E2E tests
 - Agents must never skip, mock, or bypass authentication in tests
 
 ### Run All Tests

@@ -100,7 +100,7 @@ Output these two messages (with your real changes):
 
 - Review your implementation for edge cases or scenarios not covered by the plan agent's test specs
 - Add any additional tests needed for comprehensive coverage
-- If the project has E2E tests, write E2E tests too — use real samples from `/Samples` when available
+- If the project has E2E tests, write E2E tests too — use real samples from `samples/` when available
 - **Keyboard shortcuts require E2E tests** — any new or modified keyboard shortcut/vim action MUST have an E2E test using Playwright's `keyboard.press()` to verify the real interaction works. Add tests to the appropriate file in `src/tests/e2e/tests/` (e.g., `vim-shortcut-explorer.spec.ts` for vim actions, `dialog-shortcuts.spec.ts` for dialog shortcuts). Unit tests alone are not sufficient for keyboard shortcuts.
 - **Vim audit coverage** — when adding a new single-key vim action to `VIM_ACTIONS`, also add it to the `COVERED_ACTIONS` set in `src/tests/e2e/tests/vim-single-key-audit.spec.ts`. The manifest completeness test fails if any single-key vim action is missing from this set.
 
@@ -113,9 +113,15 @@ Output: `@@YOLIUM:{"type":"progress","step":"additional-tests","detail":"Added N
 - If tests fail, fix the code and re-run until green
 - Do NOT skip this step
 
-**Sample data**: If a `/Samples` directory exists, use its contents for all tests. Never fabricate test fixtures when real samples are available.
+**Sample data**: If a `samples/` directory exists at the project root (mounted via `.yolium.json` `sharedDirs`), use its contents for all tests. Never fabricate test fixtures when real samples are available.
 
-**Authentication**: Before running E2E tests, check the project `.env` for credentials:
+**Environment variables**: The mounted `samples/` directory is the primary source for `.env` files containing API keys, sandbox credentials, and test credentials. Check these locations in order:
+1. `samples/.env` (mounted shared directory — check this FIRST)
+2. `.env` or `.env.local` at the project root
+
+If the project's test config (e.g., Playwright config) loads env from `samples/.env` or `../samples/.env`, the mounted samples directory already provides these. Do NOT waste time searching arbitrary paths — the env file is in the samples directory.
+
+**Authentication**: Before running E2E tests, check for credentials in the env files above:
 - `E2E_USER_EMAIL` — test user email
 - `E2E_USER_PASSWORD` — test user password
 If E2E tests require authentication and these are not set, emit `@@YOLIUM:{"type":"error","message":"..."}` and STOP.
@@ -159,7 +165,7 @@ Post a detailed summary comment, then send the complete signal. Both are require
 4. **No commit trailers** - Never add Co-Authored-By, Signed-off-by, or any other trailers to commit messages
 5. **Never skip tests** - Always run `npm test` before committing
 6. **Local only** - Never push to remote, create pull requests, or attempt to merge. All changes stay local.
-7. **Use real data** - Always use samples from `/Samples` for tests when available. Never generate synthetic test fixtures when real samples exist. Never skip or mock authentication.
+7. **Use real data** - Always use samples from the mounted `samples/` directory for tests when available. Check `samples/.env` first for environment variables and credentials. Never generate synthetic test fixtures when real samples exist. Never skip or mock authentication.
 8. **Fail-fast on E2E** - If the project has E2E tests and they fail to run (not assertion failures, but execution failures like missing credentials or broken config), stop immediately and report the error via `@@YOLIUM:error`.
 9. **Keep changes minimal** - Only change what's needed to satisfy the work item, including cleanup that is directly in the touched scope
 10. **Simplify responsibly** - Prefer behavior-preserving simplifications and dead-code removal over adding complexity
