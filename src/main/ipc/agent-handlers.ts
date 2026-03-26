@@ -6,6 +6,7 @@
 import { BrowserWindow, type IpcMain } from 'electron';
 import { createLogger } from '@main/lib/logger';
 import { getAgentSession } from '@main/docker';
+import { queryContainerPorts } from '@main/docker/shared';
 import {
   startAgent,
   resumeAgent,
@@ -244,5 +245,14 @@ export function registerAgentHandlers(ipcMain: IpcMain): void {
   // Clear persistent log for a work item
   ipcMain.handle('agent:clear-log', (_event, projectPath: string, itemId: string) => {
     return deleteLog(projectPath, itemId);
+  });
+
+  // Query port mappings for an agent's container (by itemId lookup)
+  ipcMain.handle('agent:get-container-port-mappings', async (_event, projectPath: string, itemId: string) => {
+    const session = getSessionByItemId(projectPath, itemId);
+    if (!session) return {};
+    const containerSession = getAgentSession(session.id);
+    if (!containerSession?.containerId) return {};
+    return queryContainerPorts(containerSession.containerId);
   });
 }

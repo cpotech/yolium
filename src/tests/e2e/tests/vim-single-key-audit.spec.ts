@@ -88,6 +88,9 @@ const COVERED_ACTIONS = new Set([
   'dialog-scroll-down', 'dialog-scroll-up',
   // Dialog log
   'log-down', 'log-up', 'log-exit',
+  // Dialog browser
+  'browser-toggle', 'browser-reload', 'browser-back',
+  'browser-forward', 'browser-url', 'browser-exit',
 ]);
 
 // ---------------------------------------------------------------------------

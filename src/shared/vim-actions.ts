@@ -12,6 +12,7 @@ export type VimActionZone =
   | 'dialog'
   | 'dialog-diff'
   | 'dialog-sidebar'
+  | 'dialog-browser'
   | 'dialog-log'
   | 'dialog-scroll'
   | 'mode'
@@ -164,6 +165,8 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'agent-9-sidebar', key: '9', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Agent 9 (by order)', leaderGroup: 'a' },
   { id: 'agent-stop-sidebar', key: 'x', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Stop Agent (sidebar)', leaderGroup: 'a' },
   { id: 'agent-resume-sidebar', key: 'R', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Resume Agent (sidebar)', leaderGroup: 'a' },
+  // Browser toggle (direct action, no leader group)
+  { id: 'browser-toggle', key: 'b', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Toggle browser preview' },
   // Direct actions (no leader group)
   { id: 'item-delete-sidebar', key: 'd', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Delete Item (sidebar)' },
   // Git/PR actions (leader group 'g')
@@ -186,6 +189,12 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'log-up', key: 'k', zone: 'dialog-log', mode: 'NORMAL', category: 'vim', group: 'Log Panel Navigation', description: 'Scroll up log panel' },
   { id: 'log-exit', key: 'Escape', zone: 'dialog-log', mode: 'NORMAL', category: 'vim', group: 'Log Panel Navigation', description: 'Exit log focus mode' },
 
+  // --- Dialog browser — browser preview panel shortcuts ---
+  { id: 'browser-reload', key: 'r', zone: 'dialog-browser', mode: 'NORMAL', category: 'vim', group: 'Browser Preview', description: 'Reload page' },
+  { id: 'browser-back', key: 'h', zone: 'dialog-browser', mode: 'NORMAL', category: 'vim', group: 'Browser Preview', description: 'Navigate back' },
+  { id: 'browser-forward', key: 'l', zone: 'dialog-browser', mode: 'NORMAL', category: 'vim', group: 'Browser Preview', description: 'Navigate forward' },
+  { id: 'browser-url', key: 'u', zone: 'dialog-browser', mode: 'NORMAL', category: 'vim', group: 'Browser Preview', description: 'Focus URL bar' },
+  { id: 'browser-exit', key: 'Escape', zone: 'dialog-browser', mode: 'NORMAL', category: 'vim', group: 'Browser Preview', description: 'Exit browser focus' },
 
   // --- Electron Tabs ---
   { id: 'electron-tab-new', key: 'Ctrl+Shift+T', zone: 'electron-tabs', mode: 'ANY', category: 'electron', group: 'Tab Management', description: 'New tab' },
@@ -233,6 +242,7 @@ export const SHORTCUT_GROUP_ORDER: string[] = [
   'Dialog Scrolling',
   'Sidebar Focus (Work Item)',
   'Log Panel Navigation',
+  'Browser Preview',
   'Kanban Selection',
   'Tab Management',
   'Terminal',

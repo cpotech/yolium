@@ -14,6 +14,8 @@ import { AgentLogPanel, type AgentLogPanelHandle } from '../agent/AgentLogPanel'
 import { GitDiffDialog } from '../code-review/GitDiffDialog'
 import { ItemDetailEditorPane } from './item-detail/ItemDetailEditorPane'
 import { ItemDetailSidebar } from './item-detail/ItemDetailSidebar'
+import { BrowserPreviewPanel } from './item-detail/BrowserPreviewPanel'
+import { useBrowserPreview } from '@renderer/hooks/useBrowserPreview'
 import { useItemDetailDraft } from './item-detail/useItemDetailDraft'
 import { useItemDetailAgentLifecycle } from './item-detail/useItemDetailAgentLifecycle'
 import { useItemDetailPrWorkflow } from './item-detail/useItemDetailPrWorkflow'
@@ -74,6 +76,7 @@ export function ItemDetailDialog({
   const [selectedItemIndices, setSelectedItemIndices] = useState<Set<number>>(new Set())
   const visualAnchorRef = useRef<number>(0)
   const [logFocused, setLogFocused] = useState(false)
+  const [browserFocused, setBrowserFocused] = useState(false)
   const [sortedAgents, setSortedAgents] = useState<AgentDefinition[]>([])
   const answerInputRef = useRef<HTMLTextAreaElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -101,6 +104,8 @@ export function ItemDetailDialog({
     projectPath,
     onUpdated,
   })
+
+  const browserPreview = useBrowserPreview(item?.id ?? null, projectPath ?? null)
 
   const draft = useItemDetailDraft({
     item,
@@ -157,6 +162,7 @@ export function ItemDetailDialog({
       setSelectedItemIndices(new Set())
       visualAnchorRef.current = 0
       setLogFocused(false)
+      setBrowserFocused(false)
     }
   }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -168,6 +174,7 @@ export function ItemDetailDialog({
     setDialogVisualMode(false)
     setSelectedItemIndices(new Set())
     setLogFocused(false)
+    setBrowserFocused(false)
     setIsDeleting(false)
   }, [item?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -289,6 +296,9 @@ export function ItemDetailDialog({
       if (vim.mode === 'INSERT') {
         vim.exitToNormal()
         dialogRef.current?.focus()
+      } else if (browserFocused) {
+        setBrowserFocused(false)
+        dialogRef.current?.focus()
       } else if (logFocused) {
         setLogFocused(false)
         logPanelRef.current?.resumeAutoScroll()
@@ -306,6 +316,32 @@ export function ItemDetailDialog({
         event.stopPropagation()
         vim.triggerLeader('dialog-sidebar')
         return
+      }
+
+      // 1b. Browser focus mode — keys control browser when focused
+      if (browserFocused) {
+        const plain = !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey
+        if (event.key === 'r' && plain) {
+          event.preventDefault()
+          browserPreview.reload()
+          return
+        }
+        if (event.key === 'h' && plain) {
+          event.preventDefault()
+          browserPreview.goBack()
+          return
+        }
+        if (event.key === 'l' && plain) {
+          event.preventDefault()
+          browserPreview.goForward()
+          return
+        }
+        if (event.key === 'u' && plain) {
+          event.preventDefault()
+          browserPreview.urlBarRef.current?.focus()
+          browserPreview.urlBarRef.current?.select()
+          return
+        }
       }
 
       // 2. Log focus mode — must be checked BEFORE sidebar shortcuts
@@ -348,6 +384,15 @@ export function ItemDetailDialog({
               return
             }
             // Direct actions (no group)
+            if (event.key === 'b' && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
+              event.preventDefault()
+              vim.clearLeader()
+              dialogRef.current?.focus()
+              browserPreview.toggle()
+              // Enter browser focused mode when opening
+              setBrowserFocused(!browserPreview.isOpen)
+              return
+            }
             if (event.key === 'd' && !event.shiftKey && !isDeleting) {
               event.preventDefault()
               vim.clearLeader()
@@ -576,7 +621,7 @@ export function ItemDetailDialog({
     if (dialogRef.current && vim.mode !== 'NORMAL') {
       trapFocus(event, dialogRef.current)
     }
-  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedItemIndex, focusField, agentSession.currentSessionId, prWorkflow, navigableItems, dialogVisualMode, selectedItemIndices, agentSession, commentSearchRef, sortedAgents, handleFieldNavKeys])
+  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedItemIndex, focusField, agentSession.currentSessionId, prWorkflow, navigableItems, dialogVisualMode, selectedItemIndices, agentSession, commentSearchRef, sortedAgents, handleFieldNavKeys, browserPreview, browserFocused])
 
   if (!isOpen || !item) return null
 
@@ -666,6 +711,22 @@ export function ItemDetailDialog({
           />
           </div>
 
+          {browserPreview.isOpen && (
+            <BrowserPreviewPanel
+              isOpen={browserPreview.isOpen}
+              url={browserPreview.url}
+              portMappings={browserPreview.portMappings}
+              isLoading={browserPreview.isLoading}
+              error={browserPreview.error}
+              onBack={browserPreview.goBack}
+              onForward={browserPreview.goForward}
+              onReload={browserPreview.reload}
+              onUrlChange={browserPreview.setUrl}
+              webviewRef={browserPreview.webviewRef}
+              urlBarRef={browserPreview.urlBarRef}
+            />
+          )}
+
           <ItemDetailSidebar
             showKbdHints={true}
             item={item}
@@ -742,7 +803,15 @@ export function ItemDetailDialog({
                 <span><kbd className={kbdClass}>Esc</kbd> Exit</span>
               </>
           ) : vim.mode === 'NORMAL' ? (
-            logFocused ? (
+            browserFocused ? (
+              <>
+                <span><kbd className={kbdClass}>r</kbd> Reload</span>
+                <span><kbd className={kbdClass}>h</kbd> Back</span>
+                <span><kbd className={kbdClass}>l</kbd> Forward</span>
+                <span><kbd className={kbdClass}>u</kbd> URL bar</span>
+                <span><kbd className={kbdClass}>Esc</kbd> Exit browser</span>
+              </>
+            ) : logFocused ? (
               <>
                 <span><kbd className={kbdClass}>j/k</kbd> Navigate</span>
                 <span><kbd className={kbdClass}>Esc</kbd> Back</span>

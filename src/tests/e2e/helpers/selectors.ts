@@ -156,6 +156,17 @@ export const selectors = {
   detailVerifiedCheckbox: '[data-testid="item-detail-dialog"] [data-testid="verified-checkbox"]',
   detailAnswerInput: '[data-testid="item-detail-dialog"] [data-testid="answer-input"]',
 
+  // Browser Preview Panel
+  browserPreviewPanel: '[data-testid="browser-preview-panel"]',
+  browserUrlBar: '[data-testid="browser-url-bar"]',
+  browserBackBtn: '[data-testid="browser-back-btn"]',
+  browserForwardBtn: '[data-testid="browser-forward-btn"]',
+  browserReloadBtn: '[data-testid="browser-reload-btn"]',
+  browserWebview: '[data-testid="browser-webview"]',
+  browserEmptyState: '[data-testid="browser-empty-state"]',
+  browserPortBadge: '[data-testid="browser-port-badge"]',
+  shortcutsHintBar: '[data-testid="shortcuts-hint-bar"]',
+
   // Confirmation dialogs (native, use Electron dialog API in tests)
   // These are handled via electronAPI mocking
 } as const;

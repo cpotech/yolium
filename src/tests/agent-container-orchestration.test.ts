@@ -90,6 +90,10 @@ vi.mock('@main/docker/shared', () => ({
   DEFAULT_IMAGE: 'yolium:latest',
   CONTAINER_WORKSPACE: '/workspace',
   isWindows: false,
+  buildPortConfig: () => ({
+    ExposedPorts: { '3000/tcp': {}, '5173/tcp': {}, '4200/tcp': {}, '8080/tcp': {}, '8000/tcp': {} },
+    PortBindings: { '3000/tcp': [{ HostPort: '0' }], '5173/tcp': [{ HostPort: '0' }], '4200/tcp': [{ HostPort: '0' }], '8080/tcp': [{ HostPort: '0' }], '8000/tcp': [{ HostPort: '0' }] },
+  }),
 }));
 
 import { createAgentContainer, stopAgentContainer, getAgentSession } from '@main/docker/agent-container';

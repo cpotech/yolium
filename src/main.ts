@@ -192,6 +192,7 @@ function createWindow(): void {
       nodeIntegration: false,      // CRITICAL: Security
       contextIsolation: true,      // CRITICAL: Security
       sandbox: false,              // Required for node-pty
+      webviewTag: true,            // Enable <webview> for browser preview
     },
   });
 

@@ -358,6 +358,7 @@ export interface ContainerAPI {
   resize: (sessionId: string, cols: number, rows: number) => void;
   stop: (sessionId: string, deleteWorktree?: boolean) => Promise<void>;
   getWorktreeInfo: (sessionId: string) => Promise<ContainerWorktreeInfo | null>;
+  getPortMappings: (containerId: string) => Promise<Record<number, number>>;
   onData: (callback: (sessionId: string, data: string) => void) => CleanupFunction;
   onExit: (callback: (sessionId: string, exitCode: number) => void) => CleanupFunction;
 }
@@ -398,6 +399,7 @@ export interface AgentAPI {
   loadFullDefinition: (name: string) => Promise<AgentDefinition & { systemPrompt: string; isBuiltin: boolean }>;
   readLog: (projectPath: string, itemId: string) => Promise<string>;
   clearLog: (projectPath: string, itemId: string) => Promise<boolean>;
+  getPortMappings: (projectPath: string, itemId: string) => Promise<Record<number, number>>;
   onOutput: (callback: (sessionId: string, data: string) => void) => CleanupFunction;
   onQuestion: (
     callback: (sessionId: string, question: AgentQuestionPayload) => void,

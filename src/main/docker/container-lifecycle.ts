@@ -12,7 +12,7 @@ import { loadGitConfig } from '@main/git/git-config';
 import { refreshCodexOAuthTokenSerialized } from '@main/git/codex-oauth';
 import { createWorktree, deleteWorktree, generateBranchName, hasUncommittedChanges, fixWorktreeGitFile } from '@main/git/git-worktree';
 import { detectPackageManager, detectProjectTypes } from '@main/services/project-onboarding';
-import { docker, sessions, agentSessions, DEFAULT_IMAGE } from './shared';
+import { docker, sessions, agentSessions, DEFAULT_IMAGE, buildPortConfig } from './shared';
 import { toDockerPath, getContainerProjectPath, toContainerHomePath } from './path-utils';
 import { buildPersistentBindMounts, getGitCredentialsBind, getClaudeOAuthBind, getCodexOAuthBind } from './project-registry';
 
@@ -127,6 +127,7 @@ export async function createYolium(
     const useCodexOAuth = storedConfig?.useCodexOAuth && codexOAuthBind;
 
     phaseStart = performance.now();
+    const portConfig = buildPortConfig();
     container = await docker.createContainer({
       Image: DEFAULT_IMAGE,
       // Cmd is handled by entrypoint based on TOOL env var
@@ -136,6 +137,7 @@ export async function createYolium(
       AttachStdout: true,
       AttachStderr: true,
       WorkingDir: containerProjectPath,
+      ExposedPorts: portConfig.ExposedPorts,
       Env: [
           `PROJECT_DIR=${containerProjectPath}`,
           `TOOL=${agent}`,
@@ -173,6 +175,7 @@ export async function createYolium(
         CapAdd: ['NET_ADMIN'],
         ShmSize: 268435456, // 256MB for Chromium
         Binds: binds,
+        PortBindings: portConfig.PortBindings,
       },
     });
   } catch (err) { /* intentionally ignored */
