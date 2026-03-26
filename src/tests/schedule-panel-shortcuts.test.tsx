@@ -93,6 +93,14 @@ function createSpecialist(id: string, name: string) {
   };
 }
 
+async function waitForVimReady() {
+  await waitFor(() => {
+    expect(
+      screen.getByTestId('specialist-card-spec-1').getAttribute('data-vim-focused')
+    ).toBe('true');
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetState.mockResolvedValue({
@@ -151,9 +159,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 'j' });
@@ -171,9 +177,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 'j' });
@@ -192,9 +196,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 'j' });
@@ -215,9 +217,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 'G' });
@@ -235,9 +235,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 'r' });
@@ -255,9 +253,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 't' });
@@ -275,9 +271,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 'Enter' });
@@ -295,9 +289,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 'c' });
@@ -316,9 +308,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 'n' });
@@ -337,15 +327,10 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
-    await waitFor(() => {
-      const focusedCard = screen.getByTestId('specialist-card-spec-1');
-      expect(focusedCard.getAttribute('data-vim-focused')).toBe('true');
-      expect(focusedCard.className).toContain('ring-2');
-    });
+    const focusedCard = screen.getByTestId('specialist-card-spec-1');
+    expect(focusedCard.className).toContain('ring-2');
   });
 
   it('should wrap navigation from last to first specialist', async () => {
@@ -356,9 +341,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 'G' });
@@ -402,9 +385,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: '2' });
@@ -415,9 +396,7 @@ describe('SchedulePanel vim shortcuts', () => {
 
     fireEvent.keyDown(panel, { key: '1' });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
   });
 
   it('should not respond to shortcuts when dialog is open', async () => {
@@ -428,9 +407,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
 
@@ -458,9 +435,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: '2' });
@@ -478,9 +453,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     // Open history with Enter
     const panel = screen.getByTestId('schedule-panel');
@@ -494,9 +467,7 @@ describe('SchedulePanel vim shortcuts', () => {
     const historyTable = screen.getByTestId('run-history-table');
     fireEvent.keyDown(historyTable, { key: 'Escape' });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
   });
 
   it('should not switch zone when pressing t to toggle specialist', async () => {
@@ -508,9 +479,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 't' });
@@ -530,9 +499,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 'c' });
@@ -635,9 +602,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 'x' });
@@ -656,9 +621,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 'x' });
@@ -687,9 +650,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 'x' });
@@ -707,9 +668,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 'R' });
@@ -727,9 +686,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     // Switch to actions view
@@ -743,9 +700,7 @@ describe('SchedulePanel vim shortcuts', () => {
     expect(mockActionsViewOnBack).toBeDefined();
     mockActionsViewOnBack!();
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
   });
 
   it('should handle K shortcut from history view to go to kanban', async () => {
@@ -757,9 +712,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     // Open history with Enter
     const panel = screen.getByTestId('schedule-panel');
@@ -784,9 +737,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     await waitFor(() => {
       expect(screen.getByTestId('specialist-card-spec-1').getAttribute('data-vim-focused')).toBe('true');
@@ -803,9 +754,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </ThemeProvider>,
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     // Navigate down to second card
     const panel = screen.getByTestId('schedule-panel');
@@ -847,9 +796,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     (Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>).mockClear();
 
@@ -900,9 +847,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     // Switch to actions view
@@ -929,9 +874,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     // Open history with Enter
     const panel = screen.getByTestId('schedule-panel');
@@ -945,9 +888,7 @@ describe('SchedulePanel vim shortcuts', () => {
     const historyTable = screen.getByTestId('run-history-table');
     fireEvent.keyDown(historyTable, { key: 'Backspace' });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('specialist-card-spec-1')).toBeInTheDocument();
-    });
+    await waitForVimReady();
   });
 });
 
