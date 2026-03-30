@@ -892,6 +892,77 @@ describe('SchedulePanel vim shortcuts', () => {
   });
 });
 
+// --- Zone auto-activation tests ---
+describe('SchedulePanel zone auto-activation', () => {
+  it('should set vim zone to schedule and focus panel when data loads', async () => {
+    renderWithVim(
+      <>
+        <ZoneSetter zone="content" />
+        <ZoneDisplay />
+        <SchedulePanel />
+      </>
+    );
+
+    // Wait for loading to complete and zone to auto-activate
+    await waitFor(() => {
+      expect(screen.getByTestId('current-zone')).toHaveTextContent('schedule');
+    });
+
+    // Panel should be focused (data-vim-focused on first card)
+    await waitFor(() => {
+      expect(screen.getByTestId('specialist-card-spec-1').getAttribute('data-vim-focused')).toBe('true');
+    });
+  });
+
+  it('should not steal focus from input elements when auto-activating zone', async () => {
+    function InputWrapper() {
+      const inputRef = React.useRef<HTMLInputElement>(null);
+      React.useEffect(() => {
+        inputRef.current?.focus();
+      }, []);
+      return <input ref={inputRef} data-testid="active-input" />;
+    }
+
+    renderWithVim(
+      <>
+        <ZoneSetter zone="content" />
+        <ZoneDisplay />
+        <InputWrapper />
+        <SchedulePanel />
+      </>
+    );
+
+    // Wait for zone to auto-activate
+    await waitFor(() => {
+      expect(screen.getByTestId('current-zone')).toHaveTextContent('schedule');
+    });
+
+    // The input should still have focus (not stolen by the panel)
+    expect(document.activeElement).toBe(screen.getByTestId('active-input'));
+  });
+
+  it('should not set zone when panel is loading', async () => {
+    // Make getState hang so loading never completes
+    mockGetState.mockReturnValue(new Promise(() => {}));
+
+    renderWithVim(
+      <>
+        <ZoneSetter zone="content" />
+        <ZoneDisplay />
+        <SchedulePanel />
+      </>
+    );
+
+    // Loading spinner should be shown
+    await waitFor(() => {
+      expect(screen.getByTestId('schedule-panel-loading')).toBeInTheDocument();
+    });
+
+    // Zone should still be content since loading hasn't completed
+    expect(screen.getByTestId('current-zone')).toHaveTextContent('content');
+  });
+});
+
 // --- RunHistoryTable vim navigation tests ---
 // These render RunHistoryTable directly (not mocked)
 describe('RunHistoryTable vim navigation', () => {

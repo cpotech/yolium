@@ -97,6 +97,13 @@ export function SchedulePanel({ onGoToKanban }: { onGoToKanban?: () => void }): 
     };
   }, [loadState]);
 
+  // Auto-activate schedule zone after data loads so keyboard shortcuts work immediately
+  useEffect(() => {
+    if (!isLoading && viewRef.current) {
+      vim.setActiveZone('schedule');
+    }
+  }, [isLoading]);
+
   useEffect(() => {
     if (vim.activeZone === 'schedule' && !isLoading && viewRef.current) {
       setFocusedSpecialistIndex(0);
