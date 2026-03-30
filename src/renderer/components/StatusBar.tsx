@@ -135,7 +135,7 @@ function renderClaudeUsage(
           data-testid="claude-usage-display"
           className="flex items-center gap-1 cursor-pointer text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
           onClick={onRefreshUsage ?? onOpenSettings}
-          title="Click to retry (Ctrl+Shift+U)"
+          title="Session may have expired. Run 'claude' on your host to re-login. Click to retry (Ctrl+Shift+U)"
         >
           <span className="text-[var(--color-text-secondary)]">Claude</span>
           <span>&middot;</span>
