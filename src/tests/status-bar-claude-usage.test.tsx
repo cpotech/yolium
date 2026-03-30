@@ -73,9 +73,17 @@ describe('StatusBar Claude usage', () => {
 
     const button = screen.getByRole('button', { name: /claude unavailable/i });
     expect(button).toBeInTheDocument();
-    expect(button).toHaveAttribute('title');
+    expect(button).toHaveAttribute('title', expect.stringContaining("Run 'claude' on your host to re-login"));
+    expect(button).toHaveAttribute('title', expect.stringContaining('Ctrl+Shift+U'));
     expect(container.querySelector('.animate-spin')).not.toBeInTheDocument();
     expect(screen.queryByText('5h')).not.toBeInTheDocument();
+  });
+
+  it('should show refresh tooltip when claudeUsage.status is ready', () => {
+    renderStatusBar({ claudeUsage: readyState });
+
+    const display = screen.getByTestId('claude-usage-display');
+    expect(display).toHaveAttribute('title', 'Click to refresh (Ctrl+Shift+U)');
   });
 
   it('should call onOpenSettings when the unavailable fallback is clicked', () => {
