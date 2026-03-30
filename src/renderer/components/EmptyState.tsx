@@ -1,5 +1,5 @@
 import React from 'react';
-import { FolderPlus, Terminal, Folder, ArrowRight, Sun, Moon } from 'lucide-react';
+import { FolderPlus, Terminal, Folder, ArrowRight, Sun, Moon, LayoutGrid, Bot, GitBranch } from 'lucide-react';
 import { useTheme } from '@renderer/theme';
 import type { SidebarProject } from '@renderer/stores/sidebar-store';
 import { getFolderName } from '@renderer/lib/path-utils';
@@ -10,6 +10,24 @@ interface EmptyStateProps {
   projects?: SidebarProject[];
   onProjectClick?: (path: string) => void;
 }
+
+const FEATURES = [
+  {
+    icon: LayoutGrid,
+    title: 'Organize with kanban',
+    description: 'Plan work visually on a board. Add items, set priorities, and track progress.',
+  },
+  {
+    icon: Bot,
+    title: 'Assign AI agents',
+    description: 'Claude Code, OpenCode, or Codex pick up work items and execute autonomously.',
+  },
+  {
+    icon: GitBranch,
+    title: 'Parallel & isolated',
+    description: 'Each agent runs in its own Docker container on a separate git branch.',
+  },
+] as const;
 
 export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }: EmptyStateProps): React.ReactElement {
   const { theme, toggleTheme } = useTheme();
@@ -30,12 +48,12 @@ export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }
         )}
       </button>
 
-      {/* Metatron's Cube hero */}
-      <div className="mb-6 relative select-none">
+      {/* Metatron's Cube hero — compact */}
+      <div className="mb-4 relative select-none">
         <div className="relative flex flex-col items-center">
           {/* Ambient glow behind logo */}
           <div
-            className="absolute -inset-8 opacity-30"
+            className="absolute -inset-6 opacity-25"
             style={{
               background: 'radial-gradient(circle at 50% 30%, #00aaff 0%, transparent 60%)',
             }}
@@ -43,8 +61,8 @@ export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }
 
           {/* Metatron's Cube logo */}
           <svg
-            width="140"
-            height="140"
+            width="100"
+            height="100"
             viewBox="0 0 200 200"
             className="relative"
             style={{ filter: 'drop-shadow(0 0 6px rgba(0,136,255,0.4))' }}
@@ -210,10 +228,10 @@ export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }
           </svg>
 
           {/* Main text */}
-          <div className="relative mt-4">
+          <div className="relative mt-3">
             {/* Shadow layer */}
             <div
-              className="absolute inset-0 text-5xl sm:text-6xl font-bold tracking-[0.2em]"
+              className="absolute inset-0 text-4xl sm:text-5xl font-bold tracking-[0.2em]"
               style={{
                 fontFamily: 'system-ui, -apple-system, sans-serif',
                 color: '#001020',
@@ -225,7 +243,7 @@ export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }
 
             {/* Main text */}
             <div
-              className="relative text-5xl sm:text-6xl font-bold tracking-[0.2em]"
+              className="relative text-4xl sm:text-5xl font-bold tracking-[0.2em]"
               style={{
                 fontFamily: 'system-ui, -apple-system, sans-serif',
                 background: `linear-gradient(180deg,
@@ -247,7 +265,7 @@ export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }
           </div>
 
           {/* Underline */}
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-2 flex items-center gap-2">
             <div className="h-px w-12 bg-gradient-to-r from-transparent to-cyan-500" />
             <div
               className="text-[9px] tracking-[0.3em] uppercase"
@@ -260,8 +278,8 @@ export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }
         </div>
       </div>
 
-      <p className="text-sm text-[var(--color-text-muted)] mb-8 text-center">
-        Run AI agents in parallel &mdash; each safely containerized.
+      <p className="text-sm text-[var(--color-text-secondary)] mb-6 text-center max-w-sm">
+        Orchestrate AI coding agents in parallel &mdash; each in its own container with an isolated branch.
       </p>
 
       {/* CTA buttons */}
@@ -290,8 +308,8 @@ export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }
         </button>
       </div>
 
-      {/* Recent projects or getting started */}
-      <div className="max-w-lg w-full">
+      {/* Recent projects or feature cards */}
+      <div className="max-w-xl w-full">
         {hasProjects ? (
           <>
             <h2 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">
@@ -320,23 +338,30 @@ export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }
             </div>
           </>
         ) : (
-          <div className="text-center">
-            <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-              Get started
+          <div data-testid="getting-started">
+            <h2 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-4 text-center">
+              How it works
             </h2>
-            <div className="flex flex-col gap-2 text-xs text-[var(--color-text-muted)] max-w-xs mx-auto">
-              <div className="flex items-start gap-2">
-                <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-[var(--color-accent-primary)]/20 text-[var(--color-accent-primary)] flex items-center justify-center text-[10px] font-bold">1</span>
-                <span><strong className="text-[var(--color-text-secondary)]">Create a project</strong> to set up a kanban board for managing work items</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-[var(--color-accent-primary)]/20 text-[var(--color-accent-primary)] flex items-center justify-center text-[10px] font-bold">2</span>
-                <span><strong className="text-[var(--color-text-secondary)]">Add work items</strong> and assign AI agents (Claude Code, OpenCode, or Shell)</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-[var(--color-accent-primary)]/20 text-[var(--color-accent-primary)] flex items-center justify-center text-[10px] font-bold">3</span>
-                <span><strong className="text-[var(--color-text-secondary)]">Agents work in parallel</strong> &mdash; each in its own Docker container with an isolated git branch</span>
-              </div>
+            <div className="grid grid-cols-3 gap-3">
+              {FEATURES.map((feature) => {
+                const Icon = feature.icon;
+                return (
+                  <div
+                    key={feature.title}
+                    className="flex flex-col items-center text-center px-3 py-4 rounded-lg bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)]"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-[var(--color-accent-primary)]/10 flex items-center justify-center mb-3">
+                      <Icon size={18} className="text-[var(--color-accent-primary)]" />
+                    </div>
+                    <h3 className="text-xs font-semibold text-[var(--color-text-primary)] mb-1">
+                      {feature.title}
+                    </h3>
+                    <p className="text-[11px] leading-relaxed text-[var(--color-text-muted)]">
+                      {feature.description}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
