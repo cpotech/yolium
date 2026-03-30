@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react'
-import { Code, Lightbulb, Search, ShieldCheck, Play, RotateCcw, MessageSquare, XCircle, Palette, Megaphone, Bot } from 'lucide-react'
+import { Code, Lightbulb, Search, ShieldCheck, RotateCcw, MessageSquare, XCircle, Palette, Megaphone, Bot } from 'lucide-react'
 import type { KanbanItem, AgentStatus } from '@shared/types/kanban'
 import type { AgentDefinition } from '@shared/types/agent'
 
@@ -66,16 +66,11 @@ function formatAgentLabel(name: string): string {
 interface AgentControlsProps {
   item: KanbanItem
   isStartingAgent: boolean
-  isAnswering: boolean
-  answerText: string
   currentSessionId: string | null
   currentDetail: string | null
-  answerInputRef: React.RefObject<HTMLTextAreaElement | null>
   onStartAgent: (agentName: string) => void
   onResumeAgent: (agentName: string) => void
   onStopAgent: () => void
-  onAnswerQuestion: () => void
-  onSetAnswerText: (text: string) => void
   onUpdated: () => void
 }
 
@@ -131,16 +126,11 @@ function AgentButtonList({
 export function AgentControls({
   item,
   isStartingAgent,
-  isAnswering,
-  answerText,
   currentSessionId,
   currentDetail,
-  answerInputRef,
   onStartAgent,
   onResumeAgent,
   onStopAgent,
-  onAnswerQuestion,
-  onSetAnswerText,
 }: AgentControlsProps): React.ReactElement {
   const [agents, setAgents] = useState<AgentDefinition[]>([])
   const resumeAgentName = item.activeAgentName || item.lastAgentName || item.agentType || 'code-agent'
@@ -235,54 +225,11 @@ export function AgentControls({
           </div>
         )}
 
-        {/* Waiting - Show question and answer input */}
-        {item.agentStatus === 'waiting' && item.agentQuestion && (
-          <div className="space-y-2">
-            <div className="flex items-start gap-2 text-sm text-[var(--color-status-warning)]">
-              <MessageSquare size={14} className="mt-0.5 flex-shrink-0" />
-              <span>{item.agentQuestion}</span>
-            </div>
-            {item.agentQuestionOptions && item.agentQuestionOptions.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {item.agentQuestionOptions.map((option, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => onSetAnswerText(option)}
-                    className="px-2 py-1 text-xs bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] rounded border border-[var(--color-border-primary)] hover:border-[var(--color-accent-primary)] transition-colors"
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-            )}
-            <textarea
-              ref={answerInputRef}
-              data-testid="answer-input"
-              value={answerText}
-              onChange={e => onSetAnswerText(e.target.value)}
-              placeholder="Type your answer..."
-              rows={2}
-              className="w-full px-2 py-1.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)] rounded text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent-primary)]"
-            />
-            <div className="flex gap-2">
-              <button
-                data-testid="submit-answer-button"
-                onClick={onAnswerQuestion}
-                disabled={isAnswering || !answerText.trim()}
-                className="flex-1 px-2 py-1.5 text-xs bg-[var(--color-agent-success-bg)] text-white rounded hover:bg-[var(--color-agent-success-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {isAnswering ? 'Sending...' : 'Submit Answer'}
-              </button>
-              <button
-                data-testid="resume-agent-button"
-                onClick={() => onResumeAgent(resumeAgentName)}
-                disabled={isStartingAgent}
-                className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs bg-[var(--color-agent-warning-bg)] text-white rounded hover:bg-[var(--color-agent-warning-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <RotateCcw size={12} />
-                {isStartingAgent ? 'Resuming...' : 'Resume'}
-              </button>
-            </div>
+        {/* Waiting - Simple indicator (answer form is in the comments area) */}
+        {item.agentStatus === 'waiting' && (
+          <div className="flex items-center gap-2 text-sm text-[var(--color-status-warning)]">
+            <MessageSquare size={14} className="flex-shrink-0" />
+            <span>Waiting for answer — see comments below</span>
           </div>
         )}
 

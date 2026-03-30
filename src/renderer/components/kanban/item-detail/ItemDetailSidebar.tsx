@@ -19,13 +19,10 @@ interface ItemDetailSidebarProps {
   providerModels: Record<string, string[]>
   saveStatus: DraftSaveStatus
   isDeleting: boolean
-  answerText: string
   isStartingAgent: boolean
-  isAnswering: boolean
   currentSessionId: string | null
   currentDetail: string | null
   tokenUsage: AgentTokenUsage | null
-  answerInputRef: React.RefObject<HTMLTextAreaElement | null>
   prUrl: string | null
   conflictCheck: ConflictCheckResult | null
   rebaseResult: RebaseResultState | null
@@ -42,8 +39,6 @@ interface ItemDetailSidebarProps {
   onStartAgent: (agentName: string) => void
   onResumeAgent: (agentName: string) => void
   onStopAgent: () => void
-  onAnswerQuestion: () => void
-  onSetAnswerText: (value: string) => void
   onCompareChanges: () => void
   onOpenPr: () => void
   onApprovePr: () => void
@@ -66,13 +61,10 @@ export function ItemDetailSidebar({
   providerModels,
   saveStatus,
   isDeleting,
-  answerText,
   isStartingAgent,
-  isAnswering,
   currentSessionId,
   currentDetail,
   tokenUsage,
-  answerInputRef,
   prUrl,
   conflictCheck,
   rebaseResult,
@@ -89,8 +81,6 @@ export function ItemDetailSidebar({
   onStartAgent,
   onResumeAgent,
   onStopAgent,
-  onAnswerQuestion,
-  onSetAnswerText,
   onCompareChanges,
   onOpenPr,
   onApprovePr,
@@ -108,16 +98,11 @@ export function ItemDetailSidebar({
         <AgentControls
           item={item}
           isStartingAgent={isStartingAgent}
-          isAnswering={isAnswering}
-          answerText={answerText}
           currentSessionId={currentSessionId}
           currentDetail={currentDetail}
-          answerInputRef={answerInputRef}
           onStartAgent={onStartAgent}
           onResumeAgent={onResumeAgent}
           onStopAgent={onStopAgent}
-          onAnswerQuestion={onAnswerQuestion}
-          onSetAnswerText={onSetAnswerText}
           onUpdated={onUpdated}
         />
       </div>

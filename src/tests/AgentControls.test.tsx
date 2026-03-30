@@ -40,16 +40,11 @@ const createMockItem = (overrides: Partial<KanbanItem> = {}): KanbanItem => ({
 
 const defaultProps = {
   isStartingAgent: false,
-  isAnswering: false,
-  answerText: '',
   currentSessionId: null as string | null,
   currentDetail: null as string | null,
-  answerInputRef: { current: null },
   onStartAgent: vi.fn(),
   onResumeAgent: vi.fn(),
   onStopAgent: vi.fn(),
-  onAnswerQuestion: vi.fn(),
-  onSetAnswerText: vi.fn(),
   onUpdated: vi.fn(),
 }
 
@@ -211,32 +206,34 @@ describe('AgentControls', () => {
   })
 
   describe('waiting state', () => {
-    it('should use activeAgentName for resume', () => {
-      const onResumeAgent = vi.fn()
+    it('should show waiting indicator text instead of question UI when status is waiting', () => {
       const item = createMockItem({
         agentStatus: 'waiting',
         agentQuestion: 'Proceed?',
-        activeAgentName: 'plan-agent',
       })
-      render(<AgentControls item={item} {...defaultProps} onResumeAgent={onResumeAgent} />)
+      render(<AgentControls item={item} {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('resume-agent-button'))
-      expect(onResumeAgent).toHaveBeenCalledWith('plan-agent')
+      expect(screen.getByText(/waiting for answer/i)).toBeInTheDocument()
     })
 
-    it('should use lastAgentName for resume when activeAgentName is missing', () => {
-      const onResumeAgent = vi.fn()
+    it('should not render answer textarea when status is waiting', () => {
       const item = createMockItem({
         agentStatus: 'waiting',
         agentQuestion: 'Proceed?',
-        activeAgentName: undefined,
-        lastAgentName: 'verify-agent',
-        agentType: 'plan-agent',
       })
-      render(<AgentControls item={item} {...defaultProps} onResumeAgent={onResumeAgent} />)
+      render(<AgentControls item={item} {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('resume-agent-button'))
-      expect(onResumeAgent).toHaveBeenCalledWith('verify-agent')
+      expect(screen.queryByTestId('answer-input')).not.toBeInTheDocument()
+    })
+
+    it('should not render resume button when status is waiting', () => {
+      const item = createMockItem({
+        agentStatus: 'waiting',
+        agentQuestion: 'Proceed?',
+      })
+      render(<AgentControls item={item} {...defaultProps} />)
+
+      expect(screen.queryByTestId('resume-agent-button')).not.toBeInTheDocument()
     })
   })
 
