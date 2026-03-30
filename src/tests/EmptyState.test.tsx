@@ -53,9 +53,12 @@ describe('EmptyState', () => {
     expect(screen.queryByText('Open Project')).not.toBeInTheDocument();
   });
 
-  it('should render getting started steps when no projects exist', () => {
+  it('should render getting started section when no projects exist', () => {
     renderEmptyState({ onNewTab: vi.fn(), onOpenProject: vi.fn() });
-    expect(screen.getByText('Get started')).toBeInTheDocument();
+    expect(screen.getByText('How it works')).toBeInTheDocument();
+    expect(screen.getByText('Organize with kanban')).toBeInTheDocument();
+    expect(screen.getByText('Assign AI agents')).toBeInTheDocument();
+    expect(screen.getByText('Parallel & isolated')).toBeInTheDocument();
   });
 
   it('should render recent projects when projects are provided', () => {
@@ -70,7 +73,7 @@ describe('EmptyState', () => {
     expect(screen.getByText('Recent Projects')).toBeInTheDocument();
     expect(screen.getByText('my-app')).toBeInTheDocument();
     expect(screen.getByText('backend')).toBeInTheDocument();
-    expect(screen.queryByText('Get started')).not.toBeInTheDocument();
+    expect(screen.queryByText('How it works')).not.toBeInTheDocument();
   });
 
   it('should call onProjectClick when a recent project is clicked', () => {
