@@ -15,7 +15,7 @@ describe('useVimMode', () => {
     expect(result.current.mode).toBe('NORMAL');
   });
 
-  it('should transition to INSERT mode when i is pressed in NORMAL mode', () => {
+  it('should NOT enter INSERT mode when i is pressed in NORMAL mode (global handler)', () => {
     const { result } = renderHook(() => useVimMode());
 
     act(() => {
@@ -23,16 +23,15 @@ describe('useVimMode', () => {
       result.current.handleKeyDown(event);
     });
 
-    expect(result.current.mode).toBe('INSERT');
+    expect(result.current.mode).toBe('NORMAL');
   });
 
   it('should transition back to NORMAL mode when Escape is pressed in INSERT mode', () => {
     const { result } = renderHook(() => useVimMode());
 
-    // Enter INSERT mode
+    // Enter INSERT mode programmatically
     act(() => {
-      const event = new KeyboardEvent('keydown', { key: 'i' });
-      result.current.handleKeyDown(event);
+      result.current.enterInsertMode();
     });
     expect(result.current.mode).toBe('INSERT');
 
@@ -134,10 +133,9 @@ describe('useVimMode', () => {
   it('should not change zone when already in INSERT mode', () => {
     const { result } = renderHook(() => useVimMode());
 
-    // Enter INSERT mode
+    // Enter INSERT mode programmatically
     act(() => {
-      const event = new KeyboardEvent('keydown', { key: 'i' });
-      result.current.handleKeyDown(event);
+      result.current.enterInsertMode();
     });
     expect(result.current.mode).toBe('INSERT');
 
@@ -188,10 +186,9 @@ describe('useVimMode', () => {
     const onGoToKanban = vi.fn();
     const { result } = renderHook(() => useVimMode({ onGoToKanban }));
 
-    // Enter INSERT mode
+    // Enter INSERT mode programmatically
     act(() => {
-      const event = new KeyboardEvent('keydown', { key: 'i' });
-      result.current.handleKeyDown(event);
+      result.current.enterInsertMode();
     });
     expect(result.current.mode).toBe('INSERT');
 
@@ -366,10 +363,9 @@ describe('useVimMode', () => {
   it('should not enter leader in INSERT mode', () => {
     const { result } = renderHook(() => useVimMode());
 
-    // Enter INSERT mode
+    // Enter INSERT mode programmatically
     act(() => {
-      const event = new KeyboardEvent('keydown', { key: 'i' });
-      result.current.handleKeyDown(event);
+      result.current.enterInsertMode();
     });
     expect(result.current.mode).toBe('INSERT');
 
@@ -416,10 +412,9 @@ describe('useVimMode', () => {
     const onShowShortcuts = vi.fn();
     const { result } = renderHook(() => useVimMode({ onShowShortcuts }));
 
-    // Enter INSERT mode
+    // Enter INSERT mode programmatically
     act(() => {
-      const event = new KeyboardEvent('keydown', { key: 'i' });
-      result.current.handleKeyDown(event);
+      result.current.enterInsertMode();
     });
     expect(result.current.mode).toBe('INSERT');
 
@@ -488,5 +483,111 @@ describe('useVimMode', () => {
     });
 
     expect(result.current.leaderPending).toBe(false);
+  });
+
+  // --- INSERT mode zone-awareness tests ---
+
+  it('should NOT enter INSERT mode when i is pressed in schedule zone', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    // Switch to schedule zone
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'a' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.activeZone).toBe('schedule');
+
+    // Press i - should NOT enter INSERT
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'i' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(result.current.mode).toBe('NORMAL');
+  });
+
+  it('should NOT enter INSERT mode when i is pressed in sidebar zone', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    // Switch to sidebar zone
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'e' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.activeZone).toBe('sidebar');
+
+    // Press i - should NOT enter INSERT
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'i' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(result.current.mode).toBe('NORMAL');
+  });
+
+  it('should NOT enter INSERT mode when i is pressed in tabs zone', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    // Switch to tabs zone
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 't' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.activeZone).toBe('tabs');
+
+    // Press i - should NOT enter INSERT
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'i' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(result.current.mode).toBe('NORMAL');
+  });
+
+  it('should still allow programmatic enterInsertMode()', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    act(() => {
+      result.current.enterInsertMode();
+    });
+
+    expect(result.current.mode).toBe('INSERT');
+  });
+
+  it('should still exit INSERT mode with Escape after programmatic entry', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    // Enter INSERT mode programmatically
+    act(() => {
+      result.current.enterInsertMode();
+    });
+    expect(result.current.mode).toBe('INSERT');
+
+    // Press Escape to exit
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'Escape' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(result.current.mode).toBe('NORMAL');
+  });
+
+  it('should NOT enter INSERT mode from i key in VISUAL mode', () => {
+    const { result } = renderHook(() => useVimMode());
+
+    // Enter VISUAL mode
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'v' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.mode).toBe('VISUAL');
+
+    // Press i - should NOT enter INSERT
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'i' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(result.current.mode).toBe('VISUAL');
   });
 });

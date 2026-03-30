@@ -137,11 +137,6 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
         setMode('NORMAL');
         return;
       }
-      if (key === 'i' && !event.shiftKey) {
-        event.preventDefault();
-        setMode('INSERT');
-        return;
-      }
       // Zone keys exit visual and switch zone
       if (key in ZONE_KEYS) {
         event.preventDefault();
@@ -156,14 +151,6 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
 
     // NORMAL mode key handling
     const key = event.key;
-
-    // Mode switching — always allowed, even when dialog open
-    // Guard against Shift+I (uppercase) which should NOT enter INSERT mode
-    if (key === 'i' && !event.shiftKey) {
-      event.preventDefault();
-      setMode('INSERT');
-      return;
-    }
 
     // Block zone switching and Tab cycling when dialogs are open
     if (dialogOpen) return;

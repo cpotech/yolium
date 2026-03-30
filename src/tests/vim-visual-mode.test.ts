@@ -67,9 +67,9 @@ describe('useVimMode VISUAL mode', () => {
   it('should not enter VISUAL mode from INSERT mode', () => {
     const { result } = renderHook(() => useVimMode());
 
-    // Enter INSERT mode
+    // Enter INSERT mode programmatically
     act(() => {
-      result.current.handleKeyDown(new KeyboardEvent('keydown', { key: 'i' }));
+      result.current.enterInsertMode();
     });
     expect(result.current.mode).toBe('INSERT');
 
