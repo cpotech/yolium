@@ -40,6 +40,7 @@ function VimProbe(): React.ReactElement {
     <div>
       <div data-testid="vim-mode">{vim.mode}</div>
       <div data-testid="vim-zone">{vim.activeZone}</div>
+      <button data-testid="enter-insert" onClick={() => vim.enterInsertMode()}>Insert</button>
     </div>
   );
 }
@@ -331,13 +332,14 @@ describe('KanbanView NORMAL mode actions', () => {
       renderWithVim(
         <>
           <ZoneSetter zone="content" />
+          <VimProbe />
           <KanbanView projectPath="/test/project" />
         </>
       );
     });
 
-    // Enter INSERT mode
-    fireEvent.keyDown(document, { key: 'i' });
+    // Enter INSERT mode programmatically
+    fireEvent.click(screen.getByTestId('enter-insert'));
 
     // Focus search to simulate INSERT mode (n typed in input should not open dialog)
     const searchInput = screen.getByTestId('search-input');
@@ -352,6 +354,7 @@ describe('KanbanView NORMAL mode actions', () => {
       renderWithVim(
         <>
           <ZoneSetter zone="content" />
+          <VimProbe />
           <KanbanView projectPath="/test/project" />
         </>
       );
@@ -359,8 +362,8 @@ describe('KanbanView NORMAL mode actions', () => {
 
     mockGetBoard.mockClear();
 
-    // Enter INSERT mode and focus input
-    fireEvent.keyDown(document, { key: 'i' });
+    // Enter INSERT mode programmatically and focus input
+    fireEvent.click(screen.getByTestId('enter-insert'));
     const searchInput = screen.getByTestId('search-input');
     searchInput.focus();
     fireEvent.keyDown(searchInput, { key: 'r' });
@@ -968,18 +971,19 @@ describe('ItemDetailDialog NORMAL mode actions', () => {
 // ============================================================
 
 describe('Mode transitions', () => {
-  it('i enters INSERT mode from any zone', () => {
+  it('i does NOT enter INSERT mode from global handler', () => {
     renderWithVim(<VimProbe />);
 
     fireEvent.keyDown(document, { key: 'i' });
 
-    expect(screen.getByTestId('vim-mode')).toHaveTextContent('INSERT');
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL');
   });
 
   it('Escape exits INSERT to NORMAL', () => {
     renderWithVim(<VimProbe />);
 
-    fireEvent.keyDown(document, { key: 'i' });
+    // Enter INSERT mode programmatically
+    fireEvent.click(screen.getByTestId('enter-insert'));
     expect(screen.getByTestId('vim-mode')).toHaveTextContent('INSERT');
 
     fireEvent.keyDown(document, { key: 'Escape' });
@@ -989,7 +993,8 @@ describe('Mode transitions', () => {
   it('Ctrl+[ exits INSERT to NORMAL', () => {
     renderWithVim(<VimProbe />);
 
-    fireEvent.keyDown(document, { key: 'i' });
+    // Enter INSERT mode programmatically
+    fireEvent.click(screen.getByTestId('enter-insert'));
     expect(screen.getByTestId('vim-mode')).toHaveTextContent('INSERT');
 
     fireEvent.keyDown(document, { key: '[', ctrlKey: true });
@@ -999,7 +1004,8 @@ describe('Mode transitions', () => {
   it('zone keys (e/t/c/s) blocked in INSERT mode', () => {
     renderWithVim(<VimProbe />);
 
-    fireEvent.keyDown(document, { key: 'i' });
+    // Enter INSERT mode programmatically
+    fireEvent.click(screen.getByTestId('enter-insert'));
     fireEvent.keyDown(document, { key: 'e' });
 
     // Should still be on default zone (content), not sidebar

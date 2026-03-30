@@ -41,7 +41,7 @@ import * as os from 'os';
  */
 const COVERED_ACTIONS = new Set([
   // Mode
-  'mode-insert', 'mode-normal',
+  'mode-normal',
   // Global zone switching
   'zone-sidebar', 'zone-tabs', 'zone-content', 'zone-status',
   'go-to-kanban', 'leader-key', 'show-shortcuts-dialog',

@@ -48,7 +48,6 @@ export const LEADER_GROUPS: LeaderGroup[] = [
 
 export const VIM_ACTIONS: VimAction[] = [
   // --- Vim Modes (zone: mode) ---
-  { id: 'mode-insert', key: 'i', zone: 'mode', mode: 'NORMAL', category: 'vim', group: 'Vim Modes', description: 'Enter INSERT mode' },
   { id: 'mode-normal', key: 'Escape', zone: 'mode', mode: 'INSERT', category: 'vim', group: 'Vim Modes', description: 'Return to NORMAL mode' },
   { id: 'mode-normal-alt', key: 'Ctrl+[', zone: 'mode', mode: 'INSERT', category: 'vim', group: 'Vim Modes', description: 'Return to NORMAL mode (alt)' },
 

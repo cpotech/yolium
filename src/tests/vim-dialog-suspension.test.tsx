@@ -239,20 +239,20 @@ describe('VimModeProvider dialog suspension', () => {
 })
 
 describe('ItemDetailDialog vim-aware navigation', () => {
-  it('should allow mode switching (i key) while the item detail dialog is open', () => {
+  it('should NOT enter INSERT mode when i is pressed globally with dialog open', () => {
     renderItemDetailDialog()
 
-    // Press 'i' globally — should enter INSERT mode even with dialog open
+    // Press 'i' globally — should NOT enter INSERT mode (global i→INSERT removed)
     fireEvent.keyDown(document, { key: 'i' })
-    expect(screen.getByTestId('vim-mode')).toHaveTextContent('INSERT')
+    expect(screen.getByTestId('vim-mode')).toHaveTextContent('NORMAL')
   })
 
   it('should allow Escape to exit INSERT to NORMAL without closing the item detail dialog', async () => {
     const onClose = vi.fn()
     renderItemDetailDialog({ onClose })
 
-    // Enter INSERT mode
-    fireEvent.keyDown(document, { key: 'i' })
+    // Enter INSERT mode programmatically
+    fireEvent.click(screen.getByTestId('enter-insert-mode'))
     expect(screen.getByTestId('vim-mode')).toHaveTextContent('INSERT')
 
     // Press Escape — should exit to NORMAL, not close

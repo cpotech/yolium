@@ -98,6 +98,11 @@ function ZoneSetter({ zone }: { zone: string }) {
   return null;
 }
 
+function InsertModeTrigger() {
+  const { enterInsertMode } = useVimModeContext();
+  return <button data-testid="enter-insert" onClick={enterInsertMode}>Insert</button>;
+}
+
 function createMockItem(overrides: Partial<KanbanItem> = {}): KanbanItem {
   return {
     id: `item-${Math.random().toString(36).slice(2, 8)}`,
@@ -322,11 +327,13 @@ describe('KanbanView spatial vim navigation', () => {
     renderWithVim(
       <>
         <ZoneSetter zone="content" />
+        <InsertModeTrigger />
         <StatefulKanbanColumn items={mockItems} initialFocusedIndex={0} onCardClick={onCardClick} />
       </>
     );
 
-    fireEvent.keyDown(document, { key: 'i' });
+    // Enter INSERT mode programmatically
+    fireEvent.click(screen.getByTestId('enter-insert'));
 
     const column = screen.getByTestId('kanban-column-backlog');
     fireEvent.keyDown(column, { key: 'j' });

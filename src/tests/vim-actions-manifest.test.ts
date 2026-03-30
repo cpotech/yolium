@@ -177,11 +177,10 @@ describe('VIM_ACTIONS manifest consistency', () => {
     expect(keys).toContain('Ctrl+Shift+[');
   });
 
-  it('manifest should include mode zone with INSERT/NORMAL transitions', () => {
+  it('manifest should include mode zone with NORMAL mode transitions', () => {
     const modeActions = getActionsForZone('mode');
-    expect(modeActions.length).toBeGreaterThanOrEqual(2);
+    expect(modeActions.length).toBeGreaterThanOrEqual(1);
     const descriptions = modeActions.map(a => a.description);
-    expect(descriptions.some(d => d.includes('INSERT'))).toBe(true);
     expect(descriptions.some(d => d.includes('NORMAL'))).toBe(true);
   });
 
