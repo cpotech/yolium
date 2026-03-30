@@ -133,13 +133,17 @@ export function useItemDetailAgentLifecycle({
       setAnswerText('')
       setErrorMessage(null)
       onUpdated()
+
+      // Auto-resume the agent after answering
+      const resumeName = item.activeAgentName || item.lastAgentName || item.agentType || 'code-agent'
+      await runAgent(window.electronAPI.agent.resume, resumeName)
     } catch (error) {
       console.error('Failed to answer question:', error)
       setErrorMessage('Failed to submit answer. Please try again.')
     } finally {
       setIsAnswering(false)
     }
-  }, [answerText, isAnswering, item, onUpdated, projectPath, setErrorMessage])
+  }, [answerText, isAnswering, item, onUpdated, projectPath, setErrorMessage, runAgent])
 
   const addComment = useCallback(async () => {
     if (!item || isAddingComment || !commentText.trim()) return

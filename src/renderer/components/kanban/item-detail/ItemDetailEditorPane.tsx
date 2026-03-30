@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react'
-import type { KanbanComment } from '@shared/types/kanban'
+import type { KanbanComment, AgentStatus } from '@shared/types/kanban'
 import type { VimMode } from '@renderer/hooks/useVimMode'
 import { CommentsList, type CommentsListHandle } from '../CommentsList'
 
@@ -20,6 +20,11 @@ interface ItemDetailEditorPaneProps {
   focusedCommentId?: string | null
   selectedCommentIds?: Set<string>
   commentSearchRef?: React.Ref<CommentsListHandle>
+  agentStatus?: AgentStatus
+  answerText?: string
+  isAnswering?: boolean
+  onSetAnswerText?: (text: string) => void
+  onAnswerQuestion?: () => void
 }
 
 export const ItemDetailEditorPane = forwardRef<React.ComponentRef<'div'>, ItemDetailEditorPaneProps>(function ItemDetailEditorPane({
@@ -39,6 +44,11 @@ export const ItemDetailEditorPane = forwardRef<React.ComponentRef<'div'>, ItemDe
   focusedCommentId,
   selectedCommentIds,
   commentSearchRef,
+  agentStatus,
+  answerText,
+  isAnswering,
+  onSetAnswerText,
+  onAnswerQuestion,
 }, ref) {
   const isNormal = vimMode === 'NORMAL'
 
@@ -93,6 +103,11 @@ export const ItemDetailEditorPane = forwardRef<React.ComponentRef<'div'>, ItemDe
           onSelectOption={onSelectCommentOption}
           focusedCommentId={focusedCommentId}
           selectedCommentIds={selectedCommentIds}
+          agentStatus={agentStatus}
+          answerText={answerText}
+          isAnswering={isAnswering}
+          onSetAnswerText={onSetAnswerText}
+          onAnswerQuestion={onAnswerQuestion}
         />
 
         <div

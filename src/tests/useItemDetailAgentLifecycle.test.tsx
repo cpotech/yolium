@@ -211,4 +211,65 @@ describe('useItemDetailAgentLifecycle', () => {
       expect(mockAgentStop).toHaveBeenCalledWith('session-stop-me')
     })
   })
+
+  it('should auto-resume agent after answering question', async () => {
+    render(<LifecycleHarness item={createMockItem({ agentStatus: 'waiting', activeAgentName: 'code-agent' })} />)
+
+    fireEvent.change(screen.getByTestId('answer-input'), {
+      target: { value: 'Yes, proceed' },
+    })
+    fireEvent.click(screen.getByTestId('submit-answer'))
+
+    await waitFor(() => {
+      expect(mockAgentAnswer).toHaveBeenCalledWith('/test/project', 'item-1', 'Yes, proceed')
+    })
+    await waitFor(() => {
+      expect(mockAgentResume).toHaveBeenCalled()
+    })
+  })
+
+  it('should use activeAgentName when auto-resuming after answer', async () => {
+    render(<LifecycleHarness item={createMockItem({ agentStatus: 'waiting', activeAgentName: 'plan-agent' })} />)
+
+    fireEvent.change(screen.getByTestId('answer-input'), {
+      target: { value: 'Go ahead' },
+    })
+    fireEvent.click(screen.getByTestId('submit-answer'))
+
+    await waitFor(() => {
+      expect(mockAgentResume).toHaveBeenCalledWith(expect.objectContaining({
+        agentName: 'plan-agent',
+      }))
+    })
+  })
+
+  it('should fallback to lastAgentName when activeAgentName is missing', async () => {
+    render(<LifecycleHarness item={createMockItem({ agentStatus: 'waiting', activeAgentName: undefined, lastAgentName: 'verify-agent' })} />)
+
+    fireEvent.change(screen.getByTestId('answer-input'), {
+      target: { value: 'Continue' },
+    })
+    fireEvent.click(screen.getByTestId('submit-answer'))
+
+    await waitFor(() => {
+      expect(mockAgentResume).toHaveBeenCalledWith(expect.objectContaining({
+        agentName: 'verify-agent',
+      }))
+    })
+  })
+
+  it('should fallback to code-agent when no agent name is available', async () => {
+    render(<LifecycleHarness item={createMockItem({ agentStatus: 'waiting', activeAgentName: undefined, lastAgentName: undefined, agentType: undefined })} />)
+
+    fireEvent.change(screen.getByTestId('answer-input'), {
+      target: { value: 'OK' },
+    })
+    fireEvent.click(screen.getByTestId('submit-answer'))
+
+    await waitFor(() => {
+      expect(mockAgentResume).toHaveBeenCalledWith(expect.objectContaining({
+        agentName: 'code-agent',
+      }))
+    })
+  })
 })

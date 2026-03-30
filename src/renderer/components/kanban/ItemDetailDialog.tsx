@@ -78,7 +78,6 @@ export function ItemDetailDialog({
   const [logFocused, setLogFocused] = useState(false)
   const [browserFocused, setBrowserFocused] = useState(false)
   const [sortedAgents, setSortedAgents] = useState<AgentDefinition[]>([])
-  const answerInputRef = useRef<HTMLTextAreaElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const logPanelRef = useRef<AgentLogPanelHandle>(null)
   const commentSearchRef = useRef<CommentsListHandle>(null)
@@ -177,12 +176,6 @@ export function ItemDetailDialog({
     setBrowserFocused(false)
     setIsDeleting(false)
   }, [item?.id]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (item?.agentStatus === 'waiting' && item.agentQuestion && answerInputRef.current) {
-      answerInputRef.current.focus()
-    }
-  }, [item?.agentQuestion, item?.agentStatus])
 
   const handleDelete = useCallback(async () => {
     if (!item || isDeleting) return
@@ -468,7 +461,7 @@ export function ItemDetailDialog({
               void lifecycle.stopAgent()
               return
             }
-            if (event.key === 'R' && (item.agentStatus === 'interrupted' || item.agentStatus === 'waiting') && !lifecycle.isStartingAgent) {
+            if (event.key === 'R' && item.agentStatus === 'interrupted' && !lifecycle.isStartingAgent) {
               event.preventDefault()
               vim.clearLeader()
               const resumeName = item.activeAgentName || item.lastAgentName || item.agentType || 'code-agent'
@@ -708,6 +701,11 @@ export function ItemDetailDialog({
               }
               return ids
             })()}
+            agentStatus={item.agentStatus}
+            answerText={lifecycle.answerText}
+            isAnswering={lifecycle.isAnswering}
+            onSetAnswerText={lifecycle.setAnswerText}
+            onAnswerQuestion={() => void lifecycle.answerQuestion()}
           />
           </div>
 
@@ -737,13 +735,10 @@ export function ItemDetailDialog({
             providerModels={draft.providerModels}
             saveStatus={draft.saveStatus}
             isDeleting={isDeleting}
-            answerText={lifecycle.answerText}
             isStartingAgent={lifecycle.isStartingAgent}
-            isAnswering={lifecycle.isAnswering}
             currentSessionId={agentSession.currentSessionId}
             currentDetail={agentSession.currentDetail}
             tokenUsage={agentSession.tokenUsage}
-            answerInputRef={answerInputRef}
             prUrl={prWorkflow.prUrl}
             conflictCheck={prWorkflow.conflictCheck}
             rebaseResult={prWorkflow.rebaseResult}
@@ -760,8 +755,6 @@ export function ItemDetailDialog({
             onStartAgent={agentName => void lifecycle.startAgent(agentName)}
             onResumeAgent={agentName => void lifecycle.resumeAgent(agentName)}
             onStopAgent={() => void lifecycle.stopAgent()}
-            onAnswerQuestion={() => void lifecycle.answerQuestion()}
-            onSetAnswerText={lifecycle.setAnswerText}
             onCompareChanges={() => setShowDiffViewer(true)}
             onOpenPr={() => {
               if (prWorkflow.prUrl) {

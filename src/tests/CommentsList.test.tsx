@@ -548,6 +548,49 @@ describe('CommentsList', () => {
     expect(screen.getByTestId('mock-preview-button')).toBeInTheDocument()
   })
 
+  describe('answer form', () => {
+    it('should render answer form when agentStatus is waiting', () => {
+      render(<CommentsList comments={[]} agentStatus="waiting" answerText="" isAnswering={false} onSetAnswerText={vi.fn()} onAnswerQuestion={vi.fn()} />)
+      expect(screen.getByTestId('answer-textarea')).toBeInTheDocument()
+      expect(screen.getByTestId('submit-answer-button')).toBeInTheDocument()
+    })
+
+    it('should not render answer form when agentStatus is not waiting', () => {
+      render(<CommentsList comments={[]} agentStatus="running" answerText="" isAnswering={false} onSetAnswerText={vi.fn()} onAnswerQuestion={vi.fn()} />)
+      expect(screen.queryByTestId('answer-textarea')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('submit-answer-button')).not.toBeInTheDocument()
+    })
+
+    it('should call onSetAnswerText when option button clicked in waiting state', () => {
+      const onSetAnswerText = vi.fn()
+      const comments: KanbanComment[] = [
+        { id: 'c1', source: 'agent', text: 'Which approach?', timestamp: new Date().toISOString(), options: ['Option A', 'Option B'] },
+      ]
+      render(<CommentsList comments={comments} agentStatus="waiting" answerText="" isAnswering={false} onSetAnswerText={onSetAnswerText} onAnswerQuestion={vi.fn()} />)
+
+      fireEvent.click(screen.getByTestId('comment-option-c1-0'))
+      expect(onSetAnswerText).toHaveBeenCalledWith('Option A')
+    })
+
+    it('should call onAnswerQuestion when submit answer button clicked', () => {
+      const onAnswerQuestion = vi.fn()
+      render(<CommentsList comments={[]} agentStatus="waiting" answerText="my answer" isAnswering={false} onSetAnswerText={vi.fn()} onAnswerQuestion={onAnswerQuestion} />)
+
+      fireEvent.click(screen.getByTestId('submit-answer-button'))
+      expect(onAnswerQuestion).toHaveBeenCalled()
+    })
+
+    it('should disable submit when answer text is empty', () => {
+      render(<CommentsList comments={[]} agentStatus="waiting" answerText="" isAnswering={false} onSetAnswerText={vi.fn()} onAnswerQuestion={vi.fn()} />)
+      expect(screen.getByTestId('submit-answer-button')).toBeDisabled()
+    })
+
+    it('should disable submit when isAnswering is true', () => {
+      render(<CommentsList comments={[]} agentStatus="waiting" answerText="something" isAnswering={true} onSetAnswerText={vi.fn()} onAnswerQuestion={vi.fn()} />)
+      expect(screen.getByTestId('submit-answer-button')).toBeDisabled()
+    })
+  })
+
   describe('comment search', () => {
     const searchComments: KanbanComment[] = [
       { id: 'c1', source: 'user', text: 'Hello world', timestamp: new Date().toISOString() },
