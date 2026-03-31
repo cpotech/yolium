@@ -638,10 +638,12 @@ function App(): React.ReactElement {
                       key={tab.id}
                       className={`absolute inset-0 flex flex-col ${isActive ? '' : 'hidden'}`}
                     >
-                      <ErrorBoundary fallbackLabel="Kanban Board">
-                       <KanbanView
-                           projectPath={tab.cwd}
-                           onSwitchProject={async (newPath) => {
+                       <ErrorBoundary fallbackLabel="Kanban Board">
+                        <KanbanView
+                            projectPath={tab.cwd}
+                            sidebarProjects={sidebarProjects}
+                            onProjectSelect={handleProjectClick}
+                            onSwitchProject={async (newPath) => {
                              const oldPath = tab.cwd;
                              updateCwd(tab.id, newPath);
                              addSidebarProject(newPath);

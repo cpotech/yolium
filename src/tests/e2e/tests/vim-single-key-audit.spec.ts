@@ -50,6 +50,10 @@ const COVERED_ACTIONS = new Set([
   'card-first', 'card-last', 'card-open', 'card-delete',
   'new-item', 'refresh', 'search',
   'delete-selected', 'visual-select', 'clear-selection', 'go-schedule',
+  'kanban-project-1', 'kanban-project-2', 'kanban-project-3',
+  'kanban-project-4', 'kanban-project-5', 'kanban-project-6',
+  'kanban-project-7', 'kanban-project-8', 'kanban-project-9',
+  'kanban-project-10',
   // Tabs
   'tab-next', 'tab-prev', 'tab-activate', 'tab-close',
   'tab-first', 'tab-last', 'tab-new',
@@ -526,6 +530,62 @@ test.describe('Vim Single-Key Audit', () => {
         ghosts,
         `Found ${ghosts.length} ghost shortcut(s) in content zone: ${ghosts.map(g => g.key).join(', ')}`
       ).toEqual([]);
+    });
+
+    test('number keys 1-9/0 select sidebar projects by index', async () => {
+      const page = ctx.window;
+
+      // Get the test repo path from the current kanban tab
+      const testRepoPath = await page.evaluate(() => {
+        const el = document.querySelector('[data-testid="project-path-display"]');
+        return el?.textContent?.trim() || '';
+      });
+
+      // Set up sidebar projects and kanban tabs so kanban view persists after reload
+      await page.evaluate((repoPath) => {
+        const projects = [
+          { path: repoPath, addedAt: new Date().toISOString() },
+          { path: '/tmp/test-repo-audit-2', addedAt: new Date().toISOString() },
+          { path: '/tmp/test-repo-audit-3', addedAt: new Date().toISOString() },
+        ];
+        localStorage.setItem('yolium-sidebar-projects', JSON.stringify(projects));
+        // Restore the kanban tab for the test repo so kanban view loads
+        localStorage.setItem('yolium-open-kanban-tabs', JSON.stringify([repoPath]));
+      }, testRepoPath);
+
+      // Reload to pick up new sidebar state
+      await page.reload();
+      await page.waitForSelector('[data-testid="kanban-view"]', { timeout: 10000 });
+
+      // Focus content zone (kanban)
+      await page.keyboard.press('c');
+      await page.waitForTimeout(100);
+
+      // Press '2' to select second project — this calls addKanbanTab which
+      // creates a new tab and switches to it. Wait for the new tab to appear.
+      await page.keyboard.press('2');
+      await page.waitForTimeout(300);
+
+      // Verify a new tab for the second project was created and activated
+      const activeTab = await page.evaluate(() => {
+        const activeTabEl = document.querySelector('[data-active="true"][data-tab-type="kanban"]');
+        return activeTabEl?.textContent;
+      });
+      expect(activeTab).toContain('test-repo-audit-2');
+    });
+
+    test('number keys are inert when index exceeds project count', async () => {
+      const page = ctx.window;
+
+      // Capture fingerprint before pressing '9'
+      const before = await captureFingerprint(page);
+      await page.keyboard.press('9');
+      await page.waitForTimeout(200);
+      const after = await captureFingerprint(page);
+
+      // Should produce no DOM change since there's no 9th project
+      const diffs = diffFingerprint(before, after);
+      expect(diffs.length, 'Pressing 9 with only a few projects should produce no DOM change').toBe(0);
     });
   });
 
