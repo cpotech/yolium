@@ -100,3 +100,21 @@
 .yolium-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* Claude usage refresh feedback flash */
+@keyframes usage-flash-success {
+  0% { background-color: rgba(34, 197, 94, 0.25); }
+  100% { background-color: transparent; }
+}
+@keyframes usage-flash-error {
+  0% { background-color: rgba(239, 68, 68, 0.25); }
+  100% { background-color: transparent; }
+}
+.claude-usage-flash-success {
+  animation: usage-flash-success 1.5s ease-out;
+  border-radius: 4px;
+}
+.claude-usage-flash-error {
+  animation: usage-flash-error 1.5s ease-out;
+  border-radius: 4px;
+}

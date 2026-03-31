@@ -24,6 +24,7 @@ interface StatusBarProps {
   onOpenModelDialog?: () => void;
   // Claude OAuth usage state (auth status + usage data)
   claudeUsage?: ClaudeUsageState;
+  claudeRefreshResult?: 'success' | 'error' | null;
   onRefreshUsage?: () => void;
 }
 
@@ -84,10 +85,17 @@ function UsageBar({
   );
 }
 
+function getFlashClass(refreshResult?: 'success' | 'error' | null): string {
+  if (refreshResult === 'success') return ' claude-usage-flash-success';
+  if (refreshResult === 'error') return ' claude-usage-flash-error';
+  return '';
+}
+
 function renderClaudeUsage(
   claudeUsage: ClaudeUsageState,
   onOpenSettings: () => void,
   onRefreshUsage?: () => void,
+  refreshResult?: 'success' | 'error' | null,
 ): React.ReactNode {
   switch (claudeUsage.status) {
     case 'no-oauth':
@@ -109,7 +117,7 @@ function renderClaudeUsage(
           role="button"
           aria-label="Claude usage"
           data-testid="claude-usage-display"
-          className="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+          className={`flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity${getFlashClass(refreshResult)}`}
           onClick={onRefreshUsage}
           title="Click to refresh (Ctrl+Shift+U)"
         >
@@ -133,7 +141,7 @@ function renderClaudeUsage(
           role="button"
           aria-label="Claude unavailable"
           data-testid="claude-usage-display"
-          className="flex items-center gap-1 cursor-pointer text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
+          className={`flex items-center gap-1 cursor-pointer text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors${getFlashClass(refreshResult)}`}
           onClick={onRefreshUsage ?? onOpenSettings}
           title="Session may have expired. Run 'claude' on your host to re-login. Click to retry (Ctrl+Shift+U)"
         >
@@ -172,6 +180,7 @@ export function StatusBar({
   onToggleRecording,
   onOpenModelDialog,
   claudeUsage,
+  claudeRefreshResult,
   onRefreshUsage,
 }: StatusBarProps): React.ReactElement {
   const stateDisplay: Record<ContainerState, { text: string; className: string }> = {
@@ -324,7 +333,7 @@ export function StatusBar({
         {claudeUsage && (
           <>
             {hasContextMetadata && <span className="text-[var(--color-text-muted)]">|</span>}
-            {renderClaudeUsage(claudeUsage, onOpenSettings, onRefreshUsage)}
+            {renderClaudeUsage(claudeUsage, onOpenSettings, onRefreshUsage, claudeRefreshResult)}
           </>
         )}
       </div>

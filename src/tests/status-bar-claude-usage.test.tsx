@@ -109,4 +109,47 @@ describe('StatusBar Claude usage', () => {
 
     expect(onOpenSettings).toHaveBeenCalledTimes(1);
   });
+
+  // --- Flash feedback tests ---
+
+  it('should apply success flash class when claudeRefreshResult is success', () => {
+    renderStatusBar({
+      claudeUsage: readyState,
+      claudeRefreshResult: 'success',
+    });
+
+    const display = screen.getByTestId('claude-usage-display');
+    expect(display.className).toContain('claude-usage-flash-success');
+  });
+
+  it('should apply error flash class when claudeRefreshResult is error', () => {
+    renderStatusBar({
+      claudeUsage: readyState,
+      claudeRefreshResult: 'error',
+    });
+
+    const display = screen.getByTestId('claude-usage-display');
+    expect(display.className).toContain('claude-usage-flash-error');
+  });
+
+  it('should not apply any flash class when claudeRefreshResult is null', () => {
+    renderStatusBar({
+      claudeUsage: readyState,
+      claudeRefreshResult: null,
+    });
+
+    const display = screen.getByTestId('claude-usage-display');
+    expect(display.className).not.toContain('claude-usage-flash-success');
+    expect(display.className).not.toContain('claude-usage-flash-error');
+  });
+
+  it('should apply error flash class on unavailable status', () => {
+    renderStatusBar({
+      claudeUsage: { status: 'unavailable', hasOAuth: true, usage: null },
+      claudeRefreshResult: 'error',
+    });
+
+    const display = screen.getByTestId('claude-usage-display');
+    expect(display.className).toContain('claude-usage-flash-error');
+  });
 });
