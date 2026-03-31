@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import type { ClaudeUsageData, ClaudeUsageSnapshot, ClaudeUsageState } from '@shared/types/agent';
 
 const POLL_INTERVAL_MS = 60 * 1000; // 60 seconds
+export const FEEDBACK_DURATION_MS = 1500;
 
 const INITIAL_STATE: ClaudeUsageState = { status: 'loading', hasOAuth: true, usage: null };
 
@@ -20,6 +21,7 @@ function toClaudeUsageState(snapshot: ClaudeUsageSnapshot): ClaudeUsageState {
 export interface UseClaudeUsageResult {
   state: ClaudeUsageState;
   refresh: () => void;
+  refreshResult: 'success' | 'error' | null;
 }
 
 /**
@@ -29,7 +31,9 @@ export interface UseClaudeUsageResult {
  */
 export function useClaudeUsage(): UseClaudeUsageResult {
   const [state, setState] = useState<ClaudeUsageState>(INITIAL_STATE);
+  const [refreshResult, setRefreshResult] = useState<'success' | 'error' | null>(null);
   const lastReadyUsageRef = useRef<ClaudeUsageData | null>(null);
+  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const applySnapshot = useCallback((snapshot: ClaudeUsageSnapshot) => {
     if (snapshot.usage) {
@@ -57,6 +61,17 @@ export function useClaudeUsage(): UseClaudeUsageResult {
     }
   }, [applySnapshot]);
 
+  const setFeedback = useCallback((result: 'success' | 'error') => {
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current);
+    }
+    setRefreshResult(result);
+    feedbackTimeoutRef.current = setTimeout(() => {
+      setRefreshResult(null);
+      feedbackTimeoutRef.current = null;
+    }, FEEDBACK_DURATION_MS);
+  }, []);
+
   const refresh = useCallback(() => {
     setState(prev => {
       // Keep last-known-good data while showing loading
@@ -67,16 +82,20 @@ export function useClaudeUsage(): UseClaudeUsageResult {
     });
 
     window.electronAPI.usage.refreshClaude().then(
-      (snapshot) => applySnapshot(snapshot),
+      (snapshot) => {
+        applySnapshot(snapshot);
+        setFeedback(snapshot.usage ? 'success' : 'error');
+      },
       () => {
         if (lastReadyUsageRef.current) {
           setState({ status: 'ready', hasOAuth: true, usage: lastReadyUsageRef.current });
         } else {
           setState({ status: 'unavailable', hasOAuth: true, usage: null });
         }
+        setFeedback('error');
       },
     );
-  }, [applySnapshot]);
+  }, [applySnapshot, setFeedback]);
 
   useEffect(() => {
     void fetchUsage();
@@ -98,5 +117,14 @@ export function useClaudeUsage(): UseClaudeUsageResult {
     };
   }, [fetchUsage]);
 
-  return { state, refresh };
+  // Cleanup feedback timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  return { state, refresh, refreshResult };
 }

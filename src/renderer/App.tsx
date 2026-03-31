@@ -77,7 +77,7 @@ function App(): React.ReactElement {
   const whisper = useWhisper();
 
   // Claude OAuth usage data
-  const { state: claudeUsage, refresh: refreshClaudeUsage } = useClaudeUsage();
+  const { state: claudeUsage, refresh: refreshClaudeUsage, refreshResult: claudeRefreshResult } = useClaudeUsage();
 
   // Stable ref for toggleRecording to avoid IPC listener re-registration
   const stableToggleRecording = useCallback(() => whisper.toggleRecording(), [whisper]);
@@ -621,6 +621,7 @@ function App(): React.ReactElement {
                 onToggleRecording={whisper.toggleRecording}
                 onOpenModelDialog={whisper.openModelDialog}
                 claudeUsage={claudeUsage}
+                claudeRefreshResult={claudeRefreshResult}
                 onRefreshUsage={refreshClaudeUsage}
               />
             </>
@@ -673,6 +674,7 @@ function App(): React.ReactElement {
                         onToggleRecording={whisper.toggleRecording}
                         onOpenModelDialog={whisper.openModelDialog}
                         claudeUsage={claudeUsage}
+                        claudeRefreshResult={claudeRefreshResult}
                       />
                     </div>
                   );
@@ -697,6 +699,7 @@ function App(): React.ReactElement {
                         onToggleRecording={whisper.toggleRecording}
                         onOpenModelDialog={whisper.openModelDialog}
                         claudeUsage={claudeUsage}
+                        claudeRefreshResult={claudeRefreshResult}
                       />
                     </div>
                   );
@@ -737,6 +740,7 @@ function App(): React.ReactElement {
                       onToggleRecording={whisper.toggleRecording}
                       onOpenModelDialog={whisper.openModelDialog}
                       claudeUsage={claudeUsage}
+                      claudeRefreshResult={claudeRefreshResult}
                     />
                   </div>
                 );

@@ -3,7 +3,7 @@
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useClaudeUsage } from '@renderer/hooks/useClaudeUsage';
+import { useClaudeUsage, FEEDBACK_DURATION_MS } from '@renderer/hooks/useClaudeUsage';
 import type { ClaudeUsageData, ClaudeUsageSnapshot } from '@shared/types/agent';
 
 const mockGetClaude = vi.fn();
@@ -400,6 +400,177 @@ describe('useClaudeUsage', () => {
         expect(result.current.state.usage.fiveHour.utilization).toBe(42);
       }
     });
+  });
+
+  // --- refreshResult feedback tests ---
+
+  it('should return refreshResult success when refresh resolves with valid usage data', async () => {
+    vi.useFakeTimers();
+    mockGetClaude.mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage });
+
+    const { result } = renderHook(() => useClaudeUsage());
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.state.status).toBe('ready');
+    expect(result.current.refreshResult).toBeNull();
+
+    mockRefreshClaude.mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage });
+
+    await act(async () => {
+      result.current.refresh();
+      await Promise.resolve();
+    });
+
+    expect(result.current.refreshResult).toBe('success');
+  });
+
+  it('should return refreshResult error when refresh resolves with null usage (API failure)', async () => {
+    vi.useFakeTimers();
+    mockGetClaude.mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage });
+
+    const { result } = renderHook(() => useClaudeUsage());
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    mockRefreshClaude.mockResolvedValueOnce({ hasOAuth: true, usage: null });
+
+    await act(async () => {
+      result.current.refresh();
+      await Promise.resolve();
+    });
+
+    expect(result.current.refreshResult).toBe('error');
+  });
+
+  it('should return refreshResult error when refresh rejects (IPC error)', async () => {
+    vi.useFakeTimers();
+    mockGetClaude.mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage });
+
+    const { result } = renderHook(() => useClaudeUsage());
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    mockRefreshClaude.mockRejectedValueOnce(new Error('IPC error'));
+
+    await act(async () => {
+      result.current.refresh();
+      await Promise.resolve();
+    });
+
+    expect(result.current.refreshResult).toBe('error');
+  });
+
+  it('should clear refreshResult back to null after FEEDBACK_DURATION_MS', async () => {
+    vi.useFakeTimers();
+    mockGetClaude.mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage });
+
+    const { result } = renderHook(() => useClaudeUsage());
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    mockRefreshClaude.mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage });
+
+    await act(async () => {
+      result.current.refresh();
+      await Promise.resolve();
+    });
+
+    expect(result.current.refreshResult).toBe('success');
+
+    await act(async () => {
+      vi.advanceTimersByTime(FEEDBACK_DURATION_MS);
+    });
+
+    expect(result.current.refreshResult).toBeNull();
+  });
+
+  it('should not clear refreshResult if a new refresh starts before timeout expires', async () => {
+    vi.useFakeTimers();
+    mockGetClaude.mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage });
+
+    const { result } = renderHook(() => useClaudeUsage());
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // First refresh succeeds
+    mockRefreshClaude.mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage });
+
+    await act(async () => {
+      result.current.refresh();
+      await Promise.resolve();
+    });
+
+    expect(result.current.refreshResult).toBe('success');
+
+    // Advance partway through the timeout
+    await act(async () => {
+      vi.advanceTimersByTime(FEEDBACK_DURATION_MS / 2);
+    });
+
+    // Second refresh fails before first timeout clears
+    mockRefreshClaude.mockResolvedValueOnce({ hasOAuth: true, usage: null });
+
+    await act(async () => {
+      result.current.refresh();
+      await Promise.resolve();
+    });
+
+    expect(result.current.refreshResult).toBe('error');
+
+    // Advance past original timeout — should NOT have cleared to null
+    await act(async () => {
+      vi.advanceTimersByTime(FEEDBACK_DURATION_MS / 2 + 100);
+    });
+
+    // Still 'error' because the second refresh reset the timer
+    expect(result.current.refreshResult).toBe('error');
+
+    // Advance remaining time for second timer
+    await act(async () => {
+      vi.advanceTimersByTime(FEEDBACK_DURATION_MS);
+    });
+
+    expect(result.current.refreshResult).toBeNull();
+  });
+
+  it('should preserve last-known-good usage on failed refresh (existing behavior still works)', async () => {
+    vi.useFakeTimers();
+    mockGetClaude.mockResolvedValueOnce({ hasOAuth: true, usage: sampleUsage });
+
+    const { result } = renderHook(() => useClaudeUsage());
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.state.status).toBe('ready');
+
+    // Refresh returns null usage
+    mockRefreshClaude.mockResolvedValueOnce({ hasOAuth: true, usage: null });
+
+    await act(async () => {
+      result.current.refresh();
+      await Promise.resolve();
+    });
+
+    // State should still show ready with old data
+    expect(result.current.state.status).toBe('ready');
+    if (result.current.state.status === 'ready') {
+      expect(result.current.state.usage).toEqual(sampleUsage);
+    }
+    // But refreshResult should indicate error
+    expect(result.current.refreshResult).toBe('error');
   });
 
   it('should poll automatically every 60 seconds', async () => {
