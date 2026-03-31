@@ -10,7 +10,7 @@ export type { GitConfigWithPat } from '@shared/types/git';
 interface GitConfigDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]> }) => void;
+  onSave: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; openrouterApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]> }) => void;
   initialConfig?: GitConfigWithPat | null;
   onDeleteImage?: () => void;
   onBuildImage?: () => void;
@@ -67,6 +67,9 @@ export function GitConfigDialog({
 
   const [openaiKeyError, setOpenaiKeyError] = useState<string | null>(null);
   const [openaiKeyCleared, setOpenaiKeyCleared] = useState(false);
+  const [openrouterApiKey, setOpenrouterApiKey] = useState('');
+  const [openrouterKeyError, setOpenrouterKeyError] = useState<string | null>(null);
+  const [openrouterKeyCleared, setOpenrouterKeyCleared] = useState(false);
   const [useClaudeOAuth, setUseClaudeOAuth] = useState(false);
   const [useCodexOAuth, setUseCodexOAuth] = useState(false);
   const [providerModelDefaults, setProviderModelDefaults] = useState<Record<string, string>>({});
@@ -107,6 +110,15 @@ export function GitConfigDialog({
     if (!value.trim()) return { valid: true }; // Empty is valid (key is optional)
     if (!value.startsWith('sk-')) {
       return { valid: false, error: 'Key must start with "sk-"' };
+    }
+    return { valid: true };
+  };
+
+  // OpenRouter API key validation: must start with sk-or-v1-
+  const validateOpenrouterKey = (value: string): { valid: boolean; error?: string } => {
+    if (!value.trim()) return { valid: true }; // Empty is valid (key is optional)
+    if (!value.startsWith('sk-or-v1-')) {
+      return { valid: false, error: 'Key must start with "sk-or-v1-"' };
     }
     return { valid: true };
   };
@@ -160,6 +172,9 @@ export function GitConfigDialog({
       setOpenaiApiKey('');
       setOpenaiKeyError(null);
       setOpenaiKeyCleared(false);
+      setOpenrouterApiKey('');
+      setOpenrouterKeyError(null);
+      setOpenrouterKeyCleared(false);
       setUseClaudeOAuth(initialConfig?.useClaudeOAuth ?? false);
       setUseCodexOAuth(initialConfig?.useCodexOAuth ?? false);
       setProviderModelDefaults(initialConfig?.providerModelDefaults ?? {});
@@ -242,6 +257,21 @@ export function GitConfigDialog({
     setOpenaiKeyCleared(true);
   };
 
+  const handleOpenrouterKeyChange = (value: string) => {
+    setOpenrouterApiKey(value);
+    const result = validateOpenrouterKey(value);
+    setOpenrouterKeyError(result.error || null);
+    if (value) {
+      setOpenrouterKeyCleared(false);
+    }
+  };
+
+  const handleClearOpenrouterKey = () => {
+    setOpenrouterApiKey('');
+    setOpenrouterKeyError(null);
+    setOpenrouterKeyCleared(true);
+  };
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       scrollKeyDown(e);
@@ -261,7 +291,7 @@ export function GitConfigDialog({
     const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      const config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]> } = {};
+      const config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; openrouterApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]> } = {};
       if (githubPat.trim()) {
         config.githubPat = githubPat.trim();
       } else if (patCleared) {
@@ -289,6 +319,12 @@ export function GitConfigDialog({
           config.openaiApiKey = '';  // Explicitly signal to clear the key
         }
       }
+      // Handle OpenRouter API key
+      if (openrouterApiKey.trim()) {
+        config.openrouterApiKey = openrouterApiKey.trim();
+      } else if (openrouterKeyCleared) {
+        config.openrouterApiKey = '';  // Explicitly signal to clear the key
+      }
       // Sync providerModelDefaults from providerModels (first model = default)
       const syncedDefaults: Record<string, string> = {};
       for (const [provider, models] of Object.entries(providerModels)) {
@@ -300,12 +336,12 @@ export function GitConfigDialog({
       config.providerModels = providerModels;
       onSave(config);
     },
-    [githubPat, patCleared, useClaudeOAuth, anthropicApiKey, anthropicKeyCleared, useCodexOAuth, openaiApiKey, openaiKeyCleared, providerModels, onSave]
+    [githubPat, patCleared, useClaudeOAuth, anthropicApiKey, anthropicKeyCleared, useCodexOAuth, openaiApiKey, openaiKeyCleared, openrouterApiKey, openrouterKeyCleared, providerModels, onSave]
   );
 
   if (!isOpen) return null;
 
-  const isValid = validatePat(githubPat).valid && (useClaudeOAuth || validateAnthropicKey(anthropicApiKey).valid) && (useCodexOAuth || validateOpenaiKey(openaiApiKey).valid);
+  const isValid = validatePat(githubPat).valid && (useClaudeOAuth || validateAnthropicKey(anthropicApiKey).valid) && (useCodexOAuth || validateOpenaiKey(openaiApiKey).valid) && validateOpenrouterKey(openrouterApiKey).valid;
 
   // Show derived identity when PAT is configured and not being cleared
   const showIdentity = initialConfig?.githubLogin && !patCleared;
@@ -638,6 +674,58 @@ export function GitConfigDialog({
                 </div>
               </section>
 
+              <section className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)]/50 p-4 sm:p-5">
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">OpenRouter Authentication</h3>
+                  <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                    API key for OpenRouter provider.
+                  </p>
+                </div>
+                <label htmlFor="openrouter-key" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
+                  OpenRouter API Key
+                  {initialConfig?.hasOpenrouterKey && !openrouterApiKey && !openrouterKeyCleared && (
+                    <span className="ml-2 text-xs text-green-400">
+                      {initialConfig?.sources?.openrouterApiKey
+                        ? getSourceDisplay(initialConfig.sources.openrouterApiKey).text
+                        : '(configured)'}
+                    </span>
+                  )}
+                </label>
+                <div className="relative">
+                  <input
+                    id="openrouter-key"
+                    type="text"
+                    value={openrouterApiKey}
+                    onChange={(e) => handleOpenrouterKeyChange(e.target.value)}
+                    placeholder={initialConfig?.hasOpenrouterKey ? '(keep existing key)' : 'sk-or-v1-...'}
+                    data-testid="openrouter-key-input"
+                    spellCheck={false}
+                    className={`w-full px-3 py-2 pr-20 bg-[var(--color-bg-tertiary)] border rounded-md text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm ${
+                      openrouterKeyError ? 'border-red-500' : 'border-[var(--color-border-secondary)]'
+                    }`}
+                  />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                    {(openrouterApiKey || (initialConfig?.hasOpenrouterKey && !openrouterKeyCleared)) && (
+                      <button
+                        type="button"
+                        onClick={handleClearOpenrouterKey}
+                        className="p-1 text-[var(--color-text-secondary)] hover:text-red-400 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {openrouterKeyError && (
+                  <p className="mt-1 text-xs text-red-400">{openrouterKeyError}</p>
+                )}
+                <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                  Required for the OpenRouter agent. Uses Claude CLI with OpenRouter&apos;s OpenAI-compatible endpoint.
+                </p>
+              </section>
+
               <section className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)]/50 p-4 sm:p-5 lg:col-span-2">
                 <div className="mb-4">
                   <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Models per Provider</h3>
@@ -645,11 +733,12 @@ export function GitConfigDialog({
                     Add models for each provider. The first model is used as the default. Per-item model overrides still take priority. OpenCode models use provider/model format (e.g., opencode/big-pickle).
                   </p>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-4">
                   {[
                     { key: 'claude', label: 'Claude', placeholder: 'e.g., claude-opus-4-6' },
                     { key: 'codex', label: 'Codex', placeholder: 'e.g., o3-mini, gpt-4o' },
                     { key: 'opencode', label: 'OpenCode', placeholder: 'e.g., opencode/big-pickle' },
+                    { key: 'openrouter', label: 'OpenRouter', placeholder: 'e.g., anthropic/claude-3.5-sonnet' },
                   ].map(({ key, label, placeholder }) => (
                     <div key={key}>
                       <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">

@@ -49,5 +49,8 @@ export function getDisplayModel(provider: string, itemModel: string | undefined,
   if (provider === 'codex') {
     return 'codex-default';
   }
+  if (provider === 'openrouter') {
+    return agentModel;
+  }
   return agentModel;
 }

@@ -37,6 +37,11 @@ describe('agent-model', () => {
       expect(resolveModel('opencode/big-pickle', undefined, 'opus')).toBe('opencode/big-pickle');
       expect(resolveModel(undefined, 'anthropic/claude-sonnet-4-20250514', 'opus')).toBe('anthropic/claude-sonnet-4-20250514');
     });
+
+    it('should resolve openrouter model IDs passthrough in resolveModel', () => {
+      expect(resolveModel('anthropic/claude-3.5-sonnet', undefined, 'opus')).toBe('anthropic/claude-3.5-sonnet');
+      expect(resolveModel(undefined, 'google/gemini-pro', 'opus')).toBe('google/gemini-pro');
+    });
   });
 
   describe('getDisplayModel', () => {
@@ -50,6 +55,7 @@ describe('agent-model', () => {
       expect(getDisplayModel('claude', undefined, undefined, 'opus')).toBe('opus');
       expect(getDisplayModel('opencode', undefined, undefined, 'opus')).toBe('opus');
       expect(getDisplayModel('codex', undefined, undefined, 'opus')).toBe('codex-default');
+      expect(getDisplayModel('openrouter', undefined, undefined, 'opus')).toBe('opus');
       expect(getDisplayModel('unknown-provider', undefined, undefined, 'opus')).toBe('opus');
     });
 

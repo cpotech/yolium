@@ -386,10 +386,11 @@ describe('NewItemDialog', () => {
     const select = screen.getByTestId('agent-provider-select')
     const options = select.querySelectorAll('option')
 
-    expect(options).toHaveLength(3)
+    expect(options).toHaveLength(4)
     expect(options[0]).toHaveValue('claude')
     expect(options[1]).toHaveValue('codex')
     expect(options[2]).toHaveValue('opencode')
+    expect(options[3]).toHaveValue('openrouter')
   })
 
   it('should submit form on Ctrl+Enter when valid', async () => {

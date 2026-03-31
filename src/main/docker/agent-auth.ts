@@ -30,5 +30,10 @@ export function checkAgentAuth(agent: string): { authenticated: boolean } {
     return { authenticated: hasApiKey || hasOAuth };
   }
 
+  if (agent === 'openrouter') {
+    const hasApiKey = !!(storedConfig?.openrouterApiKey || process.env.OPENROUTER_API_KEY);
+    return { authenticated: hasApiKey };
+  }
+
   return { authenticated: false };
 }

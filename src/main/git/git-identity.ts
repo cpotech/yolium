@@ -9,6 +9,7 @@ export interface DetectedGitConfig extends GitConfig {
     githubPat?: 'system' | 'environment' | 'yolium';
     openaiApiKey?: 'system' | 'environment' | 'yolium';
     anthropicApiKey?: 'system' | 'environment' | 'yolium';
+    openrouterApiKey?: 'system' | 'environment' | 'yolium';
   };
 }
 
@@ -36,12 +37,14 @@ function loadEnvironmentGitConfig(): Partial<GitConfig> | null {
   const githubPat = process.env.GITHUB_TOKEN || process.env.GITHUB_PAT;
   const openaiKey = process.env.OPENAI_API_KEY;
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const openrouterKey = process.env.OPENROUTER_API_KEY;
 
   if (name) config.name = name;
   if (email) config.email = email;
   if (githubPat) config.githubPat = githubPat;
   if (openaiKey) config.openaiApiKey = openaiKey;
   if (anthropicKey) config.anthropicApiKey = anthropicKey;
+  if (openrouterKey) config.openrouterApiKey = openrouterKey;
 
   return Object.keys(config).length > 0 ? config : null;
 }
@@ -114,6 +117,16 @@ export function loadDetectedGitConfig(): DetectedGitConfig | null {
   } else if (envConfig?.anthropicApiKey) {
     detected.anthropicApiKey = envConfig.anthropicApiKey;
     detected.sources.anthropicApiKey = 'environment';
+    hasAnyConfig = true;
+  }
+
+  if (yoliumConfig?.openrouterApiKey) {
+    detected.openrouterApiKey = yoliumConfig.openrouterApiKey;
+    detected.sources.openrouterApiKey = 'yolium';
+    hasAnyConfig = true;
+  } else if (envConfig?.openrouterApiKey) {
+    detected.openrouterApiKey = envConfig.openrouterApiKey;
+    detected.sources.openrouterApiKey = 'environment';
     hasAnyConfig = true;
   }
 
