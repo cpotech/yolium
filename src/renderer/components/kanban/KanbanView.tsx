@@ -11,11 +11,14 @@ import { ConfirmDialog } from '@renderer/components/shared/ConfirmDialog'
 import { useVimListNavigation } from '@renderer/hooks/useVimListNavigation'
 import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper'
 import type { ClaudeUsageState } from '@shared/types/agent'
+import type { SidebarProject } from '@renderer/stores/sidebar-store'
 
 interface KanbanViewProps {
   projectPath: string | null
   onSwitchProject?: (newPath: string) => void
   onDeleteProject?: (projectPath: string) => void
+  sidebarProjects?: SidebarProject[]
+  onProjectSelect?: (path: string) => void
   // StatusBar props
   onShowShortcuts?: () => void
   onOpenSettings?: () => void
@@ -44,6 +47,8 @@ export function KanbanView({
   projectPath,
   onSwitchProject,
   onDeleteProject,
+  sidebarProjects,
+  onProjectSelect,
   // StatusBar props
   onShowShortcuts,
   onOpenSettings,
@@ -502,7 +507,20 @@ export function KanbanView({
         viewRef.current?.focus()
       }
     }
-  }, [newItemDialogOpen, selectedItem, loadBoard, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, isVisualMode, board, vim, columns, focusedColumnIndex, focusedCardIndex, getColumnItems, handleCardClick, projectPath])
+    if (isVimContentActive && sidebarProjects && sidebarProjects.length > 0) {
+      let projectIndex = -1
+      if (e.key >= '1' && e.key <= '9') {
+        projectIndex = parseInt(e.key, 10) - 1
+      } else if (e.key === '0') {
+        projectIndex = 9
+      }
+      if (projectIndex >= 0 && projectIndex < sidebarProjects.length) {
+        e.preventDefault()
+        onProjectSelect?.(sidebarProjects[projectIndex].path)
+        return
+      }
+    }
+  }, [newItemDialogOpen, selectedItem, loadBoard, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, isVisualMode, board, vim, columns, focusedColumnIndex, focusedCardIndex, getColumnItems, handleCardClick, projectPath, sidebarProjects, onProjectSelect])
 
   const handleCardDrop = useCallback(async (itemId: string, targetColumn: ColumnId) => {
     if (!projectPath || !board) return
