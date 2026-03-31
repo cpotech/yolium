@@ -1,7 +1,7 @@
 // Agent type definitions
 
-// Agent provider: which CLI tool runs the agent (claude, opencode, codex, shell)
-export type AgentProvider = 'claude' | 'opencode' | 'codex' | 'shell';
+// Agent provider: which CLI tool runs the agent (claude, opencode, codex, shell, openrouter)
+export type AgentProvider = 'claude' | 'opencode' | 'codex' | 'shell' | 'openrouter';
 
 // Agent providers valid for Kanban work items (no shell - shell is for interactive containers only)
 export type KanbanAgentProvider = Exclude<AgentProvider, 'shell'>;

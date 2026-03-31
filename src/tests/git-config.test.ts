@@ -1,5 +1,5 @@
 /**
- * Tests for Codex OAuth token refresh logic in git-config.ts
+ * Tests for Codex OAuth token refresh and OpenRouter API key persistence in git-config.ts
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -254,5 +254,52 @@ describe('refreshCodexOAuthTokenSerialized', () => {
     // Second call after first completes — should trigger a new refresh
     await refreshCodexOAuthTokenSerialized();
     expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('openrouterApiKey persistence', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should load openrouterApiKey from settings.json', async () => {
+    const settingsContent = JSON.stringify({
+      name: 'Test User',
+      email: 'test@example.com',
+      openrouterApiKey: 'sk-or-v1-test-key-123',
+    });
+
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(settingsContent);
+
+    const { loadGitConfig } = await import('@main/git/git-config');
+    const result = loadGitConfig();
+
+    expect(result).not.toBeNull();
+    expect(result?.openrouterApiKey).toBe('sk-or-v1-test-key-123');
+  });
+
+  it('should save openrouterApiKey to settings.json', async () => {
+    const { saveGitConfig } = await import('@main/git/git-config');
+    const config = {
+      name: 'Test User',
+      email: 'test@example.com',
+      openrouterApiKey: 'sk-or-v1-new-key-456',
+    };
+
+    saveGitConfig(config as any);
+
+    expect(fs.writeFileSync).toHaveBeenCalledOnce();
+    const [writePath, writeContent] = vi.mocked(fs.writeFileSync).mock.calls[0];
+    expect(writePath).toContain('.yolium');
+    expect(writePath).toContain('settings.json');
+
+    const written = JSON.parse(writeContent as string);
+    expect(written.openrouterApiKey).toBe('sk-or-v1-new-key-456');
   });
 });

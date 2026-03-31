@@ -260,4 +260,61 @@ describe('agent-container config helpers', () => {
     expect(twitterIndex).toBeGreaterThan(0);
     expect(slackIndex).toBeGreaterThan(twitterIndex);
   });
+
+  describe('openrouter provider env', () => {
+    it('should set OPENROUTER_API_KEY and ANTHROPIC_BASE_URL when provider is openrouter', () => {
+      const env = buildAgentEnv({
+        containerProjectPath: '/workspace',
+        projectTypesValue: 'node',
+        nodePackageManager: 'npm',
+        promptBase64: 'cHJvbXB0',
+        model: 'anthropic/claude-3.5-sonnet',
+        tools: ['Read'],
+        itemId: 'item-1',
+        agentName: 'code-agent',
+        agentProvider: 'openrouter',
+        gitConfig: {
+          name: 'Agent User',
+          email: 'agent@example.com',
+          openrouterApiKey: 'sk-or-v1-test-key',
+        },
+        useOAuth: false,
+        useCodexOAuth: false,
+      });
+
+      expect(env).toContain('OPENROUTER_API_KEY=sk-or-v1-test-key');
+      expect(env).toContain('ANTHROPIC_BASE_URL=https://openrouter.ai/api/v1');
+    });
+
+    it('should not set ANTHROPIC_API_KEY when provider is openrouter', () => {
+      const env = buildAgentEnv({
+        containerProjectPath: '/workspace',
+        projectTypesValue: 'node',
+        nodePackageManager: 'npm',
+        promptBase64: 'cHJvbXB0',
+        model: 'anthropic/claude-3.5-sonnet',
+        tools: ['Read'],
+        itemId: 'item-1',
+        agentName: 'code-agent',
+        agentProvider: 'openrouter',
+        gitConfig: {
+          name: 'Agent User',
+          email: 'agent@example.com',
+          openrouterApiKey: 'sk-or-v1-test-key',
+          anthropicApiKey: 'sk-ant-should-not-appear',
+        },
+        useOAuth: false,
+        useCodexOAuth: false,
+      });
+
+      expect(env.find((entry) => entry.startsWith('ANTHROPIC_API_KEY='))).toBeUndefined();
+      expect(env).toContain('OPENROUTER_API_KEY=sk-or-v1-test-key');
+    });
+
+    it('should include OPENROUTER_API_KEY in PROTECTED_ENV_VARS', async () => {
+      const { PROTECTED_ENV_VARS } = await import('@main/docker/agent-container-config');
+      expect(PROTECTED_ENV_VARS.has('OPENROUTER_API_KEY')).toBe(true);
+      expect(PROTECTED_ENV_VARS.has('ANTHROPIC_BASE_URL')).toBe(true);
+    });
+  });
 });

@@ -30,7 +30,9 @@ export const PROTECTED_ENV_VARS = new Set([
   'GIT_USER_NAME',
   'GIT_USER_EMAIL',
   'ANTHROPIC_API_KEY',
+  'ANTHROPIC_BASE_URL',
   'OPENAI_API_KEY',
+  'OPENROUTER_API_KEY',
   'CLAUDE_OAUTH_ENABLED',
   'CODEX_OAUTH_ENABLED',
 ]);
@@ -142,6 +144,7 @@ export function buildAgentEnv(params: {
     ...(gitConfig?.name ? [`GIT_USER_NAME=${gitConfig.name}`] : []),
     ...(gitConfig?.email ? [`GIT_USER_EMAIL=${gitConfig.email}`] : []),
     ...(() => {
+      if (agentProvider === 'openrouter') return [];
       if (useOAuth) return ['CLAUDE_OAUTH_ENABLED=true'];
       const key = gitConfig?.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
       return key ? [`ANTHROPIC_API_KEY=${key}`] : [];
@@ -150,6 +153,18 @@ export function buildAgentEnv(params: {
       if (useCodexOAuth) return ['CODEX_OAUTH_ENABLED=true'];
       const key = gitConfig?.openaiApiKey || process.env.OPENAI_API_KEY;
       return key ? [`OPENAI_API_KEY=${key}`] : [];
+    })(),
+    ...(() => {
+      if (agentProvider === 'openrouter') {
+        const key = gitConfig?.openrouterApiKey || process.env.OPENROUTER_API_KEY;
+        if (key) {
+          return [
+            `OPENROUTER_API_KEY=${key}`,
+            'ANTHROPIC_BASE_URL=https://openrouter.ai/api/v1',
+          ];
+        }
+      }
+      return [];
     })(),
   ];
 

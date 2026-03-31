@@ -104,6 +104,18 @@ CODEXCFG
     fi
     echo "@@YOLIUM:{\"type\":\"complete\",\"summary\":\"${SUMMARY}\"}"
     exit 0
+elif [ "$AGENT_PROV" = "openrouter" ]; then
+    log "Starting OpenRouter headless agent mode (via Claude CLI)"
+    if [ -z "$OPENROUTER_API_KEY" ]; then
+        echo "ERROR: No OpenRouter authentication found."
+        echo "Add your OpenRouter API Key in Yolium Settings."
+        exit 3
+    fi
+    # OpenRouter provides an OpenAI-compatible API that Claude CLI can use
+    # via ANTHROPIC_BASE_URL. Route the key through ANTHROPIC_API_KEY.
+    export ANTHROPIC_BASE_URL="https://openrouter.ai/api/v1"
+    export ANTHROPIC_API_KEY="$OPENROUTER_API_KEY"
+    exec claude --model "$MODEL_ID" -p "$PROMPT" $TOOLS_ARG --dangerously-skip-permissions --verbose --output-format stream-json
 else
     log "Starting Claude Code agent"
     if [ -z "$ANTHROPIC_API_KEY" ] && [ ! -f "$HOME/.claude/.credentials.json" ]; then
