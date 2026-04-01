@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react'
-import { Code, Lightbulb, Search, ShieldCheck, RotateCcw, MessageSquare, XCircle, Palette, Megaphone, Bot } from 'lucide-react'
+import { Code, Lightbulb, Search, ShieldCheck, RotateCcw, MessageSquare, XCircle, Palette, Megaphone, Bug, Bot } from 'lucide-react'
 import type { KanbanItem, AgentStatus } from '@shared/types/kanban'
 import type { AgentDefinition } from '@shared/types/agent'
 
@@ -27,6 +27,7 @@ export const agentIcons: Record<string, React.ReactNode> = {
   'scout-agent': <Search size={16} />,
   'design-agent': <Palette size={16} />,
   'marketing-agent': <Megaphone size={16} />,
+  'qa-agent': <Bug size={16} />,
 }
 
 /**
@@ -39,6 +40,7 @@ export const agentAccentColors: Record<string, string> = {
   'scout-agent': 'border-l-green-500',
   'design-agent': 'border-l-pink-500',
   'marketing-agent': 'border-l-orange-500',
+  'qa-agent': 'border-l-red-500',
 }
 
 /**
@@ -51,6 +53,7 @@ export const agentDisplayOrder: Record<string, number> = {
   'scout-agent': 3,
   'design-agent': 4,
   'marketing-agent': 5,
+  'qa-agent': 6,
 }
 
 /**
