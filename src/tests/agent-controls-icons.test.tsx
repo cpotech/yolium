@@ -34,4 +34,22 @@ describe('AgentControls icon/color/order maps', () => {
     expect(designOrder).toBeGreaterThan(scoutOrder);
     expect(designOrder).toBeLessThan(marketingOrder);
   });
+
+  it('should have an icon entry for qa-agent', () => {
+    expect(agentIcons).toHaveProperty('qa-agent');
+  });
+
+  it('should have an accent color for qa-agent with border-l-red-500', () => {
+    expect(agentAccentColors['qa-agent']).toBe('border-l-red-500');
+  });
+
+  it('should have display order 6 for qa-agent', () => {
+    expect(agentDisplayOrder['qa-agent']).toBe(6);
+  });
+
+  it('should sort qa-agent after marketing-agent', () => {
+    const qaOrder = agentDisplayOrder['qa-agent'];
+    const marketingOrder = agentDisplayOrder['marketing-agent'];
+    expect(qaOrder).toBeGreaterThan(marketingOrder);
+  });
 });
