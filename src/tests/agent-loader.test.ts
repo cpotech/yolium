@@ -150,5 +150,33 @@ You are the Code Agent...`;
         systemPrompt: '# Code Agent\n\nYou are the Code Agent...',
       });
     });
+    it('should parse ba-agent definition with read-only tools and order field', () => {
+      const markdown = `---
+name: ba-agent
+description: Finds business logic bugs by analyzing state lifecycles, API contracts, and domain invariants
+model: opus
+timeout: 30
+order: 8
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Bash
+---
+
+# BA Agent
+
+You are the BA Agent...`;
+
+      const result = parseAgentDefinition(markdown);
+
+      expect(result.name).toBe('ba-agent');
+      expect(result.description).toBe('Finds business logic bugs by analyzing state lifecycles, API contracts, and domain invariants');
+      expect(result.model).toBe('opus');
+      expect(result.timeout).toBe(30);
+      expect(result.order).toBe(8);
+      expect(result.tools).toEqual(['Read', 'Glob', 'Grep', 'Bash']);
+      expect(result.systemPrompt).toContain('# BA Agent');
+    });
   });
 });

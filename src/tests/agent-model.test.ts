@@ -79,5 +79,9 @@ describe('agent-model', () => {
       expect(getCompletionColumn('unknown-agent')).toBe('verify');
       expect(getCompletionColumn('marketing-agent')).toBe('verify');
     });
+
+    it('should return verify for ba-agent (findings need human review)', () => {
+      expect(getCompletionColumn('ba-agent')).toBe('verify');
+    });
   });
 });

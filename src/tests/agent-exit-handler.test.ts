@@ -300,6 +300,26 @@ describe('agent-exit-handler', () => {
       expect(updated.comments.some((c: any) => c.text.includes('Verification Report'))).toBe(true);
     });
 
+    it('should read .yolium-ba-report.md for non-Claude ba-agent on exit', () => {
+      const board = getOrCreateBoard('/tmp/test-project');
+      const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex', order: 0 });
+      mockGetAgentSession.mockReturnValue({});
+      mockExistsSync.mockReturnValue(true);
+      mockReadFileSync.mockReturnValue('## BA Report\n\nFound 3 business logic issues');
+
+      synthesizeNonClaudeConclusion({
+        sessionId: 'session-1',
+        agentName: 'ba-agent',
+        itemId: item.id,
+        projectPath: '/tmp/test-project',
+        outputDir: '/tmp/worktree',
+        originalItemDescription: 'Original',
+      });
+
+      const updated = board.items.find((i: any) => i.id === item.id)!;
+      expect(updated.comments.some((c: any) => c.text.includes('BA Report'))).toBe(true);
+    });
+
     it('should fall back to accumulated agent message texts for plan-agent', () => {
       const board = getOrCreateBoard('/tmp/test-project');
       const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex', order: 0 });
