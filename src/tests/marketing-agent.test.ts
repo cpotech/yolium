@@ -19,7 +19,7 @@ describe('marketing-agent', () => {
       expect(result.model).toBe('opus');
       expect(result.timeout).toBe(60);
       expect(result.tools).toEqual([
-        'Read', 'Glob', 'Grep', 'Bash', 'Write', 'Edit', 'WebSearch', 'WebFetch',
+        'Read', 'Glob', 'Grep', 'Bash', 'WebSearch', 'WebFetch',
       ]);
     });
 
@@ -73,6 +73,46 @@ describe('marketing-agent', () => {
       const result = parseAgentDefinition(agentMarkdown);
       expect(result.systemPrompt).toContain('product-marketing-context');
       expect(result.systemPrompt).toContain('Check Product Marketing Context');
+    });
+
+    it('should parse marketing-agent frontmatter with read-only tools', () => {
+      const result = parseAgentDefinition(agentMarkdown);
+      expect(result.tools).toBeDefined();
+      expect(Array.isArray(result.tools)).toBe(true);
+    });
+
+    it('should not include Write tool in tools array', () => {
+      const result = parseAgentDefinition(agentMarkdown);
+      expect(result.tools).not.toContain('Write');
+    });
+
+    it('should not include Edit tool in tools array', () => {
+      const result = parseAgentDefinition(agentMarkdown);
+      expect(result.tools).not.toContain('Edit');
+    });
+
+    it('should include Read, Glob, Grep, Bash, WebSearch, WebFetch tools', () => {
+      const result = parseAgentDefinition(agentMarkdown);
+      expect(result.tools).toContain('Read');
+      expect(result.tools).toContain('Glob');
+      expect(result.tools).toContain('Grep');
+      expect(result.tools).toContain('Bash');
+      expect(result.tools).toContain('WebSearch');
+      expect(result.tools).toContain('WebFetch');
+    });
+
+    it('should not include commit step in system prompt', () => {
+      const result = parseAgentDefinition(agentMarkdown);
+      expect(result.systemPrompt).not.toContain('Commit Changes Locally');
+      expect(result.systemPrompt).not.toContain('Conventional commits');
+      expect(result.systemPrompt).not.toContain('No commit trailers');
+    });
+
+    it('should include read-only analysis workflow in system prompt', () => {
+      const result = parseAgentDefinition(agentMarkdown);
+      expect(result.systemPrompt).toContain('read-only agent');
+      expect(result.systemPrompt).toContain('do NOT write files');
+      expect(result.systemPrompt).toContain('protocol messages');
     });
   });
 
