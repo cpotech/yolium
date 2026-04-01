@@ -106,6 +106,76 @@ The Marketing Agent executes marketing tasks by routing to specialized skills. I
 **Model:** opus | **Timeout:** 60 min
 **Definition:** [`src/agents/marketing-agent.md`](../src/agents/marketing-agent.md)
 
+## QA Agent
+
+The QA Agent proactively finds bugs, code quality issues, and UX problems by running builds, tests, linters, performing code analysis, and visually exploring the UI via Playwright. It then lets the user triage findings and creates work items for approved issues.
+
+**Process:**
+
+1. **Discovery** — Runs `npm run build`, `npm test`, and linting. Scans for dead code, error handling gaps, type issues, security concerns, performance issues, and dependency problems.
+2. **UI Exploration** — For web projects: starts the dev server, writes and runs a Playwright script to navigate pages, test workflows, capture screenshots at multiple breakpoints, and analyze visual issues. Skipped for non-web projects.
+3. **Reporting** — Posts a structured findings report grouped by severity (Critical, High, Medium, Low) with file:line references and screenshot evidence.
+4. **Triage** — Presents findings in batches of 4-6 via `ask_question` with "Skip all remaining" option.
+5. **Creation** — Creates work items for approved findings with title prefixes: `(bug)` for code bugs, `(UX)` for UI issues, `(debt)` for code quality.
+6. **Completion** — Posts a summary and signals completion.
+
+**Tools:** Read, Glob, Grep, Bash, Write, Edit, Agent, WebSearch, WebFetch
+**Model:** opus | **Timeout:** 60 min
+**Definition:** [`src/agents/qa-agent.md`](../src/agents/qa-agent.md)
+
+## BA Agent
+
+The BA (Business Analysis) Agent finds **business logic bugs** — code that is syntactically correct and passes type checks but is semantically wrong. It analyzes state lifecycles, API contracts, and domain invariants to find logic errors that mechanical tools (linters, type checkers, QA builds) cannot catch. It is read-only and never modifies code.
+
+**Analysis Framework:**
+
+1. **State Lifecycle** — Invalid initial values, impossible state combinations, race conditions, stale closures, cleanup ordering.
+2. **API Contract** — Unvalidated API assumptions, cumulative vs. incremental semantics, destructive operations without guards, error handling distinctions.
+3. **Business Rule** — Disabled UI bypasses, validation inconsistencies, missing guard clauses, unsafe monetary calculations, timezone issues.
+4. **Temporal Ordering** — Out-of-order events, optimistic update rollbacks, debounced handler losses, TOCTOU races, duplicate side effects.
+
+**Process:**
+
+1. **Domain Discovery** — Reads project docs, maps entities, APIs, and business rules.
+2. **State Flow Analysis** — Traces state chains, effect dependencies, race conditions, and stale closures.
+3. **API Contract Validation** — Reads all API integration code, checks idempotency, semantics, error handling, and pagination.
+4. **Business Rule Audit** — Finds missing guards, validation inconsistencies, impossible states, and boundary condition gaps.
+5. **Triage** — Presents findings in batches of 4-6 via `ask_question` with category, severity, location, and evidence.
+6. **Creation & Completion** — Creates work items with `(logic)` prefix for approved findings and signals completion.
+
+**Tools:** Read, Glob, Grep, Bash
+**Model:** opus | **Timeout:** 30 min
+**Definition:** [`src/agents/ba-agent.md`](../src/agents/ba-agent.md)
+
+## Design Agent
+
+The Design Agent executes frontend design tasks by routing to specialized impeccable skills. It covers 18 skills across 7 categories: Core Design System, Assessment, Visual Enhancement, Simplification, Refinement, Adaptation, and System Building.
+
+**Skill Categories:**
+
+| Category | Skills |
+|----------|--------|
+| **Core** | frontend-design |
+| **Assessment** | audit, critique |
+| **Visual Enhancement** | bolder, colorize, delight, animate |
+| **Simplification** | distill, quieter, clarify |
+| **Refinement** | polish, normalize, harden, optimize |
+| **Adaptation** | adapt, onboard |
+| **System Building** | extract |
+| **Meta** | teach-impeccable |
+
+**Process:**
+
+1. **Identify Skill** — Reads the work item goal and matches it to the appropriate impeccable skill(s) via trigger keywords.
+2. **Load Methodology** — Loads the full SKILL.md file from `/opt/design-skills/<skill-name>/SKILL.md` and internalizes the framework.
+3. **Execute** — Applies the skill's methodology step by step, writing changes directly to project source files.
+4. **Commit** — Stages and commits with conventional commit messages (local only, no push).
+5. **Deliver** — Posts results as comments and signals completion.
+
+**Tools:** Read, Glob, Grep, Bash, Write, Edit
+**Model:** opus | **Timeout:** 60 min
+**Definition:** [`src/agents/design-agent.md`](../src/agents/design-agent.md)
+
 ## Agent Memory
 
 Agents maintain conversational context across sessions through the comment thread on each work item.
@@ -259,5 +329,8 @@ Use `@@YOLIUM:{"type":"complete","summary":"..."}` when done.
 | Plan Agent | `plan-agent.md` | Analyzes codebase and produces implementation plans with in-scope simplification/dead-code guidance |
 | Code Agent | `code-agent.md` | Implements code changes, simplifies touched scope, writes tests, commits locally |
 | Verify Agent | `verify-agent.md` | Reviews changes for correctness, guideline compliance, and cleanup quality evidence |
+| QA Agent | `qa-agent.md` | Runs builds, tests, lints, code analysis, and Playwright UI exploration to find bugs |
+| BA Agent | `ba-agent.md` | Finds business logic bugs via state lifecycle, API contract, and domain invariant analysis |
+| Design Agent | `design-agent.md` | Executes frontend design tasks via 18 impeccable skills |
 | Scout Agent | `scout-agent.md` | Discovers, qualifies, and profiles businesses matching a campaign brief |
 | Marketing Agent | `marketing-agent.md` | Executes marketing tasks via 25 specialized skills across 7 categories |

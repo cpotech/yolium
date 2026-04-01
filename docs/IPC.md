@@ -479,6 +479,107 @@ cleanupStale(maxAgeDays?: number): Promise<{ deletedCount: number; freedBytes: n
 
 ---
 
+## onboarding
+
+Project onboarding: pre-flight validation and project type detection.
+
+| Method | Channel | Direction | Description |
+|--------|---------|-----------|-------------|
+| `validate(folderPath)` | `onboarding:validate` | invoke | Validates pre-flight: directory writable, sufficient disk space (≥1 GB) |
+| `detectProject(folderPath)` | `onboarding:detect-project` | invoke | Detects project types (Node.js, Python, Rust, Go, Java Maven/Gradle, .NET) |
+
+### Types
+
+```typescript
+validate(folderPath: string): Promise<PreFlightResult>
+
+detectProject(folderPath: string): Promise<ProjectType[]>
+
+interface PreFlightResult {
+  success: boolean;
+  errors: string[];
+  availableDiskBytes: number | null;
+}
+
+type ProjectType =
+  | 'nodejs' | 'python' | 'rust' | 'go'
+  | 'java-maven' | 'java-gradle' | 'dotnet';
+```
+
+---
+
+## project-config
+
+Per-project `.yolium.json` configuration management.
+
+| Method | Channel | Direction | Description |
+|--------|---------|-----------|-------------|
+| `load(projectPath)` | `project-config:load` | invoke | Load project config from `.yolium.json` |
+| `save(projectPath, config)` | `project-config:save` | invoke | Save project config, preserving existing keys |
+| `checkDirs(projectPath, dirs)` | `project-config:check-dirs` | invoke | Check which shared directories exist on disk |
+
+### Types
+
+```typescript
+load(projectPath: string): Promise<ProjectConfig | null>
+
+save(projectPath: string, config: ProjectConfig): Promise<void>
+
+checkDirs(projectPath: string, dirs: string[]): Promise<Record<string, boolean>>
+
+interface ProjectConfig {
+  sharedDirs?: string[];  // Relative paths to shared directories
+}
+```
+
+---
+
+## usage
+
+Usage monitoring and analytics.
+
+| Method | Channel | Direction | Description |
+|--------|---------|-----------|-------------|
+| `getClaude()` | `usage:get-claude` | invoke | Get Claude OAuth usage state (auth status + usage data) |
+| `refreshClaude()` | `usage:refresh-claude` | invoke | Manually refresh Claude usage data with retry logic |
+
+### Types
+
+```typescript
+getClaude(): Promise<{
+  hasOAuth: boolean;
+  usage: ClaudeUsage | null;
+}>
+
+refreshClaude(): Promise<{
+  hasOAuth: boolean;
+  usage: ClaudeUsage | null;
+}>
+```
+
+---
+
+## report
+
+HTML test report viewer.
+
+| Method | Channel | Direction | Description |
+|--------|---------|-----------|-------------|
+| `openFile(filePath)` | `report:open-file` | invoke | Opens an HTML test report in a new BrowserWindow |
+
+### Types
+
+```typescript
+openFile(filePath: string): Promise<{
+  success: boolean;
+  error?: string;
+}>
+```
+
+**Security:** Only `.html`/`.htm` files within the user's home directory are allowed. Path traversal is rejected.
+
+---
+
 ## whisper
 
 Speech-to-text via local Whisper models.

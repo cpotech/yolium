@@ -251,7 +251,35 @@ src/
 ├── preload.ts               # IPC bridge
 ├── main/                    # Main process code
 │   ├── ipc/                 # IPC handlers (namespaced)
+│   │   ├── app-handlers.ts          # App lifecycle, version, quit
+│   │   ├── terminal-handlers.ts     # PTY terminal sessions
+│   │   ├── tab-handlers.ts          # Tab management events
+│   │   ├── dialog-handlers.ts       # Native OS dialogs
+│   │   ├── filesystem-handlers.ts   # Directory listing/creation
+│   │   ├── git-handlers.ts          # Git repo, branch, config
+│   │   ├── docker-handlers.ts       # Docker engine and image
+│   │   ├── container-handlers.ts    # Interactive container sessions
+│   │   ├── kanban-handlers.ts       # Kanban board CRUD
+│   │   ├── agent-handlers.ts        # Headless agent execution
+│   │   ├── cache-handlers.ts        # Project cache management
+│   │   ├── whisper-handlers.ts      # Speech-to-text
+│   │   ├── schedule-handlers.ts     # CRON scheduling
+│   │   ├── usage-handlers.ts        # Claude usage monitoring
+│   │   ├── onboarding-handlers.ts   # Project onboarding
+│   │   ├── project-config-handlers.ts # .yolium.json config
+│   │   └── report-handlers.ts       # HTML report viewer
 │   ├── services/            # Agent runner, scheduler, etc.
+│   │   ├── agent-runner.ts          # Headless agent orchestration
+│   │   ├── agent-loader.ts          # Parse agent definitions
+│   │   ├── agent-protocol.ts        # @@YOLIUM: message parsing
+│   │   ├── agent-scheduled.ts       # Scheduled agent execution
+│   │   ├── scheduler.ts             # CRON job management
+│   │   ├── specialist-loader.ts     # Parse specialist definitions
+│   │   ├── specialist-scaffold.ts   # Specialist file scaffolding
+│   │   ├── project-onboarding.ts    # Project type detection, .gitignore
+│   │   ├── project-config.ts        # .yolium.json config loader
+│   │   ├── pty-manager.ts           # PTY session management
+│   │   └── whisper-manager.ts       # Whisper STT management
 │   ├── stores/              # SQLite (yolium-db), session, logs
 │   ├── docker/              # Container lifecycle, image builder
 │   ├── git/                 # Worktree, config, credentials
@@ -260,8 +288,48 @@ src/
 │   ├── main.tsx             # React entry point
 │   ├── App.tsx              # Root component
 │   ├── components/          # UI components by feature
+│   │   ├── agent/           # Agent selection, controls, logs
+│   │   ├── kanban/          # Board, columns, cards, dialogs
+│   │   ├── navigation/      # Sidebar, project list, favorites
+│   │   ├── terminal/        # Terminal component (xterm.js)
+│   │   ├── tabs/            # Tab bar and tab components
+│   │   ├── schedule/        # CRON panel, actions, history
+│   │   ├── settings/        # Git, agent, keyboard, whisper dialogs
+│   │   ├── docker/          # Docker setup dialog
+│   │   ├── code-review/     # Git diff viewer
+│   │   ├── shared/          # Shared UI components
+│   │   └── WhichKeyPopup.tsx # Vim-mode shortcut discoverability
 │   ├── hooks/               # Custom React hooks
+│   │   ├── useTabState.ts           # Tab state management
+│   │   ├── useAgentSession.ts       # Agent event listeners
+│   │   ├── useAgentCreation.ts      # Agent session creation
+│   │   ├── useDockerState.ts        # Docker availability
+│   │   ├── useVimMode.ts            # Vim-mode keyboard handling
+│   │   ├── useVimListNavigation.ts  # Vim-style list navigation
+│   │   ├── useWhisper.ts            # Speech-to-text recording
+│   │   ├── useClaudeUsage.ts        # Claude usage monitoring
+│   │   └── useBrowserPreview.ts     # Browser preview hook
 │   └── theme/               # Theme provider and tokens
 └── shared/                  # Types shared across processes
     └── types/
+        ├── agent.ts         # Agent types, protocol messages
+        ├── kanban.ts        # Board, item, column types
+        ├── tabs.ts          # Tab state types
+        ├── docker.ts        # Container, cache types
+        ├── schedule.ts      # Specialist, run, schedule types
+        ├── whisper.ts       # Whisper model types
+        ├── onboarding.ts    # Project type, pre-flight types
+        └── electron-api.ts  # Preload API type definitions
 ```
+
+### Key Components
+
+| Component | Location | Description |
+|-----------|----------|-------------|
+| **WhichKeyPopup** | `src/renderer/components/` | Floating popup showing available Vim shortcuts for the current zone, with leader-key drill-down support |
+| **GitDiffDialog** | `src/renderer/components/code-review/` | Side-by-side git diff viewer for inspecting agent changes |
+| **MockPreviewModal** | `src/renderer/components/kanban/` | Preview modal for kanban item mockups |
+| **AgentSettingsDialog** | `src/renderer/components/settings/` | Agent provider configuration (Claude, OpenCode, Codex) |
+| **ProjectConfigDialog** | `src/renderer/components/settings/` | Per-project `.yolium.json` configuration editor |
+| **SchedulePanel** | `src/renderer/components/schedule/` | CRON scheduling UI with specialist cards, actions view, and run history |
+| **ActionsView** | `src/renderer/components/schedule/` | Chronological feed of specialist actions with filtering |
