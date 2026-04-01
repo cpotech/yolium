@@ -20,6 +20,9 @@ Yolium orchestrates single-purpose agents in a **Plan → Code → Verify** pipe
 | **Plan Agent** | Analyzes the codebase, asks clarifying questions, produces a structured implementation plan |
 | **Code Agent** | Implements changes, writes tests, runs tests, commits to an isolated worktree branch |
 | **Verify Agent** | Read-only reviewer: checks correctness, over-engineering, and guideline compliance |
+| **QA Agent** | Proactive bug hunting: runs builds, tests, lints, code analysis, and Playwright UI exploration |
+| **BA Agent** | Business logic analysis: finds semantic bugs in state lifecycles, API contracts, and domain invariants |
+| **Design Agent** | Frontend design: executes 18 impeccable skills — audit, critique, polish, colorize, animate, and more |
 | **Scout Agent** | Lead generation: discovers, qualifies, and profiles businesses matching a campaign brief |
 | **Marketing Agent** | Executes marketing tasks via specialized skills — CRO, SEO, copywriting, ads, strategy |
 
@@ -57,13 +60,20 @@ Each agent is a single Markdown file with YAML frontmatter and a system prompt, 
 
 - **Scheduled Agents (CRON)** - Run specialists autonomously on cron schedules with persistent memory, cost tracking, and adaptive escalation ([details](docs/CRON-AGENTS.md))
 - **Kanban Board** - Built-in project board with Backlog, Ready, In Progress, and Done columns. Track work items, assign agents, and monitor progress — all persisted across sessions
-- **Agent Orchestration** - Plan, Code, and Verify agents work autonomously: decompose goals into tasks, implement changes, run tests, commit branches, and review results — with interactive pauses when they need input
+- **Agent Orchestration** - Plan, Code, Verify, QA, BA, and Design agents work autonomously with interactive pauses when they need input
 - **Parallel Agents** - Each agent gets its own git worktree and branch. Zero conflicts, clean branches ready for PR. ([details](docs/TECHNICAL.md#git-worktrees))
 - **Multi-Tab Terminal** - Run multiple concurrent sessions with a tabbed interface
 - **Docker Isolation** - Each session runs in its own container, isolated from your host
 - **AI Agent Selection** - Claude Code, OpenCode, Codex, or interactive Shell
-- **Git Integration** - Worktrees, configuration, and GitHub PAT support
+- **Git Integration** - Worktrees, configuration, GitHub PAT, and branch management
 - **Flexible Auth** - API keys or OAuth for Claude Code (Claude Max) and Codex (ChatGPT)
+- **Claude Usage Monitoring** - Track Claude Max subscription usage directly from the app
+- **Vim Mode** - Vim-style keyboard navigation with leader-key shortcuts and WhichKey popup for discoverability
+- **Project Onboarding** - Auto-detects project type (Node.js, Python, Rust, Go, Java, .NET) and generates appropriate `.gitignore` files
+- **Project Configuration** - Per-project `.yolium.json` config for shared directories and agent settings
+- **Code Review** - Git diff viewer for inspecting agent changes side-by-side
+- **Test Report Viewer** - Opens HTML test reports in dedicated windows for easy review
+- **Speech-to-Text** - Local Whisper models for voice input
 - **Pre-configured Environment** - Python, Node.js, Java, and common dev tools ready to use ([details](docs/TECHNICAL.md#container-environment))
 - **Persistent Caches** - Package manager caches survive across sessions ([details](docs/TECHNICAL.md#file-mounts--cache))
 - **Network Restrictions** - Outbound limited to HTTPS, IMAPS, and SMTP only ([details](docs/TECHNICAL.md#network-restrictions))
