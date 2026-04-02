@@ -34,7 +34,7 @@ export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }
   const hasProjects = projects && projects.length > 0;
 
   return (
-    <div data-testid="empty-state" className="relative flex flex-col items-center justify-center h-full overflow-y-auto bg-[var(--color-bg-primary)] text-[var(--color-text-muted)] px-4 py-8">
+    <div data-testid="empty-state" className="relative flex flex-col items-center justify-center h-full overflow-y-auto bg-[var(--color-bg-primary)] text-[var(--color-text-muted)] px-6 py-12">
       {/* Theme toggle - top right */}
       <button
         data-testid="theme-toggle"
@@ -48,12 +48,12 @@ export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }
         )}
       </button>
 
-      {/* Metatron's Cube hero — compact */}
-      <div className="mb-4 relative select-none">
+      {/* Metatron's Cube hero — expanded */}
+      <div className="mb-6 relative select-none">
         <div className="relative flex flex-col items-center">
           {/* Ambient glow behind logo */}
           <div
-            className="absolute -inset-6 opacity-25"
+            className="absolute -inset-12 opacity-30"
             style={{
               background: 'radial-gradient(circle at 50% 30%, #00aaff 0%, transparent 60%)',
             }}
@@ -61,11 +61,11 @@ export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }
 
           {/* Metatron's Cube logo */}
           <svg
-            width="100"
-            height="100"
+            width="140"
+            height="140"
             viewBox="0 0 200 200"
             className="relative"
-            style={{ filter: 'drop-shadow(0 0 6px rgba(0,136,255,0.4))' }}
+            style={{ filter: 'drop-shadow(0 0 12px rgba(0,136,255,0.5))' }}
           >
             <defs>
               <linearGradient id="metatronLine" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -228,10 +228,10 @@ export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }
           </svg>
 
           {/* Main text */}
-          <div className="relative mt-3">
+          <div className="relative mt-5">
             {/* Shadow layer */}
             <div
-              className="absolute inset-0 text-4xl sm:text-5xl font-bold tracking-[0.2em]"
+              className="absolute inset-0 text-5xl sm:text-6xl font-bold tracking-[0.2em]"
               style={{
                 fontFamily: 'system-ui, -apple-system, sans-serif',
                 color: '#001020',
@@ -243,7 +243,7 @@ export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }
 
             {/* Main text */}
             <div
-              className="relative text-4xl sm:text-5xl font-bold tracking-[0.2em]"
+              className="relative text-5xl sm:text-6xl font-bold tracking-[0.2em]"
               style={{
                 fontFamily: 'system-ui, -apple-system, sans-serif',
                 background: `linear-gradient(180deg,
@@ -257,7 +257,7 @@ export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }
                 )`,
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
-                filter: 'drop-shadow(0 0 4px rgba(0,136,255,0.6))',
+                filter: 'drop-shadow(0 0 8px rgba(0,136,255,0.6))',
               }}
             >
               YOLIUM
@@ -278,12 +278,12 @@ export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }
         </div>
       </div>
 
-      <p className="text-sm text-[var(--color-text-secondary)] mb-6 text-center max-w-sm">
+      <p className="text-base text-[var(--color-text-secondary)] mb-8 text-center max-w-md">
         Orchestrate AI coding agents in parallel &mdash; each in its own container with an isolated branch.
       </p>
 
       {/* CTA buttons */}
-      <div className="flex items-center gap-3 mb-8">
+      <div className="flex items-center gap-4 mb-10">
         {onOpenProject && (
           <button
             onClick={onOpenProject}
@@ -309,21 +309,21 @@ export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }
       </div>
 
       {/* Recent projects or feature cards */}
-      <div className="max-w-xl w-full">
+      <div className="max-w-2xl w-full">
         {hasProjects ? (
           <>
-            <h2 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">
+            <h2 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-4">
               Recent Projects
             </h2>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               {projects.map((project) => (
                 <button
                   key={project.path}
                   data-testid={`recent-project-${project.path}`}
                   onClick={() => onProjectClick?.(project.path)}
-                  className="group flex items-center gap-3 px-3 py-2.5 bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-tertiary)] rounded-lg border border-[var(--color-border-primary)] hover:border-[var(--color-accent-primary)] transition-colors text-left"
+                  className="group flex items-center gap-3 px-4 py-3 bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-tertiary)] rounded-lg border border-[var(--color-border-primary)] hover:border-[var(--color-accent-primary)] transition-colors text-left"
                 >
-                  <Folder size={16} className="text-[var(--color-accent-primary)] flex-shrink-0" />
+                  <Folder size={18} className="text-[var(--color-accent-primary)] flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-[var(--color-text-primary)] truncate">
                       {getFolderName(project.path)}
@@ -332,31 +332,31 @@ export function EmptyState({ onNewTab, onOpenProject, projects, onProjectClick }
                       {project.path}
                     </div>
                   </div>
-                  <ArrowRight size={14} className="text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                  <ArrowRight size={16} className="text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                 </button>
               ))}
             </div>
           </>
         ) : (
           <div data-testid="getting-started">
-            <h2 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-4 text-center">
+            <h2 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-6 text-center">
               How it works
             </h2>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-4">
               {FEATURES.map((feature) => {
                 const Icon = feature.icon;
                 return (
                   <div
                     key={feature.title}
-                    className="flex flex-col items-center text-center px-3 py-4 rounded-lg bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)]"
+                    className="flex flex-col items-center text-center px-4 py-6 rounded-lg bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)]"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-[var(--color-accent-primary)]/10 flex items-center justify-center mb-3">
-                      <Icon size={18} className="text-[var(--color-accent-primary)]" />
+                    <div className="w-11 h-11 rounded-lg bg-[var(--color-accent-primary)]/10 flex items-center justify-center mb-4">
+                      <Icon size={22} className="text-[var(--color-accent-primary)]" />
                     </div>
-                    <h3 className="text-xs font-semibold text-[var(--color-text-primary)] mb-1">
+                    <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-2">
                       {feature.title}
                     </h3>
-                    <p className="text-[11px] leading-relaxed text-[var(--color-text-muted)]">
+                    <p className="text-xs leading-relaxed text-[var(--color-text-muted)]">
                       {feature.description}
                     </p>
                   </div>

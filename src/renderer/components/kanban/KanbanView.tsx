@@ -185,6 +185,17 @@ export function KanbanView({
     }
   }, [isVimContentActive])
 
+  // Focus view when project changes (prevents lost focus after 1/2/3 project switch)
+  useEffect(() => {
+    if (projectPath && viewRef.current) {
+      const active = document.activeElement
+      const tag = active?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (dialogOpenRef.current) return
+      viewRef.current.focus()
+    }
+  }, [projectPath])
+
   // Auto-refresh every 15 seconds
   useEffect(() => {
     if (!projectPath) return
