@@ -160,16 +160,19 @@ export const ItemDetailEditorPane = forwardRef<React.ComponentRef<'div'>, ItemDe
     const items = e.clipboardData?.items
     if (!items) return
 
+    let hasImage = false
     for (const clipItem of items) {
       if (clipItem.type.startsWith('image/')) {
-        e.preventDefault()
+        if (!hasImage) {
+          e.preventDefault()
+          hasImage = true
+        }
         const blob = clipItem.getAsFile()
         if (blob) {
           const ext = clipItem.type.split('/')[1] || 'png'
-          const filename = `paste-${Date.now()}.${ext}`
+          const filename = `paste-${Date.now()}-${crypto.randomUUID()}.${ext}`
           void addAttachmentFromBlob(blob, filename)
         }
-        return
       }
     }
   }, [projectPath, itemId, addAttachmentFromBlob])
