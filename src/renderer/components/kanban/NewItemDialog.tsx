@@ -184,7 +184,7 @@ export function NewItemDialog({
         )}
 
         {/* Form */}
-        <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+        <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto yolium-scrollbar">
           {/* Title */}
           <div>
             <label
