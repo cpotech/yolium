@@ -7,6 +7,7 @@ import type {
   KanbanBoard,
   KanbanItem,
   KanbanComment,
+  KanbanAttachment,
   CommentSource,
 } from '@shared/types/kanban';
 import type { KanbanAgentProvider } from '@shared/types/agent';
@@ -27,7 +28,18 @@ function rowToComment(row: any): KanbanComment {
   return comment;
 }
 
-function rowToItem(row: any, comments: KanbanComment[]): KanbanItem {
+function rowToAttachment(row: any): KanbanAttachment {
+  return {
+    id: row.id,
+    itemId: row.item_id,
+    filename: row.filename,
+    mimeType: row.mime_type,
+    size: row.size,
+    createdAt: row.created_at,
+  };
+}
+
+function rowToItem(row: any, comments: KanbanComment[], attachments?: KanbanAttachment[]): KanbanItem {
   const item: KanbanItem = {
     id: row.id,
     title: row.title,
@@ -40,6 +52,10 @@ function rowToItem(row: any, comments: KanbanComment[]): KanbanItem {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+
+  if (attachments && attachments.length > 0) {
+    item.attachments = attachments;
+  }
 
   if (row.branch != null) item.branch = row.branch;
   if (row.agent_type != null) item.agentType = row.agent_type;
@@ -57,7 +73,7 @@ function rowToItem(row: any, comments: KanbanComment[]): KanbanItem {
   return item;
 }
 
-function assembleBoard(boardRow: any, itemRows: any[], commentRows: any[]): KanbanBoard {
+function assembleBoard(boardRow: any, itemRows: any[], commentRows: any[], attachmentRows: any[] = []): KanbanBoard {
   // Group comments by item_id
   const commentsByItem = new Map<string, KanbanComment[]>();
   for (const row of commentRows) {
@@ -68,7 +84,21 @@ function assembleBoard(boardRow: any, itemRows: any[], commentRows: any[]): Kanb
     commentsByItem.get(itemId)!.push(rowToComment(row));
   }
 
-  const items = itemRows.map(row => rowToItem(row, commentsByItem.get(row.id) || []));
+  // Group attachments by item_id
+  const attachmentsByItem = new Map<string, KanbanAttachment[]>();
+  for (const row of attachmentRows) {
+    const itemId = row.item_id;
+    if (!attachmentsByItem.has(itemId)) {
+      attachmentsByItem.set(itemId, []);
+    }
+    attachmentsByItem.get(itemId)!.push(rowToAttachment(row));
+  }
+
+  const items = itemRows.map(row => rowToItem(
+    row,
+    commentsByItem.get(row.id) || [],
+    attachmentsByItem.get(row.id),
+  ));
 
   const board: KanbanBoard = {
     id: boardRow.id,
@@ -123,14 +153,18 @@ export function getBoard(projectPath: string): KanbanBoard | null {
 
   const itemIds = itemRows.map((r: any) => r.id);
   let commentRows: any[] = [];
+  let attachmentRows: any[] = [];
   if (itemIds.length > 0) {
     const placeholders = itemIds.map(() => '?').join(', ');
     commentRows = database.prepare(
       `SELECT * FROM kanban_comments WHERE item_id IN (${placeholders}) ORDER BY timestamp ASC`
     ).all(...itemIds) as any[];
+    attachmentRows = database.prepare(
+      `SELECT * FROM kanban_attachments WHERE item_id IN (${placeholders}) ORDER BY created_at ASC`
+    ).all(...itemIds) as any[];
   }
 
-  return assembleBoard(boardRow, itemRows, commentRows);
+  return assembleBoard(boardRow, itemRows, commentRows, attachmentRows);
 }
 
 export function getOrCreateBoard(projectPath: string): KanbanBoard {

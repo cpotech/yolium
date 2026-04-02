@@ -650,6 +650,10 @@ export function ItemDetailDialog({
             isAnswering={lifecycle.isAnswering}
             onSetAnswerText={lifecycle.setAnswerText}
             onAnswerQuestion={() => void lifecycle.answerQuestion()}
+            projectPath={projectPath}
+            itemId={item.id}
+            attachments={item.attachments}
+            onAttachmentsChanged={onUpdated}
           />
           </div>
 

@@ -15,6 +15,14 @@ export {
   deleteItem,
   deleteItems,
   deleteBoard,
+  saveAttachment,
+  readAttachment,
+  getAttachmentPath,
+  listAttachments,
+  deleteAttachment,
+  deleteItemAttachments,
+  deleteProjectAttachments,
+  copyAttachmentsToWorktree,
 } from './yolium-db';
 
 export type { NewItemParams } from './yolium-db';

@@ -13,6 +13,12 @@ import {
   deleteItem,
   deleteItems,
   deleteBoard,
+  saveAttachment,
+  readAttachment,
+  listAttachments,
+  deleteAttachment,
+  deleteItemAttachments,
+  deleteProjectAttachments,
 } from '@main/stores/kanban-store';
 import { deleteWorktree } from '@main/git/git-worktree';
 import { backfillWorktreePaths, stopAllAgentsForProject } from '@main/services/agent-runner';
@@ -90,8 +96,9 @@ export function registerKanbanHandlers(ipcMain: IpcMain): void {
       }
     }
 
-    // Clean up persistent log file
+    // Clean up persistent log file and attachments
     deleteLog(projectPath, itemId);
+    deleteItemAttachments(projectPath, itemId);
 
     const result = deleteItem(board, itemId);
     event.sender.send('kanban:board-updated', projectPath);
@@ -118,6 +125,7 @@ export function registerKanbanHandlers(ipcMain: IpcMain): void {
         }
       }
       deleteLog(projectPath, itemId);
+      deleteItemAttachments(projectPath, itemId);
     }
 
     const deletedIds = deleteItems(board, itemIds);
@@ -149,15 +157,57 @@ export function registerKanbanHandlers(ipcMain: IpcMain): void {
       }
     }
 
-    // 3. Clean up persistent log files for all items
+    // 3. Clean up persistent log files and attachments for all items
     if (board) {
       for (const item of board.items) {
         deleteLog(projectPath, item.id);
+        deleteItemAttachments(projectPath, item.id);
       }
     }
 
-    // 4. Delete the board file
+    // 4. Clean up project-level attachment directory
+    deleteProjectAttachments(projectPath);
+
+    // 5. Delete the board file
     const deleted = deleteBoard(projectPath);
     return { deleted };
+  });
+
+  // ─── Attachment Handlers ──────────────────────────────────────────────
+
+  // Add attachment to item
+  ipcMain.handle('kanban:add-attachment', (event, projectPath: string, itemId: string, filename: string, mimeType: string, base64Data: string) => {
+    const data = Buffer.from(base64Data, 'base64');
+    const result = saveAttachment(projectPath, itemId, filename, mimeType, data);
+    event.sender.send('kanban:board-updated', projectPath);
+    return result;
+  });
+
+  // List attachments for an item
+  ipcMain.handle('kanban:list-attachments', (_event, _projectPath: string, itemId: string) => {
+    return listAttachments(itemId);
+  });
+
+  // Read attachment file
+  ipcMain.handle('kanban:read-attachment', (_event, projectPath: string, itemId: string, attachmentId: string) => {
+    const data = readAttachment(projectPath, itemId, attachmentId);
+    if (!data) return null;
+
+    const attachments = listAttachments(itemId);
+    const attachment = attachments.find(a => a.id === attachmentId);
+    if (!attachment) return null;
+
+    return {
+      data: data.toString('base64'),
+      mimeType: attachment.mimeType,
+      filename: attachment.filename,
+    };
+  });
+
+  // Delete attachment
+  ipcMain.handle('kanban:delete-attachment', (event, projectPath: string, itemId: string, attachmentId: string) => {
+    const result = deleteAttachment(projectPath, itemId, attachmentId);
+    event.sender.send('kanban:board-updated', projectPath);
+    return result;
   });
 }

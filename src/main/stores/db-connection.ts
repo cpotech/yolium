@@ -109,6 +109,16 @@ function createSchema(database: Database.Database): void {
     );
     CREATE INDEX IF NOT EXISTS idx_comments_item ON kanban_comments(item_id);
 
+    CREATE TABLE IF NOT EXISTS kanban_attachments (
+      id TEXT PRIMARY KEY,
+      item_id TEXT NOT NULL REFERENCES kanban_items(id) ON DELETE CASCADE,
+      filename TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_attachments_item ON kanban_attachments(item_id);
+
     CREATE TABLE IF NOT EXISTS project_registry (
       dir_name TEXT PRIMARY KEY,
       path TEXT NOT NULL,

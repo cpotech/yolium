@@ -1,4 +1,5 @@
 import type { ScheduleType } from '@shared/types/schedule';
+import type { KanbanAttachment } from '@shared/types/kanban';
 
 export interface BuildPromptParams {
   systemPrompt: string;
@@ -6,6 +7,8 @@ export interface BuildPromptParams {
   conversationHistory: string;
   provider?: string;
   agentName?: string;
+  attachments?: KanbanAttachment[];
+  containerProjectPath?: string;
 }
 
 /**
@@ -148,13 +151,25 @@ The file must include:
 
 This file is MANDATORY — the system reads it to capture your verification report. If you do not write this file, your report will be lost.`;
 
+function buildAttachmentsSection(attachments: KanbanAttachment[], containerProjectPath: string): string {
+  if (attachments.length === 0) return '';
+  const lines = attachments.map(a =>
+    `- \`${containerProjectPath}/.yolium/attachments/${a.filename}\` (${a.mimeType}, ${a.size} bytes)`
+  );
+  return `\n\n## Attachments\n\nThe following files are available in the worktree:\n${lines.join('\n')}`;
+}
+
 export function buildAgentPrompt(params: BuildPromptParams): string {
-  const { systemPrompt, goal, conversationHistory, provider, agentName } = params;
+  const { systemPrompt, goal, conversationHistory, provider, agentName, attachments, containerProjectPath } = params;
 
   // For non-Claude providers, inline the protocol and system prompt
   // so the model has everything in its primary prompt context
   if (provider && provider !== 'claude') {
     let prompt = `# Yolium Agent Instructions\n\n${INLINE_PROTOCOL}\n\n---\n\n${systemPrompt}\n\n## Current Goal\n\n${goal}`;
+
+    if (attachments && attachments.length > 0 && containerProjectPath) {
+      prompt += buildAttachmentsSection(attachments, containerProjectPath);
+    }
 
     // Add file-based output instructions (Codex models don't reliably emit
     // protocol messages, so we also ask them to write output to files that
@@ -180,6 +195,10 @@ export function buildAgentPrompt(params: BuildPromptParams): string {
 
   // Claude path: system prompt + goal (protocol is already woven into agent definitions)
   let prompt = `${systemPrompt}\n\n## Current Goal\n\n${goal}`;
+
+  if (attachments && attachments.length > 0 && containerProjectPath) {
+    prompt += buildAttachmentsSection(attachments, containerProjectPath);
+  }
 
   if (conversationHistory.trim()) {
     prompt += `\n\n## Previous conversation:\n\n${conversationHistory}\n\nContinue from where you left off.`;
