@@ -96,7 +96,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     const hasCodexOAuth = hasHostCodexOAuth();
 
     // Return null only if there's truly no config anywhere (no git identity, no keys, no OAuth)
-    if (!detectedConfig && !hasClaudeOAuth && !hasCodexOAuth && !storedConfig?.useClaudeOAuth && !storedConfig?.useCodexOAuth && !storedConfig?.openrouterApiKey) {
+    if (!detectedConfig && !hasClaudeOAuth && !hasCodexOAuth && !storedConfig?.useClaudeOAuth && !storedConfig?.useCodexOAuth && !storedConfig?.openrouterApiKey && !storedConfig?.xaiApiKey) {
       return null;
     }
 
@@ -109,6 +109,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
       hasOpenaiKey: !!detectedConfig?.openaiApiKey,
       hasAnthropicKey: !!detectedConfig?.anthropicApiKey,
       hasOpenrouterKey: !!detectedConfig?.openrouterApiKey,
+      hasXaiKey: !!detectedConfig?.xaiApiKey,
       hasClaudeOAuth,
       useClaudeOAuth: storedConfig?.useClaudeOAuth ?? false,
       hasCodexOAuth,
@@ -121,7 +122,7 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
   });
 
   // Save git config (preserves existing secrets if not provided, auto-derives identity from PAT)
-  registerGitChannel(ipcMain, GIT_CHANNELS.saveConfig, async (_event, config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; openrouterApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]>; defaultProvider?: string }) => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.saveConfig, async (_event, config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; openrouterApiKey?: string; xaiApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]>; defaultProvider?: string }) => {
     // Load existing config to preserve secrets if not provided in save
     const existing = loadGitConfig();
     const toSave: GitConfig = {
@@ -171,6 +172,17 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
     } else if (existing?.openrouterApiKey) {
       // Preserve existing OpenRouter key if not explicitly changed
       toSave.openrouterApiKey = existing.openrouterApiKey;
+    }
+
+    // If new xAI key is provided, use it; otherwise preserve existing
+    if (config.xaiApiKey !== undefined) {
+      if (config.xaiApiKey) {
+        toSave.xaiApiKey = config.xaiApiKey;
+      }
+      // If empty string, key is being cleared (don't include it)
+    } else if (existing?.xaiApiKey) {
+      // Preserve existing xAI key if not explicitly changed
+      toSave.xaiApiKey = existing.xaiApiKey;
     }
 
     // Handle Claude OAuth toggle

@@ -42,6 +42,18 @@ describe('agent-model', () => {
       expect(resolveModel('anthropic/claude-3.5-sonnet', undefined, 'opus')).toBe('anthropic/claude-3.5-sonnet');
       expect(resolveModel(undefined, 'google/gemini-pro', 'opus')).toBe('google/gemini-pro');
     });
+
+    it('should pass through xAI model IDs in resolveModel', () => {
+      expect(resolveModel('xai/grok-3', undefined, 'opus')).toBe('xai/grok-3');
+    });
+
+    it('should handle xAI model IDs with provider prefix in resolveModel', () => {
+      expect(resolveModel(undefined, 'xai/grok-3-mini', 'opus')).toBe('xai/grok-3-mini');
+    });
+
+    it('should pass through full xAI model IDs unchanged', () => {
+      expect(resolveModel('grok-3', undefined, 'opus')).toBe('grok-3');
+    });
   });
 
   describe('getDisplayModel', () => {
@@ -61,6 +73,19 @@ describe('agent-model', () => {
 
     it('should prefer item model over settings model', () => {
       expect(getDisplayModel('claude', 'sonnet', 'haiku', 'opus')).toBe('sonnet');
+    });
+
+    it('should return override model for xAI when item or settings model is set', () => {
+      expect(getDisplayModel('xai', 'xai/grok-3', undefined, 'opus')).toBe('xai/grok-3');
+      expect(getDisplayModel('xai', undefined, 'grok-3-mini', 'opus')).toBe('grok-3-mini');
+    });
+
+    it('should return agentModel fallback for xAI when no override', () => {
+      expect(getDisplayModel('xai', undefined, undefined, 'opus')).toBe('opus');
+    });
+
+    it('should return agentModel for xai provider in getDisplayModel with no override', () => {
+      expect(getDisplayModel('xai', undefined, undefined, 'sonnet')).toBe('sonnet');
     });
   });
 

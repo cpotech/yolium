@@ -114,7 +114,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
   const provider = agentProvider || item.agentProvider || gitConfig?.defaultProvider || 'claude';
   const auth = checkAgentAuth(provider);
   if (!auth.authenticated) {
-    const keyType = provider === 'codex' ? 'OpenAI' : 'Anthropic';
+    const keyType = provider === 'codex' ? 'OpenAI' : provider === 'xai' ? 'xAI' : provider === 'openrouter' ? 'OpenRouter' : 'Anthropic';
     return { sessionId: '', error: `${provider} is not authenticated. Add your ${keyType} API Key in Settings.` };
   }
 

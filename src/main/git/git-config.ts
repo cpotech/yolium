@@ -38,6 +38,7 @@ export function loadGitConfig(): GitConfig | null {
         ...(typeof config.openaiApiKey === 'string' && config.openaiApiKey ? { openaiApiKey: config.openaiApiKey } : {}),
         ...(typeof config.anthropicApiKey === 'string' && config.anthropicApiKey ? { anthropicApiKey: config.anthropicApiKey } : {}),
         ...(typeof config.openrouterApiKey === 'string' && config.openrouterApiKey ? { openrouterApiKey: config.openrouterApiKey } : {}),
+        ...(typeof config.xaiApiKey === 'string' && config.xaiApiKey ? { xaiApiKey: config.xaiApiKey } : {}),
         ...(typeof config.githubLogin === 'string' && config.githubLogin ? { githubLogin: config.githubLogin } : {}),
         ...(config.useClaudeOAuth === true ? { useClaudeOAuth: true } : {}),
         ...(config.useCodexOAuth === true ? { useCodexOAuth: true } : {}),
@@ -64,7 +65,7 @@ export function loadGitConfig(): GitConfig | null {
         }
       }
 
-      const hasMeaningful = result.name || result.email || result.githubPat || result.openaiApiKey || result.anthropicApiKey || result.openrouterApiKey || result.useClaudeOAuth || result.useCodexOAuth || result.providerModelDefaults || result.providerModels;
+      const hasMeaningful = result.name || result.email || result.githubPat || result.openaiApiKey || result.anthropicApiKey || result.openrouterApiKey || result.xaiApiKey || result.useClaudeOAuth || result.useCodexOAuth || result.providerModelDefaults || result.providerModels;
       return hasMeaningful ? result : null;
     }
 

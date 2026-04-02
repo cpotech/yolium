@@ -64,3 +64,50 @@ describe('checkAgentAuth - openrouter', () => {
     expect(result).toEqual({ authenticated: false });
   });
 });
+
+describe('checkAgentAuth - xai', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env = { ...originalEnv };
+    delete process.env.XAI_API_KEY;
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it('should return authenticated when xaiApiKey is set in git config', () => {
+    mockLoadGitConfig.mockReturnValue({
+      name: 'Test User',
+      email: 'test@example.com',
+      xaiApiKey: 'xai-test-key-123',
+    });
+
+    const result = checkAgentAuth('xai');
+    expect(result).toEqual({ authenticated: true });
+  });
+
+  it('should return authenticated when XAI_API_KEY env var is set', () => {
+    mockLoadGitConfig.mockReturnValue({
+      name: 'Test User',
+      email: 'test@example.com',
+    });
+    process.env.XAI_API_KEY = 'xai-env-key-123';
+
+    const result = checkAgentAuth('xai');
+    expect(result).toEqual({ authenticated: true });
+  });
+
+  it('should return not authenticated when no xAI key is found', () => {
+    mockLoadGitConfig.mockReturnValue({
+      name: 'Test User',
+      email: 'test@example.com',
+    });
+    delete process.env.XAI_API_KEY;
+
+    const result = checkAgentAuth('xai');
+    expect(result).toEqual({ authenticated: false });
+  });
+});

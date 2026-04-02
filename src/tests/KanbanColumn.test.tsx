@@ -180,7 +180,7 @@ describe('KanbanColumn', () => {
     expect(screen.getByTestId('kanban-column-done')).toHaveClass('border-t-[var(--color-status-success)]')
   })
 
-  it('should have fixed width classes', () => {
+  it('should have flex layout classes', () => {
     render(
       <KanbanColumn
         columnId="backlog"
@@ -191,8 +191,8 @@ describe('KanbanColumn', () => {
     )
 
     const column = screen.getByTestId('kanban-column-backlog')
-    expect(column).toHaveClass('w-72')
-    expect(column).toHaveClass('min-w-72')
+    expect(column).toHaveClass('flex-1')
+    expect(column).toHaveClass('min-w-[250px]')
   })
 
   it('should pass onCardClick to cards', () => {
