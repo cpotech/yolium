@@ -1,11 +1,10 @@
 /**
  * @module src/hooks/useVimMode
  * Core modal state machine for vim-style TUI navigation.
- * Manages NORMAL/INSERT modes, zone tracking, leader-key state, and keydown handling.
+ * Manages NORMAL/INSERT modes, zone tracking, and keydown handling.
  */
 
 import { useState, useCallback, useRef } from 'react';
-import type { VimActionZone } from '@shared/vim-actions';
 
 export type VimMode = 'NORMAL' | 'INSERT' | 'VISUAL';
 export type VimZone = 'sidebar' | 'tabs' | 'content' | 'status-bar' | 'schedule';
@@ -39,52 +38,18 @@ export interface UseVimModeResult {
   enterInsertMode: () => void;
   enterVisualMode: () => void;
   exitToNormal: () => void;
-  /** Whether the leader key (Space) has been pressed and is awaiting a follow-up key */
-  leaderPending: boolean;
-  /** The zone that was active when leader was triggered (may be a dialog zone) */
-  leaderZone: VimActionZone | null;
-  /** The currently selected leader group key (e.g., 'a' for Agent, 'g' for Git/PR) */
-  leaderGroupKey: string | null;
-  /** Clear leader state (dismiss which-key popup) */
-  clearLeader: () => void;
-  /** Trigger leader mode for an arbitrary zone (used by dialogs to bypass dialogOpen guard) */
-  triggerLeader: (zone: VimActionZone) => void;
-  /** Set the leader group key (drill into a category), null to go back to level 1 */
-  setLeaderGroup: (key: string | null) => void;
 }
 
 export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
   const { dialogOpen = false, onZoneChange, isTerminalActive = false, onGoToKanban, onShowShortcuts } = options;
   const [mode, setMode] = useState<VimMode>('NORMAL');
   const [activeZone, setActiveZoneState] = useState<VimZone>('content');
-  const [leaderPending, setLeaderPending] = useState(false);
-  const [leaderZone, setLeaderZone] = useState<VimActionZone | null>(null);
-  const [leaderGroupKey, setLeaderGroupKeyState] = useState<string | null>(null);
   const onZoneChangeRef = useRef(onZoneChange);
   onZoneChangeRef.current = onZoneChange;
   const onGoToKanbanRef = useRef(onGoToKanban);
   onGoToKanbanRef.current = onGoToKanban;
   const onShowShortcutsRef = useRef(onShowShortcuts);
   onShowShortcutsRef.current = onShowShortcuts;
-
-  const clearLeader = useCallback(() => {
-    setLeaderPending(false);
-    setLeaderZone(null);
-    setLeaderGroupKeyState(null);
-  }, []);
-
-  const setLeaderGroup = useCallback((key: string | null) => {
-    setLeaderGroupKeyState(key);
-  }, []);
-
-  const triggerLeader = useCallback((zone: VimActionZone) => {
-    if (leaderPending) {
-      clearLeader();
-    } else {
-      setLeaderPending(true);
-      setLeaderZone(zone);
-    }
-  }, [leaderPending, clearLeader]);
 
   const setActiveZone = useCallback((zone: VimZone) => {
     setActiveZoneState(zone);
@@ -155,19 +120,6 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
     // Block zone switching and Tab cycling when dialogs are open
     if (dialogOpen) return;
 
-    // Leader key (Space) — toggle leader state
-    if (key === ' ') {
-      event.preventDefault();
-      if (leaderPending) {
-        // Toggle off
-        clearLeader();
-      } else {
-        setLeaderPending(true);
-        setLeaderZone(activeZone);
-      }
-      return;
-    }
-
     // Show keyboard shortcuts dialog (?)
     if (key === '?') {
       event.preventDefault();
@@ -198,7 +150,7 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
       return;
     }
 
-  }, [dialogOpen, mode, activeZone, setActiveZone, leaderPending, clearLeader]);
+  }, [dialogOpen, mode, setActiveZone]);
 
   return {
     mode,
@@ -208,11 +160,5 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
     enterInsertMode,
     enterVisualMode,
     exitToNormal,
-    leaderPending,
-    leaderZone,
-    leaderGroupKey,
-    clearLeader,
-    triggerLeader,
-    setLeaderGroup,
   };
 }

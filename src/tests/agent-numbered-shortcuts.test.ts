@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { VIM_ACTIONS } from '@shared/vim-actions';
 
 describe('agent numbered shortcuts (vim-actions)', () => {
-  it('should have 9 agent-N-sidebar entries for keys 1-9 in dialog-sidebar zone', () => {
+  it('should have 9 agent-N-sidebar entries for keys Ctrl+1-9 in dialog-sidebar zone', () => {
     const agentSidebarActions = VIM_ACTIONS.filter(
       a => a.zone === 'dialog-sidebar' && /^agent-\d+-sidebar$/.test(a.id)
     );
@@ -12,7 +12,7 @@ describe('agent numbered shortcuts (vim-actions)', () => {
     for (let i = 1; i <= 9; i++) {
       const action = agentSidebarActions.find(a => a.id === `agent-${i}-sidebar`);
       expect(action, `agent-${i}-sidebar should exist`).toBeDefined();
-      expect(action!.key).toBe(String(i));
+      expect(action!.key).toBe(`Ctrl+${i}`);
       expect(action!.zone).toBe('dialog-sidebar');
       expect(action!.mode).toBe('NORMAL');
     }
@@ -35,50 +35,43 @@ describe('agent numbered shortcuts (vim-actions)', () => {
     expect(resume!.key).toBe('R');
   });
 
-  it('should not conflict with existing sidebar shortcuts within the same leader group', () => {
+  it('should not have key conflicts in dialog-sidebar zone', () => {
     const sidebarActions = VIM_ACTIONS.filter(a => a.zone === 'dialog-sidebar');
-    // Group by (key, leaderGroup) — same key at different leader levels is not a conflict
     const keyMap = new Map<string, string[]>();
 
     for (const action of sidebarActions) {
-      const groupKey = `${action.key}:${action.leaderGroup || ''}`;
-      const existing = keyMap.get(groupKey) || [];
+      const existing = keyMap.get(action.key) || [];
       existing.push(action.id);
-      keyMap.set(groupKey, existing);
+      keyMap.set(action.key, existing);
     }
 
-    // Each (key, leaderGroup) pair should map to exactly one action
-    for (const [groupKey, ids] of keyMap) {
-      expect(ids, `Key '${groupKey}' should not have duplicate bindings`).toHaveLength(1);
+    // Each key should map to exactly one action
+    for (const [key, ids] of keyMap) {
+      expect(ids, `Key '${key}' should not have duplicate bindings`).toHaveLength(1);
     }
-  });
-
-  it('should have agent numbered entries in leader group a and cycling entries at level 1', () => {
-    // Keys 1-3 are used at two different leader levels:
-    // - Level 1 (no leaderGroup): cycle provider/model/column
-    // - Level 2 (leaderGroup 'a'): agent selection
-    const agent1 = VIM_ACTIONS.find(a => a.zone === 'dialog-sidebar' && a.key === '1' && a.leaderGroup === 'a');
-    const agent2 = VIM_ACTIONS.find(a => a.zone === 'dialog-sidebar' && a.key === '2' && a.leaderGroup === 'a');
-    const agent3 = VIM_ACTIONS.find(a => a.zone === 'dialog-sidebar' && a.key === '3' && a.leaderGroup === 'a');
-
-    expect(agent1!.id).toBe('agent-1-sidebar');
-    expect(agent2!.id).toBe('agent-2-sidebar');
-    expect(agent3!.id).toBe('agent-3-sidebar');
-
-    // Cycling entries exist at level 1 (no leaderGroup)
-    const cycle1 = VIM_ACTIONS.find(a => a.zone === 'dialog-sidebar' && a.key === '1' && !a.leaderGroup);
-    const cycle2 = VIM_ACTIONS.find(a => a.zone === 'dialog-sidebar' && a.key === '2' && !a.leaderGroup);
-    const cycle3 = VIM_ACTIONS.find(a => a.zone === 'dialog-sidebar' && a.key === '3' && !a.leaderGroup);
-
-    expect(cycle1!.id).toBe('cycle-provider-sidebar');
-    expect(cycle2!.id).toBe('cycle-model-sidebar');
-    expect(cycle3!.id).toBe('cycle-column-sidebar');
   });
 
   it('should have number hints description for all 9 agent sidebar actions', () => {
     for (let i = 1; i <= 9; i++) {
       const action = VIM_ACTIONS.find(a => a.id === `agent-${i}-sidebar`);
       expect(action!.description).toContain(`Agent ${i}`);
+    }
+  });
+
+  it('should have direct cycling entries for 1/2/3 (no leader group)', () => {
+    const cycle1 = VIM_ACTIONS.find(a => a.zone === 'dialog-sidebar' && a.key === '1');
+    const cycle2 = VIM_ACTIONS.find(a => a.zone === 'dialog-sidebar' && a.key === '2');
+    const cycle3 = VIM_ACTIONS.find(a => a.zone === 'dialog-sidebar' && a.key === '3');
+
+    expect(cycle1!.id).toBe('cycle-provider-sidebar');
+    expect(cycle2!.id).toBe('cycle-model-sidebar');
+    expect(cycle3!.id).toBe('cycle-column-sidebar');
+  });
+
+  it('should not have any leaderGroup field on any action', () => {
+    const sidebarActions = VIM_ACTIONS.filter(a => a.zone === 'dialog-sidebar');
+    for (const action of sidebarActions) {
+      expect((action as any).leaderGroup).toBeUndefined();
     }
   });
 });

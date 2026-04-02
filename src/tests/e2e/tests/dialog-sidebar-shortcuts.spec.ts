@@ -83,7 +83,7 @@ test.describe('Dialog Sidebar Shortcuts with focused form controls', () => {
     return { itemId: item.id };
   }
 
-  test('should fire sidebar shortcut Space d (delete) when a <select> element has focus in NORMAL mode', async () => {
+  test('should fire sidebar shortcut d (delete) when a <select> element has focus in NORMAL mode', async () => {
     await setupItemDetailDialog();
     const page = ctx.window;
 
@@ -94,15 +94,14 @@ test.describe('Dialog Sidebar Shortcuts with focused form controls', () => {
     await page.click('[data-testid="column-select"]');
     await expect(page.locator('[data-testid="column-select"]')).toBeFocused();
 
-    // Press Space then 'd' for delete (leader prefix required)
-    await page.keyboard.press('Space');
+    // Press d for delete (direct shortcut, no leader prefix)
     await page.keyboard.press('d');
 
     // Item should be deleted — dialog closes
     await expect(page.locator('[data-testid="item-detail-dialog"]')).not.toBeVisible({ timeout: 5000 });
   });
 
-  test('should fire sidebar shortcut Space a p (plan agent) when the verified checkbox has focus in NORMAL mode', async () => {
+  test('should fire sidebar shortcut Ctrl+1 (plan agent) when the verified checkbox has focus in NORMAL mode', async () => {
     await setupItemDetailDialog();
     const page = ctx.window;
 
@@ -123,10 +122,8 @@ test.describe('Dialog Sidebar Shortcuts with focused form controls', () => {
     await page.focus('[data-testid="verified-checkbox"]');
     await expect(page.locator('[data-testid="verified-checkbox"]')).toBeFocused();
 
-    // Press Space a p for plan agent (leader → agent group → plan)
-    await page.keyboard.press('Space');
-    await page.keyboard.press('a');
-    await page.keyboard.press('p');
+    // Press Ctrl+1 for plan agent (direct shortcut, agent 1 by sorted order)
+    await page.keyboard.press('Control+1');
 
     // Verify agent:start was called with plan-agent
     const calls = await ctx.app.evaluate(() => {
@@ -136,7 +133,7 @@ test.describe('Dialog Sidebar Shortcuts with focused form controls', () => {
     expect(calls[0]).toEqual(expect.objectContaining({ agentName: 'plan-agent' }));
   });
 
-  test('should NOT fire Ctrl+Shift+S (removed — use Space a s leader group instead)', async () => {
+  test('should NOT fire Ctrl+Shift+S (removed — use Ctrl+N direct shortcuts instead)', async () => {
     await setupItemDetailDialog();
     const page = ctx.window;
 
@@ -240,18 +237,15 @@ test.describe('Dialog Sidebar Shortcuts with focused form controls', () => {
     const providerSelect = page.locator('[data-testid="agent-provider-select"]');
     await expect(providerSelect).toHaveValue('claude');
 
-    // Press Space 1 to cycle to opencode (leader prefix required)
-    await page.keyboard.press('Space');
+    // Press 1 to cycle to opencode (direct shortcut, no leader prefix)
     await page.keyboard.press('1');
     await expect(providerSelect).toHaveValue('opencode');
 
-    // Press Space 1 again to cycle to codex
-    await page.keyboard.press('Space');
+    // Press 1 again to cycle to codex
     await page.keyboard.press('1');
     await expect(providerSelect).toHaveValue('codex');
 
-    // Press Space 1 again to wrap back to claude
-    await page.keyboard.press('Space');
+    // Press 1 again to wrap back to claude
     await page.keyboard.press('1');
     await expect(providerSelect).toHaveValue('claude');
   });
@@ -267,23 +261,20 @@ test.describe('Dialog Sidebar Shortcuts with focused form controls', () => {
     const columnSelect = page.locator('[data-testid="column-select"]');
     await expect(columnSelect).toHaveValue('backlog');
 
-    // Press Space 3 to cycle to ready (leader prefix required)
-    await page.keyboard.press('Space');
+    // Press 3 to cycle to ready (direct shortcut, no leader prefix)
     await page.keyboard.press('3');
     await expect(columnSelect).toHaveValue('ready');
 
-    // Press Space 3 to cycle to done (skipping in-progress and verify)
-    await page.keyboard.press('Space');
+    // Press 3 to cycle to done (skipping in-progress and verify)
     await page.keyboard.press('3');
     await expect(columnSelect).toHaveValue('done');
 
-    // Press Space 3 to wrap back to backlog
-    await page.keyboard.press('Space');
+    // Press 3 to wrap back to backlog
     await page.keyboard.press('3');
     await expect(columnSelect).toHaveValue('backlog');
   });
 
-  test('should toggle verified checkbox when pressing V in sidebar zone', async () => {
+  test('should toggle verified checkbox when pressing p in sidebar zone', async () => {
     await setupItemDetailDialog();
     const page = ctx.window;
 
@@ -293,14 +284,12 @@ test.describe('Dialog Sidebar Shortcuts with focused form controls', () => {
     const checkbox = page.locator('[data-testid="verified-checkbox"]');
     await expect(checkbox).not.toBeChecked();
 
-    // Press Space Shift+V to toggle verified on (leader prefix required)
-    await page.keyboard.press('Space');
-    await page.keyboard.press('Shift+v');
+    // Press p to toggle verified on (direct shortcut, no leader prefix)
+    await page.keyboard.press('p');
     await expect(checkbox).toBeChecked();
 
-    // Press Space Shift+V again to toggle verified off
-    await page.keyboard.press('Space');
-    await page.keyboard.press('Shift+v');
+    // Press p again to toggle verified off
+    await page.keyboard.press('p');
     await expect(checkbox).not.toBeChecked();
   });
 
@@ -316,7 +305,7 @@ test.describe('Dialog Sidebar Shortcuts with focused form controls', () => {
     await expect(sidebarZone.locator('kbd:text-is("1")')).toBeVisible();
     await expect(sidebarZone.locator('kbd:text-is("2")')).toBeVisible();
     await expect(sidebarZone.locator('kbd:text-is("3")')).toBeVisible();
-    await expect(sidebarZone.locator('kbd:text-is("V")')).toBeVisible();
+    await expect(sidebarZone.locator('kbd:text-is("p")')).toBeVisible();
   });
 
   test('should trigger fix-conflicts (run agent) when pressing k in sidebar zone with mergeStatus conflict', async () => {
@@ -344,9 +333,7 @@ test.describe('Dialog Sidebar Shortcuts with focused form controls', () => {
     // Switch to sidebar zone
     await page.keyboard.press('Tab');
 
-    // Press Space g k — should trigger fix conflicts (run agent) via leader group
-    await page.keyboard.press('Space');
-    await page.keyboard.press('g');
+    // Press k — should trigger fix conflicts (run agent) directly
     await page.keyboard.press('k');
 
     // Verify agent:start was called (fix conflicts runs an agent)
@@ -357,7 +344,7 @@ test.describe('Dialog Sidebar Shortcuts with focused form controls', () => {
     expect(calls[0]).toEqual(expect.objectContaining({ agentName: 'code-agent' }));
   });
 
-  test('should trigger check-conflicts when pressing Space g k in sidebar zone with mergeStatus unmerged', async () => {
+  test('should trigger check-conflicts when pressing k in sidebar zone with mergeStatus unmerged', async () => {
     await setupItemDetailDialog({
       mergeStatus: 'unmerged',
       branch: 'test-branch',
@@ -379,9 +366,7 @@ test.describe('Dialog Sidebar Shortcuts with focused form controls', () => {
     // Switch to sidebar zone
     await page.keyboard.press('Tab');
 
-    // Press Space g k — should trigger check conflicts via leader group
-    await page.keyboard.press('Space');
-    await page.keyboard.press('g');
+    // Press k — should trigger check conflicts directly
     await page.keyboard.press('k');
 
     // Verify check-conflicts was called
@@ -414,11 +399,10 @@ test.describe('Dialog Sidebar Shortcuts with focused form controls', () => {
     // Switch to sidebar zone
     await page.keyboard.press('Tab');
 
-    // Open the log panel with Space l (leader prefix required)
-    await page.keyboard.press('Space');
+    // Open the log panel with l (direct shortcut, no leader prefix)
     await page.keyboard.press('l');
 
-    // Press 'j' to enter log-focus mode and scroll down (no leader needed)
+    // Press 'j' to enter log-focus mode and scroll down
     await page.keyboard.press('j');
 
     // Now press 'k' — should scroll log, NOT trigger check/fix conflicts
@@ -448,11 +432,10 @@ test.describe('Dialog Sidebar Shortcuts with focused form controls', () => {
     // Switch to sidebar zone
     await page.keyboard.press('Tab');
 
-    // Open the log panel with Space l (leader prefix required)
-    await page.keyboard.press('Space');
+    // Open the log panel with l (direct shortcut, no leader prefix)
     await page.keyboard.press('l');
 
-    // Press 'j' to enter log-focus mode (no leader needed)
+    // Press 'j' to enter log-focus mode
     await page.keyboard.press('j');
 
     // Verify hint bar shows log-focus hints (Navigate + Back)
@@ -518,10 +501,8 @@ test.describe('Dialog Sidebar Shortcuts with focused form controls', () => {
     await page.click('[data-testid="column-select"]');
     await expect(page.locator('[data-testid="column-select"]')).toBeFocused();
 
-    // Press Space a p for plan agent (leader → agent group → plan)
-    await page.keyboard.press('Space');
-    await page.keyboard.press('a');
-    await page.keyboard.press('p');
+    // Press Ctrl+1 for plan agent (direct shortcut, agent 1 by sorted order)
+    await page.keyboard.press('Control+1');
 
     // After the shortcut fires, the select should no longer be focused
     // (focus should be back on the dialog container)

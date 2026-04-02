@@ -25,7 +25,6 @@ import { StatusBar } from '@renderer/components/StatusBar'
 import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper'
 import type { ClaudeUsageState } from '@shared/types/agent'
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts'
-import { getLeaderGroupsForZone } from '@shared/vim-actions'
 import { useVimListNavigation } from '@renderer/hooks/useVimListNavigation'
 
 type NavigableItem =
@@ -302,13 +301,16 @@ export function ItemDetailDialog({
 
     // NORMAL mode navigation and sidebar shortcuts
     if (vim.mode === 'NORMAL') {
-      // 0. Space → leader key for dialog-sidebar zone (which-key popup)
-      // stopPropagation prevents native button activation via Space keyup
-      if (event.key === ' ') {
-        event.preventDefault()
-        event.stopPropagation()
-        vim.triggerLeader('dialog-sidebar')
-        return
+      // Ctrl+1-9: agent dispatch by sorted order
+      if (event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey && item) {
+        const digit = parseInt(event.key, 10)
+        const canStart = (item.agentStatus === 'idle' || item.agentStatus === 'completed' || item.agentStatus === 'failed') && !lifecycle.isStartingAgent
+        if (digit >= 1 && digit <= 9 && digit <= sortedAgents.length && canStart) {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          void lifecycle.startAgent(sortedAgents[digit - 1].name)
+          return
+        }
       }
 
       // 1b. Browser focus mode — keys control browser when focused
@@ -346,7 +348,7 @@ export function ItemDetailDialog({
           logPanelRef.current?.scrollBy(event.key === 'j' ? 80 : -80)
           return
         }
-        // l in log focus collapses the log (no leader needed)
+        // l in log focus collapses the log
         if (event.key === 'l' && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
           event.preventDefault()
           setLogFocused(false)
@@ -355,8 +357,8 @@ export function ItemDetailDialog({
         }
       }
 
-      // 2b. j/k with agent log open → enter log focus mode (no leader needed)
-      if (!vim.leaderPending && agentSession.showAgentLog && (event.key === 'j' || event.key === 'k') && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
+      // 2b. j/k with agent log open → enter log focus mode
+      if (agentSession.showAgentLog && (event.key === 'j' || event.key === 'k') && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
         event.preventDefault()
         setLogFocused(true)
         logPanelRef.current?.pauseAutoScroll()
@@ -364,184 +366,126 @@ export function ItemDetailDialog({
         return
       }
 
-      // 3. Leader-aware sidebar shortcuts — require Space prefix
-      if (item && vim.leaderPending) {
-          const canStart = (item.agentStatus === 'idle' || item.agentStatus === 'completed' || item.agentStatus === 'failed') && !lifecycle.isStartingAgent
+      // 3. Direct sidebar shortcuts (no leader prefix)
+      if (item && !event.ctrlKey && !event.altKey && !event.metaKey) {
+        const plain = !event.shiftKey
 
-          if (!vim.leaderGroupKey) {
-            // Level 1: check for group keys or direct actions
-            const groupKeys = getLeaderGroupsForZone('dialog-sidebar').map(g => g.key)
-            if (groupKeys.includes(event.key)) {
-              event.preventDefault()
-              vim.setLeaderGroup(event.key)
-              return
-            }
-            // Direct actions (no group)
-            if (event.key === 'b' && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
-              event.preventDefault()
-              vim.clearLeader()
-              dialogRef.current?.focus()
-              browserPreview.toggle()
-              // Enter browser focused mode when opening
-              setBrowserFocused(!browserPreview.isOpen)
-              return
-            }
-            if (event.key === 'd' && !event.shiftKey && !isDeleting) {
-              event.preventDefault()
-              vim.clearLeader()
-              dialogRef.current?.focus()
-              void handleDelete()
-              return
-            }
-            if (event.key === 'l' && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
-              event.preventDefault()
-              vim.clearLeader()
-              agentSession.toggleAgentLog()
-              if (agentSession.showAgentLog) {
-                setLogFocused(false)
-              }
-              return
-            }
-            if (event.key === 'V') {
-              event.preventDefault()
-              vim.clearLeader()
-              dialogRef.current?.focus()
-              draft.setVerified(!draft.verified)
-              return
-            }
-            if (event.key === '1' && item.agentStatus !== 'running' && item.agentStatus !== 'waiting') {
-              event.preventDefault()
-              vim.clearLeader()
-              dialogRef.current?.focus()
-              const providers: KanbanItem['agentProvider'][] = ['claude', 'opencode', 'codex']
-              const currentIndex = providers.indexOf(draft.agentProvider)
-              draft.setAgentProvider(providers[(currentIndex + 1) % providers.length])
-              return
-            }
-            if (event.key === '2') {
-              event.preventDefault()
-              vim.clearLeader()
-              dialogRef.current?.focus()
-              const models = ['', ...(draft.providerModels[draft.agentProvider] || [])]
-              const currentIndex = models.indexOf(draft.model)
-              draft.setModel(models[(currentIndex + 1) % models.length])
-              return
-            }
-            if (event.key === '3') {
-              event.preventDefault()
-              vim.clearLeader()
-              dialogRef.current?.focus()
-              const userColumns: KanbanColumn[] = ['backlog', 'ready', 'done']
-              if (draft.column === 'in-progress' || draft.column === 'verify') return
-              const currentIndex = userColumns.indexOf(draft.column)
-              draft.setColumn(userColumns[(currentIndex + 1) % userColumns.length])
-              return
-            }
-            // Unmatched key at level 1: dismiss leader
-            event.preventDefault()
-            vim.clearLeader()
-            return
-          }
-
-          // Level 2: handle sub-actions within a group
-          if (vim.leaderGroupKey === 'a') {
-            // Agent group — numbered dispatch: keys 1-9 map to agents by sorted order
-            const digit = parseInt(event.key, 10)
-            if (digit >= 1 && digit <= 9 && digit <= sortedAgents.length && canStart) {
-              event.preventDefault()
-              vim.clearLeader()
-              dialogRef.current?.focus()
-              void lifecycle.startAgent(sortedAgents[digit - 1].name)
-              return
-            }
-            if (event.key === 'x' && item.agentStatus === 'running' && agentSession.currentSessionId) {
-              event.preventDefault()
-              vim.clearLeader()
-              dialogRef.current?.focus()
-              void lifecycle.stopAgent()
-              return
-            }
-            if (event.key === 'R' && item.agentStatus === 'interrupted' && !lifecycle.isStartingAgent) {
-              event.preventDefault()
-              vim.clearLeader()
-              const resumeName = item.activeAgentName || item.lastAgentName || item.agentType || 'code-agent'
-              void lifecycle.resumeAgent(resumeName)
-              return
-            }
-          }
-
-          if (vim.leaderGroupKey === 'g') {
-            // Git/PR group
-            if (event.key === 'f' && item.branch && item.mergeStatus) {
-              event.preventDefault()
-              vim.clearLeader()
-              dialogRef.current?.focus()
-              setShowDiffViewer(true)
-              return
-            }
-            if (event.key === 'r' && item.worktreePath && !prWorkflow.isRebasing) {
-              event.preventDefault()
-              vim.clearLeader()
-              dialogRef.current?.focus()
-              void prWorkflow.rebaseOntoDefault()
-              return
-            }
-            if (event.key === 'k' && item.mergeStatus === 'conflict' && canStart && !prWorkflow.isFixingConflicts) {
-              event.preventDefault()
-              vim.clearLeader()
-              dialogRef.current?.focus()
-              void handleFixConflicts()
-              return
-            }
-            if (event.key === 'k' && item.mergeStatus && item.mergeStatus !== 'conflict' && !prWorkflow.isCheckingConflicts) {
-              event.preventDefault()
-              vim.clearLeader()
-              dialogRef.current?.focus()
-              void prWorkflow.checkConflicts()
-              return
-            }
-            if (event.key === 'm' && (item.agentStatus === 'completed' || item.column === 'done' || item.column === 'verify') && !prWorkflow.isMerging) {
-              event.preventDefault()
-              vim.clearLeader()
-              dialogRef.current?.focus()
-              void prWorkflow.mergeAndPushPr()
-              return
-            }
-            if (event.key === 'a' && item.mergeStatus === 'merged' && prWorkflow.prUrl && !prWorkflow.isApprovingPr && !prWorkflow.isMergingPr) {
-              event.preventDefault()
-              vim.clearLeader()
-              dialogRef.current?.focus()
-              void prWorkflow.approvePr()
-              return
-            }
-            if (event.key === 'w' && item.mergeStatus === 'merged' && prWorkflow.prUrl && !prWorkflow.isMergingPr && !prWorkflow.isApprovingPr) {
-              event.preventDefault()
-              vim.clearLeader()
-              dialogRef.current?.focus()
-              void prWorkflow.mergePr()
-              return
-            }
-            if (event.key === 'o' && prWorkflow.prUrl) {
-              event.preventDefault()
-              vim.clearLeader()
-              dialogRef.current?.focus()
-              window.electronAPI.app.openExternal(prWorkflow.prUrl)
-              return
-            }
-          }
-
-          // Backspace at level 2: return to level 1
-          if (event.key === 'Backspace' && vim.leaderGroupKey) {
-            event.preventDefault()
-            vim.setLeaderGroup(null)
-            return
-          }
-
-          // Unmatched key at level 2: dismiss leader
+        if (event.key === 'b' && plain) {
           event.preventDefault()
-          vim.clearLeader()
+          dialogRef.current?.focus()
+          browserPreview.toggle()
+          setBrowserFocused(!browserPreview.isOpen)
           return
         }
+        if (event.key === 'd' && plain && !isDeleting) {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          void handleDelete()
+          return
+        }
+        if (event.key === 'l' && plain) {
+          event.preventDefault()
+          agentSession.toggleAgentLog()
+          if (agentSession.showAgentLog) {
+            setLogFocused(false)
+          }
+          return
+        }
+        if (event.key === 'p' && plain) {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          draft.setVerified(!draft.verified)
+          return
+        }
+        if (event.key === '1' && plain && item.agentStatus !== 'running' && item.agentStatus !== 'waiting') {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          const providers: KanbanItem['agentProvider'][] = ['claude', 'opencode', 'codex']
+          const currentIndex = providers.indexOf(draft.agentProvider)
+          draft.setAgentProvider(providers[(currentIndex + 1) % providers.length])
+          return
+        }
+        if (event.key === '2' && plain) {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          const models = ['', ...(draft.providerModels[draft.agentProvider] || [])]
+          const currentIndex = models.indexOf(draft.model)
+          draft.setModel(models[(currentIndex + 1) % models.length])
+          return
+        }
+        if (event.key === '3' && plain) {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          const userColumns: KanbanColumn[] = ['backlog', 'ready', 'done']
+          if (draft.column === 'in-progress' || draft.column === 'verify') return
+          const currentIndex = userColumns.indexOf(draft.column)
+          draft.setColumn(userColumns[(currentIndex + 1) % userColumns.length])
+          return
+        }
+        if (event.key === 'f' && plain && item.branch && item.mergeStatus) {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          setShowDiffViewer(true)
+          return
+        }
+        if (event.key === 'r' && plain && item.worktreePath && !prWorkflow.isRebasing) {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          void prWorkflow.rebaseOntoDefault()
+          return
+        }
+        if (event.key === 'k' && plain && item.mergeStatus === 'conflict') {
+          const canStart = (item.agentStatus === 'idle' || item.agentStatus === 'completed' || item.agentStatus === 'failed') && !lifecycle.isStartingAgent
+          if (canStart && !prWorkflow.isFixingConflicts) {
+            event.preventDefault()
+            dialogRef.current?.focus()
+            void handleFixConflicts()
+            return
+          }
+        }
+        if (event.key === 'k' && plain && item.mergeStatus && item.mergeStatus !== 'conflict' && !prWorkflow.isCheckingConflicts) {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          void prWorkflow.checkConflicts()
+          return
+        }
+        if (event.key === 'm' && plain && (item.agentStatus === 'completed' || item.column === 'done' || item.column === 'verify') && !prWorkflow.isMerging) {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          void prWorkflow.mergeAndPushPr()
+          return
+        }
+        if (event.key === 'a' && plain && item.mergeStatus === 'merged' && prWorkflow.prUrl && !prWorkflow.isApprovingPr && !prWorkflow.isMergingPr) {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          void prWorkflow.approvePr()
+          return
+        }
+        if (event.key === 'w' && plain && item.mergeStatus === 'merged' && prWorkflow.prUrl && !prWorkflow.isMergingPr && !prWorkflow.isApprovingPr) {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          void prWorkflow.mergePr()
+          return
+        }
+        if (event.key === 'o' && plain && prWorkflow.prUrl) {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          window.electronAPI.app.openExternal(prWorkflow.prUrl)
+          return
+        }
+        if (event.key === 'x' && plain && item.agentStatus === 'running' && agentSession.currentSessionId) {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          void lifecycle.stopAgent()
+          return
+        }
+        if (event.key === 'R' && !plain && item.agentStatus === 'interrupted' && !lifecycle.isStartingAgent) {
+          event.preventDefault()
+          const resumeName = item.activeAgentName || item.lastAgentName || item.agentType || 'code-agent'
+          void lifecycle.resumeAgent(resumeName)
+          return
+        }
+      }
 
       // 4. isEditable guard — only blocks editor zone navigation
       const target = event.target as HTMLElement
@@ -614,7 +558,7 @@ export function ItemDetailDialog({
     if (dialogRef.current && vim.mode !== 'NORMAL') {
       trapFocus(event, dialogRef.current)
     }
-  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedItemIndex, focusField, agentSession.currentSessionId, prWorkflow, navigableItems, dialogVisualMode, selectedItemIndices, agentSession, commentSearchRef, sortedAgents, handleFieldNavKeys, browserPreview, browserFocused])
+  }, [draft, handleClose, handleDelete, isDeleting, item, lifecycle, vim, focusedItemIndex, focusField, agentSession.currentSessionId, prWorkflow, navigableItems, dialogVisualMode, selectedItemIndices, agentSession, commentSearchRef, sortedAgents, handleFieldNavKeys, browserPreview, browserFocused, handleFixConflicts, logFocused])
 
   if (!isOpen || !item) return null
 
@@ -817,7 +761,6 @@ export function ItemDetailDialog({
                 <span><kbd className={kbdClass}>i</kbd> Edit field</span>
                 <span><kbd className={kbdClass}>/</kbd> Search comments</span>
                 <span><kbd className={kbdClass}>V</kbd> Visual</span>
-                <span><kbd className={kbdClass}>Space</kbd> Actions</span>
                 <span><kbd className={kbdClass}>Ctrl+Q</kbd> Close</span>
               </>
             )

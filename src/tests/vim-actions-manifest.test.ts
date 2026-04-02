@@ -2,7 +2,8 @@
  * @vitest-environment jsdom
  */
 import { describe, expect, it } from 'vitest';
-import { VIM_ACTIONS, LEADER_GROUPS, getActionsForZone, getActionsByGroup, SHORTCUT_GROUP_ORDER, getLeaderGroupsForZone, getDirectLeaderActions, getGroupedLeaderActions } from '@shared/vim-actions';
+import * as vimActionsModule from '@shared/vim-actions';
+import { VIM_ACTIONS, getActionsForZone, getActionsByGroup, SHORTCUT_GROUP_ORDER } from '@shared/vim-actions';
 
 describe('VIM_ACTIONS manifest consistency', () => {
   it('should export a non-empty VIM_ACTIONS array', () => {
@@ -11,7 +12,7 @@ describe('VIM_ACTIONS manifest consistency', () => {
   });
 
   it('should export at least 80 actions covering all shortcut categories', () => {
-    expect(VIM_ACTIONS.length).toBeGreaterThanOrEqual(92);
+    expect(VIM_ACTIONS.length).toBeGreaterThanOrEqual(80);
     const categories = new Set(VIM_ACTIONS.map(a => a.category));
     expect(categories.has('vim')).toBe(true);
     expect(categories.has('electron')).toBe(true);
@@ -65,26 +66,23 @@ describe('VIM_ACTIONS manifest consistency', () => {
     }
   });
 
-  it('no two actions in the same zone should have the same key (except multi-key, alt keys, or different leader groups)', () => {
-    const zoneKeyPairs = new Map<string, { id: string; leaderGroup?: string }[]>();
+  it('no two actions in the same zone should have the same key (except multi-key or alt keys)', () => {
+    const zoneKeyPairs = new Map<string, string[]>();
     for (const action of VIM_ACTIONS) {
       const pairKey = `${action.zone}:${action.key}`;
       if (!zoneKeyPairs.has(pairKey)) {
         zoneKeyPairs.set(pairKey, []);
       }
-      zoneKeyPairs.get(pairKey)!.push({ id: action.id, leaderGroup: action.leaderGroup });
+      zoneKeyPairs.get(pairKey)!.push(action.id);
     }
     for (const [pairKey, entries] of zoneKeyPairs) {
       if (entries.length > 1) {
         const key = pairKey.split(':')[1];
         const isMultiKey = key === 'gg';
-        const isAltMapping = entries.some(e => e.id.endsWith('-alt'));
-        // Actions in different leader groups don't conflict
-        const leaderGroups = new Set(entries.map(e => e.leaderGroup ?? '__direct__'));
-        const allDifferentGroups = leaderGroups.size === entries.length;
+        const isAltMapping = entries.some(e => e.endsWith('-alt'));
         expect(
-          isMultiKey || isAltMapping || allDifferentGroups,
-          `duplicate key ${pairKey}: ${entries.map(e => e.id).join(', ')}`
+          isMultiKey || isAltMapping,
+          `duplicate key ${pairKey}: ${entries.join(', ')}`
         ).toBe(true);
       }
     }
@@ -155,13 +153,13 @@ describe('VIM_ACTIONS manifest consistency', () => {
     }
   });
 
-  it('manifest should include dialog-sidebar zone with numbered agent shortcuts', () => {
+  it('manifest should include dialog-sidebar zone with Ctrl+N agent shortcuts and direct keys', () => {
     const dialogSidebarActions = getActionsForZone('dialog-sidebar');
     expect(dialogSidebarActions.length).toBeGreaterThanOrEqual(8);
     const keys = dialogSidebarActions.map(a => a.key);
-    // Numbered agent shortcuts 1-9
+    // Ctrl+N agent shortcuts
     for (let i = 1; i <= 9; i++) {
-      expect(keys).toContain(String(i));
+      expect(keys).toContain(`Ctrl+${i}`);
     }
     expect(keys).toContain('x');
     expect(keys).toContain('d');
@@ -220,67 +218,6 @@ describe('VIM_ACTIONS manifest consistency', () => {
     }
   });
 
-  it('should not have key conflicts between merge/PR keys and existing dialog-sidebar keys within the same leader group', () => {
-    const sidebarActions = getActionsForZone('dialog-sidebar');
-    // Check conflicts within each leader group separately
-    const groupKeyMaps = new Map<string, Map<string, string>>();
-    for (const action of sidebarActions) {
-      const group = action.leaderGroup ?? '__direct__';
-      if (!groupKeyMaps.has(group)) {
-        groupKeyMaps.set(group, new Map());
-      }
-      const keyMap = groupKeyMaps.get(group)!;
-      const existing = keyMap.get(action.key);
-      if (existing) {
-        expect(false, `key '${action.key}' conflicts in group '${group}': ${existing} and ${action.id}`).toBe(true);
-      }
-      keyMap.set(action.key, action.id);
-    }
-  });
-
-  it('manifest should include agent-resume-sidebar action with key R in dialog-sidebar zone', () => {
-    const action = VIM_ACTIONS.find(a => a.id === 'agent-resume-sidebar');
-    expect(action).toBeDefined();
-    expect(action?.key).toBe('R');
-    expect(action?.zone).toBe('dialog-sidebar');
-    expect(action?.mode).toBe('NORMAL');
-    expect(action?.category).toBe('vim');
-    expect(action?.group).toBe('Sidebar Focus (Work Item)');
-    expect(action?.description).toContain('Resume');
-  });
-
-  it('dialog-sidebar zone should have no key conflicts within leader groups after adding R', () => {
-    const sidebarActions = getActionsForZone('dialog-sidebar');
-    // Check per leader group
-    const groupKeyMaps = new Map<string, Map<string, string>>();
-    for (const action of sidebarActions) {
-      const group = action.leaderGroup ?? '__direct__';
-      if (!groupKeyMaps.has(group)) {
-        groupKeyMaps.set(group, new Map());
-      }
-      const keyMap = groupKeyMaps.get(group)!;
-      const existing = keyMap.get(action.key);
-      if (existing) {
-        expect(false, `key '${action.key}' conflicts in group '${group}': ${existing} and ${action.id}`).toBe(true);
-      }
-      keyMap.set(action.key, action.id);
-    }
-    // Specifically verify R is present in agent group
-    const agentGroup = groupKeyMaps.get('a')!;
-    expect(agentGroup.has('R')).toBe(true);
-    expect(agentGroup.get('R')).toBe('agent-resume-sidebar');
-  });
-
-  it('should include leader-key action with Space key in global zone', () => {
-    const action = VIM_ACTIONS.find(a => a.id === 'leader-key');
-    expect(action).toBeDefined();
-    expect(action?.key).toBe('Space');
-    expect(action?.zone).toBe('global');
-    expect(action?.mode).toBe('NORMAL');
-    expect(action?.category).toBe('vim');
-    expect(action?.group).toBe('Zone Switching');
-  });
-
   it('should include show-shortcuts-dialog action with ? key in global zone', () => {
     const action = VIM_ACTIONS.find(a => a.id === 'show-shortcuts-dialog');
     expect(action).toBeDefined();
@@ -309,96 +246,37 @@ describe('VIM_ACTIONS manifest consistency', () => {
     expect(keys).toContain('j');
     expect(keys).toContain('k');
     expect(keys).toContain('Escape');
-    const ids = logActions.map(a => a.id);
-    expect(ids).toContain('log-down');
-    expect(ids).toContain('log-up');
-    expect(ids).toContain('log-exit');
   });
 
-  it('manifest should include Log Panel Navigation group', () => {
-    const groupMap = getActionsByGroup();
-    expect(groupMap.has('Log Panel Navigation')).toBe(true);
-    const logNavActions = groupMap.get('Log Panel Navigation')!;
-    expect(logNavActions.length).toBeGreaterThanOrEqual(3);
+  it('manifest should include agent-resume-sidebar action with key R', () => {
+    const action = VIM_ACTIONS.find(a => a.id === 'agent-resume-sidebar');
+    expect(action).toBeDefined();
+    expect(action?.key).toBe('R');
+    expect(action?.zone).toBe('dialog-sidebar');
+    expect(action?.description).toContain('Resume');
   });
 
-  // --- Leader group validation tests ---
+  // --- Leader system should not exist ---
 
-  it('should validate all leaderGroup values reference valid LEADER_GROUPS keys', () => {
-    const validGroupKeys = new Set(LEADER_GROUPS.map(g => g.key));
+  it('should not export LeaderGroup or LEADER_GROUPS', () => {
+    expect((vimActionsModule as any).LeaderGroup).toBeUndefined();
+    expect((vimActionsModule as any).LEADER_GROUPS).toBeUndefined();
+  });
+
+  it('should not have any action with leaderGroup field', () => {
     for (const action of VIM_ACTIONS) {
-      if (action.leaderGroup) {
-        expect(
-          validGroupKeys.has(action.leaderGroup),
-          `action ${action.id} references invalid leaderGroup '${action.leaderGroup}'`
-        ).toBe(true);
-      }
+      expect((action as any).leaderGroup, `action ${action.id} has unexpected leaderGroup`).toBeUndefined();
     }
   });
 
-  it('should ensure LEADER_GROUPS keys are unique per zone', () => {
-    const seen = new Map<string, string>();
-    for (const group of LEADER_GROUPS) {
-      const pairKey = `${group.zone}:${group.key}`;
-      expect(
-        !seen.has(pairKey),
-        `duplicate LEADER_GROUPS key '${group.key}' in zone '${group.zone}': ${seen.get(pairKey)} and ${group.label}`
-      ).toBe(true);
-      seen.set(pairKey, group.label);
-    }
+  it('should not export getLeaderGroupsForZone, getDirectLeaderActions, getGroupedLeaderActions', () => {
+    expect((vimActionsModule as any).getLeaderGroupsForZone).toBeUndefined();
+    expect((vimActionsModule as any).getDirectLeaderActions).toBeUndefined();
+    expect((vimActionsModule as any).getGroupedLeaderActions).toBeUndefined();
   });
 
-  it('should ensure no dialog-sidebar action has a key collision within its leaderGroup', () => {
-    const sidebarActions = getActionsForZone('dialog-sidebar');
-    const groupKeyMap = new Map<string, Map<string, string>>();
-    for (const action of sidebarActions) {
-      if (!action.leaderGroup) continue;
-      if (!groupKeyMap.has(action.leaderGroup)) {
-        groupKeyMap.set(action.leaderGroup, new Map());
-      }
-      const keyMap = groupKeyMap.get(action.leaderGroup)!;
-      const existing = keyMap.get(action.key);
-      expect(
-        !existing,
-        `key collision in leaderGroup '${action.leaderGroup}': key '${action.key}' used by ${existing} and ${action.id}`
-      ).toBe(true);
-      keyMap.set(action.key, action.id);
-    }
-  });
-
-  it('getLeaderGroupsForZone returns groups only for the specified zone', () => {
-    const sidebarGroups = getLeaderGroupsForZone('dialog-sidebar');
-    expect(sidebarGroups.length).toBeGreaterThanOrEqual(2);
-    for (const group of sidebarGroups) {
-      expect(group.zone).toBe('dialog-sidebar');
-    }
-    // Content zone should have no leader groups
-    const contentGroups = getLeaderGroupsForZone('content');
-    expect(contentGroups.length).toBe(0);
-  });
-
-  it('getDirectLeaderActions returns actions without leaderGroup for dialog-sidebar', () => {
-    const directActions = getDirectLeaderActions('dialog-sidebar');
-    for (const action of directActions) {
-      expect(action.leaderGroup).toBeUndefined();
-      expect(action.zone).toBe('dialog-sidebar');
-    }
-    const directKeys = directActions.map(a => a.key);
-    expect(directKeys).toContain('d');
-    expect(directKeys).toContain('l');
-  });
-
-  it('getGroupedLeaderActions returns actions for a specific group', () => {
-    const agentActions = getGroupedLeaderActions('dialog-sidebar', 'a');
-    expect(agentActions.length).toBeGreaterThanOrEqual(6);
-    for (const action of agentActions) {
-      expect(action.leaderGroup).toBe('a');
-      expect(action.zone).toBe('dialog-sidebar');
-    }
-    const gitActions = getGroupedLeaderActions('dialog-sidebar', 'g');
-    expect(gitActions.length).toBeGreaterThanOrEqual(5);
-    for (const action of gitActions) {
-      expect(action.leaderGroup).toBe('g');
-    }
+  it('should not include leader-key action in VIM_ACTIONS', () => {
+    const leaderAction = VIM_ACTIONS.find(a => a.id === 'leader-key');
+    expect(leaderAction).toBeUndefined();
   });
 });

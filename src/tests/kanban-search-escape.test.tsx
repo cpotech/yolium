@@ -24,12 +24,6 @@ vi.mock('@renderer/context/VimModeContext', async () => {
       enterInsertMode: mockEnterInsertMode,
       exitToNormal: mockExitToNormal,
       suspendNavigation: () => () => {},
-      leaderPending: false,
-      leaderZone: null,
-      leaderGroupKey: null,
-      clearLeader: vi.fn(),
-      triggerLeader: vi.fn(),
-      setLeaderGroup: vi.fn(),
       enterVisualMode: vi.fn(),
     }),
   }

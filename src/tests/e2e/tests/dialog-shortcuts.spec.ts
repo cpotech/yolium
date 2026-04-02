@@ -189,9 +189,7 @@ test.describe('Dialog Shortcuts', () => {
       await window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
       await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
 
-      // Press Space a R to resume — leader → agent group → Resume
-      await window.keyboard.press('Space');
-      await window.keyboard.press('a');
+      // Press R to resume — direct shortcut (no leader prefix)
       await window.keyboard.press('Shift+r');
 
       // Verify R Resume hint is visible in the shortcuts bar
@@ -206,9 +204,7 @@ test.describe('Dialog Shortcuts', () => {
       await window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
       await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
 
-      // Press Space a R — should be a no-op since agent is idle
-      await window.keyboard.press('Space');
-      await window.keyboard.press('a');
+      // Press R — should be a no-op since agent is idle
       await window.keyboard.press('Shift+r');
 
       // Dialog should still be open (no error, no crash)
@@ -236,9 +232,7 @@ test.describe('Dialog Shortcuts', () => {
       await window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
       await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
 
-      // Press Space a R — should be a no-op since agent is running (R is for resume, not stop)
-      await window.keyboard.press('Space');
-      await window.keyboard.press('a');
+      // Press R — should be a no-op since agent is running (R is for resume, not stop)
       await window.keyboard.press('Shift+r');
 
       // Dialog should still be open (no error, no crash)
@@ -454,7 +448,7 @@ test.describe('Dialog Shortcuts', () => {
       expect(dialogText).toContain('Open project');
     });
 
-    test('should NOT show Ctrl+Shift agent shortcuts (removed in favor of leader groups)', async () => {
+    test('should NOT show Ctrl+Shift agent shortcuts (removed in favor of direct keys)', async () => {
       ctx = await launchApp();
       const { window } = ctx;
 
@@ -462,7 +456,7 @@ test.describe('Dialog Shortcuts', () => {
       await window.click(selectors.shortcutsButton);
       await expect(window.locator(selectors.shortcutsDialog)).toBeVisible();
 
-      // All Ctrl+Shift agent shortcuts should be gone (replaced by leader groups)
+      // All Ctrl+Shift agent shortcuts should be gone (replaced by direct keys and Ctrl+1-9)
       const kbds = await window.locator(`${selectors.shortcutsDialog} kbd`).allTextContents();
       expect(kbds).not.toContain('Ctrl+Shift+S');
       expect(kbds).not.toContain('Ctrl+Shift+D');
@@ -536,12 +530,11 @@ test.describe('Dialog Shortcuts', () => {
       await expect(page.locator(selectors.itemDetailDialog)).toBeVisible({ timeout: 5000 });
     }
 
-    test('should expand log panel when Space l is pressed', async () => {
+    test('should expand log panel when l is pressed', async () => {
       await openItemDetailDialog();
       const page = ctx.window;
 
-      // Press Space then l to toggle log panel (leader prefix required)
-      await page.locator(selectors.itemDetailDialog).press('Space');
+      // Press l to toggle log panel (direct shortcut, no leader prefix)
       await page.locator(selectors.itemDetailDialog).press('l');
 
       // Log panel should now be visible
@@ -549,12 +542,11 @@ test.describe('Dialog Shortcuts', () => {
       await expect(logSection).toBeVisible();
     });
 
-    test('should scroll log panel when j/k is pressed after opening log via Space l', async () => {
+    test('should scroll log panel when j/k is pressed after opening log via l', async () => {
       await openItemDetailDialog();
       const page = ctx.window;
 
-      // Press Space l to open log panel (leader prefix)
-      await page.locator(selectors.itemDetailDialog).press('Space');
+      // Press l to open log panel (direct shortcut)
       await page.locator(selectors.itemDetailDialog).press('l');
 
       // Verify log is open
