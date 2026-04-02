@@ -59,7 +59,7 @@ Each agent is a single Markdown file with YAML frontmatter and a system prompt, 
 ## Features
 
 - **Scheduled Agents (CRON)** - Run specialists autonomously on cron schedules with persistent memory, cost tracking, and adaptive escalation ([details](docs/CRON-AGENTS.md))
-- **Kanban Board** - Built-in project board with Backlog, Ready, In Progress, and Done columns. Track work items, assign agents, and monitor progress — all persisted across sessions
+- **Kanban Board** - Built-in project board with Backlog, Ready, In Progress, and Done columns. Track work items, assign agents, and monitor progress — all persisted across sessions. Attach screenshots and files to work items via paste or file picker
 - **Agent Orchestration** - Plan, Code, Verify, QA, BA, and Design agents work autonomously with interactive pauses when they need input
 - **Parallel Agents** - Each agent gets its own git worktree and branch. Zero conflicts, clean branches ready for PR. ([details](docs/TECHNICAL.md#git-worktrees))
 - **Multi-Tab Terminal** - Run multiple concurrent sessions with a tabbed interface

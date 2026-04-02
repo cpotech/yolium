@@ -303,3 +303,50 @@ describe('openrouterApiKey persistence', () => {
     expect(written.openrouterApiKey).toBe('sk-or-v1-new-key-456');
   });
 });
+
+describe('xaiApiKey persistence', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should load xaiApiKey from settings.json', async () => {
+    const settingsContent = JSON.stringify({
+      name: 'Test User',
+      email: 'test@example.com',
+      xaiApiKey: 'xai-test-key-123',
+    });
+
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(settingsContent);
+
+    const { loadGitConfig } = await import('@main/git/git-config');
+    const result = loadGitConfig();
+
+    expect(result).not.toBeNull();
+    expect(result?.xaiApiKey).toBe('xai-test-key-123');
+  });
+
+  it('should save xaiApiKey to settings.json', async () => {
+    const { saveGitConfig } = await import('@main/git/git-config');
+    const config = {
+      name: 'Test User',
+      email: 'test@example.com',
+      xaiApiKey: 'xai-new-key-456',
+    };
+
+    saveGitConfig(config as any);
+
+    expect(fs.writeFileSync).toHaveBeenCalledOnce();
+    const [writePath, writeContent] = vi.mocked(fs.writeFileSync).mock.calls[0];
+    expect(writePath).toContain('.yolium');
+    expect(writePath).toContain('settings.json');
+
+    const written = JSON.parse(writeContent as string);
+    expect(written.xaiApiKey).toBe('xai-new-key-456');
+  });
+});

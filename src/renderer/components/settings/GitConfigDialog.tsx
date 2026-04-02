@@ -830,18 +830,19 @@ export function GitConfigDialog({
                     <label htmlFor="default-provider" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
                       Default Provider
                     </label>
-                    <select
-                      id="default-provider"
-                      value={defaultProvider}
-                      onChange={(e) => setDefaultProvider(e.target.value as KanbanAgentProvider)}
-                      data-testid="default-provider-select"
-                      className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border-secondary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="claude">Claude</option>
-                      <option value="opencode">OpenCode</option>
-                      <option value="codex">Codex</option>
-                      <option value="openrouter">OpenRouter</option>
-                    </select>
+<select
+  id="default-provider"
+  value={defaultProvider}
+  onChange={(e) => setDefaultProvider(e.target.value as KanbanAgentProvider)}
+  data-testid="default-provider-select"
+  className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border-secondary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+>
+  <option value="claude">Claude</option>
+  <option value="opencode">OpenCode</option>
+  <option value="codex">Codex</option>
+  <option value="openrouter">OpenRouter</option>
+  <option value="xai">xAI</option>
+</select>
                     <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                       Used when creating new kanban items and interactive sessions.
                     </p>

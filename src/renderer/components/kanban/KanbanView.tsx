@@ -15,6 +15,7 @@ import type { SidebarProject } from '@renderer/stores/sidebar-store'
 
 interface KanbanViewProps {
   projectPath: string | null
+  isActive?: boolean
   onSwitchProject?: (newPath: string) => void
   onDeleteProject?: (projectPath: string) => void
   sidebarProjects?: SidebarProject[]
@@ -45,6 +46,7 @@ function resolveAgentName(item: KanbanItem): string {
 
 export function KanbanView({
   projectPath,
+  isActive,
   onSwitchProject,
   onDeleteProject,
   sidebarProjects,
@@ -195,6 +197,17 @@ export function KanbanView({
       viewRef.current.focus()
     }
   }, [projectPath])
+
+  // Focus view when this tab becomes active (fixes lost focus after project switch)
+  useEffect(() => {
+    if (isActive && viewRef.current) {
+      const active = document.activeElement
+      const tag = active?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (dialogOpenRef.current) return
+      viewRef.current.focus()
+    }
+  }, [isActive])
 
   // Focus view when project changes (prevents lost focus after 1/2/3 project switch)
   useEffect(() => {

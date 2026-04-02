@@ -6,7 +6,7 @@ import type { KanbanAgentProvider } from '@shared/types/agent';
 
 export type { GitConfig } from '@shared/types/git';
 
-const VALID_PROVIDERS: KanbanAgentProvider[] = ['claude', 'opencode', 'codex', 'openrouter'];
+const VALID_PROVIDERS: KanbanAgentProvider[] = ['claude', 'opencode', 'codex', 'openrouter', 'xai'];
 
 export function getGitConfigPath(): string {
   const settingsPath = path.join(os.homedir(), '.yolium', 'settings.json');

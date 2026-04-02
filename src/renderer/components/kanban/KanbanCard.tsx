@@ -18,6 +18,8 @@ const agentProviderLabels: Record<KanbanItem['agentProvider'], string> = {
   claude: 'Claude',
   codex: 'Codex',
   opencode: 'OpenCode',
+  openrouter: 'OpenRouter',
+  xai: 'xAI',
 }
 
 /**
