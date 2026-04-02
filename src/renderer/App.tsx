@@ -458,6 +458,7 @@ function App(): React.ReactElement {
         onBack={handleAgentDialogBack}
         onCancel={agentCreation.handleAgentDialogCancel}
         onGitInit={agentCreation.refreshGitStatus}
+        defaultProvider={dialogs.gitConfig?.defaultProvider}
       />
 
       {/* Keyboard shortcuts dialog */}

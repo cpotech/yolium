@@ -116,11 +116,12 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
       githubLogin: storedConfig?.githubLogin,
       providerModelDefaults: storedConfig?.providerModelDefaults,
       providerModels: storedConfig?.providerModels,
+      defaultProvider: storedConfig?.defaultProvider,
     };
   });
 
   // Save git config (preserves existing secrets if not provided, auto-derives identity from PAT)
-  registerGitChannel(ipcMain, GIT_CHANNELS.saveConfig, async (_event, config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; openrouterApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]> }) => {
+  registerGitChannel(ipcMain, GIT_CHANNELS.saveConfig, async (_event, config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; openrouterApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]>; defaultProvider?: string }) => {
     // Load existing config to preserve secrets if not provided in save
     const existing = loadGitConfig();
     const toSave: GitConfig = {
@@ -227,6 +228,13 @@ export function registerGitHandlers(ipcMain: IpcMain): void {
       toSave.providerModels = config.providerModels;
     } else if (existing?.providerModels) {
       toSave.providerModels = existing.providerModels;
+    }
+
+    // Handle default provider
+    if (config.defaultProvider !== undefined) {
+      toSave.defaultProvider = config.defaultProvider as GitConfig['defaultProvider'];
+    } else if (existing?.defaultProvider) {
+      toSave.defaultProvider = existing.defaultProvider;
     }
 
     saveGitConfig(toSave);

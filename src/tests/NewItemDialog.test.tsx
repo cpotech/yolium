@@ -681,4 +681,64 @@ describe('NewItemDialog', () => {
       })
     })
   })
+
+  it('should use configured default provider instead of hardcoded claude', async () => {
+    Object.defineProperty(window, 'electronAPI', {
+      value: {
+        kanban: {
+          addItem: mockKanbanAddItem,
+        },
+        agent: {
+          listDefinitions: vi.fn().mockResolvedValue([]),
+        },
+        git: {
+          loadConfig: vi.fn().mockResolvedValue({ defaultProvider: 'opencode' }),
+        },
+      },
+      writable: true,
+    })
+
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('agent-provider-select')).toHaveValue('opencode')
+    })
+  })
+
+  it('should fall back to claude when no default provider is configured', async () => {
+    Object.defineProperty(window, 'electronAPI', {
+      value: {
+        kanban: {
+          addItem: mockKanbanAddItem,
+        },
+        agent: {
+          listDefinitions: vi.fn().mockResolvedValue([]),
+        },
+        git: {
+          loadConfig: vi.fn().mockResolvedValue(null),
+        },
+      },
+      writable: true,
+    })
+
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('agent-provider-select')).toHaveValue('claude')
+    })
+  })
 })

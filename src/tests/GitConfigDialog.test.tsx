@@ -193,4 +193,94 @@ describe('GitConfigDialog', () => {
       )
     })
   })
+
+  it('should render default provider select with claude as default', async () => {
+    render(
+      <GitConfigDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        initialConfig={{ name: '', email: '' }}
+      />
+    )
+
+    const select = screen.getByTestId('default-provider-select')
+    expect(select).toBeInTheDocument()
+    expect(select).toHaveValue('claude')
+
+    await waitFor(() => {
+      expect(mockGetImageInfo).toHaveBeenCalled()
+    })
+  })
+
+  it('should display saved default provider from initialConfig', async () => {
+    render(
+      <GitConfigDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        initialConfig={{ name: '', email: '', defaultProvider: 'opencode' }}
+      />
+    )
+
+    const select = screen.getByTestId('default-provider-select')
+    expect(select).toHaveValue('opencode')
+
+    await waitFor(() => {
+      expect(mockGetImageInfo).toHaveBeenCalled()
+    })
+  })
+
+  it('should include defaultProvider in save payload', async () => {
+    const onSave = vi.fn()
+    render(
+      <GitConfigDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        onSave={onSave}
+        initialConfig={{ name: '', email: '', defaultProvider: 'codex' }}
+      />
+    )
+
+    fireEvent.click(screen.getByTestId('git-config-save'))
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defaultProvider: 'codex',
+        })
+      )
+    })
+  })
+
+  it('should persist default provider change when selecting opencode', async () => {
+    const onSave = vi.fn()
+    const { container } = render(
+      <GitConfigDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        onSave={onSave}
+        initialConfig={{ name: '', email: '' }}
+      />
+    )
+
+    const select = screen.getByTestId('default-provider-select') as HTMLSelectElement
+    expect(select.value).toBe('claude')
+
+    // Use native select change
+    select.value = 'opencode'
+    fireEvent.change(select)
+
+    expect(select.value).toBe('opencode')
+
+    fireEvent.click(screen.getByTestId('git-config-save'))
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defaultProvider: 'opencode',
+        })
+      )
+    })
+  })
 })

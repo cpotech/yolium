@@ -15,6 +15,7 @@ interface AgentSelectDialogProps {
   onBack: () => void;
   onCancel: () => void;
   onGitInit?: () => void;
+  defaultProvider?: AgentProvider;
 }
 
 export function AgentSelectDialog({
@@ -25,12 +26,13 @@ export function AgentSelectDialog({
   onBack,
   onCancel,
   onGitInit,
+  defaultProvider: initialDefaultProvider,
 }: AgentSelectDialogProps): React.ReactElement | null {
   useSuspendVimNavigation(isOpen);
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstButtonRef = useRef<HTMLButtonElement>(null);
-  const [selectedAgent, setSelectedAgent] = useState<AgentProvider>('claude');
+  const [selectedAgent, setSelectedAgent] = useState<AgentProvider>(initialDefaultProvider ?? 'claude');
   const [gsdEnabled, setGsdEnabled] = useState(false);
   const [worktreeEnabled, setWorktreeEnabled] = useState(false);
   const [branchName, setBranchName] = useState('');

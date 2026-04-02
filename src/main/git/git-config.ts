@@ -2,8 +2,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import type { GitConfig } from '@shared/types/git';
+import type { KanbanAgentProvider } from '@shared/types/agent';
 
 export type { GitConfig } from '@shared/types/git';
+
+const VALID_PROVIDERS: KanbanAgentProvider[] = ['claude', 'opencode', 'codex', 'openrouter'];
 
 export function getGitConfigPath(): string {
   const settingsPath = path.join(os.homedir(), '.yolium', 'settings.json');
@@ -43,6 +46,9 @@ export function loadGitConfig(): GitConfig | null {
           : {}),
         ...(config.providerModels && typeof config.providerModels === 'object'
           ? { providerModels: config.providerModels }
+          : {}),
+        ...(VALID_PROVIDERS.includes(config.defaultProvider as KanbanAgentProvider)
+          ? { defaultProvider: config.defaultProvider as KanbanAgentProvider }
           : {}),
       };
 

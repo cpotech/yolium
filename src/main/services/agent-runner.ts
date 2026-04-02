@@ -110,7 +110,8 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     return { sessionId: '', error: `Item not found: ${itemId}` };
   }
 
-  const provider = agentProvider || item.agentProvider || 'claude';
+  const gitConfig = loadGitConfig();
+  const provider = agentProvider || item.agentProvider || gitConfig?.defaultProvider || 'claude';
   const auth = checkAgentAuth(provider);
   if (!auth.authenticated) {
     const keyType = provider === 'codex' ? 'OpenAI' : 'Anthropic';
@@ -129,7 +130,6 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
   });
   updateBoard(board, { lastAgentName: agentName });
 
-  const gitConfig = loadGitConfig();
   const providerModelsList = gitConfig?.providerModels?.[provider];
   const settingsModel = providerModelsList?.[0] ?? gitConfig?.providerModelDefaults?.[provider];
   const displayModel = getDisplayModel(provider, item.model, settingsModel, agent.model);
