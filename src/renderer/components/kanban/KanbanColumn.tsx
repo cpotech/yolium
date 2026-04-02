@@ -100,7 +100,7 @@ export function KanbanColumn({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`w-72 min-w-72 flex flex-col bg-[var(--color-bg-secondary)] rounded-md border-t-4 ${borderColor} transition-all ${
+      className={`flex-1 min-w-[250px] flex flex-col bg-[var(--color-bg-secondary)] rounded-md border-t-4 ${borderColor} transition-all ${
         isDragOver ? 'ring-2 ring-[var(--color-accent-primary)] bg-[var(--color-bg-tertiary)]' : ''
       }`}
     >
