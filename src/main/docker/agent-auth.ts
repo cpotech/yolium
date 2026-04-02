@@ -35,5 +35,10 @@ export function checkAgentAuth(agent: string): { authenticated: boolean } {
     return { authenticated: hasApiKey };
   }
 
+  if (agent === 'xai') {
+    const hasApiKey = !!(storedConfig?.xaiApiKey || process.env.XAI_API_KEY);
+    return { authenticated: hasApiKey };
+  }
+
   return { authenticated: false };
 }

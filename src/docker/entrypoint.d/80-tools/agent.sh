@@ -104,6 +104,14 @@ CODEXCFG
     fi
     echo "@@YOLIUM:{\"type\":\"complete\",\"summary\":\"${SUMMARY}\"}"
     exit 0
+elif [ "$AGENT_PROV" = "xai" ]; then
+    log "Starting xAI (Grok) headless agent mode"
+    if [ -z "$XAI_API_KEY" ]; then
+        echo "ERROR: No xAI authentication found."
+        echo "Add your xAI API Key in Yolium Settings."
+        exit 3
+    fi
+    exec opencode run -m "xai/$MODEL_ID" "$PROMPT"
 elif [ "$AGENT_PROV" = "openrouter" ]; then
     log "Starting OpenRouter headless agent mode (via Claude CLI)"
     if [ -z "$OPENROUTER_API_KEY" ]; then

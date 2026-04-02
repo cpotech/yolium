@@ -65,6 +65,8 @@ export type GitConfigSaveInput = Pick<
   | 'githubPat'
   | 'openaiApiKey'
   | 'anthropicApiKey'
+  | 'openrouterApiKey'
+  | 'xaiApiKey'
   | 'useClaudeOAuth'
   | 'useCodexOAuth'
   | 'providerModelDefaults'

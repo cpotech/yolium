@@ -52,5 +52,8 @@ export function getDisplayModel(provider: string, itemModel: string | undefined,
   if (provider === 'openrouter') {
     return agentModel;
   }
+  if (provider === 'xai') {
+    return agentModel;
+  }
   return agentModel;
 }

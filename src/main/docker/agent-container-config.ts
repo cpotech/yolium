@@ -33,6 +33,7 @@ export const PROTECTED_ENV_VARS = new Set([
   'ANTHROPIC_BASE_URL',
   'OPENAI_API_KEY',
   'OPENROUTER_API_KEY',
+  'XAI_API_KEY',
   'CLAUDE_OAUTH_ENABLED',
   'CODEX_OAUTH_ENABLED',
 ]);
@@ -163,6 +164,13 @@ export function buildAgentEnv(params: {
             'ANTHROPIC_BASE_URL=https://openrouter.ai/api/v1',
           ];
         }
+      }
+      return [];
+    })(),
+    ...(() => {
+      if (agentProvider === 'xai') {
+        const key = gitConfig?.xaiApiKey || process.env.XAI_API_KEY;
+        return key ? [`XAI_API_KEY=${key}`] : [];
       }
       return [];
     })(),
