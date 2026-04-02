@@ -7,6 +7,7 @@ import { buildScheduledPrompt } from './agent-prompts';
 import { resolveModel } from './agent-model';
 import { checkSpecialistReadiness } from './specialist-readiness';
 import { resolveToolDir } from './tools-resolver';
+import { loadGitConfig } from '@main/git/git-config';
 import {
   createAgentContainer,
   checkAgentAuth,
@@ -47,8 +48,10 @@ export interface ScheduledAgentResult {
 export function startScheduledAgent(params: ScheduledAgentParams): Promise<ScheduledAgentResult> {
   const { specialist, scheduleType, memoryContext, runId } = params;
 
-  // Check auth (scheduled agents use the default Claude provider)
-  const auth = checkAgentAuth('claude');
+  // Check auth (scheduled agents use the configured default provider)
+  const gitConfig = loadGitConfig();
+  const defaultProvider = gitConfig?.defaultProvider || 'claude';
+  const auth = checkAgentAuth(defaultProvider);
   if (!auth.authenticated) {
     return Promise.resolve({
       outcome: 'failed',

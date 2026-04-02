@@ -272,7 +272,7 @@ export async function prepareAgentContainerConfig(params: {
     tools,
     itemId,
     agentName,
-    agentProvider: agentProvider || 'claude',
+    agentProvider: agentProvider || gitConfig?.defaultProvider || 'claude',
     worktreePath,
     originalPath,
     gitConfig,

@@ -33,6 +33,7 @@ export function NewItemDialog({
   const [description, setDescription] = useState('')
   const [branch, setBranch] = useState('')
   const [agentProvider, setAgentProvider] = useState<KanbanAgentProvider>('claude')
+  const [defaultProvider, setDefaultProvider] = useState<KanbanAgentProvider>('claude')
   const [agentType, setAgentType] = useState('plan-agent')
   const [model, setModel] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -48,6 +49,9 @@ export function NewItemDialog({
       if (config?.providerModels) {
         setProviderModels(config.providerModels)
       }
+      if (config?.defaultProvider) {
+        setDefaultProvider(config.defaultProvider)
+      }
     }).catch(() => {})
   }, [])
 
@@ -57,17 +61,21 @@ export function NewItemDialog({
       setTitle('')
       setDescription('')
       setBranch('')
-      setAgentProvider('claude')
       setAgentType('plan-agent')
       setModel('')
       setIsSubmitting(false)
       setErrorMessage(null)
-      // Refresh provider models when dialog opens
+      // Refresh provider models and default provider when dialog opens
       window.electronAPI.git.loadConfig().then(config => {
         if (config?.providerModels) {
           setProviderModels(config.providerModels)
         }
-      }).catch(() => {})
+        const provider = config?.defaultProvider ?? 'claude'
+        setDefaultProvider(provider)
+        setAgentProvider(provider)
+      }).catch(() => {
+        setAgentProvider('claude')
+      })
     }
   }, [isOpen])
 
@@ -103,7 +111,7 @@ export function NewItemDialog({
       setTitle('')
       setDescription('')
       setBranch('')
-      setAgentProvider('claude')
+      setAgentProvider(defaultProvider)
       setAgentType('plan-agent')
       setModel('')
 
@@ -120,7 +128,7 @@ export function NewItemDialog({
     } finally {
       setIsSubmitting(false)
     }
-  }, [canSubmit, isSubmitting, projectPath, title, description, branch, agentProvider, agentType, model, onCreated])
+  }, [canSubmit, isSubmitting, projectPath, title, description, branch, agentProvider, agentType, model, defaultProvider, onCreated])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

@@ -1,5 +1,7 @@
 // Git configuration type definitions
 
+import type { KanbanAgentProvider } from './agent';
+
 export interface GitConfig {
   name: string;
   email: string;
@@ -12,6 +14,7 @@ export interface GitConfig {
   useCodexOAuth?: boolean;  // Use Codex OAuth (ChatGPT) tokens instead of OpenAI API key
   providerModelDefaults?: Record<string, string>;  // Default model per provider (e.g., {"claude": "claude-opus-4-6", "codex": "o3-mini"})
   providerModels?: Record<string, string[]>;  // Multiple models per provider (first is default)
+  defaultProvider?: KanbanAgentProvider;  // Default agent provider (e.g., "claude", "opencode", "codex", "openrouter")
 }
 
 export interface GitConfigWithPat extends GitConfig {
@@ -24,6 +27,7 @@ export interface GitConfigWithPat extends GitConfig {
   githubLogin?: string;  // GitHub username derived from PAT
   providerModelDefaults?: Record<string, string>;  // Default model per provider (e.g., {"claude": "claude-opus-4-6", "codex": "o3-mini"})
   providerModels?: Record<string, string[]>;  // Multiple models per provider (first is default)
+  defaultProvider?: KanbanAgentProvider;  // Default agent provider
   sources?: {
     name?: 'system' | 'environment' | 'yolium';
     email?: 'system' | 'environment' | 'yolium';

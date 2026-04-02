@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
 import type { GitConfigWithPat } from '@shared/types/git';
+import type { KanbanAgentProvider } from '@shared/types/agent';
 import { trapFocus } from '@shared/lib/focus-trap';
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts';
 import { useDialogScroll } from '@renderer/hooks/useDialogScroll';
@@ -10,7 +11,7 @@ export type { GitConfigWithPat } from '@shared/types/git';
 interface GitConfigDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; openrouterApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]> }) => void;
+  onSave: (config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; openrouterApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]>; defaultProvider?: KanbanAgentProvider }) => void;
   initialConfig?: GitConfigWithPat | null;
   onDeleteImage?: () => void;
   onBuildImage?: () => void;
@@ -74,6 +75,7 @@ export function GitConfigDialog({
   const [useCodexOAuth, setUseCodexOAuth] = useState(false);
   const [providerModelDefaults, setProviderModelDefaults] = useState<Record<string, string>>({});
   const [providerModels, setProviderModels] = useState<Record<string, string[]>>({});
+  const [defaultProvider, setDefaultProvider] = useState<KanbanAgentProvider>('claude');
   const [newModelInputs, setNewModelInputs] = useState<Record<string, string>>({});
   const [dockerImageInfo, setDockerImageInfo] = useState<{ name: string; size: number; created: string; stale: boolean } | null>(null);
   const [dockerImageLoading, setDockerImageLoading] = useState(false);
@@ -178,6 +180,7 @@ export function GitConfigDialog({
       setUseClaudeOAuth(initialConfig?.useClaudeOAuth ?? false);
       setUseCodexOAuth(initialConfig?.useCodexOAuth ?? false);
       setProviderModelDefaults(initialConfig?.providerModelDefaults ?? {});
+      setDefaultProvider(initialConfig?.defaultProvider ?? 'claude');
       // Initialize providerModels from config, with migration from providerModelDefaults
       if (initialConfig?.providerModels) {
         setProviderModels(initialConfig.providerModels);
@@ -291,7 +294,7 @@ export function GitConfigDialog({
     const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      const config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; openrouterApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]> } = {};
+      const config: { githubPat?: string; openaiApiKey?: string; anthropicApiKey?: string; openrouterApiKey?: string; useClaudeOAuth?: boolean; useCodexOAuth?: boolean; providerModelDefaults?: Record<string, string>; providerModels?: Record<string, string[]>; defaultProvider?: KanbanAgentProvider } = {};
       if (githubPat.trim()) {
         config.githubPat = githubPat.trim();
       } else if (patCleared) {
@@ -334,9 +337,10 @@ export function GitConfigDialog({
       }
       config.providerModelDefaults = syncedDefaults;
       config.providerModels = providerModels;
+      config.defaultProvider = defaultProvider;
       onSave(config);
     },
-    [githubPat, patCleared, useClaudeOAuth, anthropicApiKey, anthropicKeyCleared, useCodexOAuth, openaiApiKey, openaiKeyCleared, openrouterApiKey, openrouterKeyCleared, providerModels, onSave]
+    [githubPat, patCleared, useClaudeOAuth, anthropicApiKey, anthropicKeyCleared, useCodexOAuth, openaiApiKey, openaiKeyCleared, openrouterApiKey, openrouterKeyCleared, providerModels, defaultProvider, onSave]
   );
 
   if (!isOpen) return null;
@@ -724,6 +728,37 @@ export function GitConfigDialog({
                 <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                   Required for the OpenRouter agent. Uses Claude CLI with OpenRouter&apos;s OpenAI-compatible endpoint.
                 </p>
+              </section>
+
+              <section className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)]/50 p-4 sm:p-5 lg:col-span-2">
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Defaults</h3>
+                  <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                    Default settings for new projects and sessions.
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="default-provider" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
+                      Default Provider
+                    </label>
+                    <select
+                      id="default-provider"
+                      value={defaultProvider}
+                      onChange={(e) => setDefaultProvider(e.target.value as KanbanAgentProvider)}
+                      data-testid="default-provider-select"
+                      className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border-secondary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="claude">Claude</option>
+                      <option value="opencode">OpenCode</option>
+                      <option value="codex">Codex</option>
+                      <option value="openrouter">OpenRouter</option>
+                    </select>
+                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                      Used when creating new kanban items and interactive sessions.
+                    </p>
+                  </div>
+                </div>
               </section>
 
               <section className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)]/50 p-4 sm:p-5 lg:col-span-2">
