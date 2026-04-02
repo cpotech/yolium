@@ -36,7 +36,7 @@ vi.mock('@main/stores/yolium-db', () => {
   const VALID_COLUMNS = new Set(['backlog', 'ready', 'in-progress', 'verify', 'done']);
   const VALID_AGENT_STATUSES = new Set(['idle', 'running', 'waiting', 'interrupted', 'completed', 'failed']);
   const VALID_MERGE_STATUSES = new Set(['unmerged', 'merged', 'conflict']);
-  const VALID_AGENT_PROVIDERS = new Set(['claude', 'opencode', 'codex']);
+  const VALID_AGENT_PROVIDERS = new Set(['claude', 'opencode', 'codex', 'openrouter', 'xai']);
 
   return {
     normalizeForHash: (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '') || '/',

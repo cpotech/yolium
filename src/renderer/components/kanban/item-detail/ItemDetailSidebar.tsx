@@ -130,23 +130,25 @@ export function ItemDetailSidebar({
             Agent Provider
             {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-primary)] rounded border border-[var(--color-border-primary)] font-mono ml-1">1</kbd>}
           </label>
-          {item.agentStatus !== 'running' && item.agentStatus !== 'waiting' ? (
-            <select
-              id="detail-agent-provider"
-              data-testid="agent-provider-select"
-              value={agentProvider}
-              onChange={event => onSetAgentProvider(event.target.value as KanbanItem['agentProvider'])}
-              className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
-            >
-              <option value="claude">Claude</option>
-              <option value="opencode">OpenCode</option>
-              <option value="codex">Codex</option>
-            </select>
-          ) : (
-            <span data-testid="agent-provider-display" className="text-sm text-[var(--color-text-primary)]">
-              {agentProviderLabels[item.agentProvider]}
-            </span>
-          )}
+           {item.agentStatus !== 'running' && item.agentStatus !== 'waiting' ? (
+             <select
+               id="detail-agent-provider"
+               data-testid="agent-provider-select"
+               value={agentProvider}
+               onChange={event => onSetAgentProvider(event.target.value as KanbanItem['agentProvider'])}
+               className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+             >
+               <option value="claude">Claude</option>
+               <option value="opencode">OpenCode</option>
+               <option value="codex">Codex</option>
+               <option value="openrouter">OpenRouter</option>
+               <option value="xai">xAI</option>
+             </select>
+           ) : (
+             <span data-testid="agent-provider-display" className="text-sm text-[var(--color-text-primary)]">
+               {agentProviderLabels[item.agentProvider]}
+             </span>
+           )}
         </div>
 
         <div>

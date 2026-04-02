@@ -17,6 +17,7 @@ const agentProviderOptions: { value: KanbanAgentProvider; label: string }[] = [
   { value: 'codex', label: 'Codex' },
   { value: 'opencode', label: 'OpenCode' },
   { value: 'openrouter', label: 'OpenRouter' },
+  { value: 'xai', label: 'xAI' },
 ]
 
 
