@@ -623,33 +623,34 @@ function App(): React.ReactElement {
                       key={tab.id}
                       className={`absolute inset-0 flex flex-col ${isActive ? '' : 'hidden'}`}
                     >
-                       <ErrorBoundary fallbackLabel="Kanban Board">
+                      <ErrorBoundary fallbackLabel="Kanban Board">
                         <KanbanView
-                            projectPath={tab.cwd}
-                            sidebarProjects={sidebarProjects}
-                            onProjectSelect={handleProjectClick}
-                            onSwitchProject={async (newPath) => {
-                             const oldPath = tab.cwd;
-                             updateCwd(tab.id, newPath);
-                             addSidebarProject(newPath);
-                             if (oldPath) {
-                               removeSidebarProject(oldPath);
-                               await window.electronAPI.kanban.deleteBoard(oldPath);
-                             }
-                             setSidebarProjects(getSidebarProjects());
-                           }}
-                           onDeleteProject={handleDeleteProject}
-                           // StatusBar props
-                           onShowShortcuts={dialogs.openShortcutsDialog}
-                           onOpenSettings={dialogs.openGitConfigDialog}
-                           onOpenProjectSettings={() => dialogs.openProjectConfigDialog(tab.cwd)}
-                           whisperRecordingState={whisper.state.recordingState}
-                           whisperSelectedModel={whisper.state.selectedModel}
-                           onToggleRecording={whisper.toggleRecording}
-                           onOpenModelDialog={whisper.openModelDialog}
-                           claudeUsage={claudeUsage}
-                           onOpenSchedule={addScheduleTab}
-                         />
+                          projectPath={tab.cwd}
+                          isActive={isActive}
+                          sidebarProjects={sidebarProjects}
+                          onProjectSelect={handleProjectClick}
+                          onSwitchProject={async (newPath) => {
+                            const oldPath = tab.cwd;
+                            updateCwd(tab.id, newPath);
+                            addSidebarProject(newPath);
+                            if (oldPath) {
+                              removeSidebarProject(oldPath);
+                              await window.electronAPI.kanban.deleteBoard(oldPath);
+                            }
+                            setSidebarProjects(getSidebarProjects());
+                          }}
+                          onDeleteProject={handleDeleteProject}
+                          // StatusBar props
+                          onShowShortcuts={dialogs.openShortcutsDialog}
+                          onOpenSettings={dialogs.openGitConfigDialog}
+                          onOpenProjectSettings={() => dialogs.openProjectConfigDialog(tab.cwd)}
+                          whisperRecordingState={whisper.state.recordingState}
+                          whisperSelectedModel={whisper.state.selectedModel}
+                          onToggleRecording={whisper.toggleRecording}
+                          onOpenModelDialog={whisper.openModelDialog}
+                          claudeUsage={claudeUsage}
+                          onOpenSchedule={addScheduleTab}
+                        />
                       </ErrorBoundary>
                       <StatusBar
                         folderPath={tab.cwd}
