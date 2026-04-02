@@ -148,6 +148,10 @@ const kanban: ElectronAPI['kanban'] = {
   deleteItem: invoke('kanban:delete-item') as ElectronAPI['kanban']['deleteItem'],
   deleteItems: invoke('kanban:delete-items') as ElectronAPI['kanban']['deleteItems'],
   deleteBoard: invoke('kanban:delete-board') as ElectronAPI['kanban']['deleteBoard'],
+  addAttachment: invoke('kanban:add-attachment') as ElectronAPI['kanban']['addAttachment'],
+  listAttachments: invoke('kanban:list-attachments') as ElectronAPI['kanban']['listAttachments'],
+  readAttachment: invoke('kanban:read-attachment') as ElectronAPI['kanban']['readAttachment'],
+  deleteAttachment: invoke('kanban:delete-attachment') as ElectronAPI['kanban']['deleteAttachment'],
   onBoardUpdated: (callback) => listen('kanban:board-updated', callback),
 };
 

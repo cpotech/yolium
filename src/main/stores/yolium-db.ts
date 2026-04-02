@@ -7,3 +7,4 @@ export { loadProjectRegistry, saveProjectRegistry, registerProject } from './reg
 export { getScheduleState, saveScheduleState, updateSpecialistStatus, toggleSpecialist, toggleGlobal, resetSpecialist, deleteSpecialist, appendRun, getRecentRuns, getRunsSince, getRunStats, trimHistory, appendRunLog, getRunLog } from './schedule-db';
 export { appendAction, getRecentActions, getActionsByRun, getAllRecentActions, getActionStats } from './actions-db';
 export { saveCredentials, loadCredentials, loadRedactedCredentials, deleteCredentials, pruneCredentials } from './credentials-db';
+export { saveAttachment, readAttachment, getAttachmentPath, listAttachments, deleteAttachment, deleteItemAttachments, deleteProjectAttachments, copyAttachmentsToWorktree } from './attachment-store';

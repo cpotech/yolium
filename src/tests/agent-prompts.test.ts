@@ -140,6 +140,34 @@ describe('agent-prompts', () => {
     });
   });
 
+  describe('attachment support in prompts', () => {
+    it('should include attachment list in prompt when item has attachments', () => {
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Code Agent.',
+        goal: 'Implement feature',
+        conversationHistory: '',
+        attachments: [
+          { id: 'att-1', itemId: 'item-1', filename: 'screenshot.png', mimeType: 'image/png', size: 1024, createdAt: '2026-04-02T00:00:00Z' },
+          { id: 'att-2', itemId: 'item-1', filename: 'design.pdf', mimeType: 'application/pdf', size: 2048, createdAt: '2026-04-02T00:00:00Z' },
+        ],
+        containerProjectPath: '/home/user/project',
+      });
+      expect(prompt).toContain('## Attachments');
+      expect(prompt).toContain('screenshot.png');
+      expect(prompt).toContain('design.pdf');
+      expect(prompt).toContain('.yolium/attachments/');
+    });
+
+    it('should omit attachment section when item has no attachments', () => {
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Code Agent.',
+        goal: 'Implement feature',
+        conversationHistory: '',
+      });
+      expect(prompt).not.toContain('## Attachments');
+    });
+  });
+
   describe('no-co-authored-by rules', () => {
     const projectRoot = resolve(__dirname, '..', '..');
 

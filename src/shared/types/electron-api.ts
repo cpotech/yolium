@@ -11,6 +11,7 @@ import type { CacheStats, CleanupResult, DockerState, ProjectCacheInfo } from '.
 import type { GitConfig, GitConfigWithPat } from './git';
 import type {
   CommentSource,
+  KanbanAttachment,
   KanbanBoard,
   KanbanComment,
   KanbanItem,
@@ -380,6 +381,10 @@ export interface KanbanAPI {
   deleteItem: (projectPath: string, itemId: string) => Promise<boolean>;
   deleteItems: (projectPath: string, itemIds: string[]) => Promise<string[]>;
   deleteBoard: (projectPath: string) => Promise<{ deleted: boolean }>;
+  addAttachment: (projectPath: string, itemId: string, filename: string, mimeType: string, base64Data: string) => Promise<KanbanAttachment>;
+  listAttachments: (projectPath: string, itemId: string) => Promise<KanbanAttachment[]>;
+  readAttachment: (projectPath: string, itemId: string, attachmentId: string) => Promise<{ data: string; mimeType: string; filename: string } | null>;
+  deleteAttachment: (projectPath: string, itemId: string, attachmentId: string) => Promise<boolean>;
   onBoardUpdated: (callback: (projectPath: string) => void) => CleanupFunction;
 }
 

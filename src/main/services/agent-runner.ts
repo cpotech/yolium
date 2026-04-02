@@ -13,6 +13,7 @@ import { loadGitConfig } from '@main/git/git-config';
 import {
   getOrCreateBoard, updateItem, updateBoard,
   addComment, buildConversationHistory,
+  listAttachments, copyAttachmentsToWorktree,
 } from '@main/stores/kanban-store';
 import { appendLog, appendSessionHeader } from '@main/stores/workitem-log-store';
 import { createAgentContainer, stopAgentContainer, checkAgentAuth } from '@main/docker';
@@ -118,13 +119,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
 
   const effectiveGoal = goal.trim() || item.title;
   const conversationHistory = buildConversationHistory(item);
-  const prompt = buildAgentPrompt({
-    systemPrompt: agent.systemPrompt,
-    goal: effectiveGoal,
-    conversationHistory,
-    provider,
-    agentName,
-  });
+  const itemAttachments = listAttachments(itemId);
 
   updateItem(board, itemId, {
     agentStatus: 'running',
@@ -174,6 +169,28 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
   }
 
   const model = resolveModel(item.model, settingsModel, agent.model);
+
+  // Copy attachments into the worktree (if any)
+  if (itemAttachments.length > 0 && worktreePath) {
+    try {
+      copyAttachmentsToWorktree(projectPath, itemId, worktreePath);
+    } catch (err) {
+      logger.warn('Failed to copy attachments to worktree', {
+        itemId, error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  // Build prompt after worktree setup so containerProjectPath is accurate
+  const prompt = buildAgentPrompt({
+    systemPrompt: agent.systemPrompt,
+    goal: effectiveGoal,
+    conversationHistory,
+    provider,
+    agentName,
+    attachments: itemAttachments.length > 0 ? itemAttachments : undefined,
+    containerProjectPath: worktreePath || resolvedProjectPath,
+  });
 
   // Write system prompt as fallback reference for non-Claude providers
   if (provider !== 'claude') {

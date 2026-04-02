@@ -96,6 +96,8 @@ vi.mock('@main/stores/kanban-store', () => {
     updateBoard,
     addComment,
     buildConversationHistory,
+    listAttachments: () => [],
+    copyAttachmentsToWorktree: () => [],
   };
 });
 

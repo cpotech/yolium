@@ -29,6 +29,15 @@ export interface TestSpec {
   specs: string[];
 }
 
+export interface KanbanAttachment {
+  id: string;
+  itemId: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  createdAt: string;
+}
+
 export interface KanbanItem {
   id: string;
   title: string;
@@ -49,6 +58,7 @@ export interface KanbanItem {
   mergeStatus?: MergeStatus;
   prUrl?: string;
   verified?: boolean;
+  attachments?: KanbanAttachment[];
   comments: KanbanComment[];
   createdAt: string;
   updatedAt: string;
