@@ -200,7 +200,7 @@ export const ItemDetailEditorPane = forwardRef<React.ComponentRef<'div'>, ItemDe
   const hasAttachments = attachments && attachments.length > 0
 
   return (
-    <div className="flex-1 overflow-y-auto p-6" ref={ref}>
+    <div className="flex-1 overflow-y-auto yolium-scrollbar p-6" ref={ref}>
       <div>
         <div
           data-field-index="0"

@@ -93,7 +93,7 @@ export function ItemDetailSidebar({
   onUpdated,
 }: ItemDetailSidebarProps): React.ReactElement {
   return (
-    <div data-testid="sidebar-zone" className="w-72 overflow-y-auto border-l border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
+    <div data-testid="sidebar-zone" className="w-72 overflow-y-auto yolium-scrollbar border-l border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
       <div className="p-4 border-b border-[var(--color-border-primary)]">
         <AgentControls
           item={item}

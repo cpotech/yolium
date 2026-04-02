@@ -126,7 +126,7 @@ export function KanbanColumn({
       </div>
 
       {/* Cards area */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-[100px]">
+      <div className="flex-1 overflow-y-auto yolium-scrollbar p-2 space-y-2 min-h-[100px]">
         {items.length === 0 ? (
           <div
             data-testid="column-empty-state"

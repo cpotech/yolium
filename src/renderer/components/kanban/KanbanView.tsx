@@ -890,7 +890,7 @@ export function KanbanView({
       {/* Columns container */}
       <div
         data-testid="kanban-columns-container"
-        className="flex-1 overflow-x-auto min-h-0 p-4"
+        className="flex-1 overflow-x-auto yolium-scrollbar min-h-0 p-4"
       >
         <div className="flex gap-4 h-full">
           {columns.map((col, colIndex) => {
