@@ -225,9 +225,16 @@ describe('useVimMode', () => {
     expect(onGoToKanban).not.toHaveBeenCalled();
   });
 
-  // --- Leader-key state machine tests ---
+  // --- Leader-key system removed ---
 
-  it('should set leaderPending=true when Space pressed in NORMAL mode', () => {
+  it('should NOT have leaderPending, leaderZone, or leaderGroupKey in return value', () => {
+    const { result } = renderHook(() => useVimMode());
+    expect(result.current).not.toHaveProperty('leaderPending');
+    expect(result.current).not.toHaveProperty('leaderZone');
+    expect(result.current).not.toHaveProperty('leaderGroupKey');
+  });
+
+  it('should not treat Space as a special key (no leader toggle)', () => {
     const { result } = renderHook(() => useVimMode());
 
     act(() => {
@@ -235,165 +242,10 @@ describe('useVimMode', () => {
       result.current.handleKeyDown(event);
     });
 
-    expect(result.current.leaderPending).toBe(true);
-  });
-
-  it('should activate leader mode with leaderZone=sidebar when Space pressed and activeZone is sidebar', () => {
-    const { result } = renderHook(() => useVimMode());
-
-    // Switch to sidebar first
-    act(() => {
-      const event = new KeyboardEvent('keydown', { key: 'e' });
-      result.current.handleKeyDown(event);
-    });
-    expect(result.current.activeZone).toBe('sidebar');
-
-    // Press Space to enter leader
-    act(() => {
-      const event = new KeyboardEvent('keydown', { key: ' ' });
-      result.current.handleKeyDown(event);
-    });
-
-    expect(result.current.leaderPending).toBe(true);
-    expect(result.current.leaderZone).toBe('sidebar');
-  });
-
-  it('should activate leader mode with leaderZone=content when Space pressed and activeZone is content', () => {
-    const { result } = renderHook(() => useVimMode());
-    // Default activeZone is 'content'
-    expect(result.current.activeZone).toBe('content');
-
-    act(() => {
-      const event = new KeyboardEvent('keydown', { key: ' ' });
-      result.current.handleKeyDown(event);
-    });
-
-    expect(result.current.leaderPending).toBe(true);
-    expect(result.current.leaderZone).toBe('content');
-  });
-
-  it('should activate leader mode with leaderZone=tabs when Space pressed and activeZone is tabs', () => {
-    const { result } = renderHook(() => useVimMode());
-
-    act(() => {
-      const event = new KeyboardEvent('keydown', { key: 't' });
-      result.current.handleKeyDown(event);
-    });
-    expect(result.current.activeZone).toBe('tabs');
-
-    act(() => {
-      const event = new KeyboardEvent('keydown', { key: ' ' });
-      result.current.handleKeyDown(event);
-    });
-
-    expect(result.current.leaderPending).toBe(true);
-    expect(result.current.leaderZone).toBe('tabs');
-  });
-
-  it('should activate leader mode with leaderZone=status-bar when Space pressed and activeZone is status-bar', () => {
-    const { result } = renderHook(() => useVimMode());
-
-    act(() => {
-      const event = new KeyboardEvent('keydown', { key: 's' });
-      result.current.handleKeyDown(event);
-    });
-    expect(result.current.activeZone).toBe('status-bar');
-
-    act(() => {
-      const event = new KeyboardEvent('keydown', { key: ' ' });
-      result.current.handleKeyDown(event);
-    });
-
-    expect(result.current.leaderPending).toBe(true);
-    expect(result.current.leaderZone).toBe('status-bar');
-  });
-
-  it('should clear leader state when clearLeader is called', () => {
-    const { result } = renderHook(() => useVimMode());
-
-    // Enter leader
-    act(() => {
-      const event = new KeyboardEvent('keydown', { key: ' ' });
-      result.current.handleKeyDown(event);
-    });
-    expect(result.current.leaderPending).toBe(true);
-
-    // Clear leader
-    act(() => {
-      result.current.clearLeader();
-    });
-
-    expect(result.current.leaderPending).toBe(false);
-    expect(result.current.leaderZone).toBeNull();
-  });
-
-  it('should NOT auto-clear leader state after any timeout (leader persists indefinitely)', () => {
-    vi.useFakeTimers();
-    const { result } = renderHook(() => useVimMode());
-
-    // Enter leader
-    act(() => {
-      const event = new KeyboardEvent('keydown', { key: ' ' });
-      result.current.handleKeyDown(event);
-    });
-    expect(result.current.leaderPending).toBe(true);
-
-    // Advance timer far beyond old timeout — leader should persist
-    act(() => {
-      vi.advanceTimersByTime(60000);
-    });
-
-    expect(result.current.leaderPending).toBe(true);
-    expect(result.current.leaderZone).toBe('content');
-
-    vi.useRealTimers();
-  });
-
-  it('should not enter leader when dialogOpen is true', () => {
-    const { result } = renderHook(() => useVimMode({ dialogOpen: true }));
-
-    act(() => {
-      const event = new KeyboardEvent('keydown', { key: ' ' });
-      result.current.handleKeyDown(event);
-    });
-
-    expect(result.current.leaderPending).toBe(false);
-  });
-
-  it('should not enter leader in INSERT mode', () => {
-    const { result } = renderHook(() => useVimMode());
-
-    // Enter INSERT mode programmatically
-    act(() => {
-      result.current.enterInsertMode();
-    });
-    expect(result.current.mode).toBe('INSERT');
-
-    // Press Space - should not trigger leader
-    act(() => {
-      const event = new KeyboardEvent('keydown', { key: ' ' });
-      result.current.handleKeyDown(event);
-    });
-
-    expect(result.current.leaderPending).toBe(false);
-  });
-
-  it('should toggle leader off when Space pressed while leaderPending', () => {
-    const { result } = renderHook(() => useVimMode());
-
-    // Enter leader
-    act(() => {
-      const event = new KeyboardEvent('keydown', { key: ' ' });
-      result.current.handleKeyDown(event);
-    });
-    expect(result.current.leaderPending).toBe(true);
-
-    // Press Space again to toggle off
-    act(() => {
-      const event = new KeyboardEvent('keydown', { key: ' ' });
-      result.current.handleKeyDown(event);
-    });
-    expect(result.current.leaderPending).toBe(false);
+    // No leader state properties exist
+    expect(result.current).not.toHaveProperty('leaderPending');
+    // Mode should remain NORMAL (Space is a no-op)
+    expect(result.current.mode).toBe('NORMAL');
   });
 
   it('should call onShowShortcuts when ? is pressed in NORMAL mode', () => {
@@ -425,64 +277,6 @@ describe('useVimMode', () => {
     });
 
     expect(onShowShortcuts).not.toHaveBeenCalled();
-  });
-
-  it('should trigger leader for arbitrary zone via triggerLeader', () => {
-    const { result } = renderHook(() => useVimMode());
-
-    act(() => {
-      result.current.triggerLeader('dialog-sidebar');
-    });
-
-    expect(result.current.leaderPending).toBe(true);
-    expect(result.current.leaderZone).toBe('dialog-sidebar');
-  });
-
-  it('should toggle leader off when triggerLeader called while leaderPending', () => {
-    const { result } = renderHook(() => useVimMode());
-
-    // Enter leader
-    act(() => {
-      result.current.triggerLeader('dialog-sidebar');
-    });
-    expect(result.current.leaderPending).toBe(true);
-
-    // Toggle off
-    act(() => {
-      result.current.triggerLeader('dialog-sidebar');
-    });
-    expect(result.current.leaderPending).toBe(false);
-    expect(result.current.leaderZone).toBeNull();
-  });
-
-  it('should allow triggerLeader even when dialogOpen is true', () => {
-    const { result } = renderHook(() => useVimMode({ dialogOpen: true }));
-
-    act(() => {
-      result.current.triggerLeader('dialog-sidebar');
-    });
-
-    expect(result.current.leaderPending).toBe(true);
-    expect(result.current.leaderZone).toBe('dialog-sidebar');
-  });
-
-  it('should not enter leader in VISUAL mode', () => {
-    const { result } = renderHook(() => useVimMode());
-
-    // Enter VISUAL mode
-    act(() => {
-      const event = new KeyboardEvent('keydown', { key: 'v' });
-      result.current.handleKeyDown(event);
-    });
-    expect(result.current.mode).toBe('VISUAL');
-
-    // Press Space - should not trigger leader
-    act(() => {
-      const event = new KeyboardEvent('keydown', { key: ' ' });
-      result.current.handleKeyDown(event);
-    });
-
-    expect(result.current.leaderPending).toBe(false);
   });
 
   // --- INSERT mode zone-awareness tests ---

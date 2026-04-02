@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 import { describe, expect, it } from 'vitest'
-import { VIM_ACTIONS, LEADER_GROUPS, SHORTCUT_GROUP_ORDER } from '@shared/vim-actions'
+import { VIM_ACTIONS, SHORTCUT_GROUP_ORDER } from '@shared/vim-actions'
 
 describe('VIM_ACTIONS browser entries', () => {
   it('should include browser-toggle action with key b in dialog-sidebar zone', () => {
@@ -47,11 +47,6 @@ describe('VIM_ACTIONS browser entries', () => {
     expect(action).toBeDefined()
     expect(action!.key).toBe('Escape')
     expect(action!.zone).toBe('dialog-browser')
-  })
-
-  it('LEADER_GROUPS should NOT include b (browser uses focus mode, not leader group)', () => {
-    const bGroup = LEADER_GROUPS.find(g => g.key === 'b')
-    expect(bGroup).toBeUndefined()
   })
 
   it('SHORTCUT_GROUP_ORDER should include Browser Preview', () => {

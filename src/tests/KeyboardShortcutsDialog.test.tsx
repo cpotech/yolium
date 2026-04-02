@@ -18,7 +18,7 @@ describe('KeyboardShortcutsDialog', () => {
     expect(kbds).not.toContain('Ctrl+Shift+V')
   })
 
-  it('should render sidebar agent shortcuts (via leader groups, not Ctrl+Shift)', () => {
+  it('should render sidebar agent shortcuts (Ctrl+N, not Ctrl+Shift)', () => {
     render(<KeyboardShortcutsDialog isOpen={true} onClose={() => {}} />)
 
     const dialog = screen.getByTestId('shortcuts-dialog')

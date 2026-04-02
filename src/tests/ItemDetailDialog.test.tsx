@@ -8,12 +8,8 @@ import { ItemDetailDialog } from '@renderer/components/kanban/ItemDetailDialog'
 import type { KanbanItem } from '@shared/types/kanban'
 
 const mockVimMode = { current: 'NORMAL' as 'NORMAL' | 'INSERT' }
-const mockLeaderState = { pending: false, groupKey: null as string | null }
 const mockExitToNormal = vi.fn()
 const mockEnterInsertMode = vi.fn()
-const mockClearLeader = vi.fn(() => { mockLeaderState.pending = false; mockLeaderState.groupKey = null })
-const mockSetLeaderGroup = vi.fn((key: string | null) => { mockLeaderState.groupKey = key })
-const mockTriggerLeader = vi.fn((zone: string) => { mockLeaderState.pending = true })
 
 vi.mock('@renderer/context/VimModeContext', async () => {
   const actual = await vi.importActual<typeof import('@renderer/context/VimModeContext')>('@renderer/context/VimModeContext')
@@ -26,12 +22,6 @@ vi.mock('@renderer/context/VimModeContext', async () => {
       enterInsertMode: mockEnterInsertMode,
       exitToNormal: mockExitToNormal,
       suspendNavigation: () => () => {},
-      leaderPending: mockLeaderState.pending,
-      leaderZone: mockLeaderState.pending ? 'dialog-sidebar' : null,
-      leaderGroupKey: mockLeaderState.groupKey,
-      clearLeader: mockClearLeader,
-      triggerLeader: mockTriggerLeader,
-      setLeaderGroup: mockSetLeaderGroup,
       enterVisualMode: vi.fn(),
     }),
   }
@@ -120,8 +110,6 @@ beforeEach(() => {
   vi.clearAllMocks()
   Element.prototype.scrollIntoView = vi.fn()
   mockVimMode.current = 'NORMAL'
-  mockLeaderState.pending = false
-  mockLeaderState.groupKey = null
   mockLoadConfig.mockResolvedValue({
     providerModels: {
       claude: ['sonnet'],
@@ -202,23 +190,6 @@ const dialogPropsDefault = {
   onUpdated: vi.fn(),
 }
 
-/** Set mock leader state and force a re-render so the component picks up new values */
-async function activateLeader(
-  result: ReturnType<typeof render>,
-  item: KanbanItem,
-  state: { pending: boolean; groupKey: string | null },
-) {
-  mockLeaderState.pending = state.pending
-  mockLeaderState.groupKey = state.groupKey
-  await act(async () => {
-    result.rerender(
-      <ItemDetailDialog
-        {...dialogPropsDefault}
-        item={item}
-      />,
-    )
-  })
-}
 
 describe('ItemDetailDialog', () => {
   it('should preserve in-progress title edits when the same item id rerenders with backend updates', () => {
@@ -552,19 +523,20 @@ describe('ItemDetailDialog', () => {
       expect(sidebar).toBeInTheDocument()
     })
 
-    it('should trigger plan-agent start via Space a 1 in sidebar zone', async () => {
+    it('should trigger plan-agent start via Ctrl+1', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
       const item = createMockItem({ agentStatus: 'idle' })
 
-      const result = render(
+      render(
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
-      await activateLeader(result, item, { pending: true, groupKey: 'a' })
+      // Wait for listDefinitions() promise to resolve and populate sortedAgents
+      await act(async () => { await new Promise(r => setTimeout(r, 0)) })
 
       await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: '1' })
+        fireEvent.keyDown(getContainer(), { key: '1', ctrlKey: true })
       })
 
       expect(mockStart).toHaveBeenCalledWith(
@@ -572,19 +544,19 @@ describe('ItemDetailDialog', () => {
       )
     })
 
-    it('should trigger code-agent start via Space a 2 in sidebar zone', async () => {
+    it('should trigger code-agent start via Ctrl+2', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
       const item = createMockItem({ agentStatus: 'idle' })
 
-      const result = render(
+      render(
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
-      await activateLeader(result, item, { pending: true, groupKey: 'a' })
+      await act(async () => { await new Promise(r => setTimeout(r, 0)) })
 
       await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: '2' })
+        fireEvent.keyDown(getContainer(), { key: '2', ctrlKey: true })
       })
 
       expect(mockStart).toHaveBeenCalledWith(
@@ -592,19 +564,19 @@ describe('ItemDetailDialog', () => {
       )
     })
 
-    it('should trigger verify-agent start via Space a 3 in sidebar zone', async () => {
+    it('should trigger verify-agent start via Ctrl+3', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
       const item = createMockItem({ agentStatus: 'idle' })
 
-      const result = render(
+      render(
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
-      await activateLeader(result, item, { pending: true, groupKey: 'a' })
+      await act(async () => { await new Promise(r => setTimeout(r, 0)) })
 
       await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: '3' })
+        fireEvent.keyDown(getContainer(), { key: '3', ctrlKey: true })
       })
 
       expect(mockStart).toHaveBeenCalledWith(
@@ -612,19 +584,19 @@ describe('ItemDetailDialog', () => {
       )
     })
 
-    it('should trigger scout-agent start via Space a 4 in sidebar zone', async () => {
+    it('should trigger scout-agent start via Ctrl+4', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
       const item = createMockItem({ agentStatus: 'idle' })
 
-      const result = render(
+      render(
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
-      await activateLeader(result, item, { pending: true, groupKey: 'a' })
+      await act(async () => { await new Promise(r => setTimeout(r, 0)) })
 
       await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: '4' })
+        fireEvent.keyDown(getContainer(), { key: '4', ctrlKey: true })
       })
 
       expect(mockStart).toHaveBeenCalledWith(
@@ -632,19 +604,19 @@ describe('ItemDetailDialog', () => {
       )
     })
 
-    it('should trigger design-agent start via Space a 5 in sidebar zone', async () => {
+    it('should trigger design-agent start via Ctrl+5', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
       const item = createMockItem({ agentStatus: 'idle' })
 
-      const result = render(
+      render(
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
-      await activateLeader(result, item, { pending: true, groupKey: 'a' })
+      await act(async () => { await new Promise(r => setTimeout(r, 0)) })
 
       await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: '5' })
+        fireEvent.keyDown(getContainer(), { key: '5', ctrlKey: true })
       })
 
       expect(mockStart).toHaveBeenCalledWith(
@@ -652,19 +624,19 @@ describe('ItemDetailDialog', () => {
       )
     })
 
-    it('should trigger marketing-agent start via Space a 6 in sidebar zone', async () => {
+    it('should trigger marketing-agent start via Ctrl+6', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
       const item = createMockItem({ agentStatus: 'idle' })
 
-      const result = render(
+      render(
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
-      await activateLeader(result, item, { pending: true, groupKey: 'a' })
+      await act(async () => { await new Promise(r => setTimeout(r, 0)) })
 
       await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: '6' })
+        fireEvent.keyDown(getContainer(), { key: '6', ctrlKey: true })
       })
 
       expect(mockStart).toHaveBeenCalledWith(
@@ -672,7 +644,7 @@ describe('ItemDetailDialog', () => {
       )
     })
 
-    it('should trigger stop agent via Space a x in sidebar zone with running agent', async () => {
+    it('should trigger stop agent via direct x key with running agent', async () => {
       const mockStop = vi.fn()
       window.electronAPI.agent.stop = mockStop
       mockGetActiveSession.mockResolvedValue({
@@ -681,7 +653,7 @@ describe('ItemDetailDialog', () => {
       })
       const item = createMockItem({ agentStatus: 'running' })
 
-      const result = render(
+      render(
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
@@ -690,8 +662,6 @@ describe('ItemDetailDialog', () => {
         await new Promise(r => setTimeout(r, 0))
       })
 
-      await activateLeader(result, item, { pending: true, groupKey: 'a' })
-
       await act(async () => {
         fireEvent.keyDown(getContainer(), { key: 'x' })
       })
@@ -699,15 +669,13 @@ describe('ItemDetailDialog', () => {
       expect(mockStop).toHaveBeenCalledWith('session-1')
     })
 
-    it('should trigger delete via Space d in sidebar zone', async () => {
+    it('should trigger delete via direct d key', async () => {
       mockKanbanDeleteItem.mockResolvedValue(undefined)
       const item = createMockItem({ agentStatus: 'idle' })
 
-      const result = render(
+      render(
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
-
-      await activateLeader(result, item, { pending: true, groupKey: null })
 
       await act(async () => {
         fireEvent.keyDown(getContainer(), { key: 'd' })
@@ -716,7 +684,7 @@ describe('ItemDetailDialog', () => {
       expect(mockKanbanDeleteItem).toHaveBeenCalledWith('/test/project', 'item-1')
     })
 
-    it('should not trigger agent shortcuts without leader prefix', async () => {
+    it('should not trigger agent shortcuts with bare key (p does nothing)', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
 
@@ -730,7 +698,7 @@ describe('ItemDetailDialog', () => {
         />,
       )
 
-      // Press p without leader — should not start agent
+      // Press p — should not start agent
       await act(async () => {
         fireEvent.keyDown(getContainer(), { key: 'p' })
       })
@@ -761,26 +729,24 @@ describe('ItemDetailDialog', () => {
       expect(mockStart).not.toHaveBeenCalled()
     })
 
-    it('should not trigger single-key agent shortcuts when agent is already starting', async () => {
+    it('should not trigger agent shortcuts when agent is already starting', async () => {
       // Use a never-resolving promise to keep isStartingAgent true
       const mockStart = vi.fn().mockReturnValue(new Promise(() => {}))
       window.electronAPI.agent.start = mockStart
       const item = createMockItem({ agentStatus: 'idle' })
 
-      const result = render(
+      render(
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
-      // Activate leader → agent group, start first agent (sets isStartingAgent = true)
-      await activateLeader(result, item, { pending: true, groupKey: 'a' })
+      // Start first agent with Ctrl+1 (sets isStartingAgent = true)
       await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: '1' })
+        fireEvent.keyDown(getContainer(), { key: '1', ctrlKey: true })
       })
 
       // Try starting another while first is still pending
-      await activateLeader(result, item, { pending: true, groupKey: 'a' })
       await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: '2' })
+        fireEvent.keyDown(getContainer(), { key: '2', ctrlKey: true })
       })
 
       // Only one start call should have been made
@@ -808,7 +774,7 @@ describe('ItemDetailDialog', () => {
       expect(mockStart).not.toHaveBeenCalled()
     })
 
-    it('should NOT trigger Ctrl+Shift agent shortcuts (removed in favor of leader groups)', async () => {
+    it('should NOT trigger Ctrl+Shift agent shortcuts (removed)', async () => {
       const mockStart = vi.fn().mockResolvedValue({ sessionId: 'session-1' })
       window.electronAPI.agent.start = mockStart
 
@@ -834,41 +800,7 @@ describe('ItemDetailDialog', () => {
       expect(mockStart).not.toHaveBeenCalled()
     })
 
-    it('should trigger leader for dialog-sidebar zone when Space pressed in NORMAL mode', () => {
-      render(
-        <ItemDetailDialog
-          isOpen={true}
-          item={createMockItem()}
-          projectPath="/test/project"
-          onClose={vi.fn()}
-          onUpdated={vi.fn()}
-        />,
-      )
-
-      fireEvent.keyDown(getContainer(), { key: ' ' })
-
-      expect(mockTriggerLeader).toHaveBeenCalledWith('dialog-sidebar')
-    })
-
-    it('should process sidebar leader shortcuts without needing Tab first', async () => {
-      mockKanbanDeleteItem.mockResolvedValue(undefined)
-      const item = createMockItem({ agentStatus: 'idle' })
-
-      const result = render(
-        <ItemDetailDialog {...dialogPropsDefault} item={item} />,
-      )
-
-      // Space d should delete without pressing Tab first
-      await activateLeader(result, item, { pending: true, groupKey: null })
-
-      await act(async () => {
-        fireEvent.keyDown(getContainer(), { key: 'd' })
-      })
-
-      expect(mockKanbanDeleteItem).toHaveBeenCalledWith('/test/project', 'item-1')
-    })
-
-    it('should show Space in hint bar instead of Tab for sidebar actions', () => {
+    it('should show direct shortcut hints in NORMAL mode hint bar', () => {
       render(
         <ItemDetailDialog
           isOpen={true}
@@ -880,11 +812,9 @@ describe('ItemDetailDialog', () => {
       )
 
       const hintBar = screen.getByTestId('shortcuts-hint-bar')
-      expect(hintBar.textContent).toContain('Space')
-      expect(hintBar.textContent).toContain('Actions')
-      expect(hintBar.textContent).not.toContain('Tab')
       expect(hintBar.textContent).toContain('Navigate')
       expect(hintBar.textContent).toContain('Edit field')
+      expect(hintBar.textContent).toContain('Ctrl+Q')
     })
   })
 
@@ -1108,24 +1038,20 @@ describe('ItemDetailDialog', () => {
   describe('log panel keyboard shortcuts', () => {
     const getContainer = () => screen.getByTestId('item-detail-dialog').parentElement!
 
-    /** Toggle log open via leader prefix (Space l) */
-    async function toggleLogViaLeader(result: ReturnType<typeof render>, item: KanbanItem) {
-      await activateLeader(result, item, { pending: true, groupKey: null })
+    /** Toggle log open via direct l key */
+    async function toggleLog() {
       await act(async () => {
         fireEvent.keyDown(getContainer(), { key: 'l' })
       })
     }
 
-    it('should toggle log panel when Space l is pressed in sidebar zone NORMAL mode', async () => {
+    it('should toggle log panel when l is pressed in NORMAL mode', async () => {
       const item = createMockItem({ agentStatus: 'idle' })
-      const result = render(
+      render(
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
-
-
-      // Activate leader and press l to toggle log
-      await activateLeader(result, item, { pending: true, groupKey: null })
+      // Press l to toggle log
       await act(async () => {
         fireEvent.keyDown(getContainer(), { key: 'l' })
       })
@@ -1134,7 +1060,7 @@ describe('ItemDetailDialog', () => {
       expect(screen.getByTestId('agent-log-section')).toBeInTheDocument()
     })
 
-    it('should not toggle log when l is pressed in editor zone', async () => {
+    it('should toggle log when l is pressed directly (no leader needed)', async () => {
       render(
         <ItemDetailDialog
           isOpen={true}
@@ -1145,13 +1071,13 @@ describe('ItemDetailDialog', () => {
         />,
       )
 
-      // Press l while in editor zone (default)
+      // Press l to toggle log (now a direct shortcut)
       await act(async () => {
         fireEvent.keyDown(getContainer(), { key: 'l' })
       })
 
-      // Log panel should not be visible (no agent output lines yet)
-      expect(screen.queryByTestId('agent-log-section')).not.toBeInTheDocument()
+      // Log panel should be visible (l is now a direct sidebar shortcut)
+      expect(screen.getByTestId('agent-log-section')).toBeInTheDocument()
     })
 
     it('should not toggle log when l is pressed in INSERT mode', async () => {
@@ -1204,7 +1130,7 @@ describe('ItemDetailDialog', () => {
 
     it('should enter log focus and scroll down when j is pressed while log is open in sidebar zone', async () => {
       const item = createMockItem({ agentStatus: 'running' })
-      const result = render(
+      render(
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
@@ -1213,10 +1139,8 @@ describe('ItemDetailDialog', () => {
         await new Promise(r => setTimeout(r, 0))
       })
 
-
-
-      // Toggle log open via leader
-      await toggleLogViaLeader(result, item)
+      // Toggle log open
+      await toggleLog()
 
       // Verify log is now visible
       expect(screen.getByTestId('agent-log-section')).toBeInTheDocument()
@@ -1232,7 +1156,7 @@ describe('ItemDetailDialog', () => {
 
     it('should enter log focus and scroll up when k is pressed while log is open in sidebar zone', async () => {
       const item = createMockItem({ agentStatus: 'running' })
-      const result = render(
+      render(
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
@@ -1240,10 +1164,8 @@ describe('ItemDetailDialog', () => {
         await new Promise(r => setTimeout(r, 0))
       })
 
-
-
-      // Toggle log open via leader
-      await toggleLogViaLeader(result, item)
+      // Toggle log open
+      await toggleLog()
 
       // Verify log is visible
       expect(screen.getByTestId('agent-log-section')).toBeInTheDocument()
@@ -1259,7 +1181,7 @@ describe('ItemDetailDialog', () => {
 
     it('should pause auto-scroll when j is pressed in log focus mode', async () => {
       const item = createMockItem({ agentStatus: 'running' })
-      const result = render(
+      render(
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
@@ -1267,8 +1189,8 @@ describe('ItemDetailDialog', () => {
         await new Promise(r => setTimeout(r, 0))
       })
 
-      // Toggle log via leader
-      await toggleLogViaLeader(result, item)
+      // Toggle log open
+      await toggleLog()
 
       // Enter log focus by pressing j
       await act(async () => {
@@ -1282,7 +1204,7 @@ describe('ItemDetailDialog', () => {
 
     it('should resume auto-scroll when Escape is pressed in log focus mode', async () => {
       const item = createMockItem({ agentStatus: 'running' })
-      const result = render(
+      render(
         <ItemDetailDialog {...dialogPropsDefault} item={item} />,
       )
 
@@ -1290,8 +1212,8 @@ describe('ItemDetailDialog', () => {
         await new Promise(r => setTimeout(r, 0))
       })
 
-      // Toggle log via leader
-      await toggleLogViaLeader(result, item)
+      // Toggle log open
+      await toggleLog()
 
       // Enter log focus
       await act(async () => {
@@ -1318,7 +1240,7 @@ describe('ItemDetailDialog', () => {
       })
 
       // Toggle log open via leader
-      await toggleLogViaLeader(result, item)
+      await toggleLog()
 
       // Verify log is open
       expect(screen.getByTestId('agent-log-section')).toBeInTheDocument()
@@ -1348,7 +1270,7 @@ describe('ItemDetailDialog', () => {
       })
 
       // Toggle log open via leader
-      await toggleLogViaLeader(result, item)
+      await toggleLog()
 
       // Enter log focus by pressing j
       await act(async () => {
@@ -1375,7 +1297,7 @@ describe('ItemDetailDialog', () => {
       })
 
       // Toggle log open via leader
-      await toggleLogViaLeader(result, item)
+      await toggleLog()
 
       // Enter log focus by pressing j
       await act(async () => {
@@ -1402,7 +1324,7 @@ describe('ItemDetailDialog', () => {
       })
 
       // Toggle log open via leader
-      await toggleLogViaLeader(result, item)
+      await toggleLog()
 
       // Enter log focus by pressing j
       await act(async () => {
@@ -1420,7 +1342,7 @@ describe('ItemDetailDialog', () => {
       })
 
       // Hint bar should now show normal NORMAL mode hints (not log focus hints)
-      expect(hintBar.textContent).toContain('Actions')
+      expect(hintBar.textContent).toContain('Edit field')
       expect(hintBar.textContent).toContain('Navigate')
     })
 
@@ -1456,12 +1378,12 @@ describe('ItemDetailDialog', () => {
         await new Promise(r => setTimeout(r, 0))
       })
 
-      // Toggle log open via leader
-      await toggleLogViaLeader(result, item)
+      // Toggle log open via direct l key
+      await toggleLog()
 
       // Verify hint bar before entering log focus
       const hintBar = screen.getByTestId('shortcuts-hint-bar')
-      expect(hintBar.textContent).toContain('Actions')
+      expect(hintBar.textContent).toContain('Edit field')
 
       // Enter log focus by pressing j
       await act(async () => {

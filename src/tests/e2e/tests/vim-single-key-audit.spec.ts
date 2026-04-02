@@ -44,7 +44,7 @@ const COVERED_ACTIONS = new Set([
   'mode-normal',
   // Global zone switching
   'zone-sidebar', 'zone-tabs', 'zone-content', 'zone-status',
-  'go-to-kanban', 'leader-key', 'show-shortcuts-dialog',
+  'go-to-kanban', 'show-shortcuts-dialog',
   // Content (kanban)
   'card-down', 'card-up', 'col-left', 'col-right',
   'card-first', 'card-last', 'card-open', 'card-delete',

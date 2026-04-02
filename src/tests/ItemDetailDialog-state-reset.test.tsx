@@ -8,7 +8,6 @@ import { ItemDetailDialog } from '@renderer/components/kanban/ItemDetailDialog'
 import type { KanbanItem } from '@shared/types/kanban'
 
 const mockVimMode = { current: 'NORMAL' as 'NORMAL' | 'INSERT' }
-const mockLeaderState = { pending: false, groupKey: null as string | null }
 
 vi.mock('@renderer/context/VimModeContext', async () => {
   const actual = await vi.importActual<typeof import('@renderer/context/VimModeContext')>('@renderer/context/VimModeContext')
@@ -21,12 +20,6 @@ vi.mock('@renderer/context/VimModeContext', async () => {
       enterInsertMode: vi.fn(),
       exitToNormal: vi.fn(),
       suspendNavigation: () => () => {},
-      leaderPending: mockLeaderState.pending,
-      leaderZone: null,
-      leaderGroupKey: mockLeaderState.groupKey,
-      clearLeader: vi.fn(),
-      triggerLeader: vi.fn(),
-      setLeaderGroup: vi.fn(),
       enterVisualMode: vi.fn(),
     }),
   }
@@ -73,8 +66,6 @@ beforeEach(() => {
   vi.clearAllMocks()
   Element.prototype.scrollIntoView = vi.fn()
   mockVimMode.current = 'NORMAL'
-  mockLeaderState.pending = false
-  mockLeaderState.groupKey = null
   mockLoadConfig.mockResolvedValue({
     providerModels: {
       claude: ['sonnet'],
