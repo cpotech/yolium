@@ -142,6 +142,7 @@ vi.mock('@main/docker', () => ({
   stopAgentContainer: mockStopAgentContainer,
   checkAgentAuth: mockCheckAgentAuth,
   getAgentSession: mockGetAgentSession,
+  ensureImage: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { addItem, getOrCreateBoard, updateItem } from '@main/stores/kanban-store';
