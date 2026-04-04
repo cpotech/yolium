@@ -264,6 +264,7 @@ export function StatusBar({
   }, [focusedButtonIndex, isZoneActive, getButtons]);
 
   const primaryLabel = folderPath || contextLabel;
+  const projectName = folderPath?.replace(/\\/g, '/').split('/').filter(Boolean).pop();
   const hasBranchMetadata = Boolean(worktreeName || gitBranch);
   const hasContextMetadata = Boolean(primaryLabel || hasBranchMetadata || containerInfo);
   return (
@@ -291,8 +292,8 @@ export function StatusBar({
           -- {vim.mode} --
         </span>
         {folderPath && (
-          <span data-testid="status-path" className="truncate max-w-[300px]">
-            {folderPath}
+          <span data-testid="status-path" className="truncate max-w-[300px]" title={folderPath}>
+            {projectName}
           </span>
         )}
         {!folderPath && contextLabel && (
