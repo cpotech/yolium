@@ -7,6 +7,13 @@ import { NewItemDialog } from '@renderer/components/kanban/NewItemDialog'
 
 // Mock the electronAPI
 const mockKanbanAddItem = vi.fn()
+const mockKanbanAddAttachment = vi.fn()
+
+// Mock URL.createObjectURL / revokeObjectURL
+const mockCreateObjectURL = vi.fn(() => 'blob:mock-url')
+const mockRevokeObjectURL = vi.fn()
+globalThis.URL.createObjectURL = mockCreateObjectURL
+globalThis.URL.revokeObjectURL = mockRevokeObjectURL
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -15,6 +22,7 @@ beforeEach(() => {
     value: {
       kanban: {
         addItem: mockKanbanAddItem,
+        addAttachment: mockKanbanAddAttachment,
       },
       agent: {
         listDefinitions: vi.fn().mockResolvedValue([]),
@@ -386,11 +394,12 @@ describe('NewItemDialog', () => {
     const select = screen.getByTestId('agent-provider-select')
     const options = select.querySelectorAll('option')
 
-    expect(options).toHaveLength(4)
+    expect(options).toHaveLength(5)
     expect(options[0]).toHaveValue('claude')
     expect(options[1]).toHaveValue('codex')
     expect(options[2]).toHaveValue('opencode')
     expect(options[3]).toHaveValue('openrouter')
+    expect(options[4]).toHaveValue('xai')
   })
 
   it('should submit form on Ctrl+Enter when valid', async () => {
@@ -740,5 +749,281 @@ describe('NewItemDialog', () => {
     await waitFor(() => {
       expect(screen.getByTestId('agent-provider-select')).toHaveValue('claude')
     })
+  })
+
+  // --- Attachment staging tests ---
+
+  it('should render attachments section with add file button when dialog is open', () => {
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    expect(screen.getByTestId('attachments-section')).toBeInTheDocument()
+    expect(screen.getByTestId('add-attachment-btn')).toBeInTheDocument()
+  })
+
+  it('should show empty state when no files are staged', () => {
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    expect(screen.getByTestId('empty-attachments')).toBeInTheDocument()
+  })
+
+  it('should stage files when selected via file input', async () => {
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    const fileInput = screen.getByTestId('file-input') as HTMLInputElement
+    const file = new File(['hello'], 'test.txt', { type: 'text/plain' })
+
+    fireEvent.change(fileInput, { target: { files: [file] } })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('staged-file-0')).toBeInTheDocument()
+      expect(screen.queryByTestId('empty-attachments')).not.toBeInTheDocument()
+    })
+  })
+
+  it('should display staged file thumbnails with filename and size', async () => {
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    const fileInput = screen.getByTestId('file-input') as HTMLInputElement
+    const file = new File(['hello world'], 'document.pdf', { type: 'application/pdf' })
+
+    fireEvent.change(fileInput, { target: { files: [file] } })
+
+    await waitFor(() => {
+      const thumbnail = screen.getByTestId('staged-file-0')
+      expect(thumbnail.textContent).toContain('document.pdf')
+      expect(thumbnail.textContent).toContain('B') // size in bytes
+    })
+  })
+
+  it('should remove a staged file when delete button is clicked', async () => {
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    const fileInput = screen.getByTestId('file-input') as HTMLInputElement
+    const file = new File(['hello'], 'test.txt', { type: 'text/plain' })
+
+    fireEvent.change(fileInput, { target: { files: [file] } })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('staged-file-0')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('remove-file-0'))
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('staged-file-0')).not.toBeInTheDocument()
+      expect(screen.getByTestId('empty-attachments')).toBeInTheDocument()
+    })
+  })
+
+  it('should clear staged files when dialog closes and reopens', async () => {
+    const { rerender } = render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    const fileInput = screen.getByTestId('file-input') as HTMLInputElement
+    const file = new File(['hello'], 'test.txt', { type: 'text/plain' })
+
+    fireEvent.change(fileInput, { target: { files: [file] } })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('staged-file-0')).toBeInTheDocument()
+    })
+
+    // Close dialog
+    rerender(
+      <NewItemDialog
+        isOpen={false}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    // Reopen dialog
+    rerender(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByTestId('staged-file-0')).not.toBeInTheDocument()
+    expect(screen.getByTestId('empty-attachments')).toBeInTheDocument()
+  })
+
+  it('should upload staged files after item creation on submit', async () => {
+    mockKanbanAddItem.mockResolvedValueOnce({ id: 'new-item-1', description: 'desc', agentProvider: 'claude' })
+    mockKanbanAddAttachment.mockResolvedValue(undefined)
+    const onCreated = vi.fn()
+
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={onCreated}
+      />
+    )
+
+    // Stage a file
+    const fileInput = screen.getByTestId('file-input') as HTMLInputElement
+    const file = new File(['hello'], 'test.txt', { type: 'text/plain' })
+    fireEvent.change(fileInput, { target: { files: [file] } })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('staged-file-0')).toBeInTheDocument()
+    })
+
+    // Fill title and submit
+    fireEvent.change(screen.getByTestId('title-input'), { target: { value: 'Task with file' } })
+    fireEvent.click(screen.getByTestId('create-button'))
+
+    await waitFor(() => {
+      expect(mockKanbanAddItem).toHaveBeenCalled()
+    })
+
+    await waitFor(() => {
+      expect(mockKanbanAddAttachment).toHaveBeenCalledWith(
+        '/test/project',
+        'new-item-1',
+        'test.txt',
+        'text/plain',
+        expect.any(String) // base64 encoded data
+      )
+    })
+
+    await waitFor(() => {
+      expect(onCreated).toHaveBeenCalled()
+    })
+  })
+
+  it('should call onCreated even if attachment upload fails', async () => {
+    mockKanbanAddItem.mockResolvedValueOnce({ id: 'new-item-1', description: 'desc', agentProvider: 'claude' })
+    mockKanbanAddAttachment.mockRejectedValue(new Error('Upload failed'))
+    const onCreated = vi.fn()
+
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={onCreated}
+      />
+    )
+
+    // Stage a file
+    const fileInput = screen.getByTestId('file-input') as HTMLInputElement
+    const file = new File(['hello'], 'test.txt', { type: 'text/plain' })
+    fireEvent.change(fileInput, { target: { files: [file] } })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('staged-file-0')).toBeInTheDocument()
+    })
+
+    // Fill title and submit
+    fireEvent.change(screen.getByTestId('title-input'), { target: { value: 'Task with file' } })
+    fireEvent.click(screen.getByTestId('create-button'))
+
+    await waitFor(() => {
+      expect(onCreated).toHaveBeenCalled()
+    })
+  })
+
+  it('should handle paste event with image data on description textarea', async () => {
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    const textarea = screen.getByTestId('description-input')
+
+    const file = new File(['image-data'], 'paste.png', { type: 'image/png' })
+    const clipboardData = {
+      items: [
+        {
+          type: 'image/png',
+          getAsFile: () => file,
+        },
+      ],
+    }
+
+    fireEvent.paste(textarea, { clipboardData })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('staged-file-0')).toBeInTheDocument()
+    })
+  })
+
+  it('should not prevent default paste for non-image clipboard data', () => {
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    const textarea = screen.getByTestId('description-input')
+
+    const clipboardData = {
+      items: [
+        {
+          type: 'text/plain',
+          getAsFile: () => null,
+        },
+      ],
+    }
+
+    const pasteEvent = fireEvent.paste(textarea, { clipboardData })
+
+    // Non-image paste should not be prevented — no files should be staged
+    expect(screen.queryByTestId('staged-file-0')).not.toBeInTheDocument()
   })
 })
