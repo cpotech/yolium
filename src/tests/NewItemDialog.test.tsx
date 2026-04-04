@@ -3,6 +3,29 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+
+// Mock VimModeContext with controllable mode
+let mockMode: 'NORMAL' | 'INSERT' = 'NORMAL'
+const mockEnterInsertMode = vi.fn(() => { mockMode = 'INSERT' })
+const mockExitToNormal = vi.fn(() => { mockMode = 'NORMAL' })
+
+vi.mock('@renderer/context/VimModeContext', async () => {
+  const actual = await vi.importActual<typeof import('@renderer/context/VimModeContext')>('@renderer/context/VimModeContext')
+  return {
+    ...actual,
+    useVimModeContext: () => ({
+      mode: mockMode,
+      activeZone: 'content' as const,
+      setActiveZone: vi.fn(),
+      enterInsertMode: mockEnterInsertMode,
+      enterVisualMode: vi.fn(),
+      exitToNormal: mockExitToNormal,
+      suspendNavigation: () => () => {},
+    }),
+    useSuspendVimNavigation: vi.fn(),
+  }
+})
+
 import { NewItemDialog } from '@renderer/components/kanban/NewItemDialog'
 
 // Mock the electronAPI
@@ -17,6 +40,7 @@ globalThis.URL.revokeObjectURL = mockRevokeObjectURL
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockMode = 'NORMAL'
   // Setup the mock on window.electronAPI
   Object.defineProperty(window, 'electronAPI', {
     value: {
@@ -1025,5 +1049,307 @@ describe('NewItemDialog', () => {
 
     // Non-image paste should not be prevented — no files should be staged
     expect(screen.queryByTestId('staged-file-0')).not.toBeInTheDocument()
+  })
+
+  // ── Vim shortcut support tests ──
+
+  describe('Shortcuts hint bar', () => {
+    it('should render shortcuts hint bar when dialog is open', () => {
+      render(
+        <NewItemDialog
+          isOpen={true}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onCreated={vi.fn()}
+        />
+      )
+
+      expect(screen.getByTestId('shortcuts-hint-bar')).toBeInTheDocument()
+    })
+
+    it('should display NORMAL mode shortcuts in hint bar by default', () => {
+      render(
+        <NewItemDialog
+          isOpen={true}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onCreated={vi.fn()}
+        />
+      )
+
+      const hintBar = screen.getByTestId('shortcuts-hint-bar')
+      expect(hintBar.textContent).toContain('j/k')
+      expect(hintBar.textContent).toContain('gg')
+      expect(hintBar.textContent).toContain('G')
+      expect(hintBar.textContent).toContain('i')
+      expect(hintBar.textContent).toContain('Ctrl+Q')
+    })
+
+    it('should display INSERT mode shortcuts when a field is focused', () => {
+      mockMode = 'INSERT'
+
+      render(
+        <NewItemDialog
+          isOpen={true}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onCreated={vi.fn()}
+        />
+      )
+
+      const hintBar = screen.getByTestId('shortcuts-hint-bar')
+      expect(hintBar.textContent).toContain('Esc')
+      expect(hintBar.textContent).toContain('Tab')
+      expect(hintBar.textContent).toContain('Ctrl+Enter')
+    })
+  })
+
+  describe('Vim field navigation', () => {
+    it('should highlight first field by default in NORMAL mode', () => {
+      render(
+        <NewItemDialog
+          isOpen={true}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onCreated={vi.fn()}
+        />
+      )
+
+      // The title field wrapper should have the focus ring
+      const titleInput = screen.getByTestId('title-input')
+      const wrapper = titleInput.closest('[data-testid="focused-field-indicator"]')
+      expect(wrapper).toBeInTheDocument()
+    })
+
+    it('should move focus to next field on j key in NORMAL mode', () => {
+      render(
+        <NewItemDialog
+          isOpen={true}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onCreated={vi.fn()}
+        />
+      )
+
+      const overlay = screen.getByTestId('new-item-dialog').parentElement!
+      fireEvent.keyDown(overlay, { key: 'j' })
+
+      // Description field should now be highlighted
+      const descInput = screen.getByTestId('description-input')
+      const wrapper = descInput.closest('[data-testid="focused-field-indicator"]')
+      expect(wrapper).toBeInTheDocument()
+    })
+
+    it('should move focus to previous field on k key in NORMAL mode', () => {
+      render(
+        <NewItemDialog
+          isOpen={true}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onCreated={vi.fn()}
+        />
+      )
+
+      const overlay = screen.getByTestId('new-item-dialog').parentElement!
+      // Move down then back up
+      fireEvent.keyDown(overlay, { key: 'j' })
+      fireEvent.keyDown(overlay, { key: 'k' })
+
+      // Title field should be highlighted again
+      const titleInput = screen.getByTestId('title-input')
+      const wrapper = titleInput.closest('[data-testid="focused-field-indicator"]')
+      expect(wrapper).toBeInTheDocument()
+    })
+
+    it('should move to first field on gg in NORMAL mode', () => {
+      render(
+        <NewItemDialog
+          isOpen={true}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onCreated={vi.fn()}
+        />
+      )
+
+      const overlay = screen.getByTestId('new-item-dialog').parentElement!
+      // Move down a couple times
+      fireEvent.keyDown(overlay, { key: 'j' })
+      fireEvent.keyDown(overlay, { key: 'j' })
+      // gg to go to first
+      fireEvent.keyDown(overlay, { key: 'g' })
+      fireEvent.keyDown(overlay, { key: 'g' })
+
+      const titleInput = screen.getByTestId('title-input')
+      const wrapper = titleInput.closest('[data-testid="focused-field-indicator"]')
+      expect(wrapper).toBeInTheDocument()
+    })
+
+    it('should move to last field on G in NORMAL mode', () => {
+      render(
+        <NewItemDialog
+          isOpen={true}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onCreated={vi.fn()}
+        />
+      )
+
+      const overlay = screen.getByTestId('new-item-dialog').parentElement!
+      fireEvent.keyDown(overlay, { key: 'G', shiftKey: true })
+
+      // Last field (model select) should be highlighted
+      const modelSelect = screen.getByTestId('model-select')
+      const wrapper = modelSelect.closest('[data-testid="focused-field-indicator"]')
+      expect(wrapper).toBeInTheDocument()
+    })
+
+    it('should not navigate fields when in INSERT mode', () => {
+      mockMode = 'INSERT'
+
+      render(
+        <NewItemDialog
+          isOpen={true}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onCreated={vi.fn()}
+        />
+      )
+
+      const overlay = screen.getByTestId('new-item-dialog').parentElement!
+      fireEvent.keyDown(overlay, { key: 'j' })
+
+      // In INSERT mode, no focused-field-indicator should be shown (highlight ring only in NORMAL)
+      expect(screen.queryByTestId('focused-field-indicator')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Mode transitions', () => {
+    it('should enter INSERT mode and focus field on i key', () => {
+      render(
+        <NewItemDialog
+          isOpen={true}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onCreated={vi.fn()}
+        />
+      )
+
+      const overlay = screen.getByTestId('new-item-dialog').parentElement!
+      fireEvent.keyDown(overlay, { key: 'i' })
+
+      expect(mockEnterInsertMode).toHaveBeenCalled()
+    })
+
+    it('should enter INSERT mode and focus field on Enter key', () => {
+      render(
+        <NewItemDialog
+          isOpen={true}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onCreated={vi.fn()}
+        />
+      )
+
+      const overlay = screen.getByTestId('new-item-dialog').parentElement!
+      fireEvent.keyDown(overlay, { key: 'Enter' })
+
+      expect(mockEnterInsertMode).toHaveBeenCalled()
+    })
+
+    it('should return to NORMAL mode on Escape from INSERT mode', () => {
+      mockMode = 'INSERT'
+
+      render(
+        <NewItemDialog
+          isOpen={true}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onCreated={vi.fn()}
+        />
+      )
+
+      const overlay = screen.getByTestId('new-item-dialog').parentElement!
+      fireEvent.keyDown(overlay, { key: 'Escape' })
+
+      expect(mockExitToNormal).toHaveBeenCalled()
+    })
+
+    it('should close dialog on Escape in NORMAL mode', () => {
+      const onClose = vi.fn()
+
+      render(
+        <NewItemDialog
+          isOpen={true}
+          projectPath="/test/project"
+          onClose={onClose}
+          onCreated={vi.fn()}
+        />
+      )
+
+      const overlay = screen.getByTestId('new-item-dialog').parentElement!
+      fireEvent.keyDown(overlay, { key: 'Escape' })
+
+      expect(onClose).toHaveBeenCalled()
+    })
+
+    it('should not have autoFocus on title input', () => {
+      render(
+        <NewItemDialog
+          isOpen={true}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onCreated={vi.fn()}
+        />
+      )
+
+      const titleInput = screen.getByTestId('title-input')
+      // autoFocus attribute should not be present
+      expect(titleInput).not.toHaveAttribute('autofocus')
+    })
+  })
+
+  describe('Existing shortcuts preserved', () => {
+    it('should still close on Ctrl+Q', () => {
+      const onClose = vi.fn()
+
+      render(
+        <NewItemDialog
+          isOpen={true}
+          projectPath="/test/project"
+          onClose={onClose}
+          onCreated={vi.fn()}
+        />
+      )
+
+      const overlay = screen.getByTestId('new-item-dialog').parentElement!
+      fireEvent.keyDown(overlay, { key: 'q', ctrlKey: true })
+
+      expect(onClose).toHaveBeenCalled()
+    })
+
+    it('should still submit on Ctrl+Enter when valid', async () => {
+      mockKanbanAddItem.mockResolvedValueOnce({ id: 'new-item-1' })
+      const onCreated = vi.fn()
+
+      render(
+        <NewItemDialog
+          isOpen={true}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onCreated={onCreated}
+        />
+      )
+
+      fireEvent.change(screen.getByTestId('title-input'), {
+        target: { value: 'Vim Test Task' },
+      })
+
+      const overlay = screen.getByTestId('new-item-dialog').parentElement!
+      fireEvent.keyDown(overlay, { key: 'Enter', ctrlKey: true })
+
+      await waitFor(() => {
+        expect(mockKanbanAddItem).toHaveBeenCalled()
+      })
+    })
   })
 })

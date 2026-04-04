@@ -1,8 +1,9 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react'
-import { X, Plus, Paperclip } from 'lucide-react'
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
+import { X, Plus } from 'lucide-react'
 import type { KanbanAgentProvider, AgentDefinition } from '@shared/types/agent'
 import { trapFocus } from '@shared/lib/focus-trap'
-import { useSuspendVimNavigation } from '@renderer/context/VimModeContext'
+import { useSuspendVimNavigation, useVimModeContext } from '@renderer/context/VimModeContext'
+import { useVimListNavigation } from '@renderer/hooks/useVimListNavigation'
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts'
 
 interface NewItemDialogProps {
@@ -65,6 +66,8 @@ function StagedFileThumbnail({ file, index, onRemove }: { file: File; index: num
   )
 }
 
+const kbdClass = 'px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)]'
+
 export function NewItemDialog({
   isOpen,
   projectPath,
@@ -72,6 +75,7 @@ export function NewItemDialog({
   onCreated,
 }: NewItemDialogProps): React.ReactElement | null {
   useSuspendVimNavigation(isOpen)
+  const vim = useVimModeContext()
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -85,8 +89,49 @@ export function NewItemDialog({
   const [agentDefinitions, setAgentDefinitions] = useState<AgentDefinition[]>([])
   const [providerModels, setProviderModels] = useState<Record<string, string[]>>({})
   const [stagedFiles, setStagedFiles] = useState<File[]>([])
+  const [focusedFieldIndex, setFocusedFieldIndex] = useState(0)
   const dialogRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Build navigable field IDs, handling conditional agent-type field
+  const navigableFieldIds = useMemo(() => {
+    const ids = [
+      'new-item-title',
+      'new-item-description',
+      'new-item-branch',
+      'new-item-agent-provider',
+    ]
+    if (agentDefinitions.length > 0) {
+      ids.push('new-item-agent-type')
+    }
+    ids.push('new-item-model')
+    return ids
+  }, [agentDefinitions.length])
+
+  const { handleNavKeys: handleFieldNavKeys } = useVimListNavigation({
+    itemCount: navigableFieldIds.length,
+    enabled: vim.mode === 'NORMAL' && isOpen,
+    onIndexChange: setFocusedFieldIndex,
+    currentIndex: focusedFieldIndex,
+    wrap: false,
+  })
+
+  const focusField = useCallback((index: number) => {
+    const fieldId = navigableFieldIds[index]
+    if (fieldId) {
+      const el = document.getElementById(fieldId)
+      el?.focus()
+      vim.enterInsertMode()
+    }
+  }, [navigableFieldIds, vim])
+
+  const handleFieldFocus = useCallback((fieldId: string) => {
+    const idx = navigableFieldIds.indexOf(fieldId)
+    if (idx >= 0) {
+      setFocusedFieldIndex(idx)
+      vim.enterInsertMode()
+    }
+  }, [navigableFieldIds, vim])
 
   // Fetch agent definitions and provider models on mount
   useEffect(() => {
@@ -101,7 +146,7 @@ export function NewItemDialog({
     }).catch(() => {})
   }, [])
 
-  // Reset form when dialog opens/closes
+  // Reset form and vim state when dialog opens/closes
   useEffect(() => {
     if (isOpen) {
       setTitle('')
@@ -112,6 +157,9 @@ export function NewItemDialog({
       setIsSubmitting(false)
       setErrorMessage(null)
       setStagedFiles([])
+      setFocusedFieldIndex(0)
+      // Focus dialog container so NORMAL mode keyboard nav works immediately
+      dialogRef.current?.focus()
       // Refresh provider models and default provider when dialog opens
       window.electronAPI.git.loadConfig().then(config => {
         if (config?.providerModels) {
@@ -232,23 +280,60 @@ export function NewItemDialog({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // Ctrl+Enter to create (both modes)
+      if (e.key === 'Enter' && e.ctrlKey && canSubmit && !isSubmitting) {
+        e.preventDefault()
+        handleSubmit()
+        return
+      }
+
+      // Ctrl+Q / close shortcut (both modes)
       if (isCloseShortcut(e)) {
         e.preventDefault()
         e.stopPropagation()
         onClose()
+        return
       }
-      if (e.key === 'Enter' && e.ctrlKey && canSubmit && !isSubmitting) {
+
+      // Vim-mode-aware Escape handling
+      if (e.key === 'Escape') {
         e.preventDefault()
-        handleSubmit()
+        if (vim.mode === 'INSERT') {
+          vim.exitToNormal()
+          dialogRef.current?.focus()
+        } else {
+          onClose()
+        }
+        return
       }
+
+      // NORMAL mode shortcuts
+      if (vim.mode === 'NORMAL') {
+        // i or Enter to edit focused field
+        if (e.key === 'i' || e.key === 'Enter') {
+          e.preventDefault()
+          focusField(focusedFieldIndex)
+          return
+        }
+
+        // j/k/gg/G navigation
+        if (handleFieldNavKeys(e)) {
+          e.preventDefault()
+          return
+        }
+      }
+
+      // Trap focus within dialog (both modes)
       if (dialogRef.current) {
         trapFocus(e, dialogRef.current)
       }
     },
-    [onClose, canSubmit, isSubmitting, handleSubmit]
+    [onClose, canSubmit, isSubmitting, handleSubmit, vim, focusField, focusedFieldIndex, handleFieldNavKeys]
   )
 
   if (!isOpen) return null
+
+  const isNormal = vim.mode === 'NORMAL'
 
   return (
     <div
@@ -261,7 +346,8 @@ export function NewItemDialog({
         role="dialog"
         aria-modal="true"
         aria-label="Create new item"
-        className="w-full max-w-xl bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border-primary)] shadow-2xl overflow-hidden"
+        tabIndex={-1}
+        className="w-full max-w-xl bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border-primary)] shadow-2xl overflow-hidden focus:outline-none"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border-primary)]">
@@ -294,7 +380,9 @@ export function NewItemDialog({
         {/* Form */}
         <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto yolium-scrollbar">
           {/* Title */}
-          <div>
+          <div {...(isNormal && focusedFieldIndex === 0 ? { 'data-testid': 'focused-field-indicator' } : {})}
+            className={isNormal && focusedFieldIndex === 0 ? 'ring-2 ring-[var(--color-accent-primary)] rounded-md' : ''}
+          >
             <label
               htmlFor="new-item-title"
               className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
@@ -307,14 +395,16 @@ export function NewItemDialog({
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
+              onFocus={() => handleFieldFocus('new-item-title')}
               placeholder="Enter task title"
-              autoFocus
               className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
             />
           </div>
 
           {/* Description */}
-          <div>
+          <div {...(isNormal && focusedFieldIndex === 1 ? { 'data-testid': 'focused-field-indicator' } : {})}
+            className={isNormal && focusedFieldIndex === 1 ? 'ring-2 ring-[var(--color-accent-primary)] rounded-md' : ''}
+          >
             <label
               htmlFor="new-item-description"
               className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
@@ -327,6 +417,7 @@ export function NewItemDialog({
               value={description}
               onChange={e => setDescription(e.target.value)}
               onPaste={handleDescriptionPaste}
+              onFocus={() => handleFieldFocus('new-item-description')}
               placeholder="Describe what needs to be done"
               rows={4}
               className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
@@ -376,7 +467,9 @@ export function NewItemDialog({
           {/* Config fields - compact grid */}
           <div className="grid grid-cols-2 gap-3">
             {/* Branch */}
-            <div className="col-span-2">
+            <div className={`col-span-2${isNormal && focusedFieldIndex === 2 ? ' ring-2 ring-[var(--color-accent-primary)] rounded-md' : ''}`}
+              {...(isNormal && focusedFieldIndex === 2 ? { 'data-testid': 'focused-field-indicator' } : {})}
+            >
               <label
                 htmlFor="new-item-branch"
                 className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
@@ -389,6 +482,7 @@ export function NewItemDialog({
                 type="text"
                 value={branch}
                 onChange={e => setBranch(e.target.value)}
+                onFocus={() => handleFieldFocus('new-item-branch')}
                 placeholder="e.g., feature/my-feature"
                 spellCheck={false}
                 className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
@@ -396,7 +490,9 @@ export function NewItemDialog({
             </div>
 
             {/* Agent Provider */}
-            <div>
+            <div {...(isNormal && focusedFieldIndex === 3 ? { 'data-testid': 'focused-field-indicator' } : {})}
+              className={isNormal && focusedFieldIndex === 3 ? 'ring-2 ring-[var(--color-accent-primary)] rounded-md' : ''}
+            >
               <label
                 htmlFor="new-item-agent-provider"
                 className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
@@ -408,6 +504,7 @@ export function NewItemDialog({
                 data-testid="agent-provider-select"
                 value={agentProvider}
                 onChange={e => setAgentProvider(e.target.value as KanbanAgentProvider)}
+                onFocus={() => handleFieldFocus('new-item-agent-provider')}
                 className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
               >
                 {agentProviderOptions.map(option => (
@@ -420,7 +517,9 @@ export function NewItemDialog({
 
             {/* Agent Type */}
             {agentDefinitions.length > 0 && (
-              <div>
+              <div {...(isNormal && focusedFieldIndex === 4 ? { 'data-testid': 'focused-field-indicator' } : {})}
+                className={isNormal && focusedFieldIndex === 4 ? 'ring-2 ring-[var(--color-accent-primary)] rounded-md' : ''}
+              >
                 <label
                   htmlFor="new-item-agent-type"
                   className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
@@ -432,6 +531,7 @@ export function NewItemDialog({
                   data-testid="agent-type-select"
                   value={agentType}
                   onChange={e => setAgentType(e.target.value)}
+                  onFocus={() => handleFieldFocus('new-item-agent-type')}
                   className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
                 >
                   <option value="">Not set</option>
@@ -445,26 +545,36 @@ export function NewItemDialog({
             )}
 
             {/* Model Override */}
-            <div className={agentDefinitions.length > 0 ? 'col-span-2' : ''}>
-              <label
-                htmlFor="new-item-model"
-                className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
-              >
-                Model <span className="normal-case tracking-normal">(optional)</span>
-              </label>
-              <select
-                id="new-item-model"
-                data-testid="model-select"
-                value={model}
-                onChange={e => setModel(e.target.value)}
-                className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
-              >
-                <option value="">Provider default</option>
-                {(providerModels[agentProvider] || []).map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-            </div>
+            {(() => {
+              const modelFieldIndex = agentDefinitions.length > 0 ? 5 : 4
+              return (
+                <div className={agentDefinitions.length > 0 ? 'col-span-2' : ''}
+                  {...(isNormal && focusedFieldIndex === modelFieldIndex ? { 'data-testid': 'focused-field-indicator' } : {})}
+                >
+                  <div className={isNormal && focusedFieldIndex === modelFieldIndex ? 'ring-2 ring-[var(--color-accent-primary)] rounded-md' : ''}>
+                    <label
+                      htmlFor="new-item-model"
+                      className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
+                    >
+                      Model <span className="normal-case tracking-normal">(optional)</span>
+                    </label>
+                    <select
+                      id="new-item-model"
+                      data-testid="model-select"
+                      value={model}
+                      onChange={e => setModel(e.target.value)}
+                      onFocus={() => handleFieldFocus('new-item-model')}
+                      className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+                    >
+                      <option value="">Provider default</option>
+                      {(providerModels[agentProvider] || []).map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         </div>
 
@@ -485,8 +595,29 @@ export function NewItemDialog({
           >
             <Plus size={14} />
             {isSubmitting ? 'Creating...' : 'Create'}
-            <span className="text-xs opacity-60 ml-1">Ctrl+Enter</span>
           </button>
+        </div>
+
+        {/* Shortcuts hint bar */}
+        <div
+          data-testid="shortcuts-hint-bar"
+          className="flex items-center gap-3 px-4 py-1.5 bg-[var(--color-bg-tertiary)] border-t border-[var(--color-border-primary)] text-xs text-[var(--color-text-muted)]"
+        >
+          {vim.mode === 'NORMAL' ? (
+            <>
+              <span><kbd className={kbdClass}>j/k</kbd> Navigate</span>
+              <span><kbd className={kbdClass}>gg</kbd> First</span>
+              <span><kbd className={kbdClass}>G</kbd> Last</span>
+              <span><kbd className={kbdClass}>i</kbd> Edit field</span>
+              <span><kbd className={kbdClass}>Ctrl+Q</kbd> Close</span>
+            </>
+          ) : (
+            <>
+              <span><kbd className={kbdClass}>Esc</kbd> Normal mode</span>
+              <span><kbd className={kbdClass}>Tab</kbd> Next field</span>
+              <span><kbd className={kbdClass}>Ctrl+Enter</kbd> Create</span>
+            </>
+          )}
         </div>
       </div>
     </div>
