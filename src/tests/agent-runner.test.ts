@@ -143,6 +143,7 @@ vi.mock('@main/docker', () => ({
   checkAgentAuth: mockCheckAgentAuth,
   getAgentSession: mockGetAgentSession,
   stopAgentContainer: mockStopAgentContainer,
+  ensureImage: vi.fn().mockResolvedValue(undefined),
 }));
 
 

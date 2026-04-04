@@ -16,7 +16,7 @@ import {
   listAttachments, copyAttachmentsToWorktree,
 } from '@main/stores/kanban-store';
 import { appendLog, appendSessionHeader } from '@main/stores/workitem-log-store';
-import { createAgentContainer, stopAgentContainer, checkAgentAuth } from '@main/docker';
+import { createAgentContainer, stopAgentContainer, checkAgentAuth, ensureImage } from '@main/docker';
 import type { KanbanItem } from '@shared/types/kanban';
 import type { AskQuestionMessage, ProgressMessage } from '@shared/types/agent';
 
@@ -217,6 +217,8 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
   let sessionReady = false;
 
   try {
+    await ensureImage();
+
     const sessionId = await createAgentContainer(
       {
         webContentsId, projectPath, agentName,

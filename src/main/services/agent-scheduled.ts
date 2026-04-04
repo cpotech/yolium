@@ -12,6 +12,7 @@ import {
   createAgentContainer,
   checkAgentAuth,
   getAgentSession,
+  ensureImage,
 } from '@main/docker';
 import { appendRunLog, appendAction, loadCredentials, pruneCredentials } from '@main/stores/yolium-db';
 import type { ActionMessage, CompleteMessage, ErrorMessage, RunResultMessage } from '@shared/types/agent';
@@ -149,7 +150,7 @@ export function startScheduledAgent(params: ScheduledAgentParams): Promise<Sched
       return;
     }
 
-    createAgentContainer(
+    ensureImage().then(() => createAgentContainer(
       {
         webContentsId: HEADLESS_WEB_CONTENTS_ID,
         projectPath: workspaceDir,
@@ -224,7 +225,7 @@ export function startScheduledAgent(params: ScheduledAgentParams): Promise<Sched
           resolve({ outcome, summary, tokensUsed, costUsd, durationMs });
         },
       }
-    ).then((sessionId) => {
+    )).then((sessionId) => {
       capturedSessionId = sessionId;
     }).catch((err) => {
       resolve({
