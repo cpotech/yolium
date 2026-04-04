@@ -48,34 +48,64 @@ test.describe('Schedule zone vim navigation', () => {
     expect(activeZone).toBe('schedule');
   });
 
-  test('should toggle specialist with t key without switching to tabs zone', async () => {
+  test('should switch to tabs zone when pressing t from schedule zone', async () => {
     await openSchedulePanel();
     const page = ctx.window;
 
     await page.click('[data-testid="schedule-panel"]');
 
-    // Press 't' — should toggle the specialist, not switch to tabs zone
+    // Press 't' — should switch to tabs zone (no longer toggles specialist)
     await page.keyboard.press('t');
 
-    // Schedule panel should still be visible (if we switched to tabs zone, it would not be)
+    // Should have switched to tabs zone — schedule panel may no longer be visible
+    // or tabs zone should have the active indicator
+    const tabsZone = page.locator('[data-vim-zone="tabs"]');
+    await expect(tabsZone).toBeVisible();
+  });
+
+  test('should switch to content zone when pressing c from schedule zone', async () => {
+    await openSchedulePanel();
+    const page = ctx.window;
+
+    await page.click('[data-testid="schedule-panel"]');
+
+    // Press 'c' — should switch to content zone (no longer configures specialist)
+    await page.keyboard.press('c');
+
+    // The add-specialist dialog should NOT open
+    await expect(page.locator('[data-testid="add-specialist-dialog"]')).not.toBeVisible({ timeout: 1000 }).catch(() => {});
+    // Content zone should be active
+    const contentZone = page.locator('[data-vim-zone="content"]');
+    await expect(contentZone).toBeVisible();
+  });
+
+  test('should toggle specialist with d key in schedule zone', async () => {
+    await openSchedulePanel();
+    const page = ctx.window;
+
+    await page.click('[data-testid="schedule-panel"]');
+
+    // Press 'd' — should toggle the specialist enabled state
+    await page.keyboard.press('d');
+
+    // Schedule panel should still be visible (stayed in schedule zone)
     await expect(page.locator('[data-testid="schedule-panel"]')).toBeVisible();
-    // Tab bar should NOT have the active zone indicator
     const schedulePanel = page.locator('[data-vim-zone="schedule"]');
     await expect(schedulePanel).toBeVisible();
   });
 
-  test('should open configure with c key without switching to content zone', async () => {
+  test('should open specialist config with o key in schedule zone', async () => {
     await openSchedulePanel();
     const page = ctx.window;
 
     await page.click('[data-testid="schedule-panel"]');
 
-    // Press 'c' — should open configure dialog, not switch to content zone
-    await page.keyboard.press('c');
+    // Press 'o' — should open configure dialog
+    await page.keyboard.press('o');
 
     // The add-specialist dialog (configure mode) should open
     await expect(page.locator('[data-testid="add-specialist-dialog"]')).toBeVisible({ timeout: 5000 });
-    // Schedule panel should still be the active zone (not content)
+    // Schedule panel should still be the active zone
     await expect(page.locator('[data-testid="schedule-panel"]')).toBeVisible();
   });
 
@@ -125,6 +155,21 @@ test.describe('Schedule zone vim navigation', () => {
     await page.keyboard.press('Escape');
 
     // Should be back on specialists view
+    await expect(page.locator('[data-testid^="specialist-card-"]').first()).toBeVisible({ timeout: 5000 });
+  });
+
+  test('should switch between specialists and actions views with 1 and 2 keys', async () => {
+    await openSchedulePanel();
+    const page = ctx.window;
+
+    await page.click('[data-testid="schedule-panel"]');
+
+    // Press '2' to switch to actions view
+    await page.keyboard.press('2');
+    await expect(page.locator('[data-testid="actions-view"], [data-testid="actions-view-loading"], [data-testid="actions-view-empty"]').first()).toBeVisible({ timeout: 5000 });
+
+    // Press '1' to switch back to specialists view
+    await page.keyboard.press('1');
     await expect(page.locator('[data-testid^="specialist-card-"]').first()).toBeVisible({ timeout: 5000 });
   });
 

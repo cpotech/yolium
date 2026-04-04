@@ -245,7 +245,7 @@ describe('SchedulePanel vim shortcuts', () => {
     });
   });
 
-  it('should toggle enabled state with t key', async () => {
+  it('should toggle enabled state with d key', async () => {
     renderWithVim(
       <>
         <ZoneSetter zone="schedule" />
@@ -256,7 +256,7 @@ describe('SchedulePanel vim shortcuts', () => {
     await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
-    fireEvent.keyDown(panel, { key: 't' });
+    fireEvent.keyDown(panel, { key: 'd' });
 
     await waitFor(() => {
       expect(mockToggleSpecialist).toHaveBeenCalledWith('spec-1', false);
@@ -281,7 +281,7 @@ describe('SchedulePanel vim shortcuts', () => {
     });
   });
 
-  it('should open configure dialog with c key', async () => {
+  it('should open configure dialog with o key', async () => {
     renderWithVim(
       <>
         <ZoneSetter zone="schedule" />
@@ -292,7 +292,7 @@ describe('SchedulePanel vim shortcuts', () => {
     await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
-    fireEvent.keyDown(panel, { key: 'c' });
+    fireEvent.keyDown(panel, { key: 'o' });
 
     await waitFor(() => {
       expect(screen.getByTestId('mock-add-specialist-dialog')).toBeInTheDocument();
@@ -371,7 +371,7 @@ describe('SchedulePanel vim shortcuts', () => {
     fireEvent.keyDown(panel, { key: 'j' });
     fireEvent.keyDown(panel, { key: 'G' });
     fireEvent.keyDown(panel, { key: 'r' });
-    fireEvent.keyDown(panel, { key: 't' });
+    fireEvent.keyDown(panel, { key: 'd' });
 
     expect(mockTriggerRun).not.toHaveBeenCalled();
     expect(mockToggleSpecialist).not.toHaveBeenCalled();
@@ -420,7 +420,7 @@ describe('SchedulePanel vim shortcuts', () => {
     // Now try navigation and actions — should be blocked by dialog guard
     fireEvent.keyDown(panel, { key: 'j' });
     fireEvent.keyDown(panel, { key: 'r' });
-    fireEvent.keyDown(panel, { key: 't' });
+    fireEvent.keyDown(panel, { key: 'd' });
 
     // Actions should not have been triggered since dialog is open
     expect(mockTriggerRun).not.toHaveBeenCalled();
@@ -470,7 +470,7 @@ describe('SchedulePanel vim shortcuts', () => {
     await waitForVimReady();
   });
 
-  it('should not switch zone when pressing t to toggle specialist', async () => {
+  it('should switch to tabs zone when pressing t (no longer toggles specialist)', async () => {
     renderWithVim(
       <>
         <ZoneSetter zone="schedule" />
@@ -484,13 +484,14 @@ describe('SchedulePanel vim shortcuts', () => {
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 't' });
 
+    // 't' no longer toggles specialist — it switches to tabs zone
+    expect(mockToggleSpecialist).not.toHaveBeenCalled();
     await waitFor(() => {
-      expect(mockToggleSpecialist).toHaveBeenCalledWith('spec-1', false);
+      expect(screen.getByTestId('current-zone')).toHaveTextContent('tabs');
     });
-    expect(screen.getByTestId('current-zone')).toHaveTextContent('schedule');
   });
 
-  it('should not switch zone when pressing c to configure specialist', async () => {
+  it('should switch to content zone when pressing c (no longer configures specialist)', async () => {
     renderWithVim(
       <>
         <ZoneSetter zone="schedule" />
@@ -504,16 +505,14 @@ describe('SchedulePanel vim shortcuts', () => {
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 'c' });
 
+    // 'c' no longer opens configure — it switches to content zone
+    expect(screen.queryByTestId('mock-add-specialist-dialog')).not.toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByTestId('mock-add-specialist-dialog')).toBeInTheDocument();
+      expect(screen.getByTestId('current-zone')).toHaveTextContent('content');
     });
-    expect(screen.getByTestId('current-zone')).toHaveTextContent('schedule');
   });
 
-  it('should allow t to switch zone when no specialists exist (no conflict)', async () => {
-    mockGetSpecialists.mockResolvedValue({});
-    mockGetState.mockResolvedValue({ specialists: {}, globalEnabled: true });
-
+  it('should allow t to switch zone even when specialists exist (no conflict after remap)', async () => {
     renderWithVim(
       <>
         <ZoneSetter zone="schedule" />
@@ -522,9 +521,7 @@ describe('SchedulePanel vim shortcuts', () => {
       </>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('schedule-panel')).toBeInTheDocument();
-    });
+    await waitForVimReady();
 
     const panel = screen.getByTestId('schedule-panel');
     fireEvent.keyDown(panel, { key: 't' });
@@ -838,7 +835,7 @@ describe('SchedulePanel vim shortcuts', () => {
     });
   });
 
-  it('should allow c to switch zone when in actions view (no conflict)', async () => {
+  it('should allow c to switch zone when in actions view (c is no longer consumed)', async () => {
     renderWithVim(
       <>
         <ZoneSetter zone="schedule" />

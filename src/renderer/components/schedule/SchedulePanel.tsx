@@ -219,7 +219,7 @@ export function SchedulePanel({ onGoToKanban }: { onGoToKanban?: () => void }): 
         handleTriggerRun(currentId, enabledSchedules[0]?.type || 'daily');
         return;
       }
-      if (e.key === 't' && currentId) {
+      if (e.key === 'd' && currentId) {
         e.preventDefault();
         handleToggleSpecialist(currentId, !(status?.enabled ?? true));
         return;
@@ -229,7 +229,7 @@ export function SchedulePanel({ onGoToKanban }: { onGoToKanban?: () => void }): 
         setSelectedSpecialist(currentId);
         return;
       }
-      if (e.key === 'c' && currentId) {
+      if (e.key === 'o' && currentId) {
         e.preventDefault();
         setEditingSpecialistId(currentId);
         return;
@@ -315,7 +315,7 @@ export function SchedulePanel({ onGoToKanban }: { onGoToKanban?: () => void }): 
       }
     };
     return (
-      <div className="h-full flex flex-col overflow-hidden outline-none" data-testid="schedule-panel-history" tabIndex={0} onKeyDown={handleHistoryKeyDown}>
+      <div ref={viewRef} data-vim-zone="schedule" className="h-full flex flex-col overflow-hidden outline-none" data-testid="schedule-panel-history" tabIndex={0} onKeyDown={handleHistoryKeyDown}>
         <div className="flex items-center gap-2 p-3 border-b border-[var(--color-border-primary)]">
           <button
             onClick={() => setSelectedSpecialist(null)}
