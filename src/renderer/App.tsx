@@ -626,9 +626,8 @@ function App(): React.ReactElement {
                       <ErrorBoundary fallbackLabel="Kanban Board">
                         <KanbanView
                           projectPath={tab.cwd}
-                          isActive={isActive}
-                          sidebarProjects={sidebarProjects}
-                          onProjectSelect={handleProjectClick}
+                          tabs={tabs}
+                          onTabSelect={setActiveTab}
                           onSwitchProject={async (newPath) => {
                             const oldPath = tab.cwd;
                             updateCwd(tab.id, newPath);

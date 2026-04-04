@@ -4,6 +4,7 @@ import { KanbanColumn } from './KanbanColumn'
 import { NewItemDialog } from './NewItemDialog'
 import { ItemDetailDialog } from './ItemDetailDialog'
 import type { KanbanBoard, KanbanItem, KanbanColumn as ColumnId } from '@shared/types/kanban'
+import type { Tab } from '@shared/types/tabs'
 import { prepareConflictResolution } from './item-detail/useItemDetailPrWorkflow'
 import { useVimModeContext } from '@renderer/context/VimModeContext'
 import { useConfirmDialog } from '@renderer/hooks/useConfirmDialog'
@@ -11,15 +12,14 @@ import { ConfirmDialog } from '@renderer/components/shared/ConfirmDialog'
 import { useVimListNavigation } from '@renderer/hooks/useVimListNavigation'
 import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper'
 import type { ClaudeUsageState } from '@shared/types/agent'
-import type { SidebarProject } from '@renderer/stores/sidebar-store'
 
 interface KanbanViewProps {
   projectPath: string | null
   isActive?: boolean
   onSwitchProject?: (newPath: string) => void
   onDeleteProject?: (projectPath: string) => void
-  sidebarProjects?: SidebarProject[]
-  onProjectSelect?: (path: string) => void
+  tabs?: Tab[]
+  onTabSelect?: (tabId: string) => void
   // StatusBar props
   onShowShortcuts?: () => void
   onOpenSettings?: () => void
@@ -49,8 +49,8 @@ export function KanbanView({
   isActive,
   onSwitchProject,
   onDeleteProject,
-  sidebarProjects,
-  onProjectSelect,
+  tabs,
+  onTabSelect,
   // StatusBar props
   onShowShortcuts,
   onOpenSettings,
@@ -531,20 +531,20 @@ export function KanbanView({
         viewRef.current?.focus()
       }
     }
-    if (isVimContentActive && sidebarProjects && sidebarProjects.length > 0) {
-      let projectIndex = -1
+    if (isVimContentActive && tabs && tabs.length > 0) {
+      let tabIndex = -1
       if (e.key >= '1' && e.key <= '9') {
-        projectIndex = parseInt(e.key, 10) - 1
+        tabIndex = parseInt(e.key, 10) - 1
       } else if (e.key === '0') {
-        projectIndex = 9
+        tabIndex = 9
       }
-      if (projectIndex >= 0 && projectIndex < sidebarProjects.length) {
+      if (tabIndex >= 0 && tabIndex < tabs.length) {
         e.preventDefault()
-        onProjectSelect?.(sidebarProjects[projectIndex].path)
+        onTabSelect?.(tabs[tabIndex].id)
         return
       }
     }
-  }, [newItemDialogOpen, selectedItem, loadBoard, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, isVisualMode, board, vim, columns, focusedColumnIndex, focusedCardIndex, getColumnItems, handleCardClick, projectPath, sidebarProjects, onProjectSelect])
+  }, [newItemDialogOpen, selectedItem, loadBoard, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, isVisualMode, board, vim, columns, focusedColumnIndex, focusedCardIndex, getColumnItems, handleCardClick, projectPath, tabs, onTabSelect])
 
   const handleCardDrop = useCallback(async (itemId: string, targetColumn: ColumnId) => {
     if (!projectPath || !board) return
