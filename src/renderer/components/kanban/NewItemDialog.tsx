@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
-import { X, Plus } from 'lucide-react'
+import { X, Plus, Paperclip } from 'lucide-react'
 import type { KanbanAgentProvider, AgentDefinition } from '@shared/types/agent'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useSuspendVimNavigation } from '@renderer/context/VimModeContext'
@@ -20,7 +20,50 @@ const agentProviderOptions: { value: KanbanAgentProvider; label: string }[] = [
   { value: 'xai', label: 'xAI' },
 ]
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 
+function StagedFileThumbnail({ file, index, onRemove }: { file: File; index: number; onRemove: (index: number) => void }) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const isImage = file.type.startsWith('image/')
+
+  useEffect(() => {
+    if (!isImage) return
+    const url = URL.createObjectURL(file)
+    setPreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [file, isImage])
+
+  return (
+    <div
+      data-testid={`staged-file-${index}`}
+      className="relative group border border-[var(--color-border-primary)] rounded-md overflow-hidden bg-[var(--color-bg-primary)]"
+    >
+      {isImage && previewUrl ? (
+        <img src={previewUrl} alt={file.name} className="w-full h-20 object-cover" />
+      ) : (
+        <div className="w-full h-20 flex items-center justify-center text-[var(--color-text-tertiary)]">
+          <div className="text-xl">{file.name.split('.').pop()?.toUpperCase() || 'FILE'}</div>
+        </div>
+      )}
+      <div className="px-2 py-1 text-xs text-[var(--color-text-secondary)] truncate">
+        {file.name}
+        <span className="ml-1 text-[var(--color-text-tertiary)]">({formatFileSize(file.size)})</span>
+      </div>
+      <button
+        data-testid={`remove-file-${index}`}
+        onClick={() => onRemove(index)}
+        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
+        title="Remove file"
+      >
+        x
+      </button>
+    </div>
+  )
+}
 
 export function NewItemDialog({
   isOpen,
@@ -41,7 +84,9 @@ export function NewItemDialog({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [agentDefinitions, setAgentDefinitions] = useState<AgentDefinition[]>([])
   const [providerModels, setProviderModels] = useState<Record<string, string[]>>({})
+  const [stagedFiles, setStagedFiles] = useState<File[]>([])
   const dialogRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Fetch agent definitions and provider models on mount
   useEffect(() => {
@@ -66,6 +111,7 @@ export function NewItemDialog({
       setModel('')
       setIsSubmitting(false)
       setErrorMessage(null)
+      setStagedFiles([])
       // Refresh provider models and default provider when dialog opens
       window.electronAPI.git.loadConfig().then(config => {
         if (config?.providerModels) {
@@ -91,6 +137,39 @@ export function NewItemDialog({
     }
   }, [agentProvider, providerModels, model])
 
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+    setStagedFiles(prev => [...prev, ...Array.from(files)])
+    e.target.value = ''
+  }, [])
+
+  const handleRemoveFile = useCallback((index: number) => {
+    setStagedFiles(prev => prev.filter((_, i) => i !== index))
+  }, [])
+
+  const handleDescriptionPaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+
+    let hasImage = false
+    for (const clipItem of items) {
+      if (clipItem.type.startsWith('image/')) {
+        if (!hasImage) {
+          e.preventDefault()
+          hasImage = true
+        }
+        const blob = clipItem.getAsFile()
+        if (blob) {
+          const ext = clipItem.type.split('/')[1] || 'png'
+          const filename = `paste-${Date.now()}-${crypto.randomUUID()}.${ext}`
+          const file = new File([blob], filename, { type: blob.type })
+          setStagedFiles(prev => [...prev, file])
+        }
+      }
+    }
+  }, [])
+
   const canSubmit = title.trim().length > 0
 
   const handleSubmit = useCallback(async () => {
@@ -108,6 +187,25 @@ export function NewItemDialog({
         ...(model && { model }),
       })
 
+      // Upload staged files to the newly created item
+      if (stagedFiles.length > 0) {
+        await Promise.all(
+          stagedFiles.map(async (file) => {
+            try {
+              const buffer = await file.arrayBuffer()
+              const base64 = btoa(
+                new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+              )
+              await window.electronAPI.kanban.addAttachment(
+                projectPath, result.id, file.name, file.type || 'application/octet-stream', base64
+              )
+            } catch {
+              // Attachment upload failure should not block item creation
+            }
+          })
+        )
+      }
+
       // Reset form
       setTitle('')
       setDescription('')
@@ -115,6 +213,7 @@ export function NewItemDialog({
       setAgentProvider(defaultProvider)
       setAgentType('plan-agent')
       setModel('')
+      setStagedFiles([])
 
       setErrorMessage(null)
       onCreated({
@@ -129,7 +228,7 @@ export function NewItemDialog({
     } finally {
       setIsSubmitting(false)
     }
-  }, [canSubmit, isSubmitting, projectPath, title, description, branch, agentProvider, agentType, model, defaultProvider, onCreated])
+  }, [canSubmit, isSubmitting, projectPath, title, description, branch, agentProvider, agentType, model, defaultProvider, onCreated, stagedFiles])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -227,10 +326,51 @@ export function NewItemDialog({
               data-testid="description-input"
               value={description}
               onChange={e => setDescription(e.target.value)}
+              onPaste={handleDescriptionPaste}
               placeholder="Describe what needs to be done"
               rows={4}
               className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
             />
+          </div>
+
+          {/* Attachments */}
+          <div data-testid="attachments-section">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)]">
+                Attachments{stagedFiles.length > 0 ? ` (${stagedFiles.length})` : ''}
+              </label>
+              <button
+                data-testid="add-attachment-btn"
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] rounded hover:border-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary)] transition-colors"
+              >
+                + Add file
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+                data-testid="file-input"
+              />
+            </div>
+
+            {stagedFiles.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2">
+                {stagedFiles.map((file, index) => (
+                  <StagedFileThumbnail key={`${file.name}-${index}`} file={file} index={index} onRemove={handleRemoveFile} />
+                ))}
+              </div>
+            ) : (
+              <div
+                data-testid="empty-attachments"
+                className="border border-dashed border-[var(--color-border-primary)] rounded-md p-3 text-center text-xs text-[var(--color-text-tertiary)]"
+              >
+                Paste an image or click &quot;+ Add file&quot;
+              </div>
+            )}
           </div>
 
           {/* Config fields - compact grid */}
