@@ -92,8 +92,37 @@ describe('StatusBar', () => {
       contextLabel: 'Scheduled Agents',
     });
 
-    expect(screen.getByTestId('status-path')).toHaveTextContent('/tmp/project');
+    expect(screen.getByTestId('status-path')).toHaveTextContent('project');
+    expect(screen.getByTestId('status-path')).toHaveAttribute('title', '/tmp/project');
     expect(screen.queryByTestId('status-label')).not.toBeInTheDocument();
+  });
+
+  it('should show project name (basename) instead of full path', () => {
+    renderStatusBar({
+      folderPath: '/Users/name/projects/my-app',
+    });
+
+    const pathSpan = screen.getByTestId('status-path');
+    expect(pathSpan).toHaveTextContent('my-app');
+  });
+
+  it('should show full path as tooltip on hover', () => {
+    renderStatusBar({
+      folderPath: '/Users/name/projects/my-app',
+    });
+
+    const pathSpan = screen.getByTestId('status-path');
+    expect(pathSpan).toHaveAttribute('title', '/Users/name/projects/my-app');
+  });
+
+  it('should handle Windows-style paths correctly', () => {
+    renderStatusBar({
+      folderPath: 'C:\\Users\\name\\projects\\my-app',
+    });
+
+    const pathSpan = screen.getByTestId('status-path');
+    expect(pathSpan).toHaveTextContent('my-app');
+    expect(pathSpan).toHaveAttribute('title', 'C:\\Users\\name\\projects\\my-app');
   });
 
   it('should display zone navigation shortcut hints (E, T, C, S) in NORMAL mode', () => {
