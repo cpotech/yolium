@@ -93,6 +93,17 @@ export function NewItemDialog({
   const dialogRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Focus sentinel: reclaim focus when it escapes the dialog container
+  const handleBlur = useCallback((event: React.FocusEvent) => {
+    if (!event.relatedTarget || !dialogRef.current?.contains(event.relatedTarget as Node)) {
+      requestAnimationFrame(() => {
+        if (isOpen && dialogRef.current && !dialogRef.current.contains(document.activeElement)) {
+          dialogRef.current.focus()
+        }
+      })
+    }
+  }, [isOpen])
+
   // Build navigable field IDs, handling conditional agent-type field
   const navigableFieldIds = useMemo(() => {
     const ids = [
@@ -347,6 +358,7 @@ export function NewItemDialog({
         aria-modal="true"
         aria-label="Create new item"
         tabIndex={-1}
+        onBlur={handleBlur}
         className="w-full max-w-xl bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border-primary)] shadow-2xl overflow-hidden focus:outline-none"
       >
         {/* Header */}
