@@ -117,15 +117,15 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
     // NORMAL mode key handling
     const key = event.key;
 
-    // Block zone switching and Tab cycling when dialogs are open
-    if (dialogOpen) return;
-
-    // Show keyboard shortcuts dialog (?)
+    // Show keyboard shortcuts dialog (?) — always available in NORMAL mode
     if (key === '?') {
       event.preventDefault();
       onShowShortcutsRef.current?.();
       return;
     }
+
+    // Block zone switching and Tab cycling when dialogs are open
+    if (dialogOpen) return;
 
     // Enter visual mode with v
     if (key === 'v') {
