@@ -359,6 +359,7 @@ export function NewItemDialog({
         aria-label="Create new item"
         tabIndex={-1}
         onBlur={handleBlur}
+        onPaste={handleDescriptionPaste}
         className="w-full max-w-xl bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border-primary)] shadow-2xl overflow-hidden focus:outline-none"
       >
         {/* Header */}
@@ -428,7 +429,6 @@ export function NewItemDialog({
               data-testid="description-input"
               value={description}
               onChange={e => setDescription(e.target.value)}
-              onPaste={handleDescriptionPaste}
               onFocus={() => handleFieldFocus('new-item-description')}
               placeholder="Describe what needs to be done"
               rows={4}

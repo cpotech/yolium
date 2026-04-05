@@ -1024,6 +1024,96 @@ describe('NewItemDialog', () => {
     })
   })
 
+  it('should handle paste event with image data on dialog container (not just textarea)', async () => {
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    const dialog = screen.getByTestId('new-item-dialog')
+
+    const file = new File(['image-data'], 'paste.png', { type: 'image/png' })
+    const clipboardData = {
+      items: [
+        {
+          type: 'image/png',
+          getAsFile: () => file,
+        },
+      ],
+    }
+
+    fireEvent.paste(dialog, { clipboardData })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('staged-file-0')).toBeInTheDocument()
+    })
+  })
+
+  it('should handle paste event with image data on title input', async () => {
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    const titleInput = screen.getByTestId('title-input')
+
+    const file = new File(['image-data'], 'paste.png', { type: 'image/png' })
+    const clipboardData = {
+      items: [
+        {
+          type: 'image/png',
+          getAsFile: () => file,
+        },
+      ],
+    }
+
+    fireEvent.paste(titleInput, { clipboardData })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('staged-file-0')).toBeInTheDocument()
+    })
+  })
+
+  it('should not double-stage image when pasting on textarea (bubbles to container)', async () => {
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    const textarea = screen.getByTestId('description-input')
+
+    const file = new File(['image-data'], 'paste.png', { type: 'image/png' })
+    const clipboardData = {
+      items: [
+        {
+          type: 'image/png',
+          getAsFile: () => file,
+        },
+      ],
+    }
+
+    fireEvent.paste(textarea, { clipboardData })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('staged-file-0')).toBeInTheDocument()
+    })
+
+    // Ensure only one file was staged, not two (no double-staging from event bubbling)
+    expect(screen.queryByTestId('staged-file-1')).not.toBeInTheDocument()
+  })
+
   it('should not prevent default paste for non-image clipboard data', () => {
     render(
       <NewItemDialog
