@@ -1352,4 +1352,36 @@ describe('NewItemDialog', () => {
       })
     })
   })
+
+  it('should reclaim focus when it escapes the dialog container', async () => {
+    // Mock requestAnimationFrame to execute callback synchronously
+    const origRAF = globalThis.requestAnimationFrame
+    globalThis.requestAnimationFrame = (cb: FrameRequestCallback) => { cb(0); return 0 }
+
+    render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+
+    const dialog = screen.getByTestId('new-item-dialog')
+    const focusSpy = vi.spyOn(dialog, 'focus')
+
+    // Move focus to an element outside the dialog to simulate focus escape
+    const outsideEl = document.createElement('button')
+    document.body.appendChild(outsideEl)
+    outsideEl.focus()
+
+    // Fire focusOut on the dialog with relatedTarget outside it
+    // React's onBlur listens to focusout (which bubbles)
+    fireEvent.focusOut(dialog, { relatedTarget: outsideEl })
+
+    expect(focusSpy).toHaveBeenCalled()
+
+    document.body.removeChild(outsideEl)
+    globalThis.requestAnimationFrame = origRAF
+  })
 })

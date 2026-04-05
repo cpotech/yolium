@@ -666,4 +666,73 @@ test.describe('Dialog Shortcuts', () => {
       await expect(shortcutsBar).toContainText('Search comments');
     });
   });
+
+  test.describe('NewItemDialog - Focus Sentinel', () => {
+    let testRepoPath: string;
+
+    test.beforeAll(async () => {
+      testRepoPath = await createTestRepo(os.tmpdir());
+    });
+
+    test.afterAll(async () => {
+      if (testRepoPath) {
+        await cleanupTestRepo(testRepoPath);
+      }
+    });
+
+    test.beforeEach(async () => {
+      await cleanupYoliumContainers();
+    });
+
+    test.afterEach(async () => {
+      if (ctx) {
+        await closeApp(ctx);
+      }
+    });
+
+    test('should retain keyboard shortcuts in NewItemDialog after exiting insert mode', async () => {
+      ctx = await launchApp();
+      const page = ctx.window;
+
+      // Clear stale localStorage
+      await page.evaluate(() => {
+        localStorage.removeItem('yolium-sidebar-projects');
+        localStorage.removeItem('yolium-open-kanban-tabs');
+      });
+      await page.reload();
+      await page.waitForLoadState('domcontentloaded');
+
+      // Add project via sidebar to get to kanban view
+      await page.click(selectors.addProjectButton);
+      await page.fill(selectors.pathInput, testRepoPath);
+      await page.click(selectors.pathNextButton);
+      await expect(page.locator(selectors.kanbanView)).toBeVisible({ timeout: 10000 });
+
+      // Open New Item dialog
+      await page.click(selectors.kanbanNewItemButton);
+      await expect(page.locator(selectors.newItemDialog)).toBeVisible({ timeout: 5000 });
+
+      // Press 'i' to enter insert mode on the title field
+      await page.locator(selectors.newItemDialog).press('i');
+
+      // Title input should be focused (insert mode)
+      await expect(page.locator(selectors.newItemTitle)).toBeFocused();
+
+      // Press Escape to exit insert mode (back to NORMAL)
+      await page.keyboard.press('Escape');
+
+      // Now press 'j' to navigate down — this is the bug: shortcuts should still work
+      await page.keyboard.press('j');
+
+      // The focused-field-indicator should move (index 1 = description field)
+      const focusedField = page.locator('[data-testid="focused-field-indicator"]');
+      await expect(focusedField).toBeVisible({ timeout: 2000 });
+
+      // Press 'i' again to enter insert mode on the new field
+      await page.keyboard.press('i');
+
+      // Description input should now be focused
+      await expect(page.locator(selectors.newItemDescription)).toBeFocused();
+    });
+  });
 });
