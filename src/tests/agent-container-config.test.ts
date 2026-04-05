@@ -262,13 +262,13 @@ describe('agent-container config helpers', () => {
   });
 
   describe('openrouter provider env', () => {
-    it('should set OPENROUTER_API_KEY and ANTHROPIC_BASE_URL when provider is openrouter', () => {
+    it('should set OPENROUTER_API_KEY but NOT ANTHROPIC_BASE_URL when provider is openrouter', () => {
       const env = buildAgentEnv({
         containerProjectPath: '/workspace',
         projectTypesValue: 'node',
         nodePackageManager: 'npm',
         promptBase64: 'cHJvbXB0',
-        model: 'anthropic/claude-3.5-sonnet',
+        model: 'qwen/qwen3.6-plus:free',
         tools: ['Read'],
         itemId: 'item-1',
         agentName: 'code-agent',
@@ -283,7 +283,7 @@ describe('agent-container config helpers', () => {
       });
 
       expect(env).toContain('OPENROUTER_API_KEY=sk-or-v1-test-key');
-      expect(env).toContain('ANTHROPIC_BASE_URL=https://openrouter.ai/api/v1');
+      expect(env.find((entry) => entry.startsWith('ANTHROPIC_BASE_URL='))).toBeUndefined();
     });
 
     it('should not set ANTHROPIC_API_KEY when provider is openrouter', () => {
@@ -292,7 +292,7 @@ describe('agent-container config helpers', () => {
         projectTypesValue: 'node',
         nodePackageManager: 'npm',
         promptBase64: 'cHJvbXB0',
-        model: 'anthropic/claude-3.5-sonnet',
+        model: 'qwen/qwen3.6-plus:free',
         tools: ['Read'],
         itemId: 'item-1',
         agentName: 'code-agent',
@@ -314,7 +314,37 @@ describe('agent-container config helpers', () => {
     it('should include OPENROUTER_API_KEY in PROTECTED_ENV_VARS', async () => {
       const { PROTECTED_ENV_VARS } = await import('@main/docker/agent-container-config');
       expect(PROTECTED_ENV_VARS.has('OPENROUTER_API_KEY')).toBe(true);
+    });
+
+    it('should still include ANTHROPIC_BASE_URL in PROTECTED_ENV_VARS (defense-in-depth)', async () => {
+      const { PROTECTED_ENV_VARS } = await import('@main/docker/agent-container-config');
       expect(PROTECTED_ENV_VARS.has('ANTHROPIC_BASE_URL')).toBe(true);
+    });
+
+    it('should not inject any Anthropic env vars when provider is openrouter even if anthropicApiKey is set in gitConfig', () => {
+      const env = buildAgentEnv({
+        containerProjectPath: '/workspace',
+        projectTypesValue: 'node',
+        nodePackageManager: 'npm',
+        promptBase64: 'cHJvbXB0',
+        model: 'qwen/qwen3.6-plus:free',
+        tools: ['Read'],
+        itemId: 'item-1',
+        agentName: 'code-agent',
+        agentProvider: 'openrouter',
+        gitConfig: {
+          name: 'Agent User',
+          email: 'agent@example.com',
+          openrouterApiKey: 'sk-or-v1-test-key',
+          anthropicApiKey: 'sk-ant-should-not-appear',
+        },
+        useOAuth: false,
+        useCodexOAuth: false,
+      });
+
+      expect(env.find((entry) => entry.startsWith('ANTHROPIC_API_KEY='))).toBeUndefined();
+      expect(env.find((entry) => entry.startsWith('ANTHROPIC_BASE_URL='))).toBeUndefined();
+      expect(env).toContain('OPENROUTER_API_KEY=sk-or-v1-test-key');
     });
   });
 });

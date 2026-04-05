@@ -158,12 +158,7 @@ export function buildAgentEnv(params: {
     ...(() => {
       if (agentProvider === 'openrouter') {
         const key = gitConfig?.openrouterApiKey || process.env.OPENROUTER_API_KEY;
-        if (key) {
-          return [
-            `OPENROUTER_API_KEY=${key}`,
-            'ANTHROPIC_BASE_URL=https://openrouter.ai/api/v1',
-          ];
-        }
+        return key ? [`OPENROUTER_API_KEY=${key}`] : [];
       }
       return [];
     })(),
