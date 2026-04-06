@@ -160,6 +160,7 @@ export function NewItemDialog({
   // Reset form and vim state when dialog opens/closes
   useEffect(() => {
     if (isOpen) {
+      vim.exitToNormal()
       setTitle('')
       setDescription('')
       setBranch('')

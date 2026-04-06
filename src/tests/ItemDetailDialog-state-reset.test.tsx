@@ -8,6 +8,7 @@ import { ItemDetailDialog } from '@renderer/components/kanban/ItemDetailDialog'
 import type { KanbanItem } from '@shared/types/kanban'
 
 const mockVimMode = { current: 'NORMAL' as 'NORMAL' | 'INSERT' }
+const mockExitToNormal = vi.fn(() => { mockVimMode.current = 'NORMAL' })
 
 vi.mock('@renderer/context/VimModeContext', async () => {
   const actual = await vi.importActual<typeof import('@renderer/context/VimModeContext')>('@renderer/context/VimModeContext')
@@ -18,7 +19,7 @@ vi.mock('@renderer/context/VimModeContext', async () => {
       activeZone: 'content' as const,
       setActiveZone: vi.fn(),
       enterInsertMode: vi.fn(),
-      exitToNormal: vi.fn(),
+      exitToNormal: mockExitToNormal,
       suspendNavigation: () => () => {},
       enterVisualMode: vi.fn(),
     }),
@@ -248,5 +249,57 @@ describe('ItemDetailDialog state reset on item change', () => {
 
     // The dialog should still show the item, not be reset to a blank state
     expect(screen.getByDisplayValue('Item A')).toBeTruthy()
+  })
+})
+
+describe('ItemDetailDialog vim mode reset', () => {
+  it('should call exitToNormal when dialog opens (isOpen transitions to true)', async () => {
+    const item = createMockItem()
+    mockExitToNormal.mockClear()
+
+    const { rerender } = render(
+      <ItemDetailDialog {...defaultProps} isOpen={false} item={item} />,
+    )
+    await act(async () => {})
+
+    expect(mockExitToNormal).not.toHaveBeenCalled()
+
+    rerender(<ItemDetailDialog {...defaultProps} isOpen={true} item={item} />)
+    await act(async () => {})
+
+    expect(mockExitToNormal).toHaveBeenCalled()
+  })
+
+  it('should call exitToNormal when dialog reopens after Ctrl+Q close in INSERT mode', async () => {
+    const item = createMockItem()
+    const onClose = vi.fn()
+
+    const { rerender } = render(
+      <ItemDetailDialog {...defaultProps} isOpen={true} item={item} onClose={onClose} />,
+    )
+    await act(async () => {})
+
+    // Enter INSERT mode and close via Ctrl+Q (which does not reset mode)
+    mockVimMode.current = 'INSERT'
+    const dialog = screen.getByTestId('item-detail-dialog')
+    await act(async () => {
+      dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'q', ctrlKey: true, bubbles: true }))
+    })
+
+    // Simulate parent closing the dialog
+    rerender(
+      <ItemDetailDialog {...defaultProps} isOpen={false} item={item} onClose={onClose} />,
+    )
+    await act(async () => {})
+
+    mockExitToNormal.mockClear()
+
+    // Reopen — exitToNormal should be called to reset stale INSERT mode
+    rerender(
+      <ItemDetailDialog {...defaultProps} isOpen={true} item={item} onClose={onClose} />,
+    )
+    await act(async () => {})
+
+    expect(mockExitToNormal).toHaveBeenCalled()
   })
 })

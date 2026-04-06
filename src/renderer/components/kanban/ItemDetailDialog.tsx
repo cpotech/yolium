@@ -133,6 +133,7 @@ export function ItemDetailDialog({
   // Focus dialog container when dialog opens so keyboard navigation works immediately
   useEffect(() => {
     if (isOpen) {
+      vim.exitToNormal()
       dialogRef.current?.focus()
       setFocusedItemIndex(0)
       setDialogVisualMode(false)
