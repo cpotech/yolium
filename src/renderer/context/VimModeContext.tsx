@@ -27,6 +27,7 @@ interface VimModeProviderProps {
   onZoneChange?: UseVimModeOptions['onZoneChange'];
   onGoToKanban?: UseVimModeOptions['onGoToKanban'];
   onShowShortcuts?: UseVimModeOptions['onShowShortcuts'];
+  onSelectTab?: UseVimModeOptions['onSelectTab'];
 }
 
 export function VimModeProvider({
@@ -36,6 +37,7 @@ export function VimModeProvider({
   onZoneChange,
   onGoToKanban,
   onShowShortcuts,
+  onSelectTab,
 }: VimModeProviderProps): React.ReactElement {
   const [dialogSuspensionCount, setDialogSuspensionCount] = useState(0);
   const nextSuspensionIdRef = useRef(0);
@@ -55,7 +57,7 @@ export function VimModeProvider({
   }, []);
 
   const effectiveDialogOpen = dialogOpen || dialogSuspensionCount > 0;
-  const vim = useVimMode({ dialogOpen: effectiveDialogOpen, isTerminalActive, onZoneChange, onGoToKanban, onShowShortcuts });
+  const vim = useVimMode({ dialogOpen: effectiveDialogOpen, isTerminalActive, onZoneChange, onGoToKanban, onShowShortcuts, onSelectTab });
 
   // Stable ref for the handler so we register the listener once
   const vimRef = useRef(vim);

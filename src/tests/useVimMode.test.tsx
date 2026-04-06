@@ -384,4 +384,91 @@ describe('useVimMode', () => {
 
     expect(result.current.mode).toBe('VISUAL');
   });
+
+  // --- onSelectTab tests ---
+
+  it('should call onSelectTab with index 0 when 1 is pressed in NORMAL mode', () => {
+    const onSelectTab = vi.fn();
+    const { result } = renderHook(() => useVimMode({ onSelectTab }));
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: '1' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(onSelectTab).toHaveBeenCalledWith(0);
+  });
+
+  it('should call onSelectTab with index 4 when 5 is pressed in NORMAL mode', () => {
+    const onSelectTab = vi.fn();
+    const { result } = renderHook(() => useVimMode({ onSelectTab }));
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: '5' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(onSelectTab).toHaveBeenCalledWith(4);
+  });
+
+  it('should call onSelectTab with index 9 when 0 is pressed in NORMAL mode', () => {
+    const onSelectTab = vi.fn();
+    const { result } = renderHook(() => useVimMode({ onSelectTab }));
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: '0' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(onSelectTab).toHaveBeenCalledWith(9);
+  });
+
+  it('should NOT call onSelectTab when a dialog is open', () => {
+    const onSelectTab = vi.fn();
+    const { result } = renderHook(() => useVimMode({ onSelectTab, dialogOpen: true }));
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: '1' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(onSelectTab).not.toHaveBeenCalled();
+  });
+
+  it('should NOT call onSelectTab in INSERT mode', () => {
+    const onSelectTab = vi.fn();
+    const { result } = renderHook(() => useVimMode({ onSelectTab }));
+
+    act(() => {
+      result.current.enterInsertMode();
+    });
+    expect(result.current.mode).toBe('INSERT');
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: '1' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(onSelectTab).not.toHaveBeenCalled();
+  });
+
+  it('should call onSelectTab regardless of active zone (e.g. sidebar zone)', () => {
+    const onSelectTab = vi.fn();
+    const { result } = renderHook(() => useVimMode({ onSelectTab }));
+
+    // Switch to sidebar zone
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'e' });
+      result.current.handleKeyDown(event);
+    });
+    expect(result.current.activeZone).toBe('sidebar');
+
+    // Press 1 — should still call onSelectTab
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: '1' });
+      result.current.handleKeyDown(event);
+    });
+
+    expect(onSelectTab).toHaveBeenCalledWith(0);
+  });
 });

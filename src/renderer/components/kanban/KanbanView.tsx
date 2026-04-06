@@ -4,7 +4,6 @@ import { KanbanColumn } from './KanbanColumn'
 import { NewItemDialog } from './NewItemDialog'
 import { ItemDetailDialog } from './ItemDetailDialog'
 import type { KanbanBoard, KanbanItem, KanbanColumn as ColumnId } from '@shared/types/kanban'
-import type { Tab } from '@shared/types/tabs'
 import { prepareConflictResolution } from './item-detail/useItemDetailPrWorkflow'
 import { useVimModeContext } from '@renderer/context/VimModeContext'
 import { useConfirmDialog } from '@renderer/hooks/useConfirmDialog'
@@ -16,8 +15,6 @@ interface KanbanViewProps {
   isActive?: boolean
   onSwitchProject?: (newPath: string) => void
   onDeleteProject?: (projectPath: string) => void
-  tabs?: Tab[]
-  onTabSelect?: (tabId: string) => void
   onOpenSchedule?: () => void
 }
 
@@ -38,8 +35,6 @@ export function KanbanView({
   isActive,
   onSwitchProject,
   onDeleteProject,
-  tabs,
-  onTabSelect,
   onOpenSchedule,
 }: KanbanViewProps): React.ReactElement {
   const [board, setBoard] = useState<KanbanBoard | null>(null)
@@ -510,20 +505,7 @@ export function KanbanView({
         viewRef.current?.focus()
       }
     }
-    if (isVimContentActive && tabs && tabs.length > 0) {
-      let tabIndex = -1
-      if (e.key >= '1' && e.key <= '9') {
-        tabIndex = parseInt(e.key, 10) - 1
-      } else if (e.key === '0') {
-        tabIndex = 9
-      }
-      if (tabIndex >= 0 && tabIndex < tabs.length) {
-        e.preventDefault()
-        onTabSelect?.(tabs[tabIndex].id)
-        return
-      }
-    }
-  }, [newItemDialogOpen, selectedItem, loadBoard, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, isVisualMode, board, vim, columns, focusedColumnIndex, focusedCardIndex, getColumnItems, handleCardClick, projectPath, tabs, onTabSelect])
+  }, [newItemDialogOpen, selectedItem, loadBoard, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, isVisualMode, board, vim, columns, focusedColumnIndex, focusedCardIndex, getColumnItems, handleCardClick, projectPath])
 
   const handleCardDrop = useCallback(async (itemId: string, targetColumn: ColumnId) => {
     if (!projectPath || !board) return

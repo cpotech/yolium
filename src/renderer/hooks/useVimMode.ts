@@ -28,6 +28,8 @@ export interface UseVimModeOptions {
   onGoToKanban?: () => void;
   /** Called when '?' is pressed to show keyboard shortcuts dialog */
   onShowShortcuts?: () => void;
+  /** Called when a number key (1-9, 0) is pressed to select a tab by index */
+  onSelectTab?: (index: number) => void;
 }
 
 export interface UseVimModeResult {
@@ -41,7 +43,7 @@ export interface UseVimModeResult {
 }
 
 export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
-  const { dialogOpen = false, onZoneChange, isTerminalActive = false, onGoToKanban, onShowShortcuts } = options;
+  const { dialogOpen = false, onZoneChange, isTerminalActive = false, onGoToKanban, onShowShortcuts, onSelectTab } = options;
   const [mode, setMode] = useState<VimMode>('NORMAL');
   const [activeZone, setActiveZoneState] = useState<VimZone>('content');
   const onZoneChangeRef = useRef(onZoneChange);
@@ -50,6 +52,8 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
   onGoToKanbanRef.current = onGoToKanban;
   const onShowShortcutsRef = useRef(onShowShortcuts);
   onShowShortcutsRef.current = onShowShortcuts;
+  const onSelectTabRef = useRef(onSelectTab);
+  onSelectTabRef.current = onSelectTab;
 
   const setActiveZone = useCallback((zone: VimZone) => {
     setActiveZoneState(zone);
@@ -139,6 +143,18 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
       event.preventDefault();
       const zone = ZONE_KEYS[key];
       setActiveZone(zone);
+      return;
+    }
+
+    // Tab selection with number keys (1-9 → index 0-8, 0 → index 9)
+    if (key >= '1' && key <= '9') {
+      event.preventDefault();
+      onSelectTabRef.current?.(parseInt(key, 10) - 1);
+      return;
+    }
+    if (key === '0') {
+      event.preventDefault();
+      onSelectTabRef.current?.(9);
       return;
     }
 
