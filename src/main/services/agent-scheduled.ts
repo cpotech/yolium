@@ -15,10 +15,55 @@ import {
   ensureImage,
 } from '@main/docker';
 import { appendRunLog, appendAction, loadCredentials, pruneCredentials } from '@main/stores/yolium-db';
+import { getAllProjectPaths } from '@main/stores/kanban-db';
 import type { ActionMessage, CompleteMessage, ErrorMessage, RunResultMessage } from '@shared/types/agent';
 import type { SpecialistDefinition, ScheduleType, RunOutcome } from '@shared/types/schedule';
 
 const logger = createLogger('agent-scheduled');
+
+/**
+ * Resolve specialist project paths.
+ * If the array contains "all", resolves all project paths from kanban boards.
+ * Otherwise uses explicit paths. Filters to existing paths and deduplicates.
+ */
+export function resolveSpecialistProjects(projects: string[]): string[] {
+  if (projects.length === 0) return [];
+
+  let paths: string[];
+  if (projects.includes('all')) {
+    paths = getAllProjectPaths();
+  } else {
+    paths = projects;
+  }
+
+  // Filter to existing paths and deduplicate
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const p of paths) {
+    if (!seen.has(p) && fs.existsSync(p)) {
+      seen.add(p);
+      result.push(p);
+    }
+  }
+  return result;
+}
+
+/**
+ * Compute host-to-container path mappings for project mounts.
+ * Handles basename collisions by appending an index suffix.
+ */
+export function computeProjectMappings(projectPaths: string[]): Array<{ hostPath: string; containerPath: string }> {
+  const baseCounts = new Map<string, number>();
+  return projectPaths.map((hostPath) => {
+    let basename = path.basename(hostPath);
+    const count = (baseCounts.get(basename) ?? 0) + 1;
+    baseCounts.set(basename, count);
+    if (count > 1) {
+      basename = `${basename}-${count}`;
+    }
+    return { hostPath, containerPath: `/projects/${basename}` };
+  });
+}
 
 /**
  * Sentinel value for headless agent containers (no renderer window).
@@ -65,6 +110,14 @@ export function startScheduledAgent(params: ScheduledAgentParams): Promise<Sched
 
   const startTime = Date.now();
 
+  // Resolve project paths if declared
+  const resolvedProjects = specialist.projects?.length
+    ? resolveSpecialistProjects(specialist.projects)
+    : [];
+  const projectMappings = resolvedProjects.length > 0
+    ? computeProjectMappings(resolvedProjects)
+    : undefined;
+
   // Build prompt from specialist definition
   const prompt = buildScheduledPrompt({
     systemPrompt: specialist.systemPrompt,
@@ -72,6 +125,7 @@ export function startScheduledAgent(params: ScheduledAgentParams): Promise<Sched
     promptTemplate: specialist.promptTemplates[scheduleType],
     description: specialist.description,
     memoryContext,
+    projectPaths: projectMappings,
   });
 
   // Resolve model
@@ -163,6 +217,7 @@ export function startScheduledAgent(params: ScheduledAgentParams): Promise<Sched
         timeoutMs: (specialist.timeout || 30) * 60 * 1000,
         ...(hasCredentials && { specialistCredentials: specialistCreds }),
         ...(specialist.integrations?.length && { integrations: specialist.integrations }),
+        ...(resolvedProjects.length > 0 && { projectPaths: resolvedProjects }),
       },
       {
         onOutput: (data: string) => {

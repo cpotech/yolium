@@ -218,8 +218,9 @@ export function buildScheduledPrompt(params: {
   promptTemplate: string | undefined;
   description: string;
   memoryContext: string;
+  projectPaths?: Array<{ hostPath: string; containerPath: string }>;
 }): string {
-  const { systemPrompt, scheduleType, promptTemplate, description, memoryContext } = params;
+  const { systemPrompt, scheduleType, promptTemplate, description, memoryContext, projectPaths } = params;
   let prompt = systemPrompt;
 
   const template = promptTemplate?.trim();
@@ -227,6 +228,11 @@ export function buildScheduledPrompt(params: {
     prompt += `\n\n## Schedule: ${scheduleType}\n\n${template}`;
   } else {
     prompt += `\n\n## Schedule: ${scheduleType}\n\nExecute your ${scheduleType} task: ${description}. Review recent run history to avoid repeating work, then report findings and actions taken.`;
+  }
+
+  if (projectPaths && projectPaths.length > 0) {
+    const lines = projectPaths.map(p => `- \`${p.containerPath}\` (host: \`${p.hostPath}\`)`);
+    prompt += `\n\n## Projects\n\nThe following project directories are mounted read-only into this container:\n${lines.join('\n')}`;
   }
 
   if (memoryContext) {

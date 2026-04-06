@@ -501,6 +501,71 @@ describe('cron helper', () => {
   });
 });
 
+describe('projects field serialization', () => {
+  it('should serialize projects to markdown correctly', () => {
+    const result = serializeGuidedFormToMarkdown({
+      name: 'test-agent',
+      description: 'A test agent',
+      model: 'haiku',
+      tools: ['Read'],
+      schedules: [{ type: 'daily', cron: '0 0 * * *', enabled: true }],
+      memory: { strategy: 'distill_daily', maxEntries: 300, retentionDays: 90 },
+      escalation: { onFailure: 'alert_user' },
+      promptTemplates: {},
+      integrations: [],
+      systemPrompt: '# Test',
+      projects: ['all'],
+    });
+    expect(result).toContain('projects:');
+    expect(result).toContain('  - all');
+  });
+
+  it('should parse projects from markdown correctly', () => {
+    const markdown = `---
+name: test-agent
+description: A test agent
+model: haiku
+tools:
+  - Read
+schedules:
+  - type: daily
+    cron: "0 0 * * *"
+    enabled: true
+memory:
+  strategy: raw
+  maxEntries: 100
+  retentionDays: 30
+escalation:
+  onFailure: alert_user
+projects:
+  - all
+  - /home/user/extra-project
+---
+
+# Test`;
+    const result = parseMarkdownToGuidedForm(markdown);
+    expect(result.projects).toEqual(['all', '/home/user/extra-project']);
+  });
+
+  it('should handle empty projects array', () => {
+    const result = serializeGuidedFormToMarkdown({
+      name: 'test-agent',
+      description: 'A test agent',
+      model: 'haiku',
+      tools: ['Read'],
+      schedules: [{ type: 'daily', cron: '0 0 * * *', enabled: true }],
+      memory: { strategy: 'distill_daily', maxEntries: 300, retentionDays: 90 },
+      escalation: { onFailure: 'alert_user' },
+      promptTemplates: {},
+      integrations: [],
+      systemPrompt: '# Test',
+      projects: [],
+    });
+    // Empty projects should not appear in output
+    expect(result).not.toContain('projects:');
+  });
+});
+
 describe('clone from existing', () => {
   it('clone dropdown should populate with existing specialist names', async () => {
     render(<AddSpecialistDialog isOpen={true} onClose={vi.fn()} onCreated={vi.fn()} />);

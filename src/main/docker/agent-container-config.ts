@@ -38,6 +38,25 @@ export const PROTECTED_ENV_VARS = new Set([
   'CODEX_OAUTH_ENABLED',
 ]);
 
+/**
+ * Build read-only bind mounts for project paths.
+ * Handles basename collisions by appending an index suffix.
+ */
+export function buildProjectBindMounts(projectPaths?: string[]): string[] {
+  if (!projectPaths || projectPaths.length === 0) return [];
+
+  const baseCounts = new Map<string, number>();
+  return projectPaths.map((hostPath) => {
+    let basename = path.basename(hostPath);
+    const count = (baseCounts.get(basename) ?? 0) + 1;
+    baseCounts.set(basename, count);
+    if (count > 1) {
+      basename = `${basename}-${count}`;
+    }
+    return `${toDockerPath(hostPath)}:/projects/${basename}:ro`;
+  });
+}
+
 export function buildBindMounts(params: {
   mountPath: string;
   containerProjectPath: string;
@@ -204,6 +223,7 @@ export async function prepareAgentContainerConfig(params: {
   originalPath?: string;
   specialistCredentials?: Record<string, Record<string, string>>;
   integrations?: ServiceIntegration[];
+  projectPaths?: string[];
 }): Promise<PreparedAgentContainerConfig> {
   const {
     projectPath,
@@ -218,6 +238,7 @@ export async function prepareAgentContainerConfig(params: {
     originalPath,
     specialistCredentials,
     integrations,
+    projectPaths,
   } = params;
 
   const resolvedProjectPath = path.resolve(projectPath);
@@ -258,6 +279,10 @@ export async function prepareAgentContainerConfig(params: {
     codexOAuthBind,
     toolBinds,
   });
+
+  // Add read-only project mounts
+  const projectBinds = buildProjectBindMounts(projectPaths);
+  binds.push(...projectBinds);
 
   const promptBase64 = Buffer.from(prompt).toString('base64');
   const goalBase64 = goal ? Buffer.from(goal).toString('base64') : undefined;

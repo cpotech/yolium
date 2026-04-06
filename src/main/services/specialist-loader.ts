@@ -206,6 +206,11 @@ export function parseSpecialistDefinition(markdown: string): SpecialistDefinitio
     }
   }
 
+  // Parse projects
+  const projects = Array.isArray(data.projects) && data.projects.every((p: unknown) => typeof p === 'string')
+    ? data.projects as string[]
+    : undefined;
+
   return {
     name: data.name,
     description: data.description,
@@ -218,6 +223,7 @@ export function parseSpecialistDefinition(markdown: string): SpecialistDefinitio
     escalation,
     promptTemplates,
     integrations,
+    projects,
   };
 }
 

@@ -32,6 +32,7 @@ interface GuidedFormState {
   escalation: { onFailure?: EscalationAction; onPattern?: EscalationAction };
   promptTemplates: Record<string, string>;
   integrations: Array<{ service: string; env: Record<string, string>; tools: string[] }>;
+  projects?: string[];
   systemPrompt: string;
 }
 
@@ -107,6 +108,12 @@ export function serializeGuidedFormToMarkdown(form: GuidedFormState): string {
       for (const line of value.split('\n')) {
         lines.push(`    ${line}`);
       }
+    }
+  }
+  if (form.projects && form.projects.length > 0) {
+    lines.push('projects:');
+    for (const p of form.projects) {
+      lines.push(`  - ${p}`);
     }
   }
   if (form.integrations.length > 0) {
@@ -211,6 +218,12 @@ export function parseMarkdownToGuidedForm(markdown: string): GuidedFormState {
         }
       }
     }
+  }
+
+  // Parse projects
+  const projectsMatch = fm.match(/projects:\s*\n((?:\s+-\s+.+\n?)*)/);
+  if (projectsMatch) {
+    form.projects = projectsMatch[1].match(/-\s+(.+)/g)?.map(t => t.replace(/-\s+/, '').trim()) || [];
   }
 
   // Parse integrations
@@ -825,6 +838,29 @@ export function AddSpecialistDialog({
                     {ESCALATION_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
                   </select>
                 </div>
+              </div>
+            </Section>
+
+            {/* Projects */}
+            <Section title="Projects">
+              <div>
+                <label className={labelClass}>Project Paths</label>
+                <textarea
+                  data-testid="guided-projects"
+                  value={(guidedForm.projects ?? []).join('\n')}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const paths = value ? value.split('\n').map(l => l.trim()).filter(Boolean) : [];
+                    updateGuided('projects', paths.length > 0 ? paths : undefined);
+                  }}
+                  placeholder={'Enter one path per line, or "all" to include all kanban projects\n\nExample:\nall'}
+                  spellCheck={false}
+                  className={`${inputClass} text-xs resize-y`}
+                  style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace", minHeight: '60px', lineHeight: '1.5' }}
+                />
+                <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+                  Project directories mounted read-only into the container at /projects/. Use &quot;all&quot; to include all kanban board projects.
+                </p>
               </div>
             </Section>
 
