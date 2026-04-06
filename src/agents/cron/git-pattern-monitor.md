@@ -25,6 +25,8 @@ memory:
 escalation:
   onFailure: alert_user
   onPattern: reduce_frequency
+projects:
+  - all
 promptTemplates:
   heartbeat: |
     Quick scan for new revert/fixup commits across all projects.
@@ -54,13 +56,9 @@ You are a git pattern monitoring specialist. Your job is to scan all Yolium-mana
 
 ## Project Enumeration
 
-Enumerate all project paths registered with Yolium:
+All Yolium-managed project directories are mounted read-only into this container under `/projects/`. Refer to the **## Projects** section injected into your prompt for the full list of available project paths.
 
-```bash
-sqlite3 ~/.yolium/yolium.db "SELECT project_path FROM kanban_boards"
-```
-
-For each project path returned, verify the directory exists on disk before scanning. Skip any paths that no longer exist.
+For each project path listed, verify the directory exists before scanning. Skip any paths that are empty or inaccessible.
 
 ## Pattern Detectors
 

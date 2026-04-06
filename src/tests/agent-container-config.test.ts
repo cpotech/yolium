@@ -23,7 +23,7 @@ vi.mock('@main/docker/project-registry', () => ({
 }));
 
 import * as fs from 'node:fs';
-import { buildBindMounts, buildAgentEnv } from '@main/docker/agent-container-config';
+import { buildBindMounts, buildAgentEnv, buildProjectBindMounts } from '@main/docker/agent-container-config';
 
 describe('agent-container config helpers', () => {
   const originalEnv = {
@@ -259,6 +259,29 @@ describe('agent-container config helpers', () => {
     const slackIndex = binds.indexOf('/host/tools/slack:/opt/tools/slack:ro');
     expect(twitterIndex).toBeGreaterThan(0);
     expect(slackIndex).toBeGreaterThan(twitterIndex);
+  });
+
+  describe('buildProjectBindMounts', () => {
+    it('should add read-only bind mounts for projectPaths', () => {
+      const result = buildProjectBindMounts(['/home/user/my-app', '/home/user/other-project']);
+      expect(result).toEqual([
+        '/home/user/my-app:/projects/my-app:ro',
+        '/home/user/other-project:/projects/other-project:ro',
+      ]);
+    });
+
+    it('should handle basename collisions with index suffix', () => {
+      const result = buildProjectBindMounts(['/home/user/a/project', '/home/user/b/project']);
+      expect(result).toEqual([
+        '/home/user/a/project:/projects/project:ro',
+        '/home/user/b/project:/projects/project-2:ro',
+      ]);
+    });
+
+    it('should not add project binds when projectPaths is empty or undefined', () => {
+      expect(buildProjectBindMounts([])).toEqual([]);
+      expect(buildProjectBindMounts(undefined)).toEqual([]);
+    });
   });
 
   describe('openrouter provider env', () => {

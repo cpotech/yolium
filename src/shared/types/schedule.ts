@@ -59,6 +59,8 @@ export interface SpecialistDefinition {
   escalation: EscalationConfig;
   promptTemplates: Record<string, string>;
   integrations?: ServiceIntegration[];
+  /** Project paths to mount into the container. Use ["all"] to auto-resolve from kanban boards. */
+  projects?: string[];
   /** Whether this specialist is a built-in default or user-created custom agent */
   source?: 'default' | 'custom';
 }

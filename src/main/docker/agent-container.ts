@@ -29,6 +29,7 @@ export {
   PROTECTED_ENV_VARS,
   buildBindMounts,
   buildAgentEnv,
+  buildProjectBindMounts,
 } from './agent-container-config';
 
 /**
@@ -50,6 +51,7 @@ export interface AgentContainerParams {
   timeoutMs?: number;
   specialistCredentials?: Record<string, Record<string, string>>;
   integrations?: ServiceIntegration[];
+  projectPaths?: string[];
 }
 
 /**
@@ -89,6 +91,7 @@ export async function createAgentContainer(
     timeoutMs,
     specialistCredentials,
     integrations,
+    projectPaths,
   } = params;
 
   const sessionId = `agent-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -118,6 +121,7 @@ export async function createAgentContainer(
     originalPath,
     specialistCredentials,
     integrations,
+    projectPaths,
   });
   logger.info('Agent config prepared', {
     sessionId,

@@ -147,4 +147,14 @@ describe('git-pattern-monitor specialist', () => {
     const result = parseSpecialistDefinition(gitPatternMonitorMarkdown);
     expect(result.integrations).toEqual([]);
   });
+
+  it('should have projects field set to ["all"]', () => {
+    const result = parseSpecialistDefinition(gitPatternMonitorMarkdown);
+    expect(result.projects).toEqual(['all']);
+  });
+
+  it('should not reference sqlite3 in systemPrompt', () => {
+    const result = parseSpecialistDefinition(gitPatternMonitorMarkdown);
+    expect(result.systemPrompt).not.toContain('sqlite3');
+  });
 });

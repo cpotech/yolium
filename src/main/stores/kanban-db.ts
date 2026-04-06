@@ -115,6 +115,14 @@ function assembleBoard(boardRow: any, itemRows: any[], commentRows: any[], attac
   return board;
 }
 
+// ─── Project Path Helpers ────────────────────────────────────────────────
+
+export function getAllProjectPaths(): string[] {
+  const database = getDb();
+  const rows = database.prepare('SELECT project_path FROM kanban_boards').all() as { project_path: string }[];
+  return rows.map(r => r.project_path);
+}
+
 // ─── Kanban Board Functions ──────────────────────────────────────────────
 
 export function createBoard(projectPath: string): KanbanBoard {

@@ -332,5 +332,48 @@ describe('agent-prompts', () => {
       expect(result).toContain('CRITICAL: You MUST output @@YOLIUM:');
       expect(result).toContain('run_result');
     });
+
+    it('buildScheduledPrompt should include Projects section when projectPaths provided', () => {
+      const result = buildScheduledPrompt({
+        systemPrompt: 'You are the specialist.',
+        scheduleType: 'daily',
+        promptTemplate: 'Do the daily task.',
+        description: 'Monitor',
+        memoryContext: '',
+        projectPaths: [
+          { hostPath: '/home/user/my-app', containerPath: '/projects/my-app' },
+          { hostPath: '/home/user/other', containerPath: '/projects/other' },
+        ],
+      });
+      expect(result).toContain('## Projects');
+      expect(result).toContain('/projects/my-app');
+      expect(result).toContain('/projects/other');
+    });
+
+    it('buildScheduledPrompt should list container paths with host path context', () => {
+      const result = buildScheduledPrompt({
+        systemPrompt: 'You are the specialist.',
+        scheduleType: 'daily',
+        promptTemplate: 'Do the daily task.',
+        description: 'Monitor',
+        memoryContext: '',
+        projectPaths: [
+          { hostPath: '/home/user/my-app', containerPath: '/projects/my-app' },
+        ],
+      });
+      expect(result).toContain('/home/user/my-app');
+      expect(result).toContain('/projects/my-app');
+    });
+
+    it('buildScheduledPrompt should not include Projects section when no projectPaths', () => {
+      const result = buildScheduledPrompt({
+        systemPrompt: 'You are the specialist.',
+        scheduleType: 'daily',
+        promptTemplate: 'Do the daily task.',
+        description: 'Monitor',
+        memoryContext: '',
+      });
+      expect(result).not.toContain('## Projects');
+    });
   });
 });
