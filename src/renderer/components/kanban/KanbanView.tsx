@@ -3,6 +3,7 @@ import { FolderOpen, RefreshCw, Plus, Loader2, X, AlertTriangle, Search, GitBran
 import { KanbanColumn } from './KanbanColumn'
 import { NewItemDialog } from './NewItemDialog'
 import { ItemDetailDialog } from './ItemDetailDialog'
+import { DetailPanelTabBar } from './DetailPanelTabBar'
 import type { KanbanBoard, KanbanItem, KanbanColumn as ColumnId } from '@shared/types/kanban'
 import { prepareConflictResolution } from './item-detail/useItemDetailPrWorkflow'
 import { useVimModeContext } from '@renderer/context/VimModeContext'
@@ -40,7 +41,8 @@ export function KanbanView({
   const [board, setBoard] = useState<KanbanBoard | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [newItemDialogOpen, setNewItemDialogOpen] = useState(false)
-  const [selectedItem, setSelectedItem] = useState<KanbanItem | null>(null)
+  const [openItems, setOpenItems] = useState<KanbanItem[]>([])
+  const [activeItemId, setActiveItemId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [gitWarning, setGitWarning] = useState<{
@@ -66,6 +68,11 @@ export function KanbanView({
   // Recover stale "running" items once per project path after restart/crash.
   const recoveredProjectsRef = useRef<Set<string>>(new Set())
 
+  // Derived values from open tabs
+  const activeItem = openItems.find(i => i.id === activeItemId) ?? null
+  const hasOpenItems = openItems.length > 0
+  const openItemIds = useMemo(() => new Set(openItems.map(i => i.id)), [openItems])
+
   const loadBoard = useCallback(async () => {
     if (!projectPath) return
 
@@ -74,12 +81,24 @@ export function KanbanView({
       const result = await window.electronAPI.kanban.getBoard(projectPath)
       setBoard(result)
       setErrorMessage(null)
-      // Sync selectedItem with refreshed board data so the detail dialog shows live state
+      // Sync all open items with refreshed board data so tabs show live state
       if (result) {
-        setSelectedItem(prev => {
+        let syncedItems: KanbanItem[] = []
+        setOpenItems(prev => {
+          if (prev.length === 0) return prev
+          syncedItems = prev
+            .map(openItem => {
+              const updated = result.items.find(i => i.id === openItem.id)
+              return updated || null
+            })
+            .filter((item): item is KanbanItem => item !== null)
+          return syncedItems
+        })
+        // If active item was deleted, fall back to first remaining open tab or null
+        setActiveItemId(prev => {
           if (!prev) return prev
-          const updated = result.items.find(i => i.id === prev.id)
-          return updated || null
+          if (syncedItems.some(i => i.id === prev)) return prev
+          return syncedItems.length > 0 ? syncedItems[0].id : null
         })
       }
     } catch (error) {
@@ -121,8 +140,8 @@ export function KanbanView({
 
   // Update dialogOpenRef whenever dialog state changes
   useEffect(() => {
-    dialogOpenRef.current = newItemDialogOpen || selectedItem !== null
-  }, [newItemDialogOpen, selectedItem])
+    dialogOpenRef.current = newItemDialogOpen || openItems.length > 0
+  }, [newItemDialogOpen, openItems])
 
   // Subscribe to board updates from IPC (item added, deleted, state changed).
   // Always refresh on IPC events — the detail dialog syncs selectedItem via
@@ -304,19 +323,43 @@ export function KanbanView({
       }
     }
 
-    // Plain click: clear multi-selection if active, then open/switch detail panel
+    // Plain click: clear multi-selection if active, then open/switch tab
     if (selectedIds.size > 0) {
       setSelectedIds(new Set())
       lastClickedIdRef.current = null
     }
-    setSelectedItem(item)
-  }, [selectedIds, allVisibleItems])
+    // If item is already open, just switch to it
+    if (openItems.some(i => i.id === item.id)) {
+      setActiveItemId(item.id)
+    } else {
+      // Append new tab and activate it
+      setOpenItems(prev => [...prev, item])
+      setActiveItemId(item.id)
+    }
+  }, [selectedIds, allVisibleItems, openItems])
 
-  const handleDetailClose = useCallback(() => {
-    setSelectedItem(null)
-    // Refresh board when dialog closes to catch missed updates
+  const handleTabClose = useCallback((itemId: string) => {
+    setOpenItems(prev => {
+      const idx = prev.findIndex(i => i.id === itemId)
+      if (idx === -1) return prev
+      const next = prev.filter(i => i.id !== itemId)
+      // If closing the active tab, switch to adjacent
+      if (itemId === activeItemId) {
+        if (next.length === 0) {
+          setActiveItemId(null)
+        } else if (idx < next.length) {
+          // Switch to next (same index position)
+          setActiveItemId(next[idx].id)
+        } else {
+          // Was last tab, switch to previous
+          setActiveItemId(next[next.length - 1].id)
+        }
+      }
+      return next
+    })
+    // Refresh board when tab closes to catch missed updates
     loadBoard()
-  }, [loadBoard])
+  }, [loadBoard, activeItemId])
 
   const handleDetailUpdated = useCallback(() => {
     loadBoard()
@@ -381,7 +424,7 @@ export function KanbanView({
     // Only handle when no dialog is open and no input is focused
     const target = e.target as HTMLElement
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return
-    if (newItemDialogOpen || selectedItem) return
+    if (newItemDialogOpen || activeItem) return
 
     // Vim spatial navigation (h/l for columns) in NORMAL mode
     if (isVimContentActive && board) {
@@ -505,7 +548,7 @@ export function KanbanView({
         viewRef.current?.focus()
       }
     }
-  }, [newItemDialogOpen, selectedItem, loadBoard, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, isVisualMode, board, vim, columns, focusedColumnIndex, focusedCardIndex, getColumnItems, handleCardClick, projectPath])
+  }, [newItemDialogOpen, activeItem, loadBoard, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, isVisualMode, board, vim, columns, focusedColumnIndex, focusedCardIndex, getColumnItems, handleCardClick, projectPath])
 
   const handleCardDrop = useCallback(async (itemId: string, targetColumn: ColumnId) => {
     if (!projectPath || !board) return
@@ -866,7 +909,7 @@ export function KanbanView({
         {/* Columns container */}
         <div
           data-testid="kanban-columns-container"
-          className={`overflow-x-auto yolium-scrollbar min-h-0 p-4 ${selectedItem ? 'w-[40%] min-w-[300px]' : 'flex-1'}`}
+          className={`overflow-x-auto yolium-scrollbar min-h-0 p-4 ${hasOpenItems ? 'w-[40%] min-w-[300px]' : 'flex-1'}`}
         >
           <div className="flex gap-4 h-full">
             {columns.map((col, colIndex) => {
@@ -880,7 +923,8 @@ export function KanbanView({
                   title={col.title}
                   items={colItems}
                   selectedIds={selectedIds}
-                  selectedItemId={selectedItem?.id}
+                  selectedItemId={activeItem?.id}
+                  openItemIds={openItemIds}
                   focusedCardIndex={isActiveCol ? clampedCardIndex : undefined}
                   onCardClick={handleCardClick}
                   onCardDrop={handleCardDrop}
@@ -895,14 +939,24 @@ export function KanbanView({
           </div>
         </div>
 
-        {/* Item Detail Panel (inline, not overlay) */}
-        <ItemDetailDialog
-          isOpen={selectedItem !== null}
-          item={selectedItem}
-          projectPath={projectPath}
-          onClose={handleDetailClose}
-          onUpdated={handleDetailUpdated}
-        />
+        {/* Item Detail Panel with tab bar */}
+        {hasOpenItems && (
+          <div className="flex-1 flex flex-col min-h-0 min-w-0">
+            <DetailPanelTabBar
+              items={openItems}
+              activeItemId={activeItemId}
+              onTabClick={setActiveItemId}
+              onTabClose={handleTabClose}
+            />
+            <ItemDetailDialog
+              isOpen={activeItem !== null}
+              item={activeItem}
+              projectPath={projectPath}
+              onClose={() => activeItemId && handleTabClose(activeItemId)}
+              onUpdated={handleDetailUpdated}
+            />
+          </div>
+        )}
       </div>
 
       {/* New Item Dialog */}

@@ -213,4 +213,205 @@ describe('Kanban Split Panel', () => {
     const cards = screen.getAllByTestId('kanban-card')
     expect(cards.length).toBeGreaterThanOrEqual(2)
   })
+
+  it('should open a second item in a new tab without closing the first', async () => {
+    const items = [
+      createMockItem({ id: '1', title: 'Task A', column: 'backlog' }),
+      createMockItem({ id: '2', title: 'Task B', column: 'backlog' }),
+    ]
+    await renderAndWaitForBoard(items)
+
+    const cards = screen.getAllByTestId('kanban-card')
+
+    // Open first item
+    await act(async () => {
+      fireEvent.click(cards[0])
+    })
+    expect(screen.getByTestId('item-detail-dialog')).toBeInTheDocument()
+    expect(screen.getByTestId('detail-panel-tab-bar')).toBeInTheDocument()
+
+    // Open second item — first should remain as a tab
+    await act(async () => {
+      fireEvent.click(cards[1])
+    })
+    expect(screen.getByTestId('item-detail-dialog')).toBeInTheDocument()
+    const tabs = screen.getAllByTestId('detail-tab')
+    expect(tabs).toHaveLength(2)
+  })
+
+  it('should switch to existing tab when clicking an already-open item', async () => {
+    const items = [
+      createMockItem({ id: '1', title: 'Task A', column: 'backlog' }),
+      createMockItem({ id: '2', title: 'Task B', column: 'backlog' }),
+    ]
+    await renderAndWaitForBoard(items)
+
+    // Open both items by clicking kanban cards
+    const cards = screen.getAllByTestId('kanban-card')
+    await act(async () => { fireEvent.click(cards[0]) }) // Task A
+    await act(async () => { fireEvent.click(cards[1]) }) // Task B
+
+    // Click Task A card again — should switch to it, not create duplicate
+    await act(async () => { fireEvent.click(cards[0]) })
+
+    const tabs = screen.getAllByTestId('detail-tab')
+    expect(tabs).toHaveLength(2) // still 2, no duplicate
+    // Task A tab should be active
+    const activeTab = tabs.find(t => t.getAttribute('data-active') === 'true')
+    expect(activeTab).toBeTruthy()
+    expect(activeTab!.textContent).toContain('Task A')
+  })
+
+  it('should close active tab and switch to next tab', async () => {
+    const items = [
+      createMockItem({ id: '1', title: 'Task A', column: 'backlog' }),
+      createMockItem({ id: '2', title: 'Task B', column: 'backlog' }),
+      createMockItem({ id: '3', title: 'Task C', column: 'backlog' }),
+    ]
+    await renderAndWaitForBoard(items)
+
+    const cards = screen.getAllByTestId('kanban-card')
+    // Open all three items
+    await act(async () => { fireEvent.click(cards[0]) })
+    await act(async () => { fireEvent.click(cards[1]) })
+    await act(async () => { fireEvent.click(cards[2]) })
+
+    // Switch to Task B (middle tab)
+    const tabB = screen.getAllByTestId('detail-tab').find(t => t.textContent?.includes('Task B'))!
+    await act(async () => { fireEvent.click(tabB) })
+
+    // Close Task B via its close button
+    const closeBtn = tabB.querySelector('[data-testid="detail-tab-close"]')!
+    await act(async () => { fireEvent.click(closeBtn) })
+
+    // Should switch to next tab (Task C)
+    const remainingTabs = screen.getAllByTestId('detail-tab')
+    expect(remainingTabs).toHaveLength(2)
+    const activeTab = remainingTabs.find(t => t.getAttribute('data-active') === 'true')
+    expect(activeTab!.textContent).toContain('Task C')
+  })
+
+  it('should close active tab and switch to previous tab when no next tab exists', async () => {
+    const items = [
+      createMockItem({ id: '1', title: 'Task A', column: 'backlog' }),
+      createMockItem({ id: '2', title: 'Task B', column: 'backlog' }),
+    ]
+    await renderAndWaitForBoard(items)
+
+    const cards = screen.getAllByTestId('kanban-card')
+    // Open both items — Task B is active (last opened)
+    await act(async () => { fireEvent.click(cards[0]) })
+    await act(async () => { fireEvent.click(cards[1]) })
+
+    // Close Task B (last tab, no next)
+    const tabB = screen.getAllByTestId('detail-tab').find(t => t.textContent?.includes('Task B'))!
+    const closeBtn = tabB.querySelector('[data-testid="detail-tab-close"]')!
+    await act(async () => { fireEvent.click(closeBtn) })
+
+    // Should switch to previous tab (Task A)
+    const remainingTabs = screen.getAllByTestId('detail-tab')
+    expect(remainingTabs).toHaveLength(1)
+    const activeTab = remainingTabs.find(t => t.getAttribute('data-active') === 'true')
+    expect(activeTab!.textContent).toContain('Task A')
+  })
+
+  it('should close all tabs when last tab is closed', async () => {
+    const items = [
+      createMockItem({ id: '1', title: 'Task A', column: 'backlog' }),
+    ]
+    await renderAndWaitForBoard(items)
+
+    // Open single item
+    await act(async () => { fireEvent.click(screen.getByText('Task A')) })
+    expect(screen.getByTestId('detail-panel-tab-bar')).toBeInTheDocument()
+
+    // Close it
+    const tab = screen.getByTestId('detail-tab')
+    const closeBtn = tab.querySelector('[data-testid="detail-tab-close"]')!
+    await act(async () => { fireEvent.click(closeBtn) })
+
+    // Panel and tab bar should be gone
+    expect(screen.queryByTestId('item-detail-dialog')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('detail-panel-tab-bar')).not.toBeInTheDocument()
+  })
+
+  it('should sync all open items when board refreshes', async () => {
+    const items = [
+      createMockItem({ id: '1', title: 'Task A', column: 'backlog' }),
+      createMockItem({ id: '2', title: 'Task B', column: 'backlog' }),
+    ]
+    await renderAndWaitForBoard(items)
+
+    const cards = screen.getAllByTestId('kanban-card')
+    // Open both items
+    await act(async () => { fireEvent.click(cards[0]) })
+    await act(async () => { fireEvent.click(cards[1]) })
+
+    // Simulate board refresh with updated titles
+    const updatedItems = [
+      createMockItem({ id: '1', title: 'Task A Updated', column: 'backlog' }),
+      createMockItem({ id: '2', title: 'Task B Updated', column: 'backlog' }),
+    ]
+    mockKanbanGetBoard.mockResolvedValue(createMockBoard(updatedItems))
+
+    // Trigger refresh
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('refresh-button'))
+    })
+
+    // Wait for both tab titles to update
+    await waitFor(() => {
+      const tabs = screen.getAllByTestId('detail-tab')
+      expect(tabs).toHaveLength(2)
+      expect(tabs.some(t => t.textContent?.includes('Task A Updated'))).toBe(true)
+      expect(tabs.some(t => t.textContent?.includes('Task B Updated'))).toBe(true)
+    })
+  })
+
+  it('should remove tab when item is deleted from board', async () => {
+    const items = [
+      createMockItem({ id: '1', title: 'Task A', column: 'backlog' }),
+      createMockItem({ id: '2', title: 'Task B', column: 'backlog' }),
+    ]
+    await renderAndWaitForBoard(items)
+
+    const cards = screen.getAllByTestId('kanban-card')
+    // Open both items
+    await act(async () => { fireEvent.click(cards[0]) })
+    await act(async () => { fireEvent.click(cards[1]) })
+
+    // Simulate board refresh with Task A removed
+    const updatedItems = [
+      createMockItem({ id: '2', title: 'Task B', column: 'backlog' }),
+    ]
+    mockKanbanGetBoard.mockResolvedValue(createMockBoard(updatedItems))
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('refresh-button'))
+    })
+
+    await waitFor(() => {
+      const tabs = screen.getAllByTestId('detail-tab')
+      expect(tabs).toHaveLength(1)
+      expect(tabs[0].textContent).toContain('Task B')
+    })
+  })
+
+  it('should show open-in-tab indicator on cards with background tabs', async () => {
+    const items = [
+      createMockItem({ id: '1', title: 'Task A', column: 'backlog' }),
+      createMockItem({ id: '2', title: 'Task B', column: 'backlog' }),
+    ]
+    await renderAndWaitForBoard(items)
+
+    const cards = screen.getAllByTestId('kanban-card')
+    // Open both items — Task B is active
+    await act(async () => { fireEvent.click(cards[0]) })
+    await act(async () => { fireEvent.click(cards[1]) })
+
+    // Task A's card should have the open-in-tab indicator (it's a background tab)
+    const updatedCards = screen.getAllByTestId('kanban-card')
+    const taskACard = updatedCards.find(c => c.textContent?.includes('Task A'))!
+    expect(taskACard.getAttribute('data-open-in-tab')).toBe('true')
+  })
 })

@@ -137,6 +137,11 @@ export const selectors = {
   newItemCreate: '[data-testid="new-item-dialog"] [data-testid="create-button"]',
   newItemCancel: '[data-testid="new-item-dialog"] [data-testid="cancel-button"]',
 
+  // Detail Panel Tab Bar
+  detailPanelTabBar: '[data-testid="detail-panel-tab-bar"]',
+  detailTab: '[data-testid="detail-tab"]',
+  detailTabClose: '[data-testid="detail-tab-close"]',
+
   // Item Detail Dialog
   itemDetailDialog: '[data-testid="item-detail-dialog"]',
   gitDiffDialog: '[data-testid="git-diff-dialog"]',
