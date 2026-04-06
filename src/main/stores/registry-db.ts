@@ -36,6 +36,12 @@ export function loadProjectRegistry(): ProjectRegistry {
   return { version: 1, projects };
 }
 
+export function getAllRegisteredPaths(): string[] {
+  const database = getDb();
+  const rows = database.prepare('SELECT path FROM project_registry').all() as { path: string }[];
+  return rows.map((row) => row.path);
+}
+
 export function saveProjectRegistry(registry: ProjectRegistry): void {
   const database = getDb();
 

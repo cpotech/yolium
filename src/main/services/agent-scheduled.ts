@@ -16,6 +16,7 @@ import {
 } from '@main/docker';
 import { appendRunLog, appendAction, loadCredentials, pruneCredentials } from '@main/stores/yolium-db';
 import { getAllProjectPaths } from '@main/stores/kanban-db';
+import { getAllRegisteredPaths } from '@main/stores/registry-db';
 import type { ActionMessage, CompleteMessage, ErrorMessage, RunResultMessage } from '@shared/types/agent';
 import type { SpecialistDefinition, ScheduleType, RunOutcome } from '@shared/types/schedule';
 
@@ -31,7 +32,7 @@ export function resolveSpecialistProjects(projects: string[]): string[] {
 
   let paths: string[];
   if (projects.includes('all')) {
-    paths = getAllProjectPaths();
+    paths = [...getAllProjectPaths(), ...getAllRegisteredPaths()];
   } else {
     paths = projects;
   }

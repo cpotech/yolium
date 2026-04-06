@@ -34,6 +34,12 @@ vi.mock('@main/stores/kanban-db', () => ({
   getAllProjectPaths: () => mockGetAllProjectPaths(),
 }));
 
+// Mock registry-db for resolveSpecialistProjects tests
+const mockGetAllRegisteredPaths = vi.fn<() => string[]>(() => []);
+vi.mock('@main/stores/registry-db', () => ({
+  getAllRegisteredPaths: () => mockGetAllRegisteredPaths(),
+}));
+
 // Mock heavy dependencies pulled in by agent-scheduled
 vi.mock('@main/services/agent-protocol', () => ({
   extractProtocolMessages: vi.fn(() => []),
@@ -144,11 +150,46 @@ describe('resolveSpecialistProjects', () => {
     expect(result).toEqual(['/home/user/project-a']);
   });
 
-  it('should resolve "all" to kanban board paths', () => {
+  it('should resolve "all" to merged kanban + registry paths', () => {
     mockGetAllProjectPaths.mockReturnValue(['/home/user/proj1', '/home/user/proj2']);
+    mockGetAllRegisteredPaths.mockReturnValue(['/home/user/proj3', '/home/user/proj4']);
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    const result = resolveSpecialistProjects(['all']);
+    expect(result).toEqual(['/home/user/proj1', '/home/user/proj2', '/home/user/proj3', '/home/user/proj4']);
+  });
+
+  it('should deduplicate paths across kanban and registry sources', () => {
+    mockGetAllProjectPaths.mockReturnValue(['/home/user/proj1', '/home/user/shared']);
+    mockGetAllRegisteredPaths.mockReturnValue(['/home/user/shared', '/home/user/proj2']);
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    const result = resolveSpecialistProjects(['all']);
+    expect(result).toEqual(['/home/user/proj1', '/home/user/shared', '/home/user/proj2']);
+  });
+
+  it('should return registry paths even when kanban boards is empty', () => {
+    mockGetAllProjectPaths.mockReturnValue([]);
+    mockGetAllRegisteredPaths.mockReturnValue(['/home/user/proj1', '/home/user/proj2']);
     vi.mocked(fs.existsSync).mockReturnValue(true);
     const result = resolveSpecialistProjects(['all']);
     expect(result).toEqual(['/home/user/proj1', '/home/user/proj2']);
+  });
+
+  it('should filter non-existent paths from registry source', () => {
+    mockGetAllProjectPaths.mockReturnValue(['/home/user/proj1']);
+    mockGetAllRegisteredPaths.mockReturnValue(['/home/user/proj2', '/home/user/gone']);
+    vi.mocked(fs.existsSync).mockImplementation((p) => {
+      return p === '/home/user/proj1' || p === '/home/user/proj2';
+    });
+    const result = resolveSpecialistProjects(['all']);
+    expect(result).toEqual(['/home/user/proj1', '/home/user/proj2']);
+  });
+
+  it('should handle both sources returning empty arrays', () => {
+    mockGetAllProjectPaths.mockReturnValue([]);
+    mockGetAllRegisteredPaths.mockReturnValue([]);
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    const result = resolveSpecialistProjects(['all']);
+    expect(result).toEqual([]);
   });
 
   it('should deduplicate paths', () => {
