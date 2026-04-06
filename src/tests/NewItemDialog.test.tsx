@@ -1176,9 +1176,18 @@ describe('NewItemDialog', () => {
     })
 
     it('should display INSERT mode shortcuts when a field is focused', () => {
-      mockMode = 'INSERT'
+      const { rerender } = render(
+        <NewItemDialog
+          isOpen={true}
+          projectPath="/test/project"
+          onClose={vi.fn()}
+          onCreated={vi.fn()}
+        />
+      )
 
-      render(
+      // Set INSERT mode after dialog opens (dialog open effect resets to NORMAL)
+      mockMode = 'INSERT'
+      rerender(
         <NewItemDialog
           isOpen={true}
           projectPath="/test/project"
@@ -1294,8 +1303,6 @@ describe('NewItemDialog', () => {
     })
 
     it('should not navigate fields when in INSERT mode', () => {
-      mockMode = 'INSERT'
-
       render(
         <NewItemDialog
           isOpen={true}
@@ -1304,6 +1311,9 @@ describe('NewItemDialog', () => {
           onCreated={vi.fn()}
         />
       )
+
+      // Set INSERT mode after dialog opens (dialog open effect resets to NORMAL)
+      mockMode = 'INSERT'
 
       const overlay = screen.getByTestId('new-item-dialog').parentElement!
       fireEvent.keyDown(overlay, { key: 'j' })
@@ -1473,5 +1483,79 @@ describe('NewItemDialog', () => {
 
     document.body.removeChild(outsideEl)
     globalThis.requestAnimationFrame = origRAF
+  })
+
+  it('should call exitToNormal when dialog opens (isOpen transitions to true)', async () => {
+    mockExitToNormal.mockClear()
+
+    const { rerender } = render(
+      <NewItemDialog
+        isOpen={false}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+    await waitFor(() => {})
+
+    expect(mockExitToNormal).not.toHaveBeenCalled()
+
+    rerender(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    )
+    await waitFor(() => {})
+
+    expect(mockExitToNormal).toHaveBeenCalled()
+  })
+
+  it('should call exitToNormal when dialog reopens after Ctrl+Q close in INSERT mode', async () => {
+    const onClose = vi.fn()
+
+    const { rerender } = render(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={onClose}
+        onCreated={vi.fn()}
+      />
+    )
+    await waitFor(() => {})
+
+    // Enter INSERT mode and close via Ctrl+Q (which does not reset mode)
+    mockMode = 'INSERT'
+    const dialog = screen.getByTestId('new-item-dialog')
+    fireEvent.keyDown(dialog, { key: 'q', ctrlKey: true })
+    expect(onClose).toHaveBeenCalled()
+
+    // Simulate parent closing the dialog
+    rerender(
+      <NewItemDialog
+        isOpen={false}
+        projectPath="/test/project"
+        onClose={onClose}
+        onCreated={vi.fn()}
+      />
+    )
+    await waitFor(() => {})
+
+    mockExitToNormal.mockClear()
+
+    // Reopen — exitToNormal should be called to reset stale INSERT mode
+    rerender(
+      <NewItemDialog
+        isOpen={true}
+        projectPath="/test/project"
+        onClose={onClose}
+        onCreated={vi.fn()}
+      />
+    )
+    await waitFor(() => {})
+
+    expect(mockExitToNormal).toHaveBeenCalled()
   })
 })
