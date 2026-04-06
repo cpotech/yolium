@@ -10,6 +10,7 @@ interface KanbanColumnProps {
   items: KanbanItem[]
   selectedIds?: Set<string>
   selectedItemId?: string
+  openItemIds?: Set<string>
   focusedCardIndex?: number
   onCardClick: (item: KanbanItem, event: React.MouseEvent | React.KeyboardEvent) => void
   onCardDrop?: (itemId: string, targetColumn: ColumnId) => void
@@ -34,6 +35,7 @@ export function KanbanColumn({
   items,
   selectedIds,
   selectedItemId,
+  openItemIds,
   focusedCardIndex,
   onCardClick,
   onCardDrop,
@@ -147,6 +149,7 @@ export function KanbanColumn({
               item={item}
               isSelected={selectedIds?.has(item.id)}
               isActiveItem={item.id === selectedItemId}
+              isOpenInTab={openItemIds?.has(item.id) && item.id !== selectedItemId}
               isFocused={isVimActive && focusedCardIndex === itemIndex}
               onClick={onCardClick}
               onRetryAgent={onRetryAgent}

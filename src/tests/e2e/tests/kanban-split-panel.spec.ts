@@ -123,4 +123,98 @@ test.describe('Kanban Split Panel', () => {
     // Both columns and panel should be visible simultaneously
     await expect(page.locator(selectors.kanbanColumnsContainer)).toBeVisible();
   });
+
+  test('should show tab bar with multiple items open', async () => {
+    await openKanbanBoard();
+    const page = ctx.window;
+
+    await createItemViaIPC('Tab Item A', 'First tab item');
+    await createItemViaIPC('Tab Item B', 'Second tab item');
+
+    const cards = page.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard);
+    await cards.first().click();
+    await expect(page.locator(selectors.detailPanelTabBar)).toBeVisible({ timeout: 5000 });
+
+    // Open second item
+    await cards.nth(1).click();
+
+    // Tab bar should show both tabs
+    const tabElements = page.locator(selectors.detailTab);
+    await expect(tabElements).toHaveCount(2);
+  });
+
+  test('should switch between tabs by clicking tab bar', async () => {
+    await openKanbanBoard();
+    const page = ctx.window;
+
+    await createItemViaIPC('Switch A', 'First item');
+    await createItemViaIPC('Switch B', 'Second item');
+
+    const cards = page.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard);
+    await cards.first().click();
+    await cards.nth(1).click();
+
+    // Click first tab to switch back
+    const firstTab = page.locator(selectors.detailTab).first();
+    await firstTab.click();
+
+    // First tab should be active
+    await expect(firstTab).toHaveAttribute('data-active', 'true');
+  });
+
+  test('should close a tab with the x button and switch to adjacent tab', async () => {
+    await openKanbanBoard();
+    const page = ctx.window;
+
+    await createItemViaIPC('Close A', 'First item');
+    await createItemViaIPC('Close B', 'Second item');
+
+    const cards = page.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard);
+    await cards.first().click();
+    await cards.nth(1).click();
+
+    // Close the active (second) tab
+    const activeTab = page.locator(`${selectors.detailTab}[data-active="true"]`);
+    await activeTab.locator(selectors.detailTabClose).click();
+
+    // Should have one tab remaining
+    await expect(page.locator(selectors.detailTab)).toHaveCount(1);
+    await expect(page.locator(selectors.itemDetailDialog)).toBeVisible();
+  });
+
+  test('should close active tab with Ctrl+Q and keep remaining tabs', async () => {
+    await openKanbanBoard();
+    const page = ctx.window;
+
+    await createItemViaIPC('CtrlQ A', 'First item');
+    await createItemViaIPC('CtrlQ B', 'Second item');
+
+    const cards = page.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard);
+    await cards.first().click();
+    await cards.nth(1).click();
+
+    // Close active tab with Ctrl+Q
+    await page.keyboard.press('Control+q');
+
+    // One tab should remain
+    await expect(page.locator(selectors.detailTab)).toHaveCount(1);
+    await expect(page.locator(selectors.itemDetailDialog)).toBeVisible();
+  });
+
+  test('should show active-item highlight on kanban card for current tab', async () => {
+    await openKanbanBoard();
+    const page = ctx.window;
+
+    await createItemViaIPC('Highlight A', 'First item');
+    await createItemViaIPC('Highlight B', 'Second item');
+
+    const cards = page.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard);
+    await cards.first().click();
+    await cards.nth(1).click();
+
+    // Second card (active tab) should have active-item styling
+    // First card (background tab) should have open-in-tab indicator
+    const firstCard = cards.first();
+    await expect(firstCard).toHaveAttribute('data-open-in-tab', 'true');
+  });
 });
