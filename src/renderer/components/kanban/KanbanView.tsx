@@ -10,8 +10,6 @@ import { useVimModeContext } from '@renderer/context/VimModeContext'
 import { useConfirmDialog } from '@renderer/hooks/useConfirmDialog'
 import { ConfirmDialog } from '@renderer/components/shared/ConfirmDialog'
 import { useVimListNavigation } from '@renderer/hooks/useVimListNavigation'
-import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper'
-import type { ClaudeUsageState } from '@shared/types/agent'
 
 interface KanbanViewProps {
   projectPath: string | null
@@ -20,15 +18,6 @@ interface KanbanViewProps {
   onDeleteProject?: (projectPath: string) => void
   tabs?: Tab[]
   onTabSelect?: (tabId: string) => void
-  // StatusBar props
-  onShowShortcuts?: () => void
-  onOpenSettings?: () => void
-  onOpenProjectSettings?: () => void
-  whisperRecordingState?: WhisperRecordingState
-  whisperSelectedModel?: WhisperModelSize
-  onToggleRecording?: () => void
-  onOpenModelDialog?: () => void
-  claudeUsage?: ClaudeUsageState
   onOpenSchedule?: () => void
 }
 
@@ -51,15 +40,6 @@ export function KanbanView({
   onDeleteProject,
   tabs,
   onTabSelect,
-  // StatusBar props
-  onShowShortcuts,
-  onOpenSettings,
-  onOpenProjectSettings,
-  whisperRecordingState,
-  whisperSelectedModel,
-  onToggleRecording,
-  onOpenModelDialog,
-  claudeUsage,
   onOpenSchedule,
 }: KanbanViewProps): React.ReactElement {
   const [board, setBoard] = useState<KanbanBoard | null>(null)
@@ -329,13 +309,12 @@ export function KanbanView({
       }
     }
 
-    // Plain click: if items are selected, clear selection; otherwise open detail
+    // Plain click: clear multi-selection if active, then open/switch detail panel
     if (selectedIds.size > 0) {
       setSelectedIds(new Set())
       lastClickedIdRef.current = null
-    } else {
-      setSelectedItem(item)
     }
+    setSelectedItem(item)
   }, [selectedIds, allVisibleItems])
 
   const handleDetailClose = useCallback(() => {
@@ -900,35 +879,48 @@ export function KanbanView({
         </div>
       )}
 
-      {/* Columns container */}
-      <div
-        data-testid="kanban-columns-container"
-        className="flex-1 overflow-x-auto yolium-scrollbar min-h-0 p-4"
-      >
-        <div className="flex gap-4 h-full">
-          {columns.map((col, colIndex) => {
-            const colItems = getColumnItems(col.id)
-            const isActiveCol = isVimContentActive && colIndex === focusedColumnIndex
-            const clampedCardIndex = Math.min(focusedCardIndex, Math.max(colItems.length - 1, 0))
-            return (
-              <KanbanColumn
-                key={col.id}
-                columnId={col.id}
-                title={col.title}
-                items={colItems}
-                selectedIds={selectedIds}
-                focusedCardIndex={isActiveCol ? clampedCardIndex : undefined}
-                onCardClick={handleCardClick}
-                onCardDrop={handleCardDrop}
-                onRetryAgent={handleRetryAgent}
-                onResumeAgent={handleResumeAgent}
-                onRunAgainAgent={handleRunAgainAgent}
-                onFixConflicts={handleFixConflicts}
-                onFocusedCardChange={isActiveCol ? setFocusedCardIndex : undefined}
-              />
-            )
-          })}
+      {/* Split container: columns + detail panel side by side */}
+      <div data-testid="kanban-split-container" className="flex flex-1 min-h-0">
+        {/* Columns container */}
+        <div
+          data-testid="kanban-columns-container"
+          className={`overflow-x-auto yolium-scrollbar min-h-0 p-4 ${selectedItem ? 'w-[40%] min-w-[300px]' : 'flex-1'}`}
+        >
+          <div className="flex gap-4 h-full">
+            {columns.map((col, colIndex) => {
+              const colItems = getColumnItems(col.id)
+              const isActiveCol = isVimContentActive && colIndex === focusedColumnIndex
+              const clampedCardIndex = Math.min(focusedCardIndex, Math.max(colItems.length - 1, 0))
+              return (
+                <KanbanColumn
+                  key={col.id}
+                  columnId={col.id}
+                  title={col.title}
+                  items={colItems}
+                  selectedIds={selectedIds}
+                  selectedItemId={selectedItem?.id}
+                  focusedCardIndex={isActiveCol ? clampedCardIndex : undefined}
+                  onCardClick={handleCardClick}
+                  onCardDrop={handleCardDrop}
+                  onRetryAgent={handleRetryAgent}
+                  onResumeAgent={handleResumeAgent}
+                  onRunAgainAgent={handleRunAgainAgent}
+                  onFixConflicts={handleFixConflicts}
+                  onFocusedCardChange={isActiveCol ? setFocusedCardIndex : undefined}
+                />
+              )
+            })}
+          </div>
         </div>
+
+        {/* Item Detail Panel (inline, not overlay) */}
+        <ItemDetailDialog
+          isOpen={selectedItem !== null}
+          item={selectedItem}
+          projectPath={projectPath}
+          onClose={handleDetailClose}
+          onUpdated={handleDetailUpdated}
+        />
       </div>
 
       {/* New Item Dialog */}
@@ -941,24 +933,6 @@ export function KanbanView({
 
        {/* Confirm Dialog */}
        <ConfirmDialog {...confirmDialogProps} />
-
-       {/* Item Detail Dialog */}
-       <ItemDetailDialog
-         isOpen={selectedItem !== null}
-         item={selectedItem}
-         projectPath={projectPath}
-         onClose={handleDetailClose}
-         onUpdated={handleDetailUpdated}
-         // StatusBar props
-         onShowShortcuts={onShowShortcuts}
-         onOpenSettings={onOpenSettings}
-         onOpenProjectSettings={onOpenProjectSettings}
-         whisperRecordingState={whisperRecordingState}
-         whisperSelectedModel={whisperSelectedModel}
-         onToggleRecording={onToggleRecording}
-         onOpenModelDialog={onOpenModelDialog}
-         claudeUsage={claudeUsage}
-       />
     </div>
   )
 }
