@@ -259,6 +259,13 @@ function App(): React.ReactElement {
     setActiveTab(tabs[prevIndex].id);
   }, [tabs, activeTabId, setActiveTab]);
 
+  // Select tab by index (vim number keys 1-9, 0)
+  const handleSelectTab = useCallback((index: number) => {
+    if (index >= 0 && index < tabs.length) {
+      setActiveTab(tabs[index].id);
+    }
+  }, [tabs, setActiveTab]);
+
   // Go to kanban board (vim 'b' key)
   const handleGoToKanban = useCallback(() => {
     const kanbanTabs = tabs.filter(t => t.type === 'kanban');
@@ -439,7 +446,7 @@ function App(): React.ReactElement {
 
   // Normal app UI when Docker is ready
   return (
-    <VimModeProvider onGoToKanban={handleGoToKanban} onShowShortcuts={dialogs.openShortcutsDialog}>
+    <VimModeProvider onGoToKanban={handleGoToKanban} onShowShortcuts={dialogs.openShortcutsDialog} onSelectTab={handleSelectTab}>
     <div className="flex flex-col h-screen bg-[var(--color-bg-primary)]">
       {/* Path input dialog */}
       <PathInputDialog
@@ -626,8 +633,6 @@ function App(): React.ReactElement {
                       <ErrorBoundary fallbackLabel="Kanban Board">
                         <KanbanView
                           projectPath={tab.cwd}
-                          tabs={tabs}
-                          onTabSelect={setActiveTab}
                           onSwitchProject={async (newPath) => {
                             const oldPath = tab.cwd;
                             updateCwd(tab.id, newPath);

@@ -303,6 +303,7 @@ export const FULL_KEY_SET: string[] = [
  */
 export const GLOBAL_KEYS = new Set([
   'i', 'v', 'Escape', 'e', 't', 'c', 's', 'a', 'b', 'Tab', 'Space',
+  '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 ]);
 
 /**
