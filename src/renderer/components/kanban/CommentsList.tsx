@@ -7,6 +7,7 @@ import React, { useState, useCallback, useMemo, useRef, useImperativeHandle, for
 import Markdown from 'react-markdown'
 import type { KanbanComment, CommentSource, AgentStatus } from '@shared/types/kanban'
 import { MockPreviewModal } from './MockPreviewModal'
+import { useVimModeContext } from '@renderer/context/VimModeContext'
 
 /** Only allow data:image/svg+xml URIs for security — no external image loading. */
 function isSvgDataUri(src: string | undefined): boolean {
@@ -359,6 +360,7 @@ export interface CommentsListHandle {
  * @param props - Component props
  */
 export const CommentsList = forwardRef<CommentsListHandle, CommentsListProps>(function CommentsList({ comments, onSelectOption, focusedCommentId, selectedCommentIds, agentStatus, answerText, isAnswering, onSetAnswerText, onAnswerQuestion }, ref) {
+  const vim = useVimModeContext()
   const [mockFilePath, setMockFilePath] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -401,6 +403,7 @@ export const CommentsList = forwardRef<CommentsListHandle, CommentsListProps>(fu
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
+              onFocus={() => vim.enterInsertMode()}
               placeholder="Search comments..."
               className="w-full pl-8 pr-16 py-1.5 text-sm bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] transition-all"
               onKeyDown={e => {
@@ -528,6 +531,7 @@ export const CommentsList = forwardRef<CommentsListHandle, CommentsListProps>(fu
             data-testid="answer-textarea"
             value={answerText ?? ''}
             onChange={e => onSetAnswerText(e.target.value)}
+            onFocus={() => vim.enterInsertMode()}
             placeholder="Type your answer..."
             rows={4}
             className="w-full px-3 py-2.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
