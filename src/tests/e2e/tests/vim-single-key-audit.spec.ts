@@ -81,6 +81,7 @@ const COVERED_ACTIONS = new Set([
   'agent-4-sidebar', 'agent-5-sidebar', 'agent-6-sidebar',
   'agent-7-sidebar', 'agent-8-sidebar', 'agent-9-sidebar',
   'agent-stop-sidebar', 'agent-resume-sidebar',
+  'browser-toggle', 'start-dev-server-sidebar',
   'item-delete-sidebar', 'dialog-compare-changes', 'dialog-rebase',
   'dialog-check-conflicts', 'dialog-merge-push-pr', 'dialog-approve-pr',
   'dialog-merge-pr', 'dialog-open-pr', 'log-toggle-sidebar',

@@ -19,6 +19,7 @@ import {
 import { listAgents, loadAgentDefinition, isBuiltinAgent } from '@main/services/agent-loader';
 import { saveCustomAgent, deleteCustomAgent } from '@main/stores/custom-agent-store';
 import { readLog, deleteLog } from '@main/stores/workitem-log-store';
+import { detectDevCommand, startDevServer } from '@main/docker/container-exec';
 import type { KanbanItem } from '@shared/types/kanban';
 import type { AgentDefinition, CustomAgentInput } from '@shared/types/agent';
 
@@ -254,5 +255,37 @@ export function registerAgentHandlers(ipcMain: IpcMain): void {
     const containerSession = getAgentSession(session.id);
     if (!containerSession?.containerId) return {};
     return queryContainerPorts(containerSession.containerId);
+  });
+
+  // Detect dev command from package.json in container
+  ipcMain.handle('agent:detect-dev-command', async (_event, projectPath: string, itemId: string) => {
+    const session = getSessionByItemId(projectPath, itemId);
+    if (!session) return null;
+    const containerSession = getAgentSession(session.id);
+    if (!containerSession?.containerId) return null;
+    return detectDevCommand(containerSession.containerId);
+  });
+
+  // Start dev server in container
+  ipcMain.handle('agent:start-dev-server', async (_event, projectPath: string, itemId: string, command?: string) => {
+    const session = getSessionByItemId(projectPath, itemId);
+    if (!session) return { success: false, error: 'No agent session found for this item' };
+    const containerSession = getAgentSession(session.id);
+    if (!containerSession?.containerId) return { success: false, error: 'No container found for this session' };
+
+    try {
+      const devCommand = command ?? (await detectDevCommand(containerSession.containerId));
+      if (!devCommand) {
+        return { success: false, error: 'No dev command found in package.json' };
+      }
+
+      await startDevServer(containerSession.containerId, devCommand);
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
   });
 }

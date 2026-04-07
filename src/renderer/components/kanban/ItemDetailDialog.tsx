@@ -16,6 +16,7 @@ import { ItemDetailEditorPane } from './item-detail/ItemDetailEditorPane'
 import { ItemDetailSidebar } from './item-detail/ItemDetailSidebar'
 import { BrowserPreviewPanel } from './item-detail/BrowserPreviewPanel'
 import { useBrowserPreview } from '@renderer/hooks/useBrowserPreview'
+import { useDevServer } from '@renderer/hooks/useDevServer'
 import { useItemDetailDraft } from './item-detail/useItemDetailDraft'
 import { useItemDetailAgentLifecycle } from './item-detail/useItemDetailAgentLifecycle'
 import { useItemDetailPrWorkflow } from './item-detail/useItemDetailPrWorkflow'
@@ -104,6 +105,18 @@ export function ItemDetailDialog({
   })
 
   const browserPreview = useBrowserPreview(item?.id ?? null, projectPath ?? null)
+
+  const devServer = useDevServer({
+    itemId: item?.id ?? null,
+    projectPath: projectPath ?? null,
+    currentSessionId: agentSession.currentSessionId,
+    portMappings: browserPreview.portMappings,
+    onServerRunning: useCallback(() => {
+      if (!browserPreview.isOpen) {
+        browserPreview.toggle()
+      }
+    }, [browserPreview.isOpen, browserPreview.toggle]),
+  })
 
   const draft = useItemDetailDraft({
     item,
@@ -376,6 +389,12 @@ export function ItemDetailDialog({
           dialogRef.current?.focus()
           browserPreview.toggle()
           setBrowserFocused(!browserPreview.isOpen)
+          return
+        }
+        if (event.key === 's' && plain && agentSession.currentSessionId) {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          devServer.start()
           return
         }
         if (event.key === 'd' && plain && !isDeleting) {
@@ -696,6 +715,7 @@ export function ItemDetailDialog({
             isRebasing={prWorkflow.isRebasing}
             isApprovingPr={prWorkflow.isApprovingPr}
             isMergingPr={prWorkflow.isMergingPr}
+            devServer={devServer}
             onSetAgentProvider={draft.setAgentProvider}
             onSetModel={draft.setModel}
             onSetColumn={draft.setColumn}
