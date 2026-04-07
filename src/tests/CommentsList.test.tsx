@@ -591,6 +591,62 @@ describe('CommentsList', () => {
     })
   })
 
+  describe('reverse chronological order', () => {
+    const orderedComments: KanbanComment[] = [
+      { id: 'c1', source: 'user', text: 'First comment', timestamp: '2024-01-01T00:00:00Z' },
+      { id: 'c2', source: 'agent', text: 'Second comment', timestamp: '2024-01-02T00:00:00Z' },
+      { id: 'c3', source: 'system', text: 'Third comment', timestamp: '2024-01-03T00:00:00Z' },
+    ]
+
+    it('should render comments in reverse chronological order (newest first)', () => {
+      render(<CommentsList comments={orderedComments} />)
+
+      const commentCards = document.querySelectorAll('[data-comment-id]')
+      expect(commentCards).toHaveLength(3)
+      expect(commentCards[0].getAttribute('data-comment-id')).toBe('c3')
+      expect(commentCards[1].getAttribute('data-comment-id')).toBe('c2')
+      expect(commentCards[2].getAttribute('data-comment-id')).toBe('c1')
+    })
+
+    it('should maintain reverse order when filtering with search query', () => {
+      const comments: KanbanComment[] = [
+        { id: 'c1', source: 'user', text: 'First alpha report', timestamp: '2024-01-01T00:00:00Z' },
+        { id: 'c2', source: 'agent', text: 'Unrelated note', timestamp: '2024-01-02T00:00:00Z' },
+        { id: 'c3', source: 'system', text: 'Second alpha fix', timestamp: '2024-01-03T00:00:00Z' },
+      ]
+
+      render(<CommentsList comments={comments} />)
+
+      fireEvent.change(screen.getByTestId('comment-search-input'), { target: { value: 'alpha' } })
+
+      const commentCards = document.querySelectorAll('[data-comment-id]')
+      expect(commentCards).toHaveLength(2)
+      expect(commentCards[0].getAttribute('data-comment-id')).toBe('c3')
+      expect(commentCards[1].getAttribute('data-comment-id')).toBe('c1')
+    })
+
+    it('should preserve correct focus highlighting on reversed comments', () => {
+      render(<CommentsList comments={orderedComments} focusedCommentId="c3" />)
+
+      const focusedEl = document.querySelector('[data-comment-id="c3"]')
+      expect(focusedEl).not.toBeNull()
+      expect(focusedEl!.className).toContain('ring-2')
+    })
+
+    it('should preserve correct selected state on reversed comments', () => {
+      const selectedIds = new Set(['c1', 'c3'])
+      render(<CommentsList comments={orderedComments} selectedCommentIds={selectedIds} />)
+
+      const c1El = document.querySelector('[data-comment-id="c1"]')
+      const c2El = document.querySelector('[data-comment-id="c2"]')
+      const c3El = document.querySelector('[data-comment-id="c3"]')
+
+      expect(c1El!.className).toContain('bg-[var(--color-accent-primary)]/10')
+      expect(c2El!.className).not.toContain('bg-[var(--color-accent-primary)]/10')
+      expect(c3El!.className).toContain('bg-[var(--color-accent-primary)]/10')
+    })
+  })
+
   describe('comment search', () => {
     const searchComments: KanbanComment[] = [
       { id: 'c1', source: 'user', text: 'Hello world', timestamp: new Date().toISOString() },

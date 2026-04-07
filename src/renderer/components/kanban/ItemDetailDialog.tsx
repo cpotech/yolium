@@ -84,7 +84,7 @@ export function ItemDetailDialog({
   const navigableItems: NavigableItem[] = useMemo(() => [
     { type: 'field', id: 'detail-title' },
     { type: 'field', id: 'detail-description' },
-    ...(item?.comments ?? []).map(c => ({ type: 'comment' as const, id: c.id, text: c.text })),
+    ...(item?.comments ?? []).slice().reverse().map(c => ({ type: 'comment' as const, id: c.id, text: c.text })),
     { type: 'field', id: 'comment-input' },
   ], [item?.comments])
 
