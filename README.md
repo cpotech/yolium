@@ -23,6 +23,7 @@ Yolium orchestrates single-purpose agents in a **Plan → Code → Verify** pipe
 | **Design Agent** | Frontend design: executes 18 impeccable skills — audit, critique, polish, colorize, animate, and more |
 | **Scout Agent** | Lead generation: discovers, qualifies, and profiles businesses matching a campaign brief |
 | **Marketing Agent** | Executes marketing tasks via specialized skills — CRO, SEO, copywriting, ads, strategy |
+| **KB Agent** | Builds and maintains a per-project knowledge base (`.yolium/kb/`) from completed work |
 
 Each agent runs in its own Docker container with an isolated git worktree — no conflicts, clean branches ready for PR.
 
@@ -47,6 +48,9 @@ Yolium includes a built-in CRON scheduling system that runs agents autonomously 
 | `security-monitor` | Scan for leaked secrets, audit dependencies, CVE reports |
 | `codebase-health` | CI status, failing tests, technical debt tracking |
 | `twitter-growth` | Engagement monitoring, content planning, performance audits |
+| `bluesky-growth` | Reply-focused Bluesky engagement: monitors notifications, searches conversations, replies |
+| `email-scout` | Email-based lead scouting: monitors inbox, qualifies opportunities, sends outreach via IMAP/SMTP |
+| `git-pattern-monitor` | Scans all projects for recurring git issues, proposes AGENTS.md updates |
 
 > **[Scheduled Agents documentation](docs/CRON-AGENTS.md)** — full guide to creating specialists, cron expressions, memory strategies, escalation, cost estimation, and troubleshooting.
 
@@ -62,9 +66,10 @@ Each agent is a single Markdown file with YAML frontmatter and a system prompt, 
 - **Parallel Agents** - Each agent gets its own git worktree and branch. Zero conflicts, clean branches ready for PR. ([details](docs/TECHNICAL.md#git-worktrees))
 - **Multi-Tab Terminal** - Run multiple concurrent sessions with a tabbed interface
 - **Docker Isolation** - Each session runs in its own container, isolated from your host
-- **AI Agent Selection** - Claude Code, OpenCode, Codex, or interactive Shell
+- **AI Agent Selection** - Claude Code, OpenCode, Codex, OpenRouter, XAI (Grok), or interactive Shell
+- **Default Provider** - Set a default AI provider in Git settings so new work items use your preferred agent
 - **Git Integration** - Worktrees, configuration, GitHub PAT, and branch management
-- **Flexible Auth** - API keys or OAuth for Claude Code (Claude Max) and Codex (ChatGPT)
+- **Flexible Auth** - API keys or OAuth for Claude Code (Claude Max) and Codex (ChatGPT), plus API keys for OpenRouter and XAI
 - **Claude Usage Monitoring** - Track Claude Max subscription usage directly from the app
 - **Vim Mode** - Vim-style keyboard navigation with leader-key shortcuts and WhichKey popup for discoverability
 - **Project Onboarding** - Auto-detects project type (Node.js, Python, Rust, Go, Java, .NET) and generates appropriate `.gitignore` files

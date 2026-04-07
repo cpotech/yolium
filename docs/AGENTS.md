@@ -12,12 +12,12 @@ Development Pipeline:
  plans work       tests, commits   for correctness
 
 Specialized Agents:
-┌──────────┐     ┌────────────┐
-│  Scout   │     │ Marketing  │
-│  Agent   │     │  Agent     │
-└──────────┘     └────────────┘
- Lead gen &       CRO, SEO, copy,
- prospecting      ads, strategy
+┌──────────┐     ┌────────────┐     ┌──────────┐
+│  Scout   │     │ Marketing  │     │    KB    │
+│  Agent   │     │  Agent     │     │  Agent   │
+└──────────┘     └────────────┘     └──────────┘
+ Lead gen &       CRO, SEO, copy,    Knowledge base
+ prospecting      ads, strategy       maintenance
 ```
 
 ## Plan Agent
@@ -175,6 +175,29 @@ The Design Agent executes frontend design tasks by routing to specialized impecc
 **Tools:** Read, Glob, Grep, Bash, Write, Edit
 **Model:** opus | **Timeout:** 60 min
 **Definition:** [`src/agents/design-agent.md`](../src/agents/design-agent.md)
+
+## KB Agent
+
+The KB Agent builds and maintains a persistent, per-project knowledge base in `.yolium/kb/` by extracting knowledge from completed work items, conversation history, and the codebase itself. It is a write agent that creates and updates knowledge base pages — it does not implement features or fix bugs.
+
+**Knowledge Base Structure:**
+- **Index** (`_index.md`) — Manifest listing all KB pages with one-line summaries
+- **Pages** — Markdown files with YAML frontmatter (title, category, sources, tags)
+- **Categories** — architecture, patterns, conventions, bugs, dependencies, decisions
+- **Cross-references** — `[[wikilinks]]` between pages for navigation
+
+**Process:**
+
+1. **Read Context** — Reviews the completed work item description, conversation history, and recent git diffs.
+2. **Scan Codebase** — Uses Glob, Grep, and Read to understand the current state of relevant code.
+3. **Extract Knowledge** — Identifies facts worth preserving: architecture decisions, patterns, conventions, bug causes, dependency notes.
+4. **Create/Update Pages** — Writes new pages or updates existing ones in `.yolium/kb/` with complete YAML frontmatter and provenance tracking.
+5. **Update Index** — Keeps `_index.md` in sync with all pages.
+6. **Summarize** — Writes a `.yolium-kb-summary.md` file summarizing what was updated.
+
+**Tools:** Read, Glob, Grep, Bash, Write, Edit
+**Model:** sonnet | **Timeout:** 30 min
+**Definition:** [`src/agents/kb-agent.md`](../src/agents/kb-agent.md)
 
 ## Agent Memory
 
@@ -334,3 +357,4 @@ Use `@@YOLIUM:{"type":"complete","summary":"..."}` when done.
 | Design Agent | `design-agent.md` | Executes frontend design tasks via 18 impeccable skills |
 | Scout Agent | `scout-agent.md` | Discovers, qualifies, and profiles businesses matching a campaign brief |
 | Marketing Agent | `marketing-agent.md` | Executes marketing tasks via 25 specialized skills across 7 categories |
+| KB Agent | `kb-agent.md` | Builds and maintains per-project knowledge base from completed work |
