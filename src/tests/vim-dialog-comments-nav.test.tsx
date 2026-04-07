@@ -204,11 +204,11 @@ describe('Comment navigation with j/k', () => {
     const container = getDialogContainer()
     // Start at title (index 0), press j to go to description (index 1)
     fireEvent.keyDown(container, { key: 'j' })
-    // Press j again to go to first comment (index 2)
+    // Press j again to go to first visible comment (newest = c3 in reverse order)
     fireEvent.keyDown(container, { key: 'j' })
 
-    // First comment should have focus ring
-    const commentEl = document.querySelector('[data-comment-id="c1"]')
+    // Newest comment (c3) should have focus ring
+    const commentEl = document.querySelector('[data-comment-id="c3"]')
     expect(commentEl).not.toBeNull()
     expect(commentEl!.className).toContain('ring-2')
   })
@@ -219,15 +219,15 @@ describe('Comment navigation with j/k', () => {
     })
 
     const container = getDialogContainer()
-    // Navigate: title -> description -> c1 -> c2 -> c3
+    // Navigate: title -> description -> c3 -> c2 -> c1 (reverse order: newest first)
     fireEvent.keyDown(container, { key: 'j' }) // description
-    fireEvent.keyDown(container, { key: 'j' }) // c1
-    fireEvent.keyDown(container, { key: 'j' }) // c2
     fireEvent.keyDown(container, { key: 'j' }) // c3
+    fireEvent.keyDown(container, { key: 'j' }) // c2
+    fireEvent.keyDown(container, { key: 'j' }) // c1
 
-    const c3 = document.querySelector('[data-comment-id="c3"]')
-    expect(c3).not.toBeNull()
-    expect(c3!.className).toContain('ring-2')
+    const c1 = document.querySelector('[data-comment-id="c1"]')
+    expect(c1).not.toBeNull()
+    expect(c1!.className).toContain('ring-2')
   })
 
   it('should navigate back up through comments with k', () => {
@@ -236,17 +236,17 @@ describe('Comment navigation with j/k', () => {
     })
 
     const container = getDialogContainer()
-    // Go down to c2 (index 3)
+    // Go down to c2 (reverse order: title -> desc -> c3 -> c2)
     fireEvent.keyDown(container, { key: 'j' }) // description
-    fireEvent.keyDown(container, { key: 'j' }) // c1
+    fireEvent.keyDown(container, { key: 'j' }) // c3
     fireEvent.keyDown(container, { key: 'j' }) // c2
 
-    // Press k to go back to c1
+    // Press k to go back to c3
     fireEvent.keyDown(container, { key: 'k' })
 
-    const c1 = document.querySelector('[data-comment-id="c1"]')
-    expect(c1).not.toBeNull()
-    expect(c1!.className).toContain('ring-2')
+    const c3 = document.querySelector('[data-comment-id="c3"]')
+    expect(c3).not.toBeNull()
+    expect(c3!.className).toContain('ring-2')
   })
 
   it('should navigate from first comment to description with k', () => {
@@ -293,12 +293,12 @@ describe('Comment navigation with j/k', () => {
     const container = getDialogContainer()
     // Go to comment-input via G
     fireEvent.keyDown(container, { key: 'G' })
-    // Press k to go to last comment
+    // Press k to go to last visible comment (oldest = c1 in reverse order)
     fireEvent.keyDown(container, { key: 'k' })
 
-    const c3 = document.querySelector('[data-comment-id="c3"]')
-    expect(c3).not.toBeNull()
-    expect(c3!.className).toContain('ring-2')
+    const c1 = document.querySelector('[data-comment-id="c1"]')
+    expect(c1).not.toBeNull()
+    expect(c1!.className).toContain('ring-2')
   })
 
   it('should show focus ring on the currently focused comment', () => {
@@ -540,13 +540,13 @@ describe('Dialog VISUAL mode', () => {
     })
 
     const container = getDialogContainer()
-    // Navigate to c1
+    // Navigate to first visible comment (c2 in reverse order: newest first)
     fireEvent.keyDown(container, { key: 'j' })
     fireEvent.keyDown(container, { key: 'j' })
 
-    // Enter VISUAL mode, select c1 + c2
+    // Enter VISUAL mode, select c2 + c1 (reverse order)
     fireEvent.keyDown(container, { key: 'V', shiftKey: true })
-    fireEvent.keyDown(container, { key: 'j' }) // extend to c2
+    fireEvent.keyDown(container, { key: 'j' }) // extend to c1
 
     // Yank
     await act(async () => {
@@ -554,7 +554,7 @@ describe('Dialog VISUAL mode', () => {
     })
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-      'First comment text\n\nSecond comment text',
+      'Second comment text\n\nFirst comment text',
     )
   })
 

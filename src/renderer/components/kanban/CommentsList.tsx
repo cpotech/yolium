@@ -373,9 +373,10 @@ export const CommentsList = forwardRef<CommentsListHandle, CommentsListProps>(fu
   }), [])
 
   const filteredComments = useMemo(() => {
-    if (!searchQuery) return comments
-    const query = searchQuery.toLowerCase()
-    return comments.filter(c => c.text.toLowerCase().includes(query))
+    const base = searchQuery
+      ? comments.filter(c => c.text.toLowerCase().includes(searchQuery.toLowerCase()))
+      : comments
+    return base.slice().reverse()
   }, [comments, searchQuery])
 
   return (
