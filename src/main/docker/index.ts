@@ -58,6 +58,13 @@ export {
   getAllAgentSessions,
 } from './agent-container';
 
+// Container exec utilities
+export {
+  execInContainer,
+  detectDevCommand,
+  startDevServer,
+} from './container-exec';
+
 // Agent auth checks
 export {
   checkAgentAuth,

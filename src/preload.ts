@@ -181,6 +181,12 @@ const agent: ElectronAPI['agent'] = {
   getPortMappings: invoke(
     'agent:get-container-port-mappings',
   ) as ElectronAPI['agent']['getPortMappings'],
+  detectDevCommand: invoke(
+    'agent:detect-dev-command',
+  ) as ElectronAPI['agent']['detectDevCommand'],
+  startDevServer: invoke(
+    'agent:start-dev-server',
+  ) as ElectronAPI['agent']['startDevServer'],
   onOutput: (callback) => listen('agent:output', callback),
   onQuestion: (callback) => listen('agent:question', callback),
   onItemCreated: (callback) => listen('agent:item-created', callback),

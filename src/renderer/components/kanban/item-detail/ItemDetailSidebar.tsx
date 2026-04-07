@@ -1,5 +1,5 @@
 import React from 'react'
-import { Clock, FolderOpen, GitBranch, ShieldCheck, Trash2 } from 'lucide-react'
+import { Clock, FolderOpen, GitBranch, Play, ShieldCheck, Trash2 } from 'lucide-react'
 import type { KanbanColumn, KanbanItem } from '@shared/types/kanban'
 import { AgentControls } from '../../agent/AgentControls'
 import { formatTokenCount, formatUsdCost } from '@renderer/utils/formatTokens'
@@ -8,6 +8,14 @@ import { ItemDetailMergeSection } from './ItemDetailMergeSection'
 import type { DraftSaveStatus } from './useItemDetailDraft'
 import type { ConflictCheckResult, RebaseResultState } from './useItemDetailPrWorkflow'
 import type { AgentTokenUsage } from '@shared/types/agent'
+import type { DevServerStatus } from '@renderer/hooks/useDevServer'
+
+interface DevServerState {
+  status: DevServerStatus
+  detectedCommand: string | null
+  error: string | null
+  start: (command?: string) => Promise<void>
+}
 
 interface ItemDetailSidebarProps {
   showKbdHints: boolean
@@ -31,6 +39,7 @@ interface ItemDetailSidebarProps {
   isRebasing: boolean
   isApprovingPr: boolean
   isMergingPr: boolean
+  devServer?: DevServerState
   onSetAgentProvider: (value: KanbanItem['agentProvider']) => void
   onSetModel: (value: string) => void
   onSetColumn: (value: KanbanColumn) => void
@@ -73,6 +82,7 @@ export function ItemDetailSidebar({
   isRebasing,
   isApprovingPr,
   isMergingPr,
+  devServer,
   onSetAgentProvider,
   onSetModel,
   onSetColumn,
@@ -118,6 +128,46 @@ export function ItemDetailSidebar({
           <div className="text-xs text-[var(--color-text-secondary)] mt-0.5">
             {formatUsdCost(tokenUsage.costUsd)}
           </div>
+        </div>
+      )}
+
+      {currentSessionId && devServer && (
+        <div data-testid="dev-server" className="p-4 border-b border-[var(--color-border-primary)]">
+          <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
+            Dev Server
+            {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-primary)] rounded border border-[var(--color-border-primary)] font-mono ml-1">s</kbd>}
+          </label>
+          {devServer.status === 'detecting' && (
+            <div className="text-xs text-[var(--color-text-secondary)]">Detecting...</div>
+          )}
+          {devServer.status === 'starting' && (
+            <div className="text-xs text-[var(--color-status-info)]">Starting...</div>
+          )}
+          {devServer.status === 'running' && (
+            <div className="flex items-center gap-2 text-sm text-[var(--color-status-success)]">
+              <span className="w-2 h-2 rounded-full bg-[var(--color-status-success)] animate-pulse" />
+              Running
+            </div>
+          )}
+          {devServer.status === 'error' && (
+            <div className="text-xs text-[var(--color-status-error)]">{devServer.error}</div>
+          )}
+          {(devServer.status === 'idle' || devServer.status === 'detecting' || devServer.status === 'starting' || devServer.status === 'error') && (
+            <button
+              data-testid="start-dev-server-button"
+              onClick={() => devServer.start()}
+              disabled={devServer.status === 'detecting' || devServer.status === 'starting'}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-[var(--color-text-primary)] bg-[var(--color-accent-primary)] rounded-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+            >
+              <Play size={14} />
+              {devServer.status === 'detecting' ? 'Detecting...' : devServer.status === 'starting' ? 'Starting...' : 'Start Dev Server'}
+            </button>
+          )}
+          {devServer.detectedCommand && devServer.status !== 'running' && (
+            <div className="mt-2 text-xs text-[var(--color-text-secondary)] font-mono">
+              {devServer.detectedCommand}
+            </div>
+          )}
         </div>
       )}
 

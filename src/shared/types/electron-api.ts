@@ -407,6 +407,8 @@ export interface AgentAPI {
   readLog: (projectPath: string, itemId: string) => Promise<string>;
   clearLog: (projectPath: string, itemId: string) => Promise<boolean>;
   getPortMappings: (projectPath: string, itemId: string) => Promise<Record<number, number>>;
+  detectDevCommand: (projectPath: string, itemId: string) => Promise<string | null>;
+  startDevServer: (projectPath: string, itemId: string, command?: string) => Promise<{ success: boolean; error?: string }>;
   onOutput: (callback: (sessionId: string, data: string) => void) => CleanupFunction;
   onQuestion: (
     callback: (sessionId: string, question: AgentQuestionPayload) => void,
