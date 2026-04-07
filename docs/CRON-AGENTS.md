@@ -12,13 +12,16 @@ Yolium's CRON agent scheduling system enables time-driven, autonomous agent exec
 
 ### Built-in Specialists
 
-Yolium ships with three example specialists:
+Yolium ships with six built-in specialists:
 
 | Specialist | Purpose |
 |---|---|
 | `security-monitor` | Scan commits for leaked secrets, audit dependencies, generate CVE reports |
 | `codebase-health` | Check CI status, summarize failing tests, review technical debt |
 | `twitter-growth` | Engagement monitoring, content planning, weekly performance audit |
+| `bluesky-growth` | Reply-focused Bluesky engagement: monitor notifications, search conversations, reply |
+| `email-scout` | Email-based lead scouting: monitor inbox, qualify opportunities, send outreach via IMAP/SMTP |
+| `git-pattern-monitor` | Scan all projects for recurring git issues, propose AGENTS.md updates |
 
 ## Adding a New Specialist
 
