@@ -1,3 +1,5 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import type { ScheduleType } from '@shared/types/schedule';
 import type { KanbanAttachment } from '@shared/types/kanban';
 
@@ -9,6 +11,25 @@ export interface BuildPromptParams {
   agentName?: string;
   attachments?: KanbanAttachment[];
   containerProjectPath?: string;
+  projectPath?: string;
+}
+
+/**
+ * Build KB context section for agent prompts.
+ * Reads the KB index from the host filesystem (projectPath) but references
+ * the container path (containerProjectPath) in the prompt text so agents
+ * can read KB pages inside the container.
+ */
+export function buildKbContext(projectPath: string, containerProjectPath: string, agentName?: string): string {
+  if (agentName === 'kb-agent') return '';
+
+  const indexPath = path.join(projectPath, '.yolium', 'kb', '_index.md');
+  if (!fs.existsSync(indexPath)) return '';
+
+  const indexContent = fs.readFileSync(indexPath, 'utf-8').trim();
+  if (!indexContent) return '';
+
+  return `\n\n## Project Knowledge Base\n\nA project knowledge base exists at \`${containerProjectPath}/.yolium/kb/\`. Index:\n\n${indexContent}\n\nRead relevant KB pages before starting work to leverage existing project knowledge.`;
 }
 
 /**
@@ -151,6 +172,22 @@ The file must include:
 
 This file is MANDATORY — the system reads it to capture your verification report. If you do not write this file, your report will be lost.`;
 
+/**
+ * File-based output instructions for non-Claude kb agents.
+ * Ensures the KB update summary is written to a known path for capture.
+ */
+export const FILE_OUTPUT_KB = `## CRITICAL: Write Your KB Summary to a File
+
+After updating the knowledge base, you MUST write a summary to a file named \`.yolium-kb-summary.md\` in the project root directory.
+
+The file must include:
+- Pages created or updated
+- Key knowledge extracted
+- Categories covered
+- Cross-references added
+
+This file is MANDATORY — the system reads it to capture your KB update summary. If you do not write this file, your work will be lost.`;
+
 function buildAttachmentsSection(attachments: KanbanAttachment[], containerProjectPath: string): string {
   if (attachments.length === 0) return '';
   const lines = attachments.map(a =>
@@ -160,7 +197,12 @@ function buildAttachmentsSection(attachments: KanbanAttachment[], containerProje
 }
 
 export function buildAgentPrompt(params: BuildPromptParams): string {
-  const { systemPrompt, goal, conversationHistory, provider, agentName, attachments, containerProjectPath } = params;
+  const { systemPrompt, goal, conversationHistory, provider, agentName, attachments, containerProjectPath, projectPath } = params;
+
+  // Build KB context if both paths are available
+  const kbContext = projectPath && containerProjectPath
+    ? buildKbContext(projectPath, containerProjectPath, agentName)
+    : '';
 
   // For non-Claude providers, inline the protocol and system prompt
   // so the model has everything in its primary prompt context
@@ -169,6 +211,10 @@ export function buildAgentPrompt(params: BuildPromptParams): string {
 
     if (attachments && attachments.length > 0 && containerProjectPath) {
       prompt += buildAttachmentsSection(attachments, containerProjectPath);
+    }
+
+    if (kbContext) {
+      prompt += kbContext;
     }
 
     // Add file-based output instructions (Codex models don't reliably emit
@@ -182,6 +228,8 @@ export function buildAgentPrompt(params: BuildPromptParams): string {
       prompt += `\n\n${FILE_OUTPUT_SCOUT}`;
     } else if (agentName === 'verify-agent') {
       prompt += `\n\n${FILE_OUTPUT_VERIFY}`;
+    } else if (agentName === 'kb-agent') {
+      prompt += `\n\n${FILE_OUTPUT_KB}`;
     }
 
     if (conversationHistory.trim()) {
@@ -198,6 +246,10 @@ export function buildAgentPrompt(params: BuildPromptParams): string {
 
   if (attachments && attachments.length > 0 && containerProjectPath) {
     prompt += buildAttachmentsSection(attachments, containerProjectPath);
+  }
+
+  if (kbContext) {
+    prompt += kbContext;
   }
 
   if (conversationHistory.trim()) {

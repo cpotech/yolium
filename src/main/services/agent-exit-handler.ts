@@ -71,6 +71,7 @@ export function synthesizeNonClaudeConclusion(params: {
     'scout-agent': { file: '.yolium-scout.json', label: 'dossier' },
     'verify-agent': { file: '.yolium-verify.md', label: 'verification report' },
     'ba-agent': { file: '.yolium-ba-report.md', label: 'business analysis report' },
+    'kb-agent': { file: '.yolium-kb-summary.md', label: 'KB update summary' },
   };
 
   const fileSpec = fileMap[agentName];

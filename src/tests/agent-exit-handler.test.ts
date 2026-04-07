@@ -320,6 +320,47 @@ describe('agent-exit-handler', () => {
       expect(updated.comments.some((c: any) => c.text.includes('BA Report'))).toBe(true);
     });
 
+    it('should read .yolium-kb-summary.md for non-Claude kb-agent on exit', () => {
+      const board = getOrCreateBoard('/tmp/test-project');
+      const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex', order: 0 });
+      mockGetAgentSession.mockReturnValue({});
+      mockExistsSync.mockReturnValue(true);
+      mockReadFileSync.mockReturnValue('## KB Summary\n\nUpdated 3 pages');
+
+      synthesizeNonClaudeConclusion({
+        sessionId: 'session-1',
+        agentName: 'kb-agent',
+        itemId: item.id,
+        projectPath: '/tmp/test-project',
+        outputDir: '/tmp/worktree',
+        originalItemDescription: 'Original',
+      });
+
+      const updated = board.items.find((i: any) => i.id === item.id)!;
+      expect(updated.comments.some((c: any) => c.text.includes('KB Summary'))).toBe(true);
+    });
+
+    it('should not update description for kb-agent file output', () => {
+      const board = getOrCreateBoard('/tmp/test-project');
+      const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex', order: 0 });
+      mockGetAgentSession.mockReturnValue({});
+      mockExistsSync.mockReturnValue(true);
+      mockReadFileSync.mockReturnValue('## KB Summary\n\nUpdated 3 pages');
+
+      synthesizeNonClaudeConclusion({
+        sessionId: 'session-1',
+        agentName: 'kb-agent',
+        itemId: item.id,
+        projectPath: '/tmp/test-project',
+        outputDir: '/tmp/worktree',
+        originalItemDescription: 'Original',
+      });
+
+      const updated = board.items.find((i: any) => i.id === item.id)!;
+      // kb-agent should NOT update description (unlike plan-agent which has updateDesc: true)
+      expect(updated.description).toBe('Original');
+    });
+
     it('should fall back to accumulated agent message texts for plan-agent', () => {
       const board = getOrCreateBoard('/tmp/test-project');
       const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex', order: 0 });

@@ -1,6 +1,21 @@
-import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { resolve } from 'path';
+
+const actualFs = await vi.importActual<typeof import('node:fs')>('node:fs');
+
+const { mockExistsSync: mockKbExistsSync, mockReadFileSync: mockKbReadFileSync } = vi.hoisted(() => ({
+  mockExistsSync: vi.fn(() => false),
+  mockReadFileSync: vi.fn((...args: unknown[]) => ''),
+}));
+vi.mock('node:fs', async () => {
+  const actual = await vi.importActual<typeof import('node:fs')>('node:fs');
+  return {
+    ...actual,
+    existsSync: mockKbExistsSync,
+    readFileSync: mockKbReadFileSync,
+  };
+});
+
 import { buildAgentPrompt, buildScheduledPrompt, INLINE_PROTOCOL } from '@main/services/agent-prompts';
 
 describe('agent-prompts', () => {
@@ -172,13 +187,13 @@ describe('agent-prompts', () => {
     const projectRoot = resolve(__dirname, '..', '..');
 
     it('should include no-co-authored-by instruction in CLAUDE.md content', () => {
-      const claudeMd = readFileSync(resolve(projectRoot, 'CLAUDE.md'), 'utf-8');
+      const claudeMd = actualFs.readFileSync(resolve(projectRoot, 'CLAUDE.md'), 'utf-8');
       expect(claudeMd).toContain('Co-Authored-By');
       expect(claudeMd).toMatch(/never.*co-authored-by/i);
     });
 
     it('should include no-co-authored-by rule in code-agent commit step', () => {
-      const codeAgent = readFileSync(resolve(projectRoot, 'src/agents/code-agent.md'), 'utf-8');
+      const codeAgent = actualFs.readFileSync(resolve(projectRoot, 'src/agents/code-agent.md'), 'utf-8');
       expect(codeAgent).toMatch(/co-authored-by/i);
       expect(codeAgent).toMatch(/no.*trailer/i);
     });
@@ -186,6 +201,133 @@ describe('agent-prompts', () => {
     it('should include no-co-authored-by rule in inline protocol for non-Claude providers', () => {
       expect(INLINE_PROTOCOL).toMatch(/co-authored-by/i);
       expect(INLINE_PROTOCOL).toMatch(/no.*trailer/i);
+    });
+  });
+
+  describe('KB context injection', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      mockKbExistsSync.mockReturnValue(false);
+      mockKbReadFileSync.mockReturnValue('');
+    });
+
+    it('should inject KB context into Claude prompt when _index.md exists', () => {
+      mockKbExistsSync.mockReturnValue(true);
+      mockKbReadFileSync.mockReturnValue('- [Architecture](architecture.md) — system overview');
+
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Code Agent.',
+        goal: 'Fix bug',
+        conversationHistory: '',
+        provider: 'claude',
+        agentName: 'code-agent',
+        projectPath: '/host/project',
+        containerProjectPath: '/container/project',
+      });
+      expect(prompt).toContain('## Project Knowledge Base');
+      expect(prompt).toContain('- [Architecture](architecture.md) — system overview');
+    });
+
+    it('should not inject KB context when _index.md does not exist', () => {
+      mockKbExistsSync.mockReturnValue(false);
+
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Code Agent.',
+        goal: 'Fix bug',
+        conversationHistory: '',
+        provider: 'claude',
+        agentName: 'code-agent',
+        projectPath: '/host/project',
+        containerProjectPath: '/container/project',
+      });
+      expect(prompt).not.toContain('## Project Knowledge Base');
+    });
+
+    it('should not inject KB context for kb-agent', () => {
+      mockKbExistsSync.mockReturnValue(true);
+      mockKbReadFileSync.mockReturnValue('- [Architecture](architecture.md)');
+
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the KB Agent.',
+        goal: 'Build KB',
+        conversationHistory: '',
+        provider: 'claude',
+        agentName: 'kb-agent',
+        projectPath: '/host/project',
+        containerProjectPath: '/container/project',
+      });
+      expect(prompt).not.toContain('## Project Knowledge Base');
+    });
+
+    it('should inject KB context into non-Claude prompt when _index.md exists', () => {
+      mockKbExistsSync.mockReturnValue(true);
+      mockKbReadFileSync.mockReturnValue('- [Patterns](patterns.md) — coding patterns');
+
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Code Agent.',
+        goal: 'Fix bug',
+        conversationHistory: '',
+        provider: 'codex',
+        agentName: 'code-agent',
+        projectPath: '/host/project',
+        containerProjectPath: '/container/project',
+      });
+      expect(prompt).toContain('## Project Knowledge Base');
+      expect(prompt).toContain('- [Patterns](patterns.md) — coding patterns');
+    });
+
+    it('should not inject KB context when projectPath is not provided', () => {
+      mockKbExistsSync.mockReturnValue(true);
+      mockKbReadFileSync.mockReturnValue('- [Architecture](architecture.md)');
+
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Code Agent.',
+        goal: 'Fix bug',
+        conversationHistory: '',
+        provider: 'claude',
+        agentName: 'code-agent',
+        containerProjectPath: '/container/project',
+      });
+      expect(prompt).not.toContain('## Project Knowledge Base');
+    });
+
+    it('should append FILE_OUTPUT_KB for non-Claude kb-agent', () => {
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the KB Agent.',
+        goal: 'Build KB',
+        conversationHistory: '',
+        provider: 'codex',
+        agentName: 'kb-agent',
+      });
+      expect(prompt).toContain('.yolium-kb-summary.md');
+    });
+
+    it('should not append FILE_OUTPUT_KB for Claude kb-agent', () => {
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the KB Agent.',
+        goal: 'Build KB',
+        conversationHistory: '',
+        provider: 'claude',
+        agentName: 'kb-agent',
+      });
+      expect(prompt).not.toContain('.yolium-kb-summary.md');
+    });
+
+    it('should reference containerProjectPath (not projectPath) in KB context prompt text', () => {
+      mockKbExistsSync.mockReturnValue(true);
+      mockKbReadFileSync.mockReturnValue('- [Architecture](architecture.md)');
+
+      const prompt = buildAgentPrompt({
+        systemPrompt: 'You are the Code Agent.',
+        goal: 'Fix bug',
+        conversationHistory: '',
+        provider: 'claude',
+        agentName: 'code-agent',
+        projectPath: '/host/project',
+        containerProjectPath: '/container/project',
+      });
+      expect(prompt).toContain('/container/project/.yolium/kb/');
+      expect(prompt).not.toContain('/host/project/.yolium/kb/');
     });
   });
 

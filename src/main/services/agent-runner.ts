@@ -190,6 +190,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     agentName,
     attachments: itemAttachments.length > 0 ? itemAttachments : undefined,
     containerProjectPath: worktreePath || resolvedProjectPath,
+    projectPath: resolvedProjectPath,
   });
 
   // Write system prompt as fallback reference for non-Claude providers
