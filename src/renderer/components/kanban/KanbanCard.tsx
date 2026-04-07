@@ -6,7 +6,6 @@ interface KanbanCardProps {
   item: KanbanItem
   isSelected?: boolean
   isActiveItem?: boolean
-  isOpenInTab?: boolean
   isFocused?: boolean
   onClick: (item: KanbanItem, event: React.MouseEvent | React.KeyboardEvent) => void
   onDragStart?: (item: KanbanItem) => void
@@ -110,7 +109,7 @@ function getMergeStatusConfig(status: MergeStatus): MergeStatusConfig {
   }
 }
 
-export function KanbanCard({ item, isSelected, isActiveItem, isOpenInTab, isFocused, onClick, onDragStart, onRetryAgent, onResumeAgent, onRunAgainAgent, onFixConflicts }: KanbanCardProps): React.ReactElement {
+export function KanbanCard({ item, isSelected, isActiveItem, isFocused, onClick, onDragStart, onRetryAgent, onResumeAgent, onRunAgainAgent, onFixConflicts }: KanbanCardProps): React.ReactElement {
   const statusConfig = getStatusConfig(item.agentStatus)
   const mergeStatusConfig = item.mergeStatus ? getMergeStatusConfig(item.mergeStatus) : null
   const [isDragging, setIsDragging] = useState(false)
@@ -193,7 +192,6 @@ export function KanbanCard({ item, isSelected, isActiveItem, isOpenInTab, isFocu
       data-testid="kanban-card"
       data-vim-focused={isFocused ? 'true' : undefined}
       data-vim-key="Enter"
-      data-open-in-tab={isOpenInTab ? 'true' : undefined}
       role="button"
       tabIndex={0}
       aria-label={`${item.title} - ${item.agentStatus}`}
@@ -210,8 +208,7 @@ export function KanbanCard({ item, isSelected, isActiveItem, isOpenInTab, isFocu
       onDragEnd={() => setIsDragging(false)}
       className={`bg-[var(--color-bg-primary)] rounded-md p-3 cursor-pointer transition-all hover:border-[var(--color-accent-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] ${
         isFocused ? 'ring-2 ring-[var(--color-accent-primary)] border-[var(--color-accent-primary)]' :
-        isActiveItem ? 'border-l-2 border-l-[var(--color-accent-primary)] border-t border-r border-b border-t-[var(--color-border-primary)] border-r-[var(--color-border-primary)] border-b-[var(--color-border-primary)] bg-[var(--color-accent-primary)]/5' :
-        isOpenInTab ? 'border-l-2 border-l-[var(--color-text-tertiary)] border-t border-r border-b border-t-[var(--color-border-primary)] border-r-[var(--color-border-primary)] border-b-[var(--color-border-primary)]' :
+        isActiveItem ? 'border-2 border-[var(--color-accent-primary)] ring-1 ring-[var(--color-accent-primary)]/30' :
         isSelected ? 'border-2 border-[var(--color-accent-primary)] ring-1 ring-[var(--color-accent-primary)]/30' :
         isRunning ? 'border border-[var(--color-status-warning)]/50 shadow-[0_0_8px_var(--color-status-warning)]/15' : 'border border-[var(--color-border-primary)]'
       } ${isDragging ? 'opacity-50' : ''}`}

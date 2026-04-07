@@ -21,6 +21,9 @@ import { useItemDetailAgentLifecycle } from './item-detail/useItemDetailAgentLif
 import { useItemDetailPrWorkflow } from './item-detail/useItemDetailPrWorkflow'
 import { ConfirmDialog } from '@renderer/components/shared/ConfirmDialog'
 import type { CommentsListHandle } from './CommentsList'
+import { StatusBar } from '@renderer/components/StatusBar'
+import type { WhisperRecordingState, WhisperModelSize } from '@shared/types/whisper'
+import type { ClaudeUsageState } from '@shared/types/agent'
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts'
 import { useVimListNavigation } from '@renderer/hooks/useVimListNavigation'
 
@@ -34,6 +37,15 @@ interface ItemDetailDialogProps {
   projectPath: string
   onClose: () => void
   onUpdated: () => void
+  // StatusBar props
+  onShowShortcuts?: () => void
+  onOpenSettings?: () => void
+  onOpenProjectSettings?: () => void
+  whisperRecordingState?: WhisperRecordingState
+  whisperSelectedModel?: WhisperModelSize
+  onToggleRecording?: () => void
+  onOpenModelDialog?: () => void
+  claudeUsage?: ClaudeUsageState
 }
 
 export function ItemDetailDialog({
@@ -42,6 +54,15 @@ export function ItemDetailDialog({
   projectPath,
   onClose,
   onUpdated,
+  // StatusBar props
+  onShowShortcuts,
+  onOpenSettings,
+  onOpenProjectSettings,
+  whisperRecordingState,
+  whisperSelectedModel,
+  onToggleRecording,
+  onOpenModelDialog,
+  claudeUsage,
 }: ItemDetailDialogProps): React.ReactElement | null {
   useSuspendVimNavigation(isOpen)
   const vim = useVimModeContext()
@@ -548,13 +569,14 @@ export function ItemDetailDialog({
     <div
       ref={dialogRef}
       tabIndex={-1}
-      className="flex-1 flex flex-col bg-[var(--color-bg-secondary)] border-l border-[var(--color-border-primary)] outline-none"
+      className="fixed inset-0 z-50 flex flex-col bg-[var(--color-bg-secondary)] outline-none"
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}
     >
       <div
         data-testid="item-detail-dialog"
         role="dialog"
+        aria-modal="true"
         aria-label={`Item details: ${item.title}`}
         className="flex flex-col flex-1 min-h-0"
       >
@@ -744,7 +766,7 @@ export function ItemDetailDialog({
                 <span><kbd className={kbdClass}>i</kbd> Edit field</span>
                 <span><kbd className={kbdClass}>/</kbd> Search comments</span>
                 <span><kbd className={kbdClass}>V</kbd> Visual</span>
-                <span><kbd className={kbdClass}>Ctrl+Q</kbd> Close panel</span>
+                <span><kbd className={kbdClass}>Ctrl+Q</kbd> Close</span>
               </>
             )
           ) : (
@@ -755,6 +777,22 @@ export function ItemDetailDialog({
             </>
           )}
         </div>
+
+        {/* StatusBar at the bottom of the dialog */}
+        <StatusBar
+          folderPath={projectPath}
+          contextLabel={item.branch}
+          gitBranch={item.branch}
+          worktreeName={item.worktreePath ? item.worktreePath.split('/').pop() : undefined}
+          onShowShortcuts={onShowShortcuts ?? (() => {})}
+          onOpenSettings={onOpenSettings ?? (() => {})}
+          onOpenProjectSettings={onOpenProjectSettings ?? (() => {})}
+          whisperRecordingState={whisperRecordingState ?? 'idle'}
+          whisperSelectedModel={whisperSelectedModel ?? 'small'}
+          onToggleRecording={onToggleRecording ?? (() => {})}
+          onOpenModelDialog={onOpenModelDialog ?? (() => {})}
+          claudeUsage={claudeUsage}
+        />
 
        {item.branch && (
          <GitDiffDialog
