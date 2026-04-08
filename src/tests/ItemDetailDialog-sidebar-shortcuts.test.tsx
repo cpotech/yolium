@@ -345,6 +345,58 @@ describe('ItemDetailDialog direct sidebar shortcuts (no leader)', () => {
     expect(display).toBeInTheDocument()
   })
 
+  it('should navigate up with k when item has no mergeStatus', async () => {
+    renderDialog({ mergeStatus: undefined })
+    const container = getContainer()
+
+    // Focus is on first navigable item by default (index 0)
+    // Pressing k should attempt to navigate up via handleFieldNavKeys
+    await act(async () => {
+      fireEvent.keyDown(container, { key: 'k' })
+    })
+
+    // k should NOT trigger any conflict-related IPC
+    expect(window.electronAPI.git.checkMergeConflicts).not.toHaveBeenCalled()
+    expect(container).toBeInTheDocument()
+  })
+
+  it('should navigate up with k when item has mergeStatus (not conflict)', async () => {
+    renderDialog({ mergeStatus: 'clean', worktreePath: '/tmp/wt' })
+    const container = getContainer()
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: 'k' })
+    })
+
+    // k should NOT trigger checkConflicts — it should reach field navigation
+    expect(window.electronAPI.git.checkMergeConflicts).not.toHaveBeenCalled()
+    expect(container).toBeInTheDocument()
+  })
+
+  it('should navigate up with k when item has mergeStatus === conflict but agent is running', async () => {
+    renderDialog({ mergeStatus: 'conflict', agentStatus: 'running', worktreePath: '/tmp/wt' })
+    const container = getContainer()
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: 'k' })
+    })
+
+    // Agent is running so fix-conflicts can't start — k should pass through to field nav
+    expect(window.electronAPI.git.checkMergeConflicts).not.toHaveBeenCalled()
+    expect(container).toBeInTheDocument()
+  })
+
+  it('should trigger checkConflicts with c when item has mergeStatus', async () => {
+    renderDialog({ mergeStatus: 'clean', worktreePath: '/tmp/wt' })
+    const container = getContainer()
+
+    await act(async () => {
+      fireEvent.keyDown(container, { key: 'c' })
+    })
+
+    expect(window.electronAPI.git.checkMergeConflicts).toHaveBeenCalled()
+  })
+
   it('should refocus dialog container after sidebar shortcut fires', async () => {
     mockKanbanDeleteItem.mockResolvedValue(undefined)
     renderDialog()

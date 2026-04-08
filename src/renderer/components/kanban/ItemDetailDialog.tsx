@@ -454,7 +454,7 @@ export function ItemDetailDialog({
           void prWorkflow.rebaseOntoDefault()
           return
         }
-        if (event.key === 'k' && plain && item.mergeStatus === 'conflict') {
+        if (event.key === 'c' && plain && item.mergeStatus === 'conflict') {
           const canStart = (item.agentStatus === 'idle' || item.agentStatus === 'completed' || item.agentStatus === 'failed') && !lifecycle.isStartingAgent
           if (canStart && !prWorkflow.isFixingConflicts) {
             event.preventDefault()
@@ -463,7 +463,7 @@ export function ItemDetailDialog({
             return
           }
         }
-        if (event.key === 'k' && plain && item.mergeStatus && item.mergeStatus !== 'conflict' && !prWorkflow.isCheckingConflicts) {
+        if (event.key === 'c' && plain && item.mergeStatus && item.mergeStatus !== 'conflict' && !prWorkflow.isCheckingConflicts) {
           event.preventDefault()
           dialogRef.current?.focus()
           void prWorkflow.checkConflicts()

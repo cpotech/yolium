@@ -1417,7 +1417,7 @@ test.describe('Vim Single-Key Audit', () => {
       // f (compare branches) — requires worktree branch
       // Intentional no-assertion: these are verified not to crash; full effect
       // requires agent/git state not available in isolated E2E setup.
-      for (const key of ['x', 'R', 'r', 'k', 'K', 'g', 'a', 'w', 'o', 'f']) {
+      for (const key of ['x', 'R', 'r', 'c', 'K', 'g', 'a', 'w', 'o', 'f']) {
         await pressVimKey(page, key);
         await page.waitForTimeout(100);
       }
