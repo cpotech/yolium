@@ -196,16 +196,16 @@ describe('Comment navigation with j/k', () => {
     makeComment('c3', 'Third comment'),
   ]
 
-  it('should navigate from description (field 1) to first comment with j when comments exist', () => {
+  it('should navigate from comment-input to first comment with j when comments exist', () => {
     renderItemDetailDialog({
       item: createMockItem({ comments: threeComments }),
     })
 
     const container = getDialogContainer()
-    // Start at title (index 0), press j to go to description (index 1)
-    fireEvent.keyDown(container, { key: 'j' })
-    // Press j again to go to first visible comment (newest = c3 in reverse order)
-    fireEvent.keyDown(container, { key: 'j' })
+    // Navigate: title -> description -> comment-input -> c3 (first visible comment)
+    fireEvent.keyDown(container, { key: 'j' }) // description
+    fireEvent.keyDown(container, { key: 'j' }) // comment-input
+    fireEvent.keyDown(container, { key: 'j' }) // c3
 
     // Newest comment (c3) should have focus ring
     const commentEl = document.querySelector('[data-comment-id="c3"]')
@@ -219,8 +219,9 @@ describe('Comment navigation with j/k', () => {
     })
 
     const container = getDialogContainer()
-    // Navigate: title -> description -> c3 -> c2 -> c1 (reverse order: newest first)
+    // Navigate: title -> description -> comment-input -> c3 -> c2 -> c1 (reverse order: newest first)
     fireEvent.keyDown(container, { key: 'j' }) // description
+    fireEvent.keyDown(container, { key: 'j' }) // comment-input
     fireEvent.keyDown(container, { key: 'j' }) // c3
     fireEvent.keyDown(container, { key: 'j' }) // c2
     fireEvent.keyDown(container, { key: 'j' }) // c1
@@ -236,8 +237,9 @@ describe('Comment navigation with j/k', () => {
     })
 
     const container = getDialogContainer()
-    // Go down to c2 (reverse order: title -> desc -> c3 -> c2)
+    // Go down to c2 (reverse order: title -> desc -> comment-input -> c3 -> c2)
     fireEvent.keyDown(container, { key: 'j' }) // description
+    fireEvent.keyDown(container, { key: 'j' }) // comment-input
     fireEvent.keyDown(container, { key: 'j' }) // c3
     fireEvent.keyDown(container, { key: 'j' }) // c2
 
@@ -249,35 +251,33 @@ describe('Comment navigation with j/k', () => {
     expect(c3!.className).toContain('ring-2')
   })
 
-  it('should navigate from first comment to description with k', () => {
+  it('should navigate from first comment to comment-input with k', () => {
     renderItemDetailDialog({
       item: createMockItem({ comments: threeComments }),
     })
 
     const container = getDialogContainer()
-    // Go to first comment
+    // Go to first comment (title -> desc -> comment-input -> c3)
     fireEvent.keyDown(container, { key: 'j' }) // description
-    fireEvent.keyDown(container, { key: 'j' }) // c1
+    fireEvent.keyDown(container, { key: 'j' }) // comment-input
+    fireEvent.keyDown(container, { key: 'j' }) // c3
 
-    // Press k to go back to description
+    // Press k to go back to comment-input
     fireEvent.keyDown(container, { key: 'k' })
 
-    // Description field wrapper should have focus ring
-    const descWrapper = document.getElementById('detail-description')!.closest('[data-field-index="1"]')!
-    expect(descWrapper.className).toContain('ring-2')
+    // comment-input field should have focus ring
+    const commentInputWrapper = document.getElementById('comment-input')!.closest('[data-field-index]')!
+    expect(commentInputWrapper.className).toContain('ring-2')
   })
 
-  it('should navigate from last comment to comment-input with j', () => {
+  it('should navigate from description to comment-input with j', () => {
     renderItemDetailDialog({
       item: createMockItem({ comments: threeComments }),
     })
 
     const container = getDialogContainer()
-    // Navigate to last comment (c3) then press j for comment-input
+    // Navigate: title -> description -> comment-input
     fireEvent.keyDown(container, { key: 'j' }) // description
-    fireEvent.keyDown(container, { key: 'j' }) // c1
-    fireEvent.keyDown(container, { key: 'j' }) // c2
-    fireEvent.keyDown(container, { key: 'j' }) // c3
     fireEvent.keyDown(container, { key: 'j' }) // comment-input
 
     // comment-input field should have focus ring
@@ -285,20 +285,21 @@ describe('Comment navigation with j/k', () => {
     expect(commentInputWrapper.className).toContain('ring-2')
   })
 
-  it('should navigate from comment-input back to last comment with k', () => {
+  it('should navigate from first comment back to comment-input with k', () => {
     renderItemDetailDialog({
       item: createMockItem({ comments: threeComments }),
     })
 
     const container = getDialogContainer()
-    // Go to comment-input via G
-    fireEvent.keyDown(container, { key: 'G' })
-    // Press k to go to last visible comment (oldest = c1 in reverse order)
+    // Navigate: title -> description -> comment-input -> c3 (first comment)
+    fireEvent.keyDown(container, { key: 'j' }) // description
+    fireEvent.keyDown(container, { key: 'j' }) // comment-input
+    fireEvent.keyDown(container, { key: 'j' }) // c3
+    // Press k to go back to comment-input
     fireEvent.keyDown(container, { key: 'k' })
 
-    const c1 = document.querySelector('[data-comment-id="c1"]')
-    expect(c1).not.toBeNull()
-    expect(c1!.className).toContain('ring-2')
+    const commentInputWrapper = document.getElementById('comment-input')!.closest('[data-field-index]')!
+    expect(commentInputWrapper.className).toContain('ring-2')
   })
 
   it('should show focus ring on the currently focused comment', () => {
@@ -307,9 +308,10 @@ describe('Comment navigation with j/k', () => {
     })
 
     const container = getDialogContainer()
-    // Navigate to c2
+    // Navigate to c2: title -> description -> comment-input -> c3 -> c2
     fireEvent.keyDown(container, { key: 'j' }) // description
-    fireEvent.keyDown(container, { key: 'j' }) // c1
+    fireEvent.keyDown(container, { key: 'j' }) // comment-input
+    fireEvent.keyDown(container, { key: 'j' }) // c3
     fireEvent.keyDown(container, { key: 'j' }) // c2
 
     // Only c2 should have ring, not c1 or c3
@@ -340,7 +342,7 @@ describe('Comment navigation with j/k', () => {
     expect(titleWrapper.className).toContain('ring-2')
   })
 
-  it('should jump to last navigable element with G (comment-input field)', () => {
+  it('should jump to last navigable element with G (last comment)', () => {
     renderItemDetailDialog({
       item: createMockItem({ comments: threeComments }),
     })
@@ -348,8 +350,10 @@ describe('Comment navigation with j/k', () => {
     const container = getDialogContainer()
     fireEvent.keyDown(container, { key: 'G' })
 
-    const commentInputWrapper = document.getElementById('comment-input')!.closest('[data-field-index]')!
-    expect(commentInputWrapper.className).toContain('ring-2')
+    // Last navigable item is now c1 (oldest comment, last in reversed list)
+    const c1 = document.querySelector('[data-comment-id="c1"]')
+    expect(c1).not.toBeNull()
+    expect(c1!.className).toContain('ring-2')
   })
 
   it('should enter INSERT mode and focus the current field when i is pressed on a field (not a comment)', () => {
@@ -373,9 +377,10 @@ describe('Comment navigation with j/k', () => {
     })
 
     const container = getDialogContainer()
-    // Navigate to first comment
+    // Navigate to first comment: title -> description -> comment-input -> c3
     fireEvent.keyDown(container, { key: 'j' }) // description
-    fireEvent.keyDown(container, { key: 'j' }) // c1
+    fireEvent.keyDown(container, { key: 'j' }) // comment-input
+    fireEvent.keyDown(container, { key: 'j' }) // c3
     // Press i — should be a no-op
     fireEvent.keyDown(container, { key: 'i' })
 
@@ -410,9 +415,10 @@ describe('Comment navigation with j/k', () => {
     )
 
     const container = getDialogContainer()
-    // Navigate to c1 (title -> desc -> c1)
-    fireEvent.keyDown(container, { key: 'j' })
-    fireEvent.keyDown(container, { key: 'j' })
+    // Navigate to c1 (title -> desc -> comment-input -> c1)
+    fireEvent.keyDown(container, { key: 'j' }) // description
+    fireEvent.keyDown(container, { key: 'j' }) // comment-input
+    fireEvent.keyDown(container, { key: 'j' }) // c1
 
     const c1 = document.querySelector('[data-comment-id="c1"]')
     expect(c1).not.toBeNull()
@@ -455,9 +461,10 @@ describe('Dialog VISUAL mode', () => {
     })
 
     const container = getDialogContainer()
-    // Navigate to first comment
+    // Navigate to first comment (title -> desc -> comment-input -> c2)
     fireEvent.keyDown(container, { key: 'j' }) // description
-    fireEvent.keyDown(container, { key: 'j' }) // c1
+    fireEvent.keyDown(container, { key: 'j' }) // comment-input
+    fireEvent.keyDown(container, { key: 'j' }) // c2
 
     // Press V (Shift+V)
     fireEvent.keyDown(container, { key: 'V', shiftKey: true })
@@ -474,16 +481,17 @@ describe('Dialog VISUAL mode', () => {
     })
 
     const container = getDialogContainer()
-    // Navigate to c1
-    fireEvent.keyDown(container, { key: 'j' })
-    fireEvent.keyDown(container, { key: 'j' })
+    // Navigate to c2 (title -> desc -> comment-input -> c2)
+    fireEvent.keyDown(container, { key: 'j' }) // description
+    fireEvent.keyDown(container, { key: 'j' }) // comment-input
+    fireEvent.keyDown(container, { key: 'j' }) // c2
 
     // Enter VISUAL mode
     fireEvent.keyDown(container, { key: 'V', shiftKey: true })
 
-    // c1 should have selection highlight
-    const c1 = document.querySelector('[data-comment-id="c1"]')
-    expect(c1!.className).toContain('bg-')
+    // c2 should have selection highlight
+    const c2 = document.querySelector('[data-comment-id="c2"]')
+    expect(c2!.className).toContain('bg-')
   })
 
   it('should extend selection down through comments with j in VISUAL mode', () => {
@@ -492,14 +500,15 @@ describe('Dialog VISUAL mode', () => {
     })
 
     const container = getDialogContainer()
-    // Navigate to c1
-    fireEvent.keyDown(container, { key: 'j' })
-    fireEvent.keyDown(container, { key: 'j' })
+    // Navigate to c2 (title -> desc -> comment-input -> c2)
+    fireEvent.keyDown(container, { key: 'j' }) // description
+    fireEvent.keyDown(container, { key: 'j' }) // comment-input
+    fireEvent.keyDown(container, { key: 'j' }) // c2
 
     // Enter VISUAL mode
     fireEvent.keyDown(container, { key: 'V', shiftKey: true })
 
-    // Extend to c2
+    // Extend to c1
     fireEvent.keyDown(container, { key: 'j' })
 
     // Both c1 and c2 should be selected
@@ -516,15 +525,16 @@ describe('Dialog VISUAL mode', () => {
     })
 
     const container = getDialogContainer()
-    // Navigate to c2
-    fireEvent.keyDown(container, { key: 'j' })
-    fireEvent.keyDown(container, { key: 'j' })
-    fireEvent.keyDown(container, { key: 'j' })
+    // Navigate to c1 (title -> desc -> comment-input -> c2 -> c1)
+    fireEvent.keyDown(container, { key: 'j' }) // description
+    fireEvent.keyDown(container, { key: 'j' }) // comment-input
+    fireEvent.keyDown(container, { key: 'j' }) // c2
+    fireEvent.keyDown(container, { key: 'j' }) // c1
 
-    // Enter VISUAL mode on c2
+    // Enter VISUAL mode on c1
     fireEvent.keyDown(container, { key: 'V', shiftKey: true })
 
-    // Extend up to c1
+    // Extend up to c2
     fireEvent.keyDown(container, { key: 'k' })
 
     // Both should be selected
@@ -540,9 +550,10 @@ describe('Dialog VISUAL mode', () => {
     })
 
     const container = getDialogContainer()
-    // Navigate to first visible comment (c2 in reverse order: newest first)
-    fireEvent.keyDown(container, { key: 'j' })
-    fireEvent.keyDown(container, { key: 'j' })
+    // Navigate to first visible comment (c2 in reverse order: title -> desc -> comment-input -> c2)
+    fireEvent.keyDown(container, { key: 'j' }) // description
+    fireEvent.keyDown(container, { key: 'j' }) // comment-input
+    fireEvent.keyDown(container, { key: 'j' }) // c2
 
     // Enter VISUAL mode, select c2 + c1 (reverse order)
     fireEvent.keyDown(container, { key: 'V', shiftKey: true })
@@ -564,8 +575,10 @@ describe('Dialog VISUAL mode', () => {
     })
 
     const container = getDialogContainer()
-    fireEvent.keyDown(container, { key: 'j' })
-    fireEvent.keyDown(container, { key: 'j' })
+    // Navigate to first comment (title -> desc -> comment-input -> c2)
+    fireEvent.keyDown(container, { key: 'j' }) // description
+    fireEvent.keyDown(container, { key: 'j' }) // comment-input
+    fireEvent.keyDown(container, { key: 'j' }) // c2
     fireEvent.keyDown(container, { key: 'V', shiftKey: true })
 
     await act(async () => {
@@ -583,8 +596,10 @@ describe('Dialog VISUAL mode', () => {
     })
 
     const container = getDialogContainer()
-    fireEvent.keyDown(container, { key: 'j' })
-    fireEvent.keyDown(container, { key: 'j' })
+    // Navigate to first comment (title -> desc -> comment-input -> c2)
+    fireEvent.keyDown(container, { key: 'j' }) // description
+    fireEvent.keyDown(container, { key: 'j' }) // comment-input
+    fireEvent.keyDown(container, { key: 'j' }) // c2
     fireEvent.keyDown(container, { key: 'V', shiftKey: true })
 
     fireEvent.keyDown(container, { key: 'Escape' })
