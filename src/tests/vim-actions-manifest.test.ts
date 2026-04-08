@@ -204,7 +204,7 @@ describe('VIM_ACTIONS manifest consistency', () => {
     const expectedKeys: Record<string, string> = {
       'dialog-compare-changes': 'f',
       'dialog-rebase': 'r',
-      'dialog-check-conflicts': 'k',
+      'dialog-check-conflicts': 'c',
       'dialog-merge-push-pr': 'm',
       'dialog-approve-pr': 'a',
       'dialog-merge-pr': 'w',

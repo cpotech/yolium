@@ -162,7 +162,7 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'item-delete-sidebar', key: 'd', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Delete Item (sidebar)' },
   { id: 'dialog-compare-changes', key: 'f', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Compare Changes (diff)' },
   { id: 'dialog-rebase', key: 'r', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Pull Latest (Rebase)' },
-  { id: 'dialog-check-conflicts', key: 'k', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Check Conflicts' },
+  { id: 'dialog-check-conflicts', key: 'c', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Check Conflicts' },
   { id: 'dialog-merge-push-pr', key: 'm', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Squash, Merge & Push PR' },
   { id: 'dialog-approve-pr', key: 'a', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Approve PR' },
   { id: 'dialog-merge-pr', key: 'w', zone: 'dialog-sidebar', mode: 'NORMAL', category: 'vim', group: 'Sidebar Focus (Work Item)', description: 'Merge PR (finalize)' },
