@@ -10,6 +10,7 @@ interface ItemDetailMergeSectionProps {
   conflictCheck: ConflictCheckResult | null
   rebaseResult: RebaseResultState | null
   isMerging: boolean
+  isMergingLocally: boolean
   isCheckingConflicts: boolean
   isRebasing: boolean
   isApprovingPr: boolean
@@ -20,6 +21,7 @@ interface ItemDetailMergeSectionProps {
   onMergePr: () => void
   onCheckConflicts: () => void
   onRebase: () => void
+  onMergeLocally: () => void
   onMerge: () => void
   onFixConflicts: () => void
   isFixingConflicts: boolean
@@ -32,6 +34,7 @@ export function ItemDetailMergeSection({
   conflictCheck,
   rebaseResult,
   isMerging,
+  isMergingLocally,
   isCheckingConflicts,
   isRebasing,
   isApprovingPr,
@@ -42,6 +45,7 @@ export function ItemDetailMergeSection({
   onMergePr,
   onCheckConflicts,
   onRebase,
+  onMergeLocally,
   onMerge,
   onFixConflicts,
   isFixingConflicts,
@@ -149,13 +153,22 @@ export function ItemDetailMergeSection({
             {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-status-info)]/10 rounded border border-[var(--color-status-info)]/30 font-mono ml-auto">k</kbd>}
           </button>
           <button
+            data-testid="retry-merge-locally-button"
+            onClick={onMergeLocally}
+            disabled={isMergingLocally || isMerging}
+            className="w-full px-3 py-1.5 text-xs bg-[var(--color-status-error)] text-white rounded-md hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-colors mb-2"
+          >
+            {isMergingLocally ? 'Retrying...' : 'Retry Merge Locally'}
+            {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-white/20 rounded border border-white/30 font-mono ml-auto">m</kbd>}
+          </button>
+          <button
             data-testid="retry-merge-button"
             onClick={onMerge}
-            disabled={isMerging}
-            className="w-full px-3 py-1.5 text-xs bg-[var(--color-status-error)] text-white rounded-md hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            disabled={isMerging || isMergingLocally}
+            className="w-full px-3 py-1.5 text-xs text-[var(--color-status-error)] rounded-md hover:bg-[var(--color-status-error)]/10 border border-[var(--color-status-error)]/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {isMerging ? 'Retrying...' : 'Retry Squash Merge & PR'}
-            {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-white/20 rounded border border-white/30 font-mono ml-auto">g</kbd>}
+            {isMerging ? 'Retrying...' : 'Retry Squash Merge & Push PR'}
+            {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-status-error)]/10 rounded border border-[var(--color-status-error)]/30 font-mono ml-auto">M</kbd>}
           </button>
         </div>
       )}
@@ -242,14 +255,24 @@ export function ItemDetailMergeSection({
           )}
 
           <button
-            data-testid="merge-button"
-            onClick={onMerge}
-            disabled={isMerging || (item.agentStatus !== 'completed' && item.column !== 'done' && item.column !== 'verify')}
-            className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 bg-[var(--color-status-success)] text-white rounded-md hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            data-testid="merge-locally-button"
+            onClick={onMergeLocally}
+            disabled={isMergingLocally || isMerging || (item.agentStatus !== 'completed' && item.column !== 'done' && item.column !== 'verify')}
+            className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 bg-[var(--color-status-success)] text-white rounded-md hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-colors mb-2"
           >
             <GitMerge size={12} />
+            {isMergingLocally ? 'Merging Locally...' : 'Merge Locally'}
+            {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-white/20 rounded border border-white/30 font-mono ml-auto">m</kbd>}
+          </button>
+          <button
+            data-testid="merge-button"
+            onClick={onMerge}
+            disabled={isMerging || isMergingLocally || (item.agentStatus !== 'completed' && item.column !== 'done' && item.column !== 'verify')}
+            className="w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1 text-[var(--color-text-secondary)] rounded-md hover:bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <GitPullRequest size={12} />
             {isMerging ? 'Squashing & Merging...' : 'Squash, Merge & Push PR'}
-            {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-white/20 rounded border border-white/30 font-mono ml-auto">g</kbd>}
+            {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-primary)] rounded border border-[var(--color-border-primary)] font-mono ml-auto">M</kbd>}
           </button>
           {item.agentStatus !== 'completed' && item.column !== 'done' && item.column !== 'verify' && (
             <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
