@@ -59,6 +59,7 @@ export const VIM_ACTIONS: VimAction[] = [
   { id: 'refresh', key: 'r', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Refresh board', testId: 'refresh-button' },
   { id: 'search', key: '/', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Search' },
   { id: 'select-all', key: 'Ctrl+A', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Select all items' },
+  { id: 'select-column', key: 'A', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Select all items in column' },
   { id: 'delete-selected', key: 'Delete', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Delete selected items' },
   { id: 'visual-select', key: 'v', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Visual select' },
   { id: 'clear-selection', key: 'Escape', zone: 'content', mode: 'NORMAL', category: 'vim', group: 'Content (Kanban)', description: 'Clear selection / close search' },

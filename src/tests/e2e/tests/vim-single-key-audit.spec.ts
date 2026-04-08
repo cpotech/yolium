@@ -49,7 +49,7 @@ const COVERED_ACTIONS = new Set([
   'card-down', 'card-up', 'col-left', 'col-right',
   'card-first', 'card-last', 'card-open', 'card-delete',
   'new-item', 'refresh', 'search',
-  'delete-selected', 'visual-select', 'clear-selection', 'go-schedule',
+  'delete-selected', 'visual-select', 'clear-selection', 'go-schedule', 'select-column',
   'kanban-project-1', 'kanban-project-2', 'kanban-project-3',
   'kanban-project-4', 'kanban-project-5', 'kanban-project-6',
   'kanban-project-7', 'kanban-project-8', 'kanban-project-9',

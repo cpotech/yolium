@@ -458,6 +458,172 @@ describe('KanbanView NORMAL mode actions', () => {
 });
 
 // ============================================================
+// KanbanView Shift+A column select tests
+// ============================================================
+
+describe('KanbanView Shift+A column select', () => {
+  const backlogItems = [
+    createMockItem({ id: 'b1', title: 'Backlog 1', column: 'backlog' }),
+    createMockItem({ id: 'b2', title: 'Backlog 2', column: 'backlog' }),
+  ];
+  const readyItems = [
+    createMockItem({ id: 'r1', title: 'Ready 1', column: 'ready' }),
+  ];
+  const doneItems = [
+    createMockItem({ id: 'd1', title: 'Done 1', column: 'done' }),
+    createMockItem({ id: 'd2', title: 'Done 2', column: 'done' }),
+  ];
+  const allItems = [...backlogItems, ...readyItems, ...doneItems];
+  const board = createMockBoard(allItems);
+
+  beforeEach(() => {
+    mockGetBoard.mockResolvedValue(board);
+  });
+
+  it('Shift+A selects all items in the focused column only', async () => {
+    await act(async () => {
+      renderWithVim(
+        <>
+          <ZoneSetter zone="content" />
+          <KanbanView projectPath="/test/project" />
+        </>
+      );
+    });
+
+    const view = screen.getByTestId('kanban-view');
+    // Focus is on backlog (column 0) by default. Press Shift+A
+    fireEvent.keyDown(view, { key: 'A', shiftKey: true });
+
+    // Bulk action bar should appear
+    const bulkBar = screen.getByTestId('bulk-action-bar');
+    expect(bulkBar).toBeTruthy();
+    // Should show count matching backlog items (2)
+    expect(bulkBar.textContent).toContain('2');
+  });
+
+  it('Shift+A deselects column items when all are already selected (toggle)', async () => {
+    await act(async () => {
+      renderWithVim(
+        <>
+          <ZoneSetter zone="content" />
+          <KanbanView projectPath="/test/project" />
+        </>
+      );
+    });
+
+    const view = screen.getByTestId('kanban-view');
+    // Select all backlog items
+    fireEvent.keyDown(view, { key: 'A', shiftKey: true });
+    expect(screen.getByTestId('bulk-action-bar')).toBeTruthy();
+
+    // Press Shift+A again — should deselect
+    fireEvent.keyDown(view, { key: 'A', shiftKey: true });
+    expect(screen.queryByTestId('bulk-action-bar')).toBeNull();
+  });
+
+  it('Shift+A does not affect items selected in other columns', async () => {
+    await act(async () => {
+      renderWithVim(
+        <>
+          <ZoneSetter zone="content" />
+          <KanbanView projectPath="/test/project" />
+        </>
+      );
+    });
+
+    const view = screen.getByTestId('kanban-view');
+    // Select all with Ctrl+A first (all 5 items)
+    fireEvent.keyDown(view, { key: 'a', ctrlKey: true });
+    expect(screen.getByTestId('bulk-action-bar').textContent).toContain('5');
+
+    // Now Shift+A on backlog (focused column) — backlog items are all selected,
+    // so it should deselect them, leaving 3 items (ready + done)
+    fireEvent.keyDown(view, { key: 'A', shiftKey: true });
+    const bulkBar = screen.getByTestId('bulk-action-bar');
+    expect(bulkBar.textContent).toContain('3');
+  });
+
+  it('Shift+A with search active selects only filtered items in the focused column', async () => {
+    await act(async () => {
+      renderWithVim(
+        <>
+          <ZoneSetter zone="content" />
+          <KanbanView projectPath="/test/project" />
+        </>
+      );
+    });
+
+    // Filter to only show "Backlog 1"
+    const searchInput = screen.getByTestId('search-input');
+    fireEvent.change(searchInput, { target: { value: 'Backlog 1' } });
+
+    const view = screen.getByTestId('kanban-view');
+    fireEvent.keyDown(view, { key: 'A', shiftKey: true });
+
+    const bulkBar = screen.getByTestId('bulk-action-bar');
+    // Only 1 item matches the filter in the backlog column
+    expect(bulkBar.textContent).toContain('1');
+  });
+
+  it('Shift+A shows bulk action bar with correct count', async () => {
+    await act(async () => {
+      renderWithVim(
+        <>
+          <ZoneSetter zone="content" />
+          <KanbanView projectPath="/test/project" />
+        </>
+      );
+    });
+
+    const view = screen.getByTestId('kanban-view');
+    fireEvent.keyDown(view, { key: 'A', shiftKey: true });
+
+    const bulkBar = screen.getByTestId('bulk-action-bar');
+    expect(bulkBar).toBeTruthy();
+    // Backlog has 2 items
+    expect(bulkBar.textContent).toContain('2');
+  });
+
+  it('column header checkbox click selects all items in that column', async () => {
+    await act(async () => {
+      renderWithVim(
+        <>
+          <ZoneSetter zone="content" />
+          <KanbanView projectPath="/test/project" />
+        </>
+      );
+    });
+
+    // Click the checkbox in the backlog column header
+    const checkbox = screen.getByTestId('column-select-all-backlog');
+    fireEvent.click(checkbox);
+
+    const bulkBar = screen.getByTestId('bulk-action-bar');
+    expect(bulkBar).toBeTruthy();
+    expect(bulkBar.textContent).toContain('2');
+  });
+
+  it('column header checkbox shows indeterminate state when some items selected', async () => {
+    await act(async () => {
+      renderWithVim(
+        <>
+          <ZoneSetter zone="content" />
+          <KanbanView projectPath="/test/project" />
+        </>
+      );
+    });
+
+    // Ctrl+Click to select just one backlog item
+    const cards = screen.getByTestId('kanban-column-backlog').querySelectorAll('[data-testid="kanban-card"]');
+    fireEvent.click(cards[0], { ctrlKey: true });
+
+    // Checkbox should show indeterminate state (has a minus icon)
+    const checkbox = screen.getByTestId('column-select-all-backlog');
+    expect(checkbox.querySelector('[data-testid="checkbox-indeterminate"]')).toBeTruthy();
+  });
+});
+
+// ============================================================
 // StatusBar NORMAL mode action tests
 // ============================================================
 
