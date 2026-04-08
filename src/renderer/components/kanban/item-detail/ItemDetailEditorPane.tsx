@@ -295,22 +295,9 @@ export const ItemDetailEditorPane = forwardRef<React.ComponentRef<'div'>, ItemDe
           </div>
         )}
 
-        <CommentsList
-          ref={commentSearchRef}
-          comments={comments}
-          onSelectOption={onSelectCommentOption}
-          focusedCommentId={focusedCommentId}
-          selectedCommentIds={selectedCommentIds}
-          agentStatus={agentStatus}
-          answerText={answerText}
-          isAnswering={isAnswering}
-          onSetAnswerText={onSetAnswerText}
-          onAnswerQuestion={onAnswerQuestion}
-        />
-
         <div
           data-field-index="2"
-          className={`mt-4 ${isNormal && focusedFieldIndex === 2 ? 'ring-2 ring-[var(--color-accent-primary)] rounded-md' : ''}`}
+          className={`mb-4 ${isNormal && focusedFieldIndex === 2 ? 'ring-2 ring-[var(--color-accent-primary)] rounded-md' : ''}`}
         >
           <label
             htmlFor="comment-input"
@@ -346,6 +333,19 @@ export const ItemDetailEditorPane = forwardRef<React.ComponentRef<'div'>, ItemDe
             </button>
           </div>
         </div>
+
+        <CommentsList
+          ref={commentSearchRef}
+          comments={comments}
+          onSelectOption={onSelectCommentOption}
+          focusedCommentId={focusedCommentId}
+          selectedCommentIds={selectedCommentIds}
+          agentStatus={agentStatus}
+          answerText={answerText}
+          isAnswering={isAnswering}
+          onSetAnswerText={onSetAnswerText}
+          onAnswerQuestion={onAnswerQuestion}
+        />
       </div>
     </div>
   )
