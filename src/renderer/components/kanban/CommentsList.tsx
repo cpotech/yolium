@@ -384,6 +384,42 @@ export const CommentsList = forwardRef<CommentsListHandle, CommentsListProps>(fu
       <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">
         Comments
       </h3>
+      {agentStatus === 'waiting' && onSetAnswerText && onAnswerQuestion && (
+        <div className="mb-4 p-3 bg-[var(--color-bg-primary)] rounded-md border border-[var(--color-border-primary)]">
+          <label
+            htmlFor="answer-textarea"
+            className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
+          >
+            Answer Agent Question
+          </label>
+          <textarea
+            id="answer-textarea"
+            data-testid="answer-textarea"
+            value={answerText ?? ''}
+            onChange={e => onSetAnswerText(e.target.value)}
+            onFocus={() => vim.enterInsertMode()}
+            placeholder="Type your answer..."
+            rows={4}
+            className="w-full px-3 py-2.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
+            onKeyDown={e => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault()
+                onAnswerQuestion()
+              }
+            }}
+          />
+          <div className="flex justify-end mt-2">
+            <button
+              data-testid="submit-answer-button"
+              onClick={onAnswerQuestion}
+              disabled={isAnswering || !(answerText ?? '').trim()}
+              className="px-3 py-1.5 text-xs bg-[var(--color-agent-success-bg)] text-white rounded hover:bg-[var(--color-agent-success-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isAnswering ? 'Sending...' : 'Submit Answer'}
+            </button>
+          </div>
+        </div>
+      )}
       {comments.length === 0 ? (
         <p
           data-testid="no-comments"
@@ -517,42 +553,6 @@ export const CommentsList = forwardRef<CommentsListHandle, CommentsListProps>(fu
               )}
             </div>
           ))}
-        </div>
-      )}
-      {agentStatus === 'waiting' && onSetAnswerText && onAnswerQuestion && (
-        <div className="mt-4 p-3 bg-[var(--color-bg-primary)] rounded-md border border-[var(--color-border-primary)]">
-          <label
-            htmlFor="answer-textarea"
-            className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1.5"
-          >
-            Answer Agent Question
-          </label>
-          <textarea
-            id="answer-textarea"
-            data-testid="answer-textarea"
-            value={answerText ?? ''}
-            onChange={e => onSetAnswerText(e.target.value)}
-            onFocus={() => vim.enterInsertMode()}
-            placeholder="Type your answer..."
-            rows={4}
-            className="w-full px-3 py-2.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
-            onKeyDown={e => {
-              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                e.preventDefault()
-                onAnswerQuestion()
-              }
-            }}
-          />
-          <div className="flex justify-end mt-2">
-            <button
-              data-testid="submit-answer-button"
-              onClick={onAnswerQuestion}
-              disabled={isAnswering || !(answerText ?? '').trim()}
-              className="px-3 py-1.5 text-xs bg-[var(--color-agent-success-bg)] text-white rounded hover:bg-[var(--color-agent-success-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isAnswering ? 'Sending...' : 'Submit Answer'}
-            </button>
-          </div>
         </div>
       )}
       <MockPreviewModal

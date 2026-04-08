@@ -591,6 +591,41 @@ describe('CommentsList', () => {
     })
   })
 
+  it('should render answer textarea before comments when agent is waiting', () => {
+    const comments: KanbanComment[] = [
+      { id: 'c1', source: 'user', text: 'First comment', timestamp: new Date().toISOString() },
+    ]
+
+    const { container } = render(
+      <CommentsList comments={comments} agentStatus="waiting" answerText="" isAnswering={false} onSetAnswerText={vi.fn()} onAnswerQuestion={vi.fn()} />
+    )
+
+    const answerTextarea = container.querySelector('[data-testid="answer-textarea"]')!
+    const commentCard = container.querySelector('[data-comment-id="c1"]')!
+    // answer textarea should appear before the comment in DOM order
+    expect(answerTextarea.compareDocumentPosition(commentCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('should render answer textarea at top even with many comments', () => {
+    const comments: KanbanComment[] = [
+      { id: 'c1', source: 'user', text: 'Comment one', timestamp: '2024-01-01T00:00:00Z' },
+      { id: 'c2', source: 'agent', text: 'Comment two', timestamp: '2024-01-02T00:00:00Z' },
+      { id: 'c3', source: 'system', text: 'Comment three', timestamp: '2024-01-03T00:00:00Z' },
+    ]
+
+    const { container } = render(
+      <CommentsList comments={comments} agentStatus="waiting" answerText="" isAnswering={false} onSetAnswerText={vi.fn()} onAnswerQuestion={vi.fn()} />
+    )
+
+    const answerTextarea = container.querySelector('[data-testid="answer-textarea"]')!
+    const allComments = container.querySelectorAll('[data-comment-id]')
+    expect(allComments.length).toBe(3)
+    // answer textarea should appear before ALL comments
+    for (const commentEl of allComments) {
+      expect(answerTextarea.compareDocumentPosition(commentEl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    }
+  })
+
   describe('reverse chronological order', () => {
     const orderedComments: KanbanComment[] = [
       { id: 'c1', source: 'user', text: 'First comment', timestamp: '2024-01-01T00:00:00Z' },
