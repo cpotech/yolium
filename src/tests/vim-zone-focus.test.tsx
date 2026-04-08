@@ -3,7 +3,7 @@
  */
 import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import { ThemeProvider } from '@renderer/theme';
 import { VimModeProvider, useVimModeContext } from '@renderer/context/VimModeContext';
 import { TabBar } from '@renderer/components/tabs/TabBar';
@@ -135,6 +135,41 @@ describe('Vim zone focus management', () => {
     const input = screen.getByTestId('test-input');
     // The input should retain focus since it's an INPUT element
     expect(document.activeElement).toBe(input);
+  });
+
+  it('should switch activeZone to content when tab is activated via TabBar Enter key', () => {
+    // Helper to read the vim context zone
+    let capturedZone: string = '';
+    function ZoneReader() {
+      const { activeZone } = useVimModeContext();
+      capturedZone = activeZone;
+      return null;
+    }
+
+    renderWithVim(
+      <>
+        <ZoneSetter zone="tabs" />
+        <ZoneReader />
+        <TabBar
+          tabs={mockTabs}
+          activeTabId="tab-1"
+          onTabClick={vi.fn()}
+          onTabClose={vi.fn()}
+          onTabContextMenu={vi.fn()}
+          onNewTab={vi.fn()}
+        />
+      </>
+    );
+
+    expect(capturedZone).toBe('tabs');
+
+    const tabBar = screen.getByTestId('tab-bar');
+    // Press Enter to activate the focused tab — should switch zone to content
+    act(() => {
+      fireEvent.keyDown(tabBar, { key: 'Enter' });
+    });
+
+    expect(capturedZone).toBe('content');
   });
 
   it('should move DOM focus between zones when switching from sidebar to tabs', () => {

@@ -104,6 +104,7 @@ export function TabBar({
       e.preventDefault();
       const idx = Math.min(focusedTabIndex, tabs.length - 1);
       onTabClick(tabs[idx].id);
+      vim.setActiveZone('content');
     } else if (e.key === 'x') {
       e.preventDefault();
       const idx = Math.min(focusedTabIndex, tabs.length - 1);

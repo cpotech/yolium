@@ -150,11 +150,13 @@ export function useVimMode(options: UseVimModeOptions = {}): UseVimModeResult {
     if (key >= '1' && key <= '9') {
       event.preventDefault();
       onSelectTabRef.current?.(parseInt(key, 10) - 1);
+      setActiveZone('content');
       return;
     }
     if (key === '0') {
       event.preventDefault();
       onSelectTabRef.current?.(9);
+      setActiveZone('content');
       return;
     }
 
