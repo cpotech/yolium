@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { X, FileText, FilePlus, FileMinus, FileEdit, Loader2, AlertTriangle } from 'lucide-react'
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts'
 import { useSuspendVimNavigation } from '@renderer/context/VimModeContext'
+import { restoreFocusSafely } from '@shared/lib/focus-trap'
 
 interface GitDiffDialogProps {
   isOpen: boolean
@@ -140,7 +141,7 @@ export function GitDiffDialog({
       setTimeout(() => dialogRef.current?.focus(), 0)
     }
     return () => {
-      previousFocusRef.current?.focus()
+      restoreFocusSafely(previousFocusRef.current)
       previousFocusRef.current = null
     }
   }, [isOpen])

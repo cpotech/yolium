@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useEffect } from 'react'
-import { trapFocus } from '@shared/lib/focus-trap'
+import { trapFocus, restoreFocusSafely } from '@shared/lib/focus-trap'
 import { useSuspendVimNavigation } from '@renderer/context/VimModeContext'
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts'
 
@@ -34,7 +34,7 @@ export function ConfirmDialog({
       previousFocusRef.current = document.activeElement as HTMLElement | null
     }
     return () => {
-      previousFocusRef.current?.focus()
+      restoreFocusSafely(previousFocusRef.current)
       previousFocusRef.current = null
     }
   }, [isOpen])
