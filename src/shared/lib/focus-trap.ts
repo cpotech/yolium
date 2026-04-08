@@ -1,6 +1,37 @@
 const FOCUSABLE_SELECTOR = 'input:not(:disabled), textarea:not(:disabled), select:not(:disabled), button:not(:disabled), [tabindex]:not([tabindex="-1"]):not(:disabled)'
 
 /**
+ * Checks whether an element is a form field (input, textarea, select, or contentEditable).
+ */
+function isFormField(el: HTMLElement): boolean {
+  const tag = el.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+  if (el.isContentEditable || el.getAttribute('contenteditable') === 'true') return true
+  return false
+}
+
+/**
+ * Restores focus after a sub-dialog closes without accidentally triggering
+ * form-field onFocus handlers (which can switch vim mode to INSERT).
+ *
+ * If the target element is a form field, focuses the nearest ancestor with
+ * role="dialog" or tabindex="-1" instead. Otherwise focuses the element directly.
+ */
+export function restoreFocusSafely(element: HTMLElement | null): void {
+  if (!element) return
+
+  if (isFormField(element)) {
+    const ancestor = element.closest<HTMLElement>('[role="dialog"], [tabindex="-1"]')
+    if (ancestor) {
+      ancestor.focus()
+      return
+    }
+  }
+
+  element.focus()
+}
+
+/**
  * Handles Tab key to trap focus within a container element.
  * Call this from the dialog's onKeyDown handler.
  * Returns true if the event was handled (Tab was trapped).
