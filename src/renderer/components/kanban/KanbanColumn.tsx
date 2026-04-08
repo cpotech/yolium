@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react'
+import { Check, Minus } from 'lucide-react'
 import { KanbanCard } from './KanbanCard'
 import type { KanbanItem, KanbanColumn as ColumnId } from '@shared/types/kanban'
 import { useVimModeContext } from '@renderer/context/VimModeContext'
@@ -17,6 +18,7 @@ interface KanbanColumnProps {
   onRunAgainAgent?: (itemId: string) => void
   onFixConflicts?: (itemId: string) => void
   onFocusedCardChange?: (index: number) => void
+  onSelectAll?: (columnId: ColumnId) => void
 }
 
 const columnBorderColors: Record<ColumnId, string> = {
@@ -40,6 +42,7 @@ export function KanbanColumn({
   onRunAgainAgent,
   onFixConflicts,
   onFocusedCardChange,
+  onSelectAll,
 }: KanbanColumnProps): React.ReactElement {
   const borderColor = columnBorderColors[columnId]
   const [isDragOver, setIsDragOver] = useState(false)
@@ -88,6 +91,12 @@ export function KanbanColumn({
     }
   }
 
+  // Checkbox state for column select-all
+  const selectedCount = items.filter(i => selectedIds?.has(i.id)).length
+  const checkboxState = selectedCount === 0 ? 'unchecked'
+    : selectedCount === items.length ? 'checked'
+    : 'indeterminate'
+
   // Count running items for status display
   const runningCount = items.filter(i => i.agentStatus === 'running').length
 
@@ -106,7 +115,26 @@ export function KanbanColumn({
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border-primary)]">
-        <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h2>
+        <div className="flex items-center gap-1.5">
+          {items.length > 0 && onSelectAll && (
+            <button
+              data-testid={`column-select-all-${columnId}`}
+              title={checkboxState === 'checked' ? 'Deselect all (Shift+A)' : 'Select all (Shift+A)'}
+              onClick={(e) => { e.stopPropagation(); onSelectAll(columnId) }}
+              className={`flex items-center justify-center w-3.5 h-3.5 rounded-sm border transition-colors ${
+                checkboxState === 'checked'
+                  ? 'bg-[var(--color-accent-primary)] border-[var(--color-accent-primary)] text-white'
+                  : checkboxState === 'indeterminate'
+                    ? 'bg-[var(--color-accent-primary)]/50 border-[var(--color-accent-primary)] text-white'
+                    : 'border-[var(--color-border-secondary)] hover:border-[var(--color-accent-primary)]'
+              }`}
+            >
+              {checkboxState === 'checked' && <Check size={10} />}
+              {checkboxState === 'indeterminate' && <Minus size={8} data-testid="checkbox-indeterminate" />}
+            </button>
+          )}
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h2>
+        </div>
         <div className="flex items-center gap-1.5">
           {runningCount > 0 && (
             <span

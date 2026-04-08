@@ -379,6 +379,25 @@ export function KanbanView({
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
   }, [board, searchQuery])
 
+  const handleColumnSelectAll = useCallback((columnId: ColumnId) => {
+    const colItems = getColumnItems(columnId)
+    if (colItems.length === 0) return
+    const allSelected = colItems.every(i => selectedIds.has(i.id))
+    if (allSelected) {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        colItems.forEach(i => next.delete(i.id))
+        return next
+      })
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        colItems.forEach(i => next.add(i.id))
+        return next
+      })
+    }
+  }, [getColumnItems, selectedIds])
+
   const currentColumnItems = useMemo(
     () => board ? getColumnItems(columns[focusedColumnIndex].id) : [],
     [board, getColumnItems, focusedColumnIndex],
@@ -514,6 +533,11 @@ export function KanbanView({
         handleBulkDelete()
       }
     }
+    if (e.key === 'A' && !e.metaKey && !e.ctrlKey && isVimContentActive) {
+      e.preventDefault()
+      handleColumnSelectAll(columns[focusedColumnIndex].id)
+      return
+    }
     if (e.key === 'a' && (e.metaKey || e.ctrlKey)) {
       if (allVisibleItems.length > 0) {
         e.preventDefault()
@@ -544,7 +568,7 @@ export function KanbanView({
         return
       }
     }
-  }, [newItemDialogOpen, selectedItem, loadBoard, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, allVisibleItems, isVimContentActive, isVisualMode, board, vim, columns, focusedColumnIndex, focusedCardIndex, getColumnItems, handleCardClick, projectPath, tabs, onTabSelect])
+  }, [newItemDialogOpen, selectedItem, loadBoard, searchQuery, selectedIds, handleBulkDelete, handleClearSelection, handleColumnSelectAll, allVisibleItems, isVimContentActive, isVisualMode, board, vim, columns, focusedColumnIndex, focusedCardIndex, getColumnItems, handleCardClick, projectPath, tabs, onTabSelect])
 
   const handleCardDrop = useCallback(async (itemId: string, targetColumn: ColumnId) => {
     if (!projectPath || !board) return
@@ -925,6 +949,7 @@ export function KanbanView({
                 onRunAgainAgent={handleRunAgainAgent}
                 onFixConflicts={handleFixConflicts}
                 onFocusedCardChange={isActiveCol ? setFocusedCardIndex : undefined}
+                onSelectAll={handleColumnSelectAll}
               />
             )
           })}
