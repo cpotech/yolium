@@ -32,6 +32,7 @@ const defaultProps = {
   conflictCheck: { clean: false, conflictingFiles: ['src/a.ts', 'src/b.ts'] },
   rebaseResult: null,
   isMerging: false,
+  isMergingLocally: false,
   isCheckingConflicts: false,
   isRebasing: false,
   isApprovingPr: false,
@@ -43,6 +44,7 @@ const defaultProps = {
   onMergePr: vi.fn(),
   onCheckConflicts: vi.fn(),
   onRebase: vi.fn(),
+  onMergeLocally: vi.fn(),
   onMerge: vi.fn(),
   onFixConflicts: vi.fn(),
 }
@@ -103,6 +105,6 @@ describe('ItemDetailMergeSection - conflict state', () => {
     render(<ItemDetailMergeSection {...defaultProps} />)
 
     expect(screen.getByTestId('retry-merge-button')).toBeInTheDocument()
-    expect(screen.getByTestId('retry-merge-button')).toHaveTextContent(/Retry Squash Merge & PR/i)
+    expect(screen.getByTestId('retry-merge-button')).toHaveTextContent(/Retry Squash Merge & Push PR/i)
   })
 })

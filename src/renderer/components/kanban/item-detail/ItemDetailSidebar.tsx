@@ -35,6 +35,7 @@ interface ItemDetailSidebarProps {
   conflictCheck: ConflictCheckResult | null
   rebaseResult: RebaseResultState | null
   isMerging: boolean
+  isMergingLocally: boolean
   isCheckingConflicts: boolean
   isRebasing: boolean
   isApprovingPr: boolean
@@ -54,6 +55,7 @@ interface ItemDetailSidebarProps {
   onMergePr: () => void
   onCheckConflicts: () => void
   onRebase: () => void
+  onMergeLocally: () => void
   onMerge: () => void
   onFixConflicts: () => void
   isFixingConflicts: boolean
@@ -78,6 +80,7 @@ export function ItemDetailSidebar({
   conflictCheck,
   rebaseResult,
   isMerging,
+  isMergingLocally,
   isCheckingConflicts,
   isRebasing,
   isApprovingPr,
@@ -97,6 +100,7 @@ export function ItemDetailSidebar({
   onMergePr,
   onCheckConflicts,
   onRebase,
+  onMergeLocally,
   onMerge,
   onFixConflicts,
   isFixingConflicts,
@@ -319,6 +323,7 @@ export function ItemDetailSidebar({
           conflictCheck={conflictCheck}
           rebaseResult={rebaseResult}
           isMerging={isMerging}
+          isMergingLocally={isMergingLocally}
           isCheckingConflicts={isCheckingConflicts}
           isRebasing={isRebasing}
           isApprovingPr={isApprovingPr}
@@ -329,6 +334,7 @@ export function ItemDetailSidebar({
           onMergePr={onMergePr}
           onCheckConflicts={onCheckConflicts}
           onRebase={onRebase}
+          onMergeLocally={onMergeLocally}
           onMerge={onMerge}
           onFixConflicts={onFixConflicts}
           isFixingConflicts={isFixingConflicts}

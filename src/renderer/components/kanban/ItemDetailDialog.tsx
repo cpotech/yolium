@@ -469,7 +469,13 @@ export function ItemDetailDialog({
           void prWorkflow.checkConflicts()
           return
         }
-        if (event.key === 'm' && plain && (item.agentStatus === 'completed' || item.column === 'done' || item.column === 'verify') && !prWorkflow.isMerging) {
+        if (event.key === 'm' && plain && (item.agentStatus === 'completed' || item.column === 'done' || item.column === 'verify') && !prWorkflow.isMergingLocally) {
+          event.preventDefault()
+          dialogRef.current?.focus()
+          void prWorkflow.mergeLocally()
+          return
+        }
+        if (event.key === 'M' && !plain && (item.agentStatus === 'completed' || item.column === 'done' || item.column === 'verify') && !prWorkflow.isMerging) {
           event.preventDefault()
           dialogRef.current?.focus()
           void prWorkflow.mergeAndPushPr()
@@ -711,6 +717,7 @@ export function ItemDetailDialog({
             conflictCheck={prWorkflow.conflictCheck}
             rebaseResult={prWorkflow.rebaseResult}
             isMerging={prWorkflow.isMerging}
+            isMergingLocally={prWorkflow.isMergingLocally}
             isCheckingConflicts={prWorkflow.isCheckingConflicts}
             isRebasing={prWorkflow.isRebasing}
             isApprovingPr={prWorkflow.isApprovingPr}
@@ -734,6 +741,7 @@ export function ItemDetailDialog({
             onMergePr={() => void prWorkflow.mergePr()}
             onCheckConflicts={() => void prWorkflow.checkConflicts()}
             onRebase={() => void prWorkflow.rebaseOntoDefault()}
+            onMergeLocally={() => void prWorkflow.mergeLocally()}
             onMerge={() => void prWorkflow.mergeAndPushPr()}
             onFixConflicts={() => void handleFixConflicts()}
             isFixingConflicts={prWorkflow.isFixingConflicts}

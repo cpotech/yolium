@@ -52,6 +52,7 @@ interface UseItemDetailPrWorkflowOptions {
 
 export interface ItemDetailPrWorkflowController {
   isMerging: boolean
+  isMergingLocally: boolean
   isCheckingConflicts: boolean
   conflictCheck: ConflictCheckResult | null
   prUrl: string | null
@@ -64,6 +65,7 @@ export interface ItemDetailPrWorkflowController {
   fixConflicts: () => Promise<void>
   checkConflicts: () => Promise<void>
   rebaseOntoDefault: () => Promise<void>
+  mergeLocally: () => Promise<void>
   mergeAndPushPr: () => Promise<void>
   approvePr: () => Promise<void>
   mergePr: () => Promise<void>
@@ -76,6 +78,7 @@ export function useItemDetailPrWorkflow({
   setErrorMessage,
 }: UseItemDetailPrWorkflowOptions): ItemDetailPrWorkflowController {
   const [isMerging, setIsMerging] = useState(false)
+  const [isMergingLocally, setIsMergingLocally] = useState(false)
   const [isCheckingConflicts, setIsCheckingConflicts] = useState(false)
   const [conflictCheck, setConflictCheck] = useState<ConflictCheckResult | null>(null)
   const [prUrl, setPrUrl] = useState<string | null>(item?.prUrl || null)
@@ -143,6 +146,53 @@ export function useItemDetailPrWorkflow({
       setIsFixingConflicts(false)
     }
   }, [isFixingConflicts, item, onUpdated, projectPath, setErrorMessage])
+
+  const mergeLocally = useCallback(async () => {
+    if (!item || !item.branch || !item.worktreePath || isMergingLocally) return
+
+    setIsMergingLocally(true)
+    try {
+      const stats = await window.electronAPI.git.worktreeDiffStats(projectPath, item.branch)
+      const statsMessage = stats.filesChanged > 0
+        ? `${stats.filesChanged} file${stats.filesChanged !== 1 ? 's' : ''} changed, +${stats.insertions} -${stats.deletions}`
+        : 'No changes detected'
+
+      const confirmed = await confirmAction({
+        title: 'Merge Locally',
+        message: `Merge branch "${item.branch}" locally into default branch?\n\n${statsMessage}`,
+        confirmLabel: 'Merge',
+      })
+      if (!confirmed) return
+
+      const result = await window.electronAPI.git.mergeBranch(projectPath, item.branch)
+
+      if (result.success) {
+        await window.electronAPI.git.cleanupWorktree(projectPath, item.worktreePath!, item.branch)
+        await window.electronAPI.kanban.updateItem(projectPath, item.id, {
+          mergeStatus: 'merged',
+          worktreePath: undefined,
+        })
+        await window.electronAPI.kanban.addComment(projectPath, item.id, 'system', `Branch merged locally into default branch`)
+        setConflictCheck(null)
+        setErrorMessage(null)
+        onUpdated()
+      } else if (result.conflict) {
+        await window.electronAPI.kanban.updateItem(projectPath, item.id, {
+          mergeStatus: 'conflict',
+        })
+        setConflictCheck({ clean: false, conflictingFiles: [] })
+        setErrorMessage('Merge conflict detected. Please resolve manually.')
+        onUpdated()
+      } else {
+        setErrorMessage(result.error || 'Local merge failed')
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      setErrorMessage(`Failed to merge locally: ${message}`)
+    } finally {
+      setIsMergingLocally(false)
+    }
+  }, [isMergingLocally, item, onUpdated, projectPath, setErrorMessage])
 
   const mergeAndPushPr = useCallback(async () => {
     if (!item || !item.branch || !item.worktreePath || isMerging) return
@@ -268,6 +318,7 @@ export function useItemDetailPrWorkflow({
 
   return {
     isMerging,
+    isMergingLocally,
     isCheckingConflicts,
     conflictCheck,
     prUrl,
@@ -280,6 +331,7 @@ export function useItemDetailPrWorkflow({
     fixConflicts,
     checkConflicts,
     rebaseOntoDefault,
+    mergeLocally,
     mergeAndPushPr,
     approvePr,
     mergePr,
