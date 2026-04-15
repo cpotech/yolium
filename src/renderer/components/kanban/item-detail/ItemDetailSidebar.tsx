@@ -175,7 +175,9 @@ export function ItemDetailSidebar({
         </div>
       )}
 
-      <div className="p-4 space-y-4">
+      {/* Configuration Section */}
+      <div className="p-4 space-y-4 border-b border-[var(--color-border-primary)]">
+        <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-disabled)] mb-3">Configuration</div>
         <div>
           <label
             htmlFor="detail-agent-provider"
@@ -265,7 +267,11 @@ export function ItemDetailSidebar({
             </p>
           )}
         </div>
+      </div>
 
+      {/* Info Section */}
+      <div className="p-4 space-y-4 border-b border-[var(--color-border-primary)]">
+        <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-disabled)] mb-3">Info</div>
         <div>
           <label
             htmlFor="detail-verified"
@@ -309,13 +315,17 @@ export function ItemDetailSidebar({
               data-testid="worktree-path-display"
               className="flex items-center gap-1 text-xs text-[var(--color-text-tertiary)]"
             >
-              <FolderOpen size={12} className="flex-shrink-0" />
-              <span className="font-mono break-all" title={item.worktreePath}>{item.worktreePath}</span>
+              <FolderOpen size={14} className="flex-shrink-0" />
+              <span className="font-mono truncate" title={item.worktreePath}>{item.worktreePath}</span>
               <CopyPathButton path={item.worktreePath} />
             </div>
           </div>
         )}
+      </div>
 
+      {/* Merge Section */}
+      <div className="p-4">
+        <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-disabled)] mb-3">Merge</div>
         <ItemDetailMergeSection
           showKbdHints={showKbdHints}
           item={item}
@@ -341,7 +351,8 @@ export function ItemDetailSidebar({
         />
       </div>
 
-      <div className="p-4 border-t border-[var(--color-border-primary)]">
+      {/* Footer */}
+      <div className="mt-auto p-4 border-t border-[var(--color-border-primary)]">
         {saveStatus === 'saving' && (
           <div data-testid="save-status" className="text-center text-xs text-[var(--color-status-info)] font-medium mb-2">
             Saving...
@@ -357,32 +368,27 @@ export function ItemDetailSidebar({
             Save failed
           </div>
         )}
-        <div className="space-y-2">
-          <button
-            data-testid="delete-button"
-            onClick={onDelete}
-            disabled={isDeleting}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-[var(--color-status-error)] rounded-md hover:bg-[var(--color-status-error)]/10 border border-[var(--color-status-error)]/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <Trash2 size={14} />
-            {isDeleting ? 'Deleting...' : 'Delete'}
-            <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-status-error)]/10 rounded border border-[var(--color-status-error)]/30 font-mono ml-1">D</kbd>
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-auto p-4 border-t border-[var(--color-border-primary)]">
-        <div className="flex items-center justify-between text-xs text-[var(--color-text-tertiary)]">
+        <div className="space-y-1 text-xs text-[var(--color-text-tertiary)] mb-3">
           <div className="flex items-center gap-1" data-testid="created-at">
-            <Clock size={11} />
+            <Clock size={14} />
             <span>Created {formatTimestamp(item.createdAt)}</span>
           </div>
           <div className="flex items-center gap-1" data-testid="updated-at">
-            <Clock size={11} />
+            <Clock size={14} />
             <span>Updated {formatTimestamp(item.updatedAt)}</span>
           </div>
         </div>
-        <p className="text-center text-[10px] text-[var(--color-text-tertiary)] mt-2">
+        <button
+          data-testid="delete-button"
+          onClick={onDelete}
+          disabled={isDeleting}
+          className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-[var(--color-status-error)] rounded-md hover:bg-[var(--color-status-error)]/10 border border-[var(--color-status-error)]/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          <Trash2 size={14} />
+          {isDeleting ? 'Deleting...' : 'Delete'}
+          <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-status-error)]/10 rounded border border-[var(--color-status-error)]/30 font-mono ml-1">D</kbd>
+        </button>
+        <p className="text-center text-[10px] text-[var(--color-text-tertiary)] mt-3">
           <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)] font-mono">Esc</kbd> to close
         </p>
       </div>
