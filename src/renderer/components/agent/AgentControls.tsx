@@ -153,7 +153,7 @@ export function AgentControls({
     <>
       {/* Status Badge */}
       <div className="mb-4">
-        <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+        <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
           Status
         </label>
         <div className="flex items-center gap-2">
@@ -184,7 +184,7 @@ export function AgentControls({
 
       {/* Agent Controls */}
       <div className="mb-4 p-3 bg-[var(--color-bg-primary)] rounded-md border border-[var(--color-border-primary)] min-h-[100px]">
-        <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+        <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
           Agent Controls
         </label>
 
