@@ -219,7 +219,7 @@ describe('agent-exit-handler', () => {
   });
 
   describe('synthesizeNonClaudeConclusion', () => {
-    it('should read .yolium-plan.md for non-Claude plan-agent on exit', () => {
+    it('should read .yolium/plan.md for non-Claude plan-agent on exit', () => {
       const board = getOrCreateBoard('/tmp/test-project');
       const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex', order: 0 });
       mockGetAgentSession.mockReturnValue({ receivedUpdateDescription: false });
@@ -240,7 +240,7 @@ describe('agent-exit-handler', () => {
       expect(updated.comments.some((c: any) => c.text.includes('Step 1: Do things'))).toBe(true);
     });
 
-    it('should read .yolium-summary.md for non-Claude code-agent on exit', () => {
+    it('should read .yolium/summary.md for non-Claude code-agent on exit', () => {
       const board = getOrCreateBoard('/tmp/test-project');
       const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex', order: 0 });
       mockGetAgentSession.mockReturnValue({});
@@ -260,7 +260,7 @@ describe('agent-exit-handler', () => {
       expect(updated.comments.some((c: any) => c.text === 'Summary of changes')).toBe(true);
     });
 
-    it('should read .yolium-scout.json for non-Claude scout-agent on exit', () => {
+    it('should read .yolium/scout.json for non-Claude scout-agent on exit', () => {
       const board = getOrCreateBoard('/tmp/test-project');
       const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex', order: 0 });
       mockGetAgentSession.mockReturnValue({});
@@ -280,7 +280,7 @@ describe('agent-exit-handler', () => {
       expect(updated.comments.some((c: any) => c.text.includes('Acme'))).toBe(true);
     });
 
-    it('should read .yolium-verify.md for non-Claude verify-agent on exit', () => {
+    it('should read .yolium/verify.md for non-Claude verify-agent on exit', () => {
       const board = getOrCreateBoard('/tmp/test-project');
       const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex', order: 0 });
       mockGetAgentSession.mockReturnValue({});
@@ -300,7 +300,7 @@ describe('agent-exit-handler', () => {
       expect(updated.comments.some((c: any) => c.text.includes('Verification Report'))).toBe(true);
     });
 
-    it('should read .yolium-ba-report.md for non-Claude ba-agent on exit', () => {
+    it('should read .yolium/ba-report.md for non-Claude ba-agent on exit', () => {
       const board = getOrCreateBoard('/tmp/test-project');
       const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex', order: 0 });
       mockGetAgentSession.mockReturnValue({});
@@ -320,7 +320,7 @@ describe('agent-exit-handler', () => {
       expect(updated.comments.some((c: any) => c.text.includes('BA Report'))).toBe(true);
     });
 
-    it('should read .yolium-kb-summary.md for non-Claude kb-agent on exit', () => {
+    it('should read .yolium/kb-summary.md for non-Claude kb-agent on exit', () => {
       const board = getOrCreateBoard('/tmp/test-project');
       const item = addItem(board, { title: 'Test', description: 'Original', agentProvider: 'codex', order: 0 });
       mockGetAgentSession.mockReturnValue({});

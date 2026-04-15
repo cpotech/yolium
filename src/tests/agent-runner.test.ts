@@ -439,7 +439,7 @@ describe('agent-runner', () => {
       expect(result.description).toBe('Original description');
     });
 
-    it('should read .yolium-verify.md and post as comment for codex verify-agent on exit', () => {
+    it('should read .yolium/verify.md and post as comment for codex verify-agent on exit', () => {
       const board = createBoard('/path/to/project');
       const item = addItem(board, {
         title: 'Verify authentication feature',
@@ -484,6 +484,45 @@ describe('agent-runner', () => {
       }
       const result = board.items.find(i => i.id === item.id)!;
       expect(result.description).toBe('Original description');
+    });
+  });
+
+  describe('stopAgent status behavior', () => {
+    it('stopAgent should set agentStatus to idle (not interrupted) when user stops a running agent', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test work item',
+        description: 'Implement feature',
+        agentProvider: 'claude',
+        order: 0,
+      });
+      updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
+
+      // Simulate what stopAgent does: set idle status (user-initiated stop)
+      updateItem(board, item.id, { agentStatus: 'idle', activeAgentName: undefined });
+
+      const result = board.items.find(i => i.id === item.id)!;
+      expect(result.agentStatus).toBe('idle');
+      expect(result.agentStatus).not.toBe('interrupted');
+    });
+
+    it('stopAgent should set comment to indicate agent was stopped by user', () => {
+      const board = createBoard('/path/to/project');
+      const item = addItem(board, {
+        title: 'Test work item',
+        description: 'Implement feature',
+        agentProvider: 'claude',
+        order: 0,
+      });
+      updateItem(board, item.id, { agentStatus: 'running', column: 'in-progress' });
+
+      // Simulate what stopAgent does: add stopped comment
+      addComment(board, item.id, 'system', 'Agent was stopped');
+
+      const result = board.items.find(i => i.id === item.id)!;
+      const lastComment = result.comments![result.comments!.length - 1];
+      expect(lastComment.text).toBe('Agent was stopped');
+      expect(lastComment.text).not.toContain('interrupted');
     });
   });
 

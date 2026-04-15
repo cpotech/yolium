@@ -60,6 +60,7 @@ Run automated checks to find code-level issues:
    - Security concerns: hardcoded secrets, SQL injection vectors, XSS vulnerabilities, OWASP top 10
    - Performance issues: N+1 queries, missing pagination, unbounded loops
    - Dependency issues: deprecated packages, known vulnerabilities
+   - Replicated production code in tests: test files that copy or re-implement production logic instead of importing the real modules
 
 Output: `@@YOLIUM:{"type":"progress","step":"discovery","detail":"Build, tests, lint, and code analysis complete"}`
 
