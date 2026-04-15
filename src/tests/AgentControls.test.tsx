@@ -237,6 +237,20 @@ describe('AgentControls', () => {
     })
   })
 
+  describe('idle after stop', () => {
+    it('should show agent run buttons (not Resume) after user stops an agent (idle status)', async () => {
+      const item = createMockItem({ agentStatus: 'idle' })
+      render(<AgentControls item={item} {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('run-code-agent-button')).toBeInTheDocument()
+      })
+      expect(screen.getByTestId('run-plan-agent-button')).toBeInTheDocument()
+      // Resume button should NOT be present for idle status
+      expect(screen.queryByTestId('resume-interrupted-button')).not.toBeInTheDocument()
+    })
+  })
+
   describe('interrupted state', () => {
     it('should use activeAgentName for resume', () => {
       const onResumeAgent = vi.fn()

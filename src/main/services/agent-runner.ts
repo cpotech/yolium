@@ -316,8 +316,8 @@ export async function stopAgent(sessionId: string): Promise<void> {
   const board = getOrCreateBoard(session.projectPath);
   const item = board.items.find(i => i.id === session.itemId);
   if (item && item.agentStatus === 'running') {
-    updateItem(board, session.itemId, { agentStatus: 'interrupted', activeAgentName: undefined });
-    addComment(board, session.itemId, 'system', 'Agent was interrupted');
+    updateItem(board, session.itemId, { agentStatus: 'idle', activeAgentName: undefined });
+    addComment(board, session.itemId, 'system', 'Agent was stopped');
   }
   sessions.delete(sessionId);
   cleanupSessionDedup(sessionId);

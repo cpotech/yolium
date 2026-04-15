@@ -269,6 +269,11 @@ When agents work on user projects (not Yolium itself), they must:
 - Agents must run both unit tests and E2E tests when the project has them
 - If E2E tests fail to execute (not assertion failures — execution failures like missing creds or broken config), agents must stop and report the error
 
+### Never Replicate Production Code in Tests
+- Tests must import and exercise the real production modules — never copy, re-implement, or inline production logic in test files
+- If a test file contains a function that duplicates logic from the module under test, the test is invalid — it tests a copy, not the real code
+- Agents must verify that every test file imports from the actual source module (e.g., `import { validate } from '../src/validators'`), not from a local reimplementation
+
 ## Test-Driven Development
 
 Use TDD when adding new features or fixing bugs:

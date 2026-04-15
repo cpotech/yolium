@@ -66,12 +66,12 @@ export function synthesizeNonClaudeConclusion(params: {
   // Strategy 1: Read file-based output (Codex has internal reasoning and
   // doesn't externalize as text, so we read from known output files)
   const fileMap: Record<string, { file: string; label: string; updateDesc?: boolean }> = {
-    'plan-agent': { file: '.yolium-plan.md', label: 'plan', updateDesc: true },
-    'code-agent': { file: '.yolium-summary.md', label: 'summary' },
-    'scout-agent': { file: '.yolium-scout.json', label: 'dossier' },
-    'verify-agent': { file: '.yolium-verify.md', label: 'verification report' },
-    'ba-agent': { file: '.yolium-ba-report.md', label: 'business analysis report' },
-    'kb-agent': { file: '.yolium-kb-summary.md', label: 'KB update summary' },
+    'plan-agent': { file: '.yolium/plan.md', label: 'plan', updateDesc: true },
+    'code-agent': { file: '.yolium/summary.md', label: 'summary' },
+    'scout-agent': { file: '.yolium/scout.json', label: 'dossier' },
+    'verify-agent': { file: '.yolium/verify.md', label: 'verification report' },
+    'ba-agent': { file: '.yolium/ba-report.md', label: 'business analysis report' },
+    'kb-agent': { file: '.yolium/kb-summary.md', label: 'KB update summary' },
   };
 
   const fileSpec = fileMap[agentName];

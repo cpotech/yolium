@@ -109,7 +109,7 @@ Fields: specs (array, required — each element: file (string), description (str
  */
 export const FILE_OUTPUT_PLAN = `## CRITICAL: Write Your Plan to a File
 
-After completing your analysis, you MUST write your final implementation plan to a file named \`.yolium-plan.md\` in the project root directory.
+After completing your analysis, you MUST write your final implementation plan to a file named \`.yolium/plan.md\` in the \`.yolium/\` directory (create it if it doesn't exist).
 
 The file must include:
 - Context and summary of your findings
@@ -125,7 +125,7 @@ This file is MANDATORY — the system reads it to capture your plan. If you do n
  */
 export const FILE_OUTPUT_CODE = `## CRITICAL: Write Your Summary to a File
 
-After completing your implementation and committing changes, you MUST write a summary to a file named \`.yolium-summary.md\` in the project root directory.
+After completing your implementation and committing changes, you MUST write a summary to a file named \`.yolium/summary.md\` in the \`.yolium/\` directory (create it if it doesn't exist).
 
 The file must include:
 - What was implemented
@@ -141,7 +141,7 @@ This file is MANDATORY — the system reads it to capture your work summary. If 
  */
 export const FILE_OUTPUT_SCOUT = `## CRITICAL: Write Your Dossier to a File
 
-After completing your research, you MUST write the final JSON dossier array to a file named \`.yolium-scout.json\` in the project root directory.
+After completing your research, you MUST write the final JSON dossier array to a file named \`.yolium/scout.json\` in the \`.yolium/\` directory (create it if it doesn't exist).
 
 The file must be a valid JSON array of lead dossier objects, each containing:
 - company (name, website, industry, description, headquarters, employeeCount)
@@ -159,7 +159,7 @@ This file is MANDATORY — the system reads it to capture your dossier. If you d
  */
 export const FILE_OUTPUT_VERIFY = `## CRITICAL: Write Your Verification Report to a File
 
-After completing your verification, you MUST write your final verification report to a file named \`.yolium-verify.md\` in the project root directory.
+After completing your verification, you MUST write your final verification report to a file named \`.yolium/verify.md\` in the \`.yolium/\` directory (create it if it doesn't exist).
 
 The file must include:
 - Verification status (PASS / FAIL / PARTIAL)
@@ -178,7 +178,7 @@ This file is MANDATORY — the system reads it to capture your verification repo
  */
 export const FILE_OUTPUT_KB = `## CRITICAL: Write Your KB Summary to a File
 
-After updating the knowledge base, you MUST write a summary to a file named \`.yolium-kb-summary.md\` in the project root directory.
+After updating the knowledge base, you MUST write a summary to a file named \`.yolium/kb-summary.md\` in the \`.yolium/\` directory (create it if it doesn't exist).
 
 The file must include:
 - Pages created or updated

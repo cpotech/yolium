@@ -73,9 +73,10 @@ describe('agent-prompts', () => {
         provider: 'codex',
         agentName: 'plan-agent',
       });
-      expect(prompt).toContain('.yolium-plan.md');
+      expect(prompt).toContain('.yolium/plan.md');
+      expect(prompt).not.toContain('.yolium-plan.md');
       expect(prompt).toContain('Write Your Plan to a File');
-      expect(prompt).not.toContain('.yolium-summary.md');
+      expect(prompt).not.toContain('.yolium/summary.md');
     });
 
     it('should append FILE_OUTPUT_CODE for non-Claude code-agent', () => {
@@ -86,9 +87,10 @@ describe('agent-prompts', () => {
         provider: 'codex',
         agentName: 'code-agent',
       });
-      expect(prompt).toContain('.yolium-summary.md');
+      expect(prompt).toContain('.yolium/summary.md');
+      expect(prompt).not.toContain('.yolium-summary.md');
       expect(prompt).toContain('Write Your Summary to a File');
-      expect(prompt).not.toContain('.yolium-plan.md');
+      expect(prompt).not.toContain('.yolium/plan.md');
     });
 
     it('should append FILE_OUTPUT_SCOUT for non-Claude scout-agent', () => {
@@ -99,10 +101,11 @@ describe('agent-prompts', () => {
         provider: 'codex',
         agentName: 'scout-agent',
       });
-      expect(prompt).toContain('.yolium-scout.json');
+      expect(prompt).toContain('.yolium/scout.json');
+      expect(prompt).not.toContain('.yolium-scout.json');
       expect(prompt).toContain('Write Your Dossier to a File');
-      expect(prompt).not.toContain('.yolium-plan.md');
-      expect(prompt).not.toContain('.yolium-summary.md');
+      expect(prompt).not.toContain('.yolium/plan.md');
+      expect(prompt).not.toContain('.yolium/summary.md');
     });
 
     it('should append FILE_OUTPUT_VERIFY for non-Claude verify-agent', () => {
@@ -113,11 +116,12 @@ describe('agent-prompts', () => {
         provider: 'codex',
         agentName: 'verify-agent',
       });
-      expect(prompt).toContain('.yolium-verify.md');
+      expect(prompt).toContain('.yolium/verify.md');
+      expect(prompt).not.toContain('.yolium-verify.md');
       expect(prompt).toContain('Write Your Verification Report to a File');
-      expect(prompt).not.toContain('.yolium-plan.md');
-      expect(prompt).not.toContain('.yolium-summary.md');
-      expect(prompt).not.toContain('.yolium-scout.json');
+      expect(prompt).not.toContain('.yolium/plan.md');
+      expect(prompt).not.toContain('.yolium/summary.md');
+      expect(prompt).not.toContain('.yolium/scout.json');
     });
 
     it('should not include inline protocol for Claude provider', () => {
@@ -139,8 +143,8 @@ describe('agent-prompts', () => {
         provider: 'claude',
         agentName: 'plan-agent',
       });
-      expect(prompt).not.toContain('.yolium-plan.md');
-      expect(prompt).not.toContain('.yolium-summary.md');
+      expect(prompt).not.toContain('.yolium/plan.md');
+      expect(prompt).not.toContain('.yolium/summary.md');
     });
 
     it('should include inline protocol for opencode provider', () => {
@@ -299,7 +303,8 @@ describe('agent-prompts', () => {
         provider: 'codex',
         agentName: 'kb-agent',
       });
-      expect(prompt).toContain('.yolium-kb-summary.md');
+      expect(prompt).toContain('.yolium/kb-summary.md');
+      expect(prompt).not.toContain('.yolium-kb-summary.md');
     });
 
     it('should not append FILE_OUTPUT_KB for Claude kb-agent', () => {
@@ -310,7 +315,7 @@ describe('agent-prompts', () => {
         provider: 'claude',
         agentName: 'kb-agent',
       });
-      expect(prompt).not.toContain('.yolium-kb-summary.md');
+      expect(prompt).not.toContain('.yolium/kb-summary.md');
     });
 
     it('should reference containerProjectPath (not projectPath) in KB context prompt text', () => {

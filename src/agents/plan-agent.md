@@ -101,6 +101,8 @@ Based on the plan, produce concrete test specifications that the code agent will
 
 Study the project's existing test patterns (test framework, file naming, assertion style, mocking conventions) and match them exactly. Reference actual function signatures, types, and module paths from the codebase — do not guess.
 
+Test specs must require importing real production modules. Never specify tests that re-implement or copy production logic — every test must exercise the actual code by importing it from its real path.
+
 Each spec string should be a concrete, implementable `it(...)` or `test(...)` description that a code agent can turn directly into a test function. Include:
 - Happy path tests
 - Edge cases and error conditions

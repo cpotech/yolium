@@ -75,6 +75,7 @@ If the work item description contains test specifications (from the plan agent),
 - Use the project's existing test framework, assertions, and mocking patterns
 - Each `it(...)` / `test(...)` should match the spec description exactly
 - Import the modules under test (they may not exist yet — that's expected in TDD)
+- NEVER copy or re-implement production code in test files — always import the real module. A test that exercises a copied function tests a snapshot, not the live code.
 - Tests should assert the expected behavior described in the spec
 
 If no test specifications are present in the work item, write your own tests based on the acceptance criteria — still before implementing the production code.
@@ -171,3 +172,4 @@ Post a detailed summary comment, then send the complete signal. Both are require
 10. **Simplify responsibly** - Prefer behavior-preserving simplifications and dead-code removal over adding complexity
 11. **Report progress** - Send a progress message at each step so the UI stays updated
 12. **Tests first (TDD)** - When test specifications are provided in the work item, implement them before writing production code. Write the tests, watch them fail, then write code to make them pass.
+13. **No replicated production code in tests** - Tests must import and exercise real production modules. Never copy, re-implement, or inline production logic in test files. A test that passes against a copy is worthless — it doesn't verify the real code.

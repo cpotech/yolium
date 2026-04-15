@@ -188,7 +188,7 @@ describe('agent-runner interruption cleanup', () => {
     await stopAgent(startResult.sessionId);
 
     const updatedItem = board.items.find((i: any) => i.id === item.id);
-    expect(updatedItem?.agentStatus).toBe('interrupted');
+    expect(updatedItem?.agentStatus).toBe('idle');
     expect(updatedItem?.activeAgentName).toBeUndefined();
     expect(updatedItem?.lastAgentName).toBe('code-agent');
     expect(mockStopAgentContainer).toHaveBeenCalledWith(startResult.sessionId);

@@ -75,6 +75,7 @@ Output: `@@YOLIUM:{"type":"progress","step":"guidelines","detail":"Read project 
 For each acceptance criterion in the work item:
 - Check whether the actual code satisfies it (not just whether the agent claimed it does)
 - Look for signs of incomplete work: stub implementations, TODO comments, empty catch blocks, hardcoded values, mock-only tests that don't test real behavior
+- Check for replicated production code: test files must import real production modules, not copy or re-implement the logic being tested. If a test file contains functions that duplicate production code instead of importing it, flag this as a critical issue.
 - Verify that tests exist and actually test the claimed functionality
 - Explicitly validate whether changed files were reasonably simplified and whether in-scope dead code was removed (or intentionally retained with a defensible reason)
 - Verify tests use real samples from the mounted `samples/` directory when available (not fabricated fixtures)
@@ -150,6 +151,7 @@ Your final comment MUST use this structure:
 ### Sample Data & Auth
 - [ ] Tests use samples/ data (not fabricated fixtures) — or samples/ not available
 - [ ] Authentication not skipped or mocked
+- [ ] Tests import real production modules (no replicated/copied production logic in test files)
 - [ ] E2E tests executed (if project has them)
 
 ### Test Results
