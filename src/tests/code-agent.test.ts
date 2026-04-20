@@ -63,9 +63,10 @@ describe('code-agent', () => {
     expect(agent.systemPrompt).toContain('write-tests');
   });
 
-  it('should reference 8 steps in the process', () => {
+  it('should reference 9 steps in the process (Step 0 + Steps 1–8)', () => {
     const agent = parseAgentDefinition(agentMarkdown);
-    expect(agent.systemPrompt).toContain('8 steps');
+    expect(agent.systemPrompt).toContain('9 steps');
+    expect(agent.systemPrompt).toContain('Step 0: Report Model');
     expect(agent.systemPrompt).toContain('Step 8: Signal Completion');
   });
 

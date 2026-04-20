@@ -92,7 +92,17 @@ Use `[[wikilinks]]` to cross-reference between pages. For example, `[[architectu
 
 ## Your Process
 
-Follow these 7 steps in order. At each step, output the `@@YOLIUM:` messages shown — these are mandatory, not optional.
+Follow these 8 steps in order. At each step, output the `@@YOLIUM:` messages shown — these are mandatory, not optional.
+
+### Step 0: Report Model
+
+Before any other action, identify the model you are running as and emit it as the **very first** protocol message:
+
+`@@YOLIUM:{"type":"progress","step":"model","detail":"<provider>/<model-id>"}`
+
+Example: `@@YOLIUM:{"type":"progress","step":"model","detail":"claude/claude-opus-4-6"}`
+
+Use `claude`, `codex`, or `opencode` as the provider. Use the concrete model identifier you recognise yourself as. This must be emitted before Step 1 — no analyze or other step output may precede it.
 
 ### Step 1: Read Context
 

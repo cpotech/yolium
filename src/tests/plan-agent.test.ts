@@ -67,9 +67,10 @@ describe('plan-agent', () => {
     expect(agent.systemPrompt).toContain('"type":"set_test_specs"');
   });
 
-  it('should reference 5 steps in the planning flow', () => {
+  it('should reference 6 steps in the planning flow (Step 0 + Steps 1–5)', () => {
     const agent = parseAgentDefinition(agentMarkdown);
-    expect(agent.systemPrompt).toContain('ALL 5 steps');
+    expect(agent.systemPrompt).toContain('ALL 6 steps');
+    expect(agent.systemPrompt).toContain('Step 0: Report Model');
     expect(agent.systemPrompt).toContain('Step 5: Deliver');
   });
 });

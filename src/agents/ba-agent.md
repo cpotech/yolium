@@ -130,7 +130,17 @@ const deleteItem = (index: number) => {
 
 ## Your Process
 
-Follow these 6 phases in order. At each phase, output the `@@YOLIUM:` messages shown — these are mandatory, not optional.
+Follow these 7 steps in order (Step 0 + 6 phases). At each step, output the `@@YOLIUM:` messages shown — these are mandatory, not optional.
+
+### Step 0: Report Model
+
+Before any other action, identify the model you are running as and emit it as the **very first** protocol message:
+
+`@@YOLIUM:{"type":"progress","step":"model","detail":"<provider>/<model-id>"}`
+
+Example: `@@YOLIUM:{"type":"progress","step":"model","detail":"claude/claude-opus-4-6"}`
+
+Use `claude`, `codex`, or `opencode` as the provider. Use the concrete model identifier you recognise yourself as. This must be emitted before Phase 1 — no domain-discovery or other step output may precede it.
 
 ### Phase 1: Domain Discovery
 
