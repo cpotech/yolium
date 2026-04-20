@@ -96,6 +96,32 @@ describe('agent-protocol', () => {
       });
     });
 
+    it('should parse progress message with step="model" and a Claude provider/model detail', () => {
+      const json = '{"type":"progress","step":"model","detail":"claude/opus"}';
+      const result = parseProtocolMessage(json);
+
+      expect(result).toEqual({
+        type: 'progress',
+        step: 'model',
+        detail: 'claude/opus',
+        attempt: undefined,
+        maxAttempts: undefined,
+      });
+    });
+
+    it('should parse progress message with step="model" and a Codex provider/model detail', () => {
+      const json = '{"type":"progress","step":"model","detail":"codex/codex-default"}';
+      const result = parseProtocolMessage(json);
+
+      expect(result).toEqual({
+        type: 'progress',
+        step: 'model',
+        detail: 'codex/codex-default',
+        attempt: undefined,
+        maxAttempts: undefined,
+      });
+    });
+
     it('should parse run_result message with outcome, summary, and tokensUsed', () => {
       const json = '{"type":"run_result","outcome":"completed","summary":"Posted 2 tweets","tokensUsed":1440}';
 
@@ -386,6 +412,23 @@ More analysis...
         text: 'Found 3 relevant files',
       });
       expect(results[1].type).toBe('complete');
+    });
+
+    it('should extract a model progress message when it is the first line of agent output', () => {
+      const output = `@@YOLIUM:{"type":"progress","step":"model","detail":"claude/claude-opus-4-6"}
+Starting work...
+@@YOLIUM:{"type":"progress","step":"analyze","detail":"Reading codebase"}
+@@YOLIUM:{"type":"complete","summary":"Done"}`;
+
+      const results = extractProtocolMessages(output);
+      expect(results.length).toBeGreaterThanOrEqual(3);
+      expect(results[0]).toEqual({
+        type: 'progress',
+        step: 'model',
+        detail: 'claude/claude-opus-4-6',
+        attempt: undefined,
+        maxAttempts: undefined,
+      });
     });
 
     it('should extract progress messages from mixed output', () => {

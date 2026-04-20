@@ -140,6 +140,24 @@ Signals failure.
 {"type":"error","message":"Reason for failure"}
 ```
 
+## Model Reporting
+
+Every agent MUST emit a `progress` message with the reserved step name `model` as its **very first** `@@YOLIUM:` protocol message — before any `analyze`, `inspect`, `discover`, or other step. This lets Yolium record the model the agent is actually running as (which can differ from the requested model for providers like Codex/OpenCode whose actual model is decided by the provider).
+
+**Format:**
+
+```
+@@YOLIUM:{"type":"progress","step":"model","detail":"<provider>/<model-id>"}
+```
+
+**Example:**
+
+```
+@@YOLIUM:{"type":"progress","step":"model","detail":"claude/claude-opus-4-6"}
+```
+
+`<provider>` is one of `claude`, `codex`, or `opencode`. `<model-id>` is the concrete model identifier the agent recognises itself as. The existing `progress` handler renders this as a system comment `[model] <provider>/<model-id>` in the work item thread.
+
 ## Link Protocols
 
 ### yolium-report://

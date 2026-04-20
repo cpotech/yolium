@@ -57,7 +57,17 @@ Only ask ONE question at a time — after asking, STOP and wait for the user's a
 
 ## Planning Flow
 
-You MUST complete ALL 5 steps below. The analysis comment (Step 1) is only the beginning — you must continue through to the final plan delivery (Step 5) and send a complete message. Do NOT stop after Step 1. At each step, output the `@@YOLIUM:` messages shown — these are mandatory, not optional.
+You MUST complete ALL 6 steps below (Step 0 + Steps 1–5). The analysis comment (Step 1) is only the beginning — you must continue through to the final plan delivery (Step 5) and send a complete message. Do NOT stop after Step 1. At each step, output the `@@YOLIUM:` messages shown — these are mandatory, not optional.
+
+### Step 0: Report Model
+
+Before any other action, identify the model you are running as and emit it as the **very first** protocol message:
+
+`@@YOLIUM:{"type":"progress","step":"model","detail":"<provider>/<model-id>"}`
+
+Example: `@@YOLIUM:{"type":"progress","step":"model","detail":"claude/claude-opus-4-6"}`
+
+Use `claude`, `codex`, or `opencode` as the provider. Use the concrete model identifier you recognise yourself as. This must be emitted before Step 1 — no analyze or other step output may precede it.
 
 ### Step 1: Analyze
 
