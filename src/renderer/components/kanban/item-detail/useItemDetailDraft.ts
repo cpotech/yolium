@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { KanbanColumn, KanbanItem } from '@shared/types/kanban'
+import type { CavemanMode, KanbanColumn, KanbanItem } from '@shared/types/kanban'
 
 export type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 export type DraftFlushReason = 'manual' | 'autosave' | 'close'
@@ -12,6 +12,7 @@ interface DraftValues {
   agentProvider: KanbanItem['agentProvider']
   model: string
   verified: boolean
+  cavemanMode: CavemanMode | 'inherit'
 }
 
 interface UseItemDetailDraftOptions {
@@ -35,6 +36,7 @@ const emptyDraftValues: DraftValues = {
   agentProvider: 'claude',
   model: '',
   verified: false,
+  cavemanMode: 'inherit',
 }
 
 function getDraftValues(item: KanbanItem | null): DraftValues {
@@ -48,6 +50,7 @@ function getDraftValues(item: KanbanItem | null): DraftValues {
     agentProvider: item.agentProvider,
     model: item.model || '',
     verified: item.verified ?? false,
+    cavemanMode: item.cavemanMode ?? 'inherit',
   }
 }
 
@@ -59,6 +62,7 @@ export interface ItemDetailDraftController extends DraftValues {
   setAgentProvider: (provider: KanbanItem['agentProvider']) => void
   setModel: (model: string) => void
   setVerified: (verified: boolean) => void
+  setCavemanMode: (mode: CavemanMode | 'inherit') => void
   hasUnsavedChanges: boolean
   saveStatus: DraftSaveStatus
   providerModels: Record<string, string[]>
@@ -88,7 +92,8 @@ export function useItemDetailDraft({
       draft.agentType !== baseDraft.agentType ||
       draft.agentProvider !== baseDraft.agentProvider ||
       draft.model !== baseDraft.model ||
-      draft.verified !== baseDraft.verified,
+      draft.verified !== baseDraft.verified ||
+      draft.cavemanMode !== baseDraft.cavemanMode,
     [draft, baseDraft],
   )
 
@@ -142,6 +147,7 @@ export function useItemDetailDraft({
         agentProvider: draft.agentProvider,
         model: draft.model || undefined,
         verified: draft.verified,
+        cavemanMode: draft.cavemanMode,
       })
 
       setBaseDraft({
@@ -152,6 +158,7 @@ export function useItemDetailDraft({
         agentProvider: draft.agentProvider,
         model: draft.model,
         verified: draft.verified,
+        cavemanMode: draft.cavemanMode,
       })
       setErrorMessage?.(null)
       setSaveStatus('saved')
@@ -223,6 +230,7 @@ export function useItemDetailDraft({
     setAgentProvider: agentProvider => setDraft(prev => ({ ...prev, agentProvider })),
     setModel: model => setDraft(prev => ({ ...prev, model })),
     setVerified: verified => setDraft(prev => ({ ...prev, verified })),
+    setCavemanMode: cavemanMode => setDraft(prev => ({ ...prev, cavemanMode })),
     hasUnsavedChanges,
     saveStatus,
     providerModels,

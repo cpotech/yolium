@@ -1,6 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { resolve } from 'path';
 
+vi.mock('electron', () => ({
+  app: { isPackaged: false },
+}));
+
+vi.mock('@main/lib/logger', () => ({
+  createLogger: vi.fn(() => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  })),
+}));
+
 const actualFs = await vi.importActual<typeof import('node:fs')>('node:fs');
 
 const { mockExistsSync: mockKbExistsSync, mockReadFileSync: mockKbReadFileSync } = vi.hoisted(() => ({

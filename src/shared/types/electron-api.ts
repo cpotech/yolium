@@ -213,6 +213,7 @@ export interface ActiveAgentSession {
 
 export interface ProjectConfigData {
   sharedDirs?: string[];
+  cavemanMode?: 'off' | 'lite' | 'full' | 'ultra';
 }
 
 export interface ReportOpenResult {

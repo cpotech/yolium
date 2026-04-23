@@ -237,6 +237,75 @@ describe('saveProjectConfig', () => {
   });
 });
 
+describe('cavemanMode persistence', () => {
+  it('loadProjectConfig returns cavemanMode when present', () => {
+    vi.mocked(fs.readFileSync).mockReturnValue('{"sharedDirs":["samples"],"cavemanMode":"full"}');
+
+    const config = loadProjectConfig('/home/user/project');
+
+    expect(config).toEqual({ sharedDirs: ['samples'], cavemanMode: 'full' });
+  });
+
+  it('loadProjectConfig returns config without cavemanMode when key absent (backward compatible)', () => {
+    vi.mocked(fs.readFileSync).mockReturnValue('{"sharedDirs":["samples"]}');
+
+    const config = loadProjectConfig('/home/user/project');
+
+    expect(config).toEqual({ sharedDirs: ['samples'] });
+    expect((config as Record<string, unknown>).cavemanMode).toBeUndefined();
+  });
+
+  it('saveProjectConfig writes cavemanMode alongside sharedDirs', () => {
+    vi.mocked(fs.readFileSync).mockImplementation(() => {
+      const err = new Error('ENOENT') as NodeJS.ErrnoException;
+      err.code = 'ENOENT';
+      throw err;
+    });
+
+    saveProjectConfig('/home/user/project', { sharedDirs: ['samples'], cavemanMode: 'full' });
+
+    const written = vi.mocked(fs.writeFileSync).mock.calls[0][1] as string;
+    const parsed = JSON.parse(written);
+    expect(parsed.sharedDirs).toEqual(['samples']);
+    expect(parsed.cavemanMode).toBe('full');
+  });
+
+  it('saveProjectConfig omits cavemanMode from written JSON when caller passes undefined', () => {
+    vi.mocked(fs.readFileSync).mockImplementation(() => {
+      const err = new Error('ENOENT') as NodeJS.ErrnoException;
+      err.code = 'ENOENT';
+      throw err;
+    });
+
+    saveProjectConfig('/home/user/project', { sharedDirs: ['samples'] });
+
+    const written = vi.mocked(fs.writeFileSync).mock.calls[0][1] as string;
+    const parsed = JSON.parse(written);
+    expect('cavemanMode' in parsed).toBe(false);
+  });
+
+  it('saveProjectConfig preserves an existing cavemanMode when caller only updates sharedDirs', () => {
+    vi.mocked(fs.readFileSync).mockReturnValue('{"sharedDirs":["old"],"cavemanMode":"ultra"}');
+
+    saveProjectConfig('/home/user/project', { sharedDirs: ['new'] });
+
+    const written = vi.mocked(fs.writeFileSync).mock.calls[0][1] as string;
+    const parsed = JSON.parse(written);
+    expect(parsed.sharedDirs).toEqual(['new']);
+    expect(parsed.cavemanMode).toBe('ultra');
+  });
+
+  it('saveProjectConfig overwrites cavemanMode when caller provides a new value', () => {
+    vi.mocked(fs.readFileSync).mockReturnValue('{"sharedDirs":["old"],"cavemanMode":"lite"}');
+
+    saveProjectConfig('/home/user/project', { sharedDirs: ['old'], cavemanMode: 'off' });
+
+    const written = vi.mocked(fs.writeFileSync).mock.calls[0][1] as string;
+    const parsed = JSON.parse(written);
+    expect(parsed.cavemanMode).toBe('off');
+  });
+});
+
 describe('checkSharedDirExists', () => {
   it('returns true for existing directory', () => {
     vi.mocked(fs.existsSync).mockReturnValue(true);

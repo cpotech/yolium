@@ -5,12 +5,14 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import type { CavemanMode } from '@shared/types/kanban';
 import { createLogger } from '@main/lib/logger';
 
 const logger = createLogger('project-config');
 
 export interface ProjectConfig {
   sharedDirs?: string[];
+  cavemanMode?: CavemanMode;
 }
 
 /**
@@ -73,7 +75,16 @@ export function saveProjectConfig(projectPath: string, config: ProjectConfig): v
   } catch { /* File doesn't exist or invalid — start fresh */
   }
 
-  const merged = { ...existing, sharedDirs: config.sharedDirs };
+  const merged: Record<string, unknown> = { ...existing, sharedDirs: config.sharedDirs };
+  // cavemanMode: preserve existing value when caller omits the field; overwrite
+  // (including to 'off') when caller provides it.
+  if ('cavemanMode' in config) {
+    if (config.cavemanMode === undefined) {
+      delete merged.cavemanMode;
+    } else {
+      merged.cavemanMode = config.cavemanMode;
+    }
+  }
   fs.writeFileSync(configPath, JSON.stringify(merged, null, 2) + '\n', 'utf-8');
   logger.info('Saved .yolium.json', { projectPath });
 }

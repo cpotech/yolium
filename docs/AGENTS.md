@@ -212,6 +212,30 @@ This means:
 
 Agent output is also persisted to per-work-item log files via the workitem log store ([`workitem-log-store.ts`](../src/main/stores/workitem-log-store.ts)), providing a durable record of each agent's activity.
 
+## Caveman Mode
+
+Caveman Mode appends a terseness directive to an agent's system prompt to reduce output tokens. Inspired by [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman), it is implemented natively in Yolium — no external skill install required.
+
+### Levels
+
+| Mode | Token reduction target | Style |
+|------|------------------------|-------|
+| `off` | 0% (byte-identical to no directive) | Normal output |
+| `lite` | ~25% | Short sentences, no filler |
+| `full` | ~75% | Caveman grammar: drop articles, pronouns, auxiliaries |
+| `ultra` | ~85% | Fragments only, bullet-style |
+
+Every non-`off` level includes a preservation clause instructing the agent to keep code blocks, file paths, identifiers, and `@@YOLIUM:` JSON fully intact.
+
+### Configuration
+
+- **Per project** — `ProjectConfigDialog` exposes a radio group that writes `cavemanMode` to `.yolium.json`. Selecting `off` writes `"cavemanMode": "off"` explicitly (overwriting any previously stored level); projects that never opt in simply omit the key.
+- **Per work item** — `NewItemDialog` and the item detail sidebar expose a dropdown with an `inherit` default that falls back to the project setting. A concrete item value (`off | lite | full | ultra`) overrides the project default.
+
+### How It's Applied
+
+When `startAgent` runs, [`resolveCavemanMode`](../src/main/services/caveman-mode.ts) picks the effective mode (item → project → `off`), and [`buildAgentPrompt`](../src/main/services/agent-prompts.ts) inserts the directive between the system prompt and the `## Current Goal` section on both the Claude and non-Claude prompt paths. The startup comment on the work item is annotated with `[caveman:<mode>]` when the mode is not `off` so the thread records which level was active for that run.
+
 ## Sub-Agents (Claude Code Only)
 
 The Plan Agent and Code Agent can spawn **sub-agents** — parallel child processes that handle independent subtasks within a single agent run. This is Claude Code's built-in `Agent` tool, which launches specialized child processes inside the same Docker container.
