@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { X, Plus } from 'lucide-react'
 import type { KanbanAgentProvider, AgentDefinition } from '@shared/types/agent'
+import type { CavemanMode } from '@shared/types/kanban'
 import { trapFocus } from '@shared/lib/focus-trap'
 import { useSuspendVimNavigation, useVimModeContext } from '@renderer/context/VimModeContext'
 import { useVimListNavigation } from '@renderer/hooks/useVimListNavigation'
@@ -19,6 +20,14 @@ const agentProviderOptions: { value: KanbanAgentProvider; label: string }[] = [
   { value: 'opencode', label: 'OpenCode' },
   { value: 'openrouter', label: 'OpenRouter' },
   { value: 'xai', label: 'xAI' },
+]
+
+const cavemanOptions: { value: CavemanMode | 'inherit'; label: string }[] = [
+  { value: 'inherit', label: 'Inherit from project' },
+  { value: 'off', label: 'Off' },
+  { value: 'lite', label: 'Lite (~25% fewer tokens)' },
+  { value: 'full', label: 'Full (~75% fewer tokens)' },
+  { value: 'ultra', label: 'Ultra (~85% fewer tokens)' },
 ]
 
 function formatFileSize(bytes: number): string {
@@ -84,6 +93,7 @@ export function NewItemDialog({
   const [defaultProvider, setDefaultProvider] = useState<KanbanAgentProvider>('claude')
   const [agentType, setAgentType] = useState('plan-agent')
   const [model, setModel] = useState('')
+  const [cavemanMode, setCavemanMode] = useState<CavemanMode | 'inherit'>('inherit')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [agentDefinitions, setAgentDefinitions] = useState<AgentDefinition[]>([])
@@ -166,6 +176,7 @@ export function NewItemDialog({
       setBranch('')
       setAgentType('plan-agent')
       setModel('')
+      setCavemanMode('inherit')
       setIsSubmitting(false)
       setErrorMessage(null)
       setStagedFiles([])
@@ -245,6 +256,7 @@ export function NewItemDialog({
         ...(agentType && { agentType }),
         order: 0,
         ...(model && { model }),
+        ...(cavemanMode !== 'inherit' && { cavemanMode }),
       })
 
       // Upload staged files to the newly created item
@@ -273,6 +285,7 @@ export function NewItemDialog({
       setAgentProvider(defaultProvider)
       setAgentType('plan-agent')
       setModel('')
+      setCavemanMode('inherit')
       setStagedFiles([])
 
       setErrorMessage(null)
@@ -288,7 +301,7 @@ export function NewItemDialog({
     } finally {
       setIsSubmitting(false)
     }
-  }, [canSubmit, isSubmitting, projectPath, title, description, branch, agentProvider, agentType, model, defaultProvider, onCreated, stagedFiles])
+  }, [canSubmit, isSubmitting, projectPath, title, description, branch, agentProvider, agentType, model, cavemanMode, defaultProvider, onCreated, stagedFiles])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -588,6 +601,27 @@ export function NewItemDialog({
                 </div>
               )
             })()}
+
+            {/* Caveman Mode */}
+            <div className="col-span-2">
+              <label
+                htmlFor="new-item-caveman-mode"
+                className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
+              >
+                Caveman Mode <span className="normal-case tracking-normal">(optional)</span>
+              </label>
+              <select
+                id="new-item-caveman-mode"
+                data-testid="caveman-mode-select"
+                value={cavemanMode}
+                onChange={e => setCavemanMode(e.target.value as CavemanMode | 'inherit')}
+                className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+              >
+                {cavemanOptions.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 

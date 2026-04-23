@@ -23,6 +23,12 @@ export interface KanbanComment {
 
 export type MergeStatus = 'unmerged' | 'merged' | 'conflict';
 
+/**
+ * Caveman Mode — a terseness directive appended to agent system prompts to
+ * reduce output tokens. `off` is the default and produces no change.
+ */
+export type CavemanMode = 'off' | 'lite' | 'full' | 'ultra';
+
 export interface TestSpec {
   file: string;
   description: string;
@@ -58,6 +64,7 @@ export interface KanbanItem {
   mergeStatus?: MergeStatus;
   prUrl?: string;
   verified?: boolean;
+  cavemanMode?: CavemanMode | 'inherit';
   attachments?: KanbanAttachment[];
   comments: KanbanComment[];
   createdAt: string;

@@ -32,6 +32,7 @@ export type { ScheduledAgentParams, ScheduledAgentResult } from './agent-schedul
 
 import { buildAgentPrompt } from './agent-prompts';
 import { resolveModel, getDisplayModel } from './agent-model';
+import { resolveCavemanMode } from './caveman-mode';
 import { handleAgentExit } from './agent-exit-handler';
 import {
   handleAgentOutput as _handleAgentOutput,
@@ -133,7 +134,9 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
   const providerModelsList = gitConfig?.providerModels?.[provider];
   const settingsModel = providerModelsList?.[0] ?? gitConfig?.providerModelDefaults?.[provider];
   const displayModel = getDisplayModel(provider, item.model, settingsModel, agent.model);
-  addComment(board, itemId, 'system', `${agentName} started (${provider}/${displayModel})`);
+  const cavemanMode = resolveCavemanMode(item, path.resolve(projectPath));
+  const cavemanSuffix = cavemanMode !== 'off' ? ` [caveman:${cavemanMode}]` : '';
+  addComment(board, itemId, 'system', `${agentName} started (${provider}/${displayModel})${cavemanSuffix}`);
 
   // Worktree setup (best-effort, graceful fallback)
   const resolvedProjectPath = path.resolve(projectPath);
@@ -191,6 +194,7 @@ export async function startAgent(params: StartAgentParams): Promise<StartAgentRe
     attachments: itemAttachments.length > 0 ? itemAttachments : undefined,
     containerProjectPath: worktreePath || resolvedProjectPath,
     projectPath: resolvedProjectPath,
+    cavemanMode,
   });
 
   // Write system prompt as fallback reference for non-Claude providers

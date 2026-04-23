@@ -1,7 +1,15 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
+import type { CavemanMode } from '@shared/types/kanban';
 import { trapFocus } from '@shared/lib/focus-trap';
 import { isCloseShortcut } from '@renderer/lib/dialog-shortcuts';
 import { useSuspendVimNavigation } from '@renderer/context/VimModeContext';
+
+const CAVEMAN_OPTIONS: { value: CavemanMode; label: string; description: string }[] = [
+  { value: 'off', label: 'Off', description: 'Default. No terseness directive.' },
+  { value: 'lite', label: 'Lite', description: '~25% fewer tokens. Short sentences, no filler.' },
+  { value: 'full', label: 'Full', description: '~75% fewer tokens. Caveman grammar, fragments.' },
+  { value: 'ultra', label: 'Ultra', description: '~85% fewer tokens. Bullet-style, minimum words.' },
+];
 
 interface ProjectConfigDialogProps {
   isOpen: boolean;
@@ -41,6 +49,7 @@ export function ProjectConfigDialog({
   const [newDir, setNewDir] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [cavemanMode, setCavemanMode] = useState<CavemanMode>('off');
 
   // Load config when dialog opens
   useEffect(() => {
@@ -55,6 +64,7 @@ export function ProjectConfigDialog({
         const config = await window.electronAPI.projectConfig.load(projectPath);
         const dirs = config?.sharedDirs ?? [];
         setSharedDirs(dirs);
+        setCavemanMode((config?.cavemanMode as CavemanMode) ?? 'off');
 
         if (dirs.length > 0) {
           const status = await window.electronAPI.projectConfig.checkDirs(projectPath, dirs);
@@ -110,9 +120,14 @@ export function ProjectConfigDialog({
   }, []);
 
   const handleSave = useCallback(async () => {
-    await window.electronAPI.projectConfig.save(projectPath, { sharedDirs });
+    // Always include cavemanMode in the payload so a previously-saved value is
+    // overwritten when the user switches back to 'off' (not silently preserved
+    // because the key was omitted). saveProjectConfig will write the literal
+    // value to .yolium.json.
+    const payload = { sharedDirs, cavemanMode };
+    await window.electronAPI.projectConfig.save(projectPath, payload);
     onClose();
-  }, [projectPath, sharedDirs, onClose]);
+  }, [projectPath, sharedDirs, cavemanMode, onClose]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -141,7 +156,11 @@ export function ProjectConfigDialog({
 
   if (!isOpen) return null;
 
-  const jsonPreview = JSON.stringify({ sharedDirs }, null, 2);
+  const jsonPreview = JSON.stringify(
+    cavemanMode === 'off' ? { sharedDirs } : { sharedDirs, cavemanMode },
+    null,
+    2,
+  );
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -277,6 +296,46 @@ export function ProjectConfigDialog({
               <p className="text-xs text-[var(--color-text-muted)] mb-4">
                 Paths must be relative. No absolute paths or ../ traversal.
               </p>
+
+              {/* Divider */}
+              <div className="border-t border-[var(--color-border-primary)] mb-3" />
+
+              {/* Caveman Mode */}
+              <div className="mb-3" data-testid="caveman-mode-section">
+                <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide mb-1">
+                  Caveman Mode
+                </h3>
+                <p className="text-xs text-[var(--color-text-muted)] mb-2">
+                  Appends a terseness directive to every agent system prompt in this project.
+                  Per-item overrides win.
+                </p>
+                <div className="space-y-1.5">
+                  {CAVEMAN_OPTIONS.map(option => (
+                    <label
+                      key={option.value}
+                      className="flex items-start gap-2 px-3 py-2 bg-[var(--color-bg-tertiary)] rounded-md cursor-pointer hover:bg-[var(--color-bg-primary)] transition-colors"
+                    >
+                      <input
+                        type="radio"
+                        name="caveman-mode"
+                        value={option.value}
+                        checked={cavemanMode === option.value}
+                        onChange={() => setCavemanMode(option.value)}
+                        data-testid={`caveman-mode-${option.value}`}
+                        className="mt-0.5 shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-[var(--color-text-primary)]">
+                          {option.label}
+                        </div>
+                        <div className="text-xs text-[var(--color-text-muted)]">
+                          {option.description}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
 
               {/* Divider */}
               <div className="border-t border-[var(--color-border-primary)] mb-3" />

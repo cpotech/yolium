@@ -74,6 +74,7 @@ Each agent is a single Markdown file with YAML frontmatter and a system prompt, 
 - **Vim Mode** - Vim-style keyboard navigation with leader-key shortcuts and WhichKey popup for discoverability
 - **Project Onboarding** - Auto-detects project type (Node.js, Python, Rust, Go, Java, .NET) and generates appropriate `.gitignore` files
 - **Project Configuration** - Per-project `.yolium.json` config for shared directories and agent settings
+- **Caveman Mode** - Native terseness directive appended to agent prompts to cut output tokens (`off | lite | full | ultra`). Set a project default and override per work item. ([details](docs/AGENTS.md#caveman-mode))
 - **Code Review** - Git diff viewer for inspecting agent changes side-by-side
 - **Test Report Viewer** - Opens HTML test reports in dedicated windows for easy review
 - **Speech-to-Text** - Local Whisper models for voice input

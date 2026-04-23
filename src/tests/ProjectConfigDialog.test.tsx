@@ -235,8 +235,68 @@ describe('ProjectConfigDialog', () => {
     fireEvent.click(screen.getByTestId('project-config-save'))
 
     await waitFor(() => {
-      expect(mockSave).toHaveBeenCalledWith('/home/user/project', { sharedDirs: ['samples'] })
+      expect(mockSave).toHaveBeenCalledWith('/home/user/project', {
+        sharedDirs: ['samples'],
+        cavemanMode: 'off',
+      })
       expect(onClose).toHaveBeenCalled()
+    })
+  })
+
+  it('save passes cavemanMode: off when user switches back from non-off (clears stale value)', async () => {
+    // Previously-saved full mode; user switches back to off and saves.
+    // The payload must include cavemanMode so saveProjectConfig overwrites
+    // the stale value (rather than preserving it because the key was omitted).
+    mockLoad.mockResolvedValue({ sharedDirs: [], cavemanMode: 'full' })
+    mockCheckDirs.mockResolvedValue({})
+
+    render(
+      <ProjectConfigDialog
+        isOpen={true}
+        projectPath="/home/user/project"
+        onClose={vi.fn()}
+      />
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('caveman-mode-full')).toBeChecked()
+    })
+
+    fireEvent.click(screen.getByTestId('caveman-mode-off'))
+    fireEvent.click(screen.getByTestId('project-config-save'))
+
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenCalledWith('/home/user/project', {
+        sharedDirs: [],
+        cavemanMode: 'off',
+      })
+    })
+  })
+
+  it('save passes concrete cavemanMode when non-off is selected', async () => {
+    mockLoad.mockResolvedValue({ sharedDirs: [] })
+    mockCheckDirs.mockResolvedValue({})
+
+    render(
+      <ProjectConfigDialog
+        isOpen={true}
+        projectPath="/home/user/project"
+        onClose={vi.fn()}
+      />
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('caveman-mode-off')).toBeChecked()
+    })
+
+    fireEvent.click(screen.getByTestId('caveman-mode-ultra'))
+    fireEvent.click(screen.getByTestId('project-config-save'))
+
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenCalledWith('/home/user/project', {
+        sharedDirs: [],
+        cavemanMode: 'ultra',
+      })
     })
   })
 

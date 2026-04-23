@@ -529,6 +529,7 @@ checkDirs(projectPath: string, dirs: string[]): Promise<Record<string, boolean>>
 
 interface ProjectConfig {
   sharedDirs?: string[];  // Relative paths to shared directories
+  cavemanMode?: 'off' | 'lite' | 'full' | 'ultra';  // Project-wide caveman terseness default
 }
 ```
 

@@ -1,7 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ScheduleType } from '@shared/types/schedule';
-import type { KanbanAttachment } from '@shared/types/kanban';
+import type { KanbanAttachment, CavemanMode } from '@shared/types/kanban';
+import { buildCavemanDirective } from './caveman-mode';
 
 export interface BuildPromptParams {
   systemPrompt: string;
@@ -12,6 +13,7 @@ export interface BuildPromptParams {
   attachments?: KanbanAttachment[];
   containerProjectPath?: string;
   projectPath?: string;
+  cavemanMode?: CavemanMode;
 }
 
 /**
@@ -197,17 +199,23 @@ function buildAttachmentsSection(attachments: KanbanAttachment[], containerProje
 }
 
 export function buildAgentPrompt(params: BuildPromptParams): string {
-  const { systemPrompt, goal, conversationHistory, provider, agentName, attachments, containerProjectPath, projectPath } = params;
+  const { systemPrompt, goal, conversationHistory, provider, agentName, attachments, containerProjectPath, projectPath, cavemanMode } = params;
 
   // Build KB context if both paths are available
   const kbContext = projectPath && containerProjectPath
     ? buildKbContext(projectPath, containerProjectPath, agentName)
     : '';
 
+  // Caveman directive is inserted between the system prompt and `## Current Goal`.
+  // When mode is 'off' (or undefined), the snippet is an empty string and the
+  // assembled prompt is byte-identical to the pre-caveman output.
+  const cavemanDirective = cavemanMode ? buildCavemanDirective(cavemanMode) : '';
+  const cavemanPrefix = cavemanDirective ? `${cavemanDirective}\n\n` : '';
+
   // For non-Claude providers, inline the protocol and system prompt
   // so the model has everything in its primary prompt context
   if (provider && provider !== 'claude') {
-    let prompt = `# Yolium Agent Instructions\n\n${INLINE_PROTOCOL}\n\n---\n\n${systemPrompt}\n\n## Current Goal\n\n${goal}`;
+    let prompt = `# Yolium Agent Instructions\n\n${INLINE_PROTOCOL}\n\n---\n\n${systemPrompt}\n\n${cavemanPrefix}## Current Goal\n\n${goal}`;
 
     if (attachments && attachments.length > 0 && containerProjectPath) {
       prompt += buildAttachmentsSection(attachments, containerProjectPath);
@@ -242,7 +250,7 @@ export function buildAgentPrompt(params: BuildPromptParams): string {
   }
 
   // Claude path: system prompt + goal (protocol is already woven into agent definitions)
-  let prompt = `${systemPrompt}\n\n## Current Goal\n\n${goal}`;
+  let prompt = `${systemPrompt}\n\n${cavemanPrefix}## Current Goal\n\n${goal}`;
 
   if (attachments && attachments.length > 0 && containerProjectPath) {
     prompt += buildAttachmentsSection(attachments, containerProjectPath);

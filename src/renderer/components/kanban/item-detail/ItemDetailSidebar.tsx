@@ -1,6 +1,6 @@
 import React from 'react'
 import { Clock, FolderOpen, GitBranch, Play, ShieldCheck, Trash2 } from 'lucide-react'
-import type { KanbanColumn, KanbanItem } from '@shared/types/kanban'
+import type { CavemanMode, KanbanColumn, KanbanItem } from '@shared/types/kanban'
 import { AgentControls } from '../../agent/AgentControls'
 import { formatTokenCount, formatUsdCost } from '@renderer/utils/formatTokens'
 import { agentProviderLabels, columnOptions, CopyPathButton, formatTimestamp } from './itemDetailViewUtils'
@@ -22,6 +22,7 @@ interface ItemDetailSidebarProps {
   item: KanbanItem
   agentProvider: KanbanItem['agentProvider']
   model: string
+  cavemanMode: CavemanMode | 'inherit'
   column: KanbanColumn
   verified: boolean
   providerModels: Record<string, string[]>
@@ -43,6 +44,7 @@ interface ItemDetailSidebarProps {
   devServer?: DevServerState
   onSetAgentProvider: (value: KanbanItem['agentProvider']) => void
   onSetModel: (value: string) => void
+  onSetCavemanMode: (value: CavemanMode | 'inherit') => void
   onSetColumn: (value: KanbanColumn) => void
   onSetVerified: (value: boolean) => void
   onDelete: () => void
@@ -67,6 +69,7 @@ export function ItemDetailSidebar({
   item,
   agentProvider,
   model,
+  cavemanMode,
   column,
   verified,
   providerModels,
@@ -88,6 +91,7 @@ export function ItemDetailSidebar({
   devServer,
   onSetAgentProvider,
   onSetModel,
+  onSetCavemanMode,
   onSetColumn,
   onSetVerified,
   onDelete,
@@ -231,6 +235,31 @@ export function ItemDetailSidebar({
           </select>
           <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
             Leave empty to use provider default
+          </p>
+        </div>
+
+        <div>
+          <label
+            htmlFor="detail-caveman-mode"
+            className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
+          >
+            Caveman Mode
+          </label>
+          <select
+            id="detail-caveman-mode"
+            data-testid="caveman-mode-select"
+            value={cavemanMode}
+            onChange={event => onSetCavemanMode(event.target.value as CavemanMode | 'inherit')}
+            className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
+          >
+            <option value="inherit">Inherit from project</option>
+            <option value="off">Off</option>
+            <option value="lite">Lite (~25% fewer tokens)</option>
+            <option value="full">Full (~75% fewer tokens)</option>
+            <option value="ultra">Ultra (~85% fewer tokens)</option>
+          </select>
+          <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
+            Overrides the project default for this item
           </p>
         </div>
 

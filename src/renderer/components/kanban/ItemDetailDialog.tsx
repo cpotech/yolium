@@ -704,6 +704,7 @@ export function ItemDetailDialog({
             item={item}
             agentProvider={draft.agentProvider}
             model={draft.model}
+            cavemanMode={draft.cavemanMode}
             column={draft.column}
             verified={draft.verified}
             providerModels={draft.providerModels}
@@ -725,6 +726,7 @@ export function ItemDetailDialog({
             devServer={devServer}
             onSetAgentProvider={draft.setAgentProvider}
             onSetModel={draft.setModel}
+            onSetCavemanMode={draft.setCavemanMode}
             onSetColumn={draft.setColumn}
             onSetVerified={draft.setVerified}
             onDelete={() => void handleDelete()}

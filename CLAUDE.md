@@ -159,6 +159,7 @@ Full API reference with types: [docs/IPC.md](docs/IPC.md).
 - **Agent protocol**: Agents communicate via `@@YOLIUM:{type,data}` JSON messages embedded in stdout — no separate control channel needed
 - **Stream-json output**: Agent containers use `--output-format stream-json` with Claude CLI so events stream incrementally (Claude's `-p` mode alone buffers all output until completion). The main process parses JSON events into readable display text (assistant messages, tool use summaries, results with cost) and extracts protocol messages from text content
 - **SQLite for persistence**: Kanban boards and project registry use SQLite via better-sqlite3; session state uses localStorage; agent output logs use the filesystem
+- **Caveman Mode**: Native terseness directive inserted between the system prompt and `## Current Goal` to reduce output tokens. Levels: `off | lite | full | ultra`. Resolved per-run via `resolveCavemanMode(item, projectPath)` in `src/main/services/caveman-mode.ts` (item override → project default in `.yolium.json` → `off`). See [docs/AGENTS.md#caveman-mode](docs/AGENTS.md#caveman-mode).
 
 ## Common Patterns
 
