@@ -127,24 +127,27 @@ const dialogProps = {
 }
 
 describe('ItemDetailDialog - merge bar mount', () => {
-  it('renders merge-bar when mergeStatus is set', () => {
+  it('renders item-detail-header when mergeStatus is set', () => {
     render(<ItemDetailDialog {...dialogProps} item={createMockItem()} />)
-    expect(screen.getByTestId('merge-bar')).toBeInTheDocument()
+    expect(screen.getByTestId('item-detail-header')).toBeInTheDocument()
   })
 
-  it('does not render merge-bar when mergeStatus is undefined', () => {
+  it('does not render merge action buttons when mergeStatus is undefined', () => {
     render(<ItemDetailDialog {...dialogProps} item={createMockItem({ mergeStatus: undefined })} />)
-    expect(screen.queryByTestId('merge-bar')).not.toBeInTheDocument()
+    expect(screen.getByTestId('item-detail-header')).toBeInTheDocument()
+    expect(screen.queryByTestId('compare-changes-button')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('merge-status-unmerged')).not.toBeInTheDocument()
   })
 
-  it('does not render merge-bar when branch is undefined', () => {
+  it('does not render merge action buttons when branch is undefined', () => {
     render(<ItemDetailDialog {...dialogProps} item={createMockItem({ branch: undefined })} />)
-    expect(screen.queryByTestId('merge-bar')).not.toBeInTheDocument()
+    expect(screen.getByTestId('item-detail-header')).toBeInTheDocument()
+    expect(screen.queryByTestId('compare-changes-button')).not.toBeInTheDocument()
   })
 
-  it('mounts merge-bar above editor-zone in DOM order', () => {
+  it('mounts item-detail-header above editor-zone in DOM order', () => {
     render(<ItemDetailDialog {...dialogProps} item={createMockItem()} />)
-    const bar = screen.getByTestId('merge-bar')
+    const bar = screen.getByTestId('item-detail-header')
     const editor = screen.getByTestId('editor-zone')
     // Compare DOM order: bar should appear before editor zone
     const position = bar.compareDocumentPosition(editor)

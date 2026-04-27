@@ -222,6 +222,7 @@ export const ItemDetailEditorPane = forwardRef<React.ComponentRef<'div'>, ItemDe
             value={title}
             onChange={event => onTitleChange(event.target.value)}
             onFocus={() => onFieldFocus?.(0)}
+            placeholder="Item title"
             className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]"
           />
         </div>
@@ -243,7 +244,8 @@ export const ItemDetailEditorPane = forwardRef<React.ComponentRef<'div'>, ItemDe
             onChange={event => onDescriptionChange(event.target.value)}
             onFocus={() => onFieldFocus?.(1)}
             onPaste={handlePaste}
-            rows={10}
+            rows={6}
+            placeholder="Describe what should be done..."
             className="w-full px-3 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-md text-[var(--color-text-primary)] text-sm focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] resize-y"
           />
         </div>

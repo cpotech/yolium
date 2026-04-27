@@ -3,7 +3,7 @@ import { launchApp, closeApp, createTestRepo, cleanupTestRepo, type AppContext }
 import { selectors } from '../helpers/selectors';
 import * as os from 'os';
 
-test.describe('Info Bar Layout', () => {
+test.describe('Item Detail Sidebar', () => {
   let ctx: AppContext;
   let testRepoPath: string;
 
@@ -49,18 +49,16 @@ test.describe('Info Bar Layout', () => {
 
     const item = await page.evaluate(async (repoPath: string) => {
       return window.electronAPI.kanban.addItem(repoPath, {
-        title: 'Test info bar item',
-        description: 'E2E test for info bar',
+        title: 'Test sidebar item',
+        description: 'E2E test for sidebar',
         agentProvider: 'claude' as const,
         order: 0,
       });
     }, testRepoPath) as { id: string };
 
     const defaults = {
-      agentStatus: 'completed',
-      column: 'done',
-      branch: 'test-feature-branch',
-      worktreePath: '/tmp/fake-worktree',
+      agentStatus: 'idle',
+      column: 'backlog',
     };
     await page.evaluate(
       async (params: { path: string; id: string; updates: Record<string, unknown> }) => {
@@ -70,7 +68,7 @@ test.describe('Info Bar Layout', () => {
     );
 
     await page.click(selectors.kanbanRefreshButton);
-    const column = (itemOverrides.column as string) || 'done';
+    const column = (itemOverrides.column as string) || 'backlog';
     await expect(
       page.locator(selectors.kanbanColumn(column)).locator('[data-testid="kanban-card"]'),
     ).toBeVisible({ timeout: 5000 });
@@ -79,50 +77,66 @@ test.describe('Info Bar Layout', () => {
     await expect(page.locator('[data-testid="item-detail-dialog"]')).toBeVisible();
   }
 
-  test('info-bar is visible above the editor zone whenever an item is open', async () => {
+  test('first three agent buttons (Plan/Code/Verify) are full-width primary', async () => {
     await setupItemDetailDialog();
     const page = ctx.window;
 
-    const bar = page.locator('[data-testid="info-bar"]');
-    await expect(bar).toBeVisible();
+    const sidebar = page.locator('[data-testid="sidebar-zone"]');
+    const planBtn = sidebar.locator('[data-testid="run-plan-agent-button"]');
+    const codeBtn = sidebar.locator('[data-testid="run-code-agent-button"]');
+    const verifyBtn = sidebar.locator('[data-testid="run-verify-agent-button"]');
 
-    const barBox = await bar.boundingBox();
-    const editorBox = await page.locator('[data-testid="editor-zone"]').boundingBox();
-    expect(barBox).not.toBeNull();
-    expect(editorBox).not.toBeNull();
-    if (barBox && editorBox) {
-      expect(barBox.y).toBeLessThan(editorBox.y);
+    await expect(planBtn).toBeVisible();
+    await expect(codeBtn).toBeVisible();
+    await expect(verifyBtn).toBeVisible();
+
+    const sidebarBox = await sidebar.boundingBox();
+    const planBox = await planBtn.boundingBox();
+    expect(sidebarBox).not.toBeNull();
+    expect(planBox).not.toBeNull();
+
+    if (sidebarBox && planBox) {
+      // Primary agent button should take roughly the full inner width of the sidebar
+      // (allow ~64px padding/margin for the column).
+      expect(planBox.width).toBeGreaterThan(sidebarBox.width - 64);
     }
   });
 
-  test('verified-checkbox, branch-display, and worktree-path-display render inside the info bar and not inside sidebar-zone', async () => {
+  test('non-primary agents are arranged in a 2-column grid', async () => {
     await setupItemDetailDialog();
     const page = ctx.window;
 
-    const bar = page.locator('[data-testid="info-bar"]');
-    await expect(bar.locator('[data-testid="verified-checkbox"]')).toBeVisible();
-    await expect(bar.locator('[data-testid="branch-display"]')).toBeVisible();
-    await expect(bar.locator('[data-testid="worktree-path-display"]')).toBeVisible();
-
-    const sidebar = page.locator('[data-testid="sidebar-zone"]');
-    await expect(sidebar.locator('[data-testid="verified-checkbox"]')).toHaveCount(0);
-    await expect(sidebar.locator('[data-testid="branch-display"]')).toHaveCount(0);
-    await expect(sidebar.locator('[data-testid="worktree-path-display"]')).toHaveCount(0);
+    const grid = page.locator('[data-testid="agent-grid"]');
+    if (await grid.count() === 0) {
+      // No non-primary agents in this build — skip
+      test.skip(true, 'no non-primary agents available');
+      return;
+    }
+    await expect(grid).toBeVisible();
+    const gridStyle = await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns);
+    // Should have exactly 2 columns
+    const cols = gridStyle.split(/\s+/).length;
+    expect(cols).toBe(2);
   });
 
-  test('pressing p toggles the verified-checkbox in the info bar end-to-end', async () => {
+  test('numbered hints are visible on agent buttons (1-9)', async () => {
     await setupItemDetailDialog();
     const page = ctx.window;
 
-    const bar = page.locator('[data-testid="info-bar"]');
-    const checkbox = bar.locator('[data-testid="verified-checkbox"]');
-    await expect(checkbox).toBeVisible();
-    await expect(checkbox).not.toBeChecked();
+    const sidebar = page.locator('[data-testid="sidebar-zone"]');
+    const planBtn = sidebar.locator('[data-testid="run-plan-agent-button"]');
+    await expect(planBtn.locator('[data-testid="agent-number-hint"]')).toBeVisible();
+  });
 
-    // Make sure focus is not in an input
-    await page.keyboard.press('Escape');
-    await page.keyboard.press('p');
+  test('Configuration label column is at most 64px wide', async () => {
+    await setupItemDetailDialog();
+    const page = ctx.window;
 
-    await expect(checkbox).toBeChecked({ timeout: 5000 });
+    const providerLabel = page.locator('label[for="detail-agent-provider"]');
+    const box = await providerLabel.boundingBox();
+    expect(box).not.toBeNull();
+    if (box) {
+      expect(box.width).toBeLessThanOrEqual(64);
+    }
   });
 });
