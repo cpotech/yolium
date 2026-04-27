@@ -72,7 +72,7 @@
     "@xterm/addon-webgl": "^0.19.0",
     "@xterm/xterm": "^6.0.0",
     "better-sqlite3": "^12.6.2",
-    "dockerode": "^4.0.9",
+    "dockerode": "^5.0.0",
     "electron-log": "^5.4.3",
     "electron-squirrel-startup": "^1.0.1",
     "gray-matter": "^4.0.3",
