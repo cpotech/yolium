@@ -1,9 +1,9 @@
 import React from 'react'
-import { Clock, FolderOpen, GitBranch, Play, ShieldCheck, Trash2 } from 'lucide-react'
+import { Clock, Play, Trash2 } from 'lucide-react'
 import type { CavemanMode, KanbanColumn, KanbanItem } from '@shared/types/kanban'
 import { AgentControls } from '../../agent/AgentControls'
 import { formatTokenCount, formatUsdCost } from '@renderer/utils/formatTokens'
-import { agentProviderLabels, columnOptions, CopyPathButton, formatTimestamp } from './itemDetailViewUtils'
+import { agentProviderLabels, columnOptions, formatTimestamp } from './itemDetailViewUtils'
 import type { DraftSaveStatus } from './useItemDetailDraft'
 import type { AgentTokenUsage } from '@shared/types/agent'
 import type { DevServerStatus } from '@renderer/hooks/useDevServer'
@@ -22,7 +22,6 @@ interface ItemDetailSidebarProps {
   model: string
   cavemanMode: CavemanMode | 'inherit'
   column: KanbanColumn
-  verified: boolean
   providerModels: Record<string, string[]>
   saveStatus: DraftSaveStatus
   isDeleting: boolean
@@ -35,7 +34,6 @@ interface ItemDetailSidebarProps {
   onSetModel: (value: string) => void
   onSetCavemanMode: (value: CavemanMode | 'inherit') => void
   onSetColumn: (value: KanbanColumn) => void
-  onSetVerified: (value: boolean) => void
   onDelete: () => void
   onStartAgent: (agentName: string) => void
   onResumeAgent: (agentName: string) => void
@@ -50,7 +48,6 @@ export function ItemDetailSidebar({
   model,
   cavemanMode,
   column,
-  verified,
   providerModels,
   saveStatus,
   isDeleting,
@@ -63,7 +60,6 @@ export function ItemDetailSidebar({
   onSetModel,
   onSetCavemanMode,
   onSetColumn,
-  onSetVerified,
   onDelete,
   onStartAgent,
   onResumeAgent,
@@ -256,60 +252,6 @@ export function ItemDetailSidebar({
             </p>
           )}
         </div>
-      </div>
-
-      {/* Info Section */}
-      <div className="p-4 space-y-4 border-b border-[var(--color-border-primary)]">
-        <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-disabled)] mb-3">Info</div>
-        <div>
-          <label
-            htmlFor="detail-verified"
-            className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1"
-          >
-            Verified
-            {showKbdHints && <kbd className="px-1 py-0.5 text-[10px] bg-[var(--color-bg-primary)] rounded border border-[var(--color-border-primary)] font-mono ml-1">V</kbd>}
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              id="detail-verified"
-              data-testid="verified-checkbox"
-              type="checkbox"
-              checked={verified}
-              onChange={event => onSetVerified(event.target.checked)}
-              className="rounded border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-status-success)] focus:ring-[var(--color-status-success)]"
-            />
-            <span className={`flex items-center gap-1 text-sm ${verified ? 'text-[var(--color-status-success)]' : 'text-[var(--color-text-secondary)]'}`}>
-              <ShieldCheck size={14} />
-              {verified ? 'Verified' : 'Not verified'}
-            </span>
-          </label>
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
-            Branch
-          </label>
-          <div data-testid="branch-display" className="flex items-center gap-1.5 text-sm text-[var(--color-text-primary)]">
-            <GitBranch size={14} className="text-[var(--color-text-secondary)] flex-shrink-0" />
-            <span className="truncate">{item.branch || 'N/A'}</span>
-          </div>
-        </div>
-
-        {item.worktreePath && (
-          <div>
-            <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
-              Worktree
-            </label>
-            <div
-              data-testid="worktree-path-display"
-              className="flex items-center gap-1 text-xs text-[var(--color-text-tertiary)]"
-            >
-              <FolderOpen size={14} className="flex-shrink-0" />
-              <span className="font-mono truncate" title={item.worktreePath}>{item.worktreePath}</span>
-              <CopyPathButton path={item.worktreePath} />
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Footer */}
