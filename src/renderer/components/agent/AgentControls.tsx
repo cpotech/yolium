@@ -92,7 +92,70 @@ interface AgentControlsProps {
 }
 
 /**
- * Render a list of agent buttons with 1-based number hints.
+ * Number of agents that get full-width primary placement (Plan, Code, Verify).
+ */
+const PRIMARY_AGENT_COUNT = 3
+
+/**
+ * Render a single agent button with a number hint and accent color.
+ */
+function AgentButton({
+  agent,
+  index,
+  isStartingAgent,
+  onClick,
+  buttonTextPrefix,
+  startingText,
+  compact = false,
+}: {
+  agent: AgentDefinition
+  index: number
+  isStartingAgent: boolean
+  onClick: (agentName: string) => void
+  buttonTextPrefix: string
+  startingText: string
+  compact?: boolean
+}) {
+  const label = formatAgentLabel(agent.name).replace(/ Agent$/, '')
+  const padding = compact ? 'pl-1.5 pr-2 py-1' : 'pl-2 pr-2.5 py-1.5'
+  const gap = compact ? 'gap-1.5' : 'gap-2.5'
+  const textSize = compact ? 'text-xs' : 'text-sm'
+  const iconSize = compact ? 14 : 16
+  return (
+    <button
+      key={agent.name}
+      data-testid={`run-${agent.name}-button`}
+      onClick={() => onClick(agent.name)}
+      disabled={isStartingAgent}
+      title={`${buttonTextPrefix} ${formatAgentLabel(agent.name)}`}
+      className={`group w-full flex items-center ${gap} ${padding} ${textSize} rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] border-l-2 ${agentAccentColors[agent.name] || 'border-l-gray-500'}`}
+    >
+      {index < 9 ? (
+        <kbd
+          data-testid="agent-number-hint"
+          className="w-5 h-5 inline-flex items-center justify-center text-[10px] font-mono rounded bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] flex-shrink-0 group-hover:bg-[var(--color-bg-primary)]"
+        >
+          {index + 1}
+        </kbd>
+      ) : (
+        <span className="w-5 flex-shrink-0" />
+      )}
+      <span className={`flex-shrink-0 ${agentIconColors[agent.name] || 'text-[var(--color-text-secondary)]'}`}>
+        {React.cloneElement(
+          (agentIcons[agent.name] as React.ReactElement<{ size?: number }>) || <Bot size={iconSize} />,
+          { size: iconSize },
+        )}
+      </span>
+      <span className="flex-1 text-left truncate">
+        {isStartingAgent ? startingText : label}
+      </span>
+    </button>
+  )
+}
+
+/**
+ * Render the agent button list: first 3 (Plan/Code/Verify) full-width primary,
+ * remaining agents in a 2-column grid for compactness.
  */
 function AgentButtonList({
   agents,
@@ -107,38 +170,40 @@ function AgentButtonList({
   buttonTextPrefix: string
   startingText: string
 }) {
+  const primary = agents.slice(0, PRIMARY_AGENT_COUNT)
+  const secondary = agents.slice(PRIMARY_AGENT_COUNT)
+
   return (
-    <div className="space-y-1">
-      {agents.map((agent, index) => {
-        const label = formatAgentLabel(agent.name).replace(/ Agent$/, '')
-        return (
-          <button
+    <div className="space-y-1.5">
+      <div className="space-y-1">
+        {primary.map((agent, index) => (
+          <AgentButton
             key={agent.name}
-            data-testid={`run-${agent.name}-button`}
-            onClick={() => onClick(agent.name)}
-            disabled={isStartingAgent}
-            title={`${buttonTextPrefix} ${formatAgentLabel(agent.name)}`}
-            className={`group w-full flex items-center gap-2.5 pl-2 pr-2.5 py-1.5 text-sm rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] border-l-2 ${agentAccentColors[agent.name] || 'border-l-gray-500'}`}
-          >
-            {index < 9 ? (
-              <kbd
-                data-testid="agent-number-hint"
-                className="w-5 h-5 inline-flex items-center justify-center text-[10px] font-mono rounded bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] flex-shrink-0 group-hover:bg-[var(--color-bg-primary)]"
-              >
-                {index + 1}
-              </kbd>
-            ) : (
-              <span className="w-5 flex-shrink-0" />
-            )}
-            <span className={`flex-shrink-0 ${agentIconColors[agent.name] || 'text-[var(--color-text-secondary)]'}`}>
-              {agentIcons[agent.name] || <Bot size={16} />}
-            </span>
-            <span className="flex-1 text-left">
-              {isStartingAgent ? startingText : label}
-            </span>
-          </button>
-        )
-      })}
+            agent={agent}
+            index={index}
+            isStartingAgent={isStartingAgent}
+            onClick={onClick}
+            buttonTextPrefix={buttonTextPrefix}
+            startingText={startingText}
+          />
+        ))}
+      </div>
+      {secondary.length > 0 && (
+        <div data-testid="agent-grid" className="grid grid-cols-2 gap-1">
+          {secondary.map((agent, i) => (
+            <AgentButton
+              key={agent.name}
+              agent={agent}
+              index={PRIMARY_AGENT_COUNT + i}
+              isStartingAgent={isStartingAgent}
+              onClick={onClick}
+              buttonTextPrefix={buttonTextPrefix}
+              startingText={startingText}
+              compact
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

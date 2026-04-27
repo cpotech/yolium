@@ -134,10 +134,10 @@ export function ItemDetailSidebar({
       )}
 
       {/* Configuration Section — flat, label-on-left form rows */}
-      <div className="px-4 py-3 mt-2 space-y-2.5">
+      <div className="px-4 py-3 mt-2 space-y-2">
         <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-tertiary)] mb-1">Configuration</div>
 
-        <div className="grid grid-cols-[80px_1fr] items-center gap-2">
+        <div className="grid grid-cols-[64px_1fr] items-center gap-2">
           <label
             htmlFor="detail-agent-provider"
             className="text-xs text-[var(--color-text-secondary)] flex items-center gap-1"
@@ -166,7 +166,7 @@ export function ItemDetailSidebar({
           )}
         </div>
 
-        <div className="grid grid-cols-[80px_1fr] items-center gap-2">
+        <div className="grid grid-cols-[64px_1fr] items-center gap-2">
           <label
             htmlFor="detail-model"
             className="text-xs text-[var(--color-text-secondary)] flex items-center gap-1"
@@ -191,7 +191,7 @@ export function ItemDetailSidebar({
           </select>
         </div>
 
-        <div className="grid grid-cols-[80px_1fr] items-center gap-2">
+        <div className="grid grid-cols-[64px_1fr] items-center gap-2">
           <label
             htmlFor="detail-caveman-mode"
             className="text-xs text-[var(--color-text-secondary)]"
@@ -214,7 +214,7 @@ export function ItemDetailSidebar({
           </select>
         </div>
 
-        <div className="grid grid-cols-[80px_1fr] items-center gap-2">
+        <div className="grid grid-cols-[64px_1fr] items-center gap-2">
           <label
             htmlFor="detail-column"
             className="text-xs text-[var(--color-text-secondary)] flex items-center gap-1"

@@ -13,8 +13,7 @@ import { useSuspendVimNavigation, useVimModeContext } from '@renderer/context/Vi
 import { AgentLogPanel, type AgentLogPanelHandle } from '../agent/AgentLogPanel'
 import { GitDiffDialog } from '../code-review/GitDiffDialog'
 import { ItemDetailEditorPane } from './item-detail/ItemDetailEditorPane'
-import { ItemDetailInfoBar } from './item-detail/ItemDetailInfoBar'
-import { ItemDetailMergeBar } from './item-detail/ItemDetailMergeBar'
+import { ItemDetailHeader } from './item-detail/ItemDetailHeader'
 import { ItemDetailSidebar } from './item-detail/ItemDetailSidebar'
 import { BrowserPreviewPanel } from './item-detail/BrowserPreviewPanel'
 import { useBrowserPreview } from '@renderer/hooks/useBrowserPreview'
@@ -607,44 +606,10 @@ export function ItemDetailDialog({
         aria-label={`Item details: ${item.title}`}
         className="flex flex-col flex-1 min-h-0"
       >
-        <div className="flex items-center justify-between px-6 py-3 bg-[var(--color-bg-tertiary)]">
-          <h2 className="text-base font-semibold text-[var(--color-text-primary)] truncate min-w-0">
-            {item.title || 'Untitled Item'}
-          </h2>
-          <button
-            data-testid="close-button"
-            data-vim-key="Escape"
-            onClick={handleClose}
-            aria-label="Close (Ctrl+Q)"
-            title="Close (Ctrl+Q)"
-            className="p-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded transition-colors flex-shrink-0"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        <ItemDetailInfoBar
+        <ItemDetailHeader
           showKbdHints={true}
           item={item}
           verified={draft.verified}
-          onSetVerified={draft.setVerified}
-        />
-
-        {errorMessage && (
-          <div className="flex items-center justify-between px-6 py-2 bg-red-900/30 border-b border-red-700/50 text-red-300 text-sm">
-            <span>{errorMessage}</span>
-            <button
-              onClick={() => setErrorMessage(null)}
-              className="p-1 hover:text-[var(--color-text-primary)] transition-colors"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        )}
-
-        <ItemDetailMergeBar
-          showKbdHints={true}
-          item={item}
           prUrl={prWorkflow.prUrl}
           conflictCheck={prWorkflow.conflictCheck}
           rebaseResult={prWorkflow.rebaseResult}
@@ -654,6 +619,9 @@ export function ItemDetailDialog({
           isRebasing={prWorkflow.isRebasing}
           isApprovingPr={prWorkflow.isApprovingPr}
           isMergingPr={prWorkflow.isMergingPr}
+          isFixingConflicts={prWorkflow.isFixingConflicts}
+          onSetVerified={draft.setVerified}
+          onClose={handleClose}
           onCompareChanges={() => setShowDiffViewer(true)}
           onOpenPr={() => {
             if (prWorkflow.prUrl) {
@@ -667,8 +635,19 @@ export function ItemDetailDialog({
           onMergeLocally={() => void prWorkflow.mergeLocally()}
           onMerge={() => void prWorkflow.mergeAndPushPr()}
           onFixConflicts={() => void handleFixConflicts()}
-          isFixingConflicts={prWorkflow.isFixingConflicts}
         />
+
+        {errorMessage && (
+          <div className="flex items-center justify-between px-6 py-2 bg-red-900/30 border-b border-red-700/50 text-red-300 text-sm">
+            <span>{errorMessage}</span>
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="p-1 hover:text-[var(--color-text-primary)] transition-colors"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
 
         <div className="flex flex-1 overflow-hidden">
           <div

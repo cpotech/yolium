@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  *
  * Integration test verifying the info bar mounts above the editor zone
- * when an item is open, that no info-bar controls leak into the sidebar
+ * when an item is open, that no item-detail-header controls leak into the sidebar
  * zone, and that the `p` keyboard shortcut still toggles the verified
  * checkbox after the move.
  */
@@ -130,16 +130,16 @@ const dialogProps = {
 }
 
 describe('ItemDetailDialog - info bar mount', () => {
-  it('renders info-bar between dialog header and editor zone', () => {
+  it('renders item-detail-header between dialog header and editor zone', () => {
     render(<ItemDetailDialog {...dialogProps} item={createMockItem()} />)
-    const bar = screen.getByTestId('info-bar')
+    const bar = screen.getByTestId('item-detail-header')
     const editor = screen.getByTestId('editor-zone')
     expect(bar).toBeInTheDocument()
     const position = bar.compareDocumentPosition(editor)
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('places no info-bar controls (verified-checkbox, branch-display, worktree-path-display) inside sidebar-zone', () => {
+  it('places no item-detail-header controls (verified-checkbox, branch-display, worktree-path-display) inside sidebar-zone', () => {
     render(<ItemDetailDialog {...dialogProps} item={createMockItem()} />)
     const sidebar = screen.getByTestId('sidebar-zone')
     expect(within(sidebar).queryByTestId('verified-checkbox')).not.toBeInTheDocument()
