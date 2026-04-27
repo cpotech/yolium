@@ -31,7 +31,7 @@ export const agentIcons: Record<string, React.ReactNode> = {
 }
 
 /**
- * Agent accent colors for subtle visual distinction
+ * Agent accent colors for subtle visual distinction (left-border stripe).
  */
 export const agentAccentColors: Record<string, string> = {
   'code-agent': 'border-l-blue-500',
@@ -41,6 +41,20 @@ export const agentAccentColors: Record<string, string> = {
   'design-agent': 'border-l-pink-500',
   'marketing-agent': 'border-l-orange-500',
   'qa-agent': 'border-l-red-500',
+}
+
+/**
+ * Mirror of agentAccentColors expressed as icon text colors, used to tint
+ * the icon glyph in addition to the left border for visual hierarchy.
+ */
+const agentIconColors: Record<string, string> = {
+  'code-agent': 'text-blue-400',
+  'plan-agent': 'text-yellow-400',
+  'verify-agent': 'text-purple-400',
+  'scout-agent': 'text-green-400',
+  'design-agent': 'text-pink-400',
+  'marketing-agent': 'text-orange-400',
+  'qa-agent': 'text-red-400',
 }
 
 /**
@@ -94,31 +108,37 @@ function AgentButtonList({
   startingText: string
 }) {
   return (
-    <div className="space-y-2">
-      {agents.map((agent, index) => (
-        <button
-          key={agent.name}
-          data-testid={`run-${agent.name}-button`}
-          onClick={() => onClick(agent.name)}
-          disabled={isStartingAgent}
-          className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border-primary)] hover:border-[var(--color-accent-primary)] border-l-4 ${agentAccentColors[agent.name] || 'border-l-gray-500'}`}
-        >
-          {index < 9 && (
-            <kbd
-              data-testid="agent-number-hint"
-              className="px-1.5 py-0.5 text-[10px] font-mono bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)] text-[var(--color-text-muted)] flex-shrink-0"
-            >
-              {index + 1}
-            </kbd>
-          )}
-          <span className="flex-shrink-0 text-[var(--color-text-secondary)]">
-            {agentIcons[agent.name] || <Bot size={16} />}
-          </span>
-          <span className="flex-1 text-center">
-            {isStartingAgent ? startingText : `${buttonTextPrefix} ${formatAgentLabel(agent.name)}`}
-          </span>
-        </button>
-      ))}
+    <div className="space-y-1">
+      {agents.map((agent, index) => {
+        const label = formatAgentLabel(agent.name).replace(/ Agent$/, '')
+        return (
+          <button
+            key={agent.name}
+            data-testid={`run-${agent.name}-button`}
+            onClick={() => onClick(agent.name)}
+            disabled={isStartingAgent}
+            title={`${buttonTextPrefix} ${formatAgentLabel(agent.name)}`}
+            className={`group w-full flex items-center gap-2.5 pl-2 pr-2.5 py-1.5 text-sm rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] border-l-2 ${agentAccentColors[agent.name] || 'border-l-gray-500'}`}
+          >
+            {index < 9 ? (
+              <kbd
+                data-testid="agent-number-hint"
+                className="w-5 h-5 inline-flex items-center justify-center text-[10px] font-mono rounded bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] flex-shrink-0 group-hover:bg-[var(--color-bg-primary)]"
+              >
+                {index + 1}
+              </kbd>
+            ) : (
+              <span className="w-5 flex-shrink-0" />
+            )}
+            <span className={`flex-shrink-0 ${agentIconColors[agent.name] || 'text-[var(--color-text-secondary)]'}`}>
+              {agentIcons[agent.name] || <Bot size={16} />}
+            </span>
+            <span className="flex-1 text-left">
+              {isStartingAgent ? startingText : label}
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -151,42 +171,43 @@ export function AgentControls({
 
   return (
     <>
-      {/* Status Badge */}
-      <div className="mb-4">
-        <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
-          Status
+      {/* Section header: Agents + inline status */}
+      <div className="flex items-center justify-between mb-2">
+        <label className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-tertiary)]">
+          Agents
         </label>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${statusColors[item.agentStatus]}`}
+            aria-hidden="true"
+          />
           <span
             data-testid="status-badge"
-            className={`inline-block px-2 py-1 text-xs font-medium rounded text-white ${statusColors[item.agentStatus]}`}
+            className="text-[11px] text-[var(--color-text-secondary)] capitalize"
           >
             {item.agentStatus}
           </span>
           {item.activeAgentName && (
             <span
               data-testid="active-agent-name"
-              className="text-xs text-[var(--color-text-secondary)]"
+              className="text-[11px] text-[var(--color-text-muted)]"
             >
-              {formatAgentLabel(item.activeAgentName)}
+              · {formatAgentLabel(item.activeAgentName)}
             </span>
           )}
         </div>
-        {!item.activeAgentName && item.lastAgentName && (
-          <div
-            data-testid="last-agent-name"
-            className="text-xs text-[var(--color-text-muted)] mt-1"
-          >
-            Last Agent: {formatAgentLabel(item.lastAgentName)}
-          </div>
-        )}
       </div>
+      {!item.activeAgentName && item.lastAgentName && (
+        <div
+          data-testid="last-agent-name"
+          className="text-[11px] text-[var(--color-text-muted)] mb-2"
+        >
+          Last Agent: {formatAgentLabel(item.lastAgentName)}
+        </div>
+      )}
 
-      {/* Agent Controls */}
-      <div className="mb-4 p-3 bg-[var(--color-bg-primary)] rounded-md border border-[var(--color-border-primary)] min-h-[100px]">
-        <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
-          Agent Controls
-        </label>
+      {/* Agent Controls — flat, no nested card */}
+      <div className="mb-4">
 
         {/* Idle - Show all agent buttons */}
         {item.agentStatus === 'idle' && sortedAgents.length > 0 && (

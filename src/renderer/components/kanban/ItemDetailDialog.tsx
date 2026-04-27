@@ -607,21 +607,20 @@ export function ItemDetailDialog({
         aria-label={`Item details: ${item.title}`}
         className="flex flex-col flex-1 min-h-0"
       >
-        <div className="flex items-center justify-between px-6 py-3 border-b border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
+        <div className="flex items-center justify-between px-6 py-3 bg-[var(--color-bg-tertiary)]">
           <h2 className="text-base font-semibold text-[var(--color-text-primary)] truncate min-w-0">
             {item.title || 'Untitled Item'}
           </h2>
-          <div className="flex items-center gap-2">
-            <kbd className="text-xs bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">Ctrl+Q</kbd>
-            <button
-              data-testid="close-button"
-              data-vim-key="Escape"
-              onClick={handleClose}
-              className="p-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded transition-colors flex-shrink-0"
-            >
-              <X size={18} />
-            </button>
-          </div>
+          <button
+            data-testid="close-button"
+            data-vim-key="Escape"
+            onClick={handleClose}
+            aria-label="Close (Ctrl+Q)"
+            title="Close (Ctrl+Q)"
+            className="p-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded transition-colors flex-shrink-0"
+          >
+            <X size={18} />
+          </button>
         </div>
 
         <ItemDetailInfoBar
