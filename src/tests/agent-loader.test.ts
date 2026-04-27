@@ -150,6 +150,38 @@ You are the Code Agent...`;
         systemPrompt: '# Code Agent\n\nYou are the Code Agent...',
       });
     });
+    it('should preserve order: 0 (used by architect-agent to run before plan-agent)', () => {
+      const markdown = `---
+name: architect-agent
+description: Decomposes a high-level goal into kanban work items
+model: opus
+order: 0
+tools:
+  - Read
+  - Glob
+---
+
+# Architect Agent`;
+
+      const result = parseAgentDefinition(markdown);
+      expect(result.order).toBe(0);
+    });
+
+    it('should ignore negative order values', () => {
+      const markdown = `---
+name: bad-agent
+description: Test
+model: sonnet
+order: -1
+tools:
+  - Read
+---
+
+Content`;
+
+      expect(parseAgentDefinition(markdown).order).toBeUndefined();
+    });
+
     it('should parse ba-agent definition with read-only tools and order field', () => {
       const markdown = `---
 name: ba-agent
