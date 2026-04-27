@@ -1,12 +1,13 @@
 /**
  * @vitest-environment jsdom
  *
- * Integration test verifying the merge bar mounts above the editor zone
- * when an item has a mergeStatus, and that no merge controls leak into
- * the sidebar zone.
+ * Integration test verifying the info bar mounts above the editor zone
+ * when an item is open, that no info-bar controls leak into the sidebar
+ * zone, and that the `p` keyboard shortcut still toggles the verified
+ * checkbox after the move.
  */
 import React from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ItemDetailDialog } from '@renderer/components/kanban/ItemDetailDialog'
 import type { KanbanItem } from '@shared/types/kanban'
@@ -54,7 +55,6 @@ function createMockItem(overrides: Partial<KanbanItem> = {}): KanbanItem {
     agentProvider: 'claude',
     order: 0,
     agentStatus: 'completed',
-    mergeStatus: 'unmerged',
     comments: [],
     createdAt: '2024-01-15T10:00:00.000Z',
     updatedAt: '2024-01-15T12:00:00.000Z',
@@ -62,15 +62,18 @@ function createMockItem(overrides: Partial<KanbanItem> = {}): KanbanItem {
   }
 }
 
+const mockUpdateItem = vi.fn()
+
 beforeEach(() => {
   vi.clearAllMocks()
   Element.prototype.scrollIntoView = vi.fn()
   mockVimMode.current = 'NORMAL'
+  mockUpdateItem.mockResolvedValue(undefined)
 
   Object.defineProperty(window, 'electronAPI', {
     value: {
       kanban: {
-        updateItem: vi.fn(),
+        updateItem: mockUpdateItem,
         deleteItem: vi.fn(),
         addComment: vi.fn(),
       },
@@ -126,47 +129,40 @@ const dialogProps = {
   onUpdated: vi.fn(),
 }
 
-describe('ItemDetailDialog - merge bar mount', () => {
-  it('renders merge-bar when mergeStatus is set', () => {
+describe('ItemDetailDialog - info bar mount', () => {
+  it('renders info-bar between dialog header and editor zone', () => {
     render(<ItemDetailDialog {...dialogProps} item={createMockItem()} />)
-    expect(screen.getByTestId('merge-bar')).toBeInTheDocument()
-  })
-
-  it('does not render merge-bar when mergeStatus is undefined', () => {
-    render(<ItemDetailDialog {...dialogProps} item={createMockItem({ mergeStatus: undefined })} />)
-    expect(screen.queryByTestId('merge-bar')).not.toBeInTheDocument()
-  })
-
-  it('does not render merge-bar when branch is undefined', () => {
-    render(<ItemDetailDialog {...dialogProps} item={createMockItem({ branch: undefined })} />)
-    expect(screen.queryByTestId('merge-bar')).not.toBeInTheDocument()
-  })
-
-  it('mounts merge-bar above editor-zone in DOM order', () => {
-    render(<ItemDetailDialog {...dialogProps} item={createMockItem()} />)
-    const bar = screen.getByTestId('merge-bar')
+    const bar = screen.getByTestId('info-bar')
     const editor = screen.getByTestId('editor-zone')
-    // Compare DOM order: bar should appear before editor zone
+    expect(bar).toBeInTheDocument()
     const position = bar.compareDocumentPosition(editor)
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('places no merge buttons inside sidebar-zone', () => {
+  it('places no info-bar controls (verified-checkbox, branch-display, worktree-path-display) inside sidebar-zone', () => {
     render(<ItemDetailDialog {...dialogProps} item={createMockItem()} />)
     const sidebar = screen.getByTestId('sidebar-zone')
-    expect(within(sidebar).queryByTestId('compare-changes-button')).not.toBeInTheDocument()
-    expect(within(sidebar).queryByTestId('merge-locally-button')).not.toBeInTheDocument()
-    expect(within(sidebar).queryByTestId('merge-button')).not.toBeInTheDocument()
-    expect(within(sidebar).queryByTestId('check-conflicts-button')).not.toBeInTheDocument()
-    expect(within(sidebar).queryByTestId('pull-latest-button')).not.toBeInTheDocument()
+    expect(within(sidebar).queryByTestId('verified-checkbox')).not.toBeInTheDocument()
+    expect(within(sidebar).queryByTestId('branch-display')).not.toBeInTheDocument()
+    expect(within(sidebar).queryByTestId('worktree-path-display')).not.toBeInTheDocument()
   })
 
-  it('keeps non-merge sidebar sections (Configuration, Footer) intact', () => {
+  it('keeps non-info sidebar sections (Configuration agent-provider-select, Footer delete-button) intact', () => {
     render(<ItemDetailDialog {...dialogProps} item={createMockItem()} />)
     const sidebar = screen.getByTestId('sidebar-zone')
-    // Configuration: agent provider select still present
     expect(within(sidebar).getByTestId('agent-provider-select')).toBeInTheDocument()
-    // Footer: delete button still present
     expect(within(sidebar).getByTestId('delete-button')).toBeInTheDocument()
+  })
+
+  it('still toggles verified state via the p keyboard shortcut after the move', async () => {
+    render(<ItemDetailDialog {...dialogProps} item={createMockItem()} />)
+    const dialog = screen.getByTestId('item-detail-dialog')
+
+    await act(async () => {
+      fireEvent.keyDown(dialog, { key: 'p' })
+    })
+
+    const checkbox = screen.getByTestId('verified-checkbox') as HTMLInputElement
+    expect(checkbox.checked).toBe(true)
   })
 })

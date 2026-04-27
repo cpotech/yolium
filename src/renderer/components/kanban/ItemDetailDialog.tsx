@@ -13,6 +13,7 @@ import { useSuspendVimNavigation, useVimModeContext } from '@renderer/context/Vi
 import { AgentLogPanel, type AgentLogPanelHandle } from '../agent/AgentLogPanel'
 import { GitDiffDialog } from '../code-review/GitDiffDialog'
 import { ItemDetailEditorPane } from './item-detail/ItemDetailEditorPane'
+import { ItemDetailInfoBar } from './item-detail/ItemDetailInfoBar'
 import { ItemDetailMergeBar } from './item-detail/ItemDetailMergeBar'
 import { ItemDetailSidebar } from './item-detail/ItemDetailSidebar'
 import { BrowserPreviewPanel } from './item-detail/BrowserPreviewPanel'
@@ -623,6 +624,13 @@ export function ItemDetailDialog({
           </div>
         </div>
 
+        <ItemDetailInfoBar
+          showKbdHints={true}
+          item={item}
+          verified={draft.verified}
+          onSetVerified={draft.setVerified}
+        />
+
         {errorMessage && (
           <div className="flex items-center justify-between px-6 py-2 bg-red-900/30 border-b border-red-700/50 text-red-300 text-sm">
             <span>{errorMessage}</span>
@@ -735,7 +743,6 @@ export function ItemDetailDialog({
             model={draft.model}
             cavemanMode={draft.cavemanMode}
             column={draft.column}
-            verified={draft.verified}
             providerModels={draft.providerModels}
             saveStatus={draft.saveStatus}
             isDeleting={isDeleting}
@@ -748,7 +755,6 @@ export function ItemDetailDialog({
             onSetModel={draft.setModel}
             onSetCavemanMode={draft.setCavemanMode}
             onSetColumn={draft.setColumn}
-            onSetVerified={draft.setVerified}
             onDelete={() => void handleDelete()}
             onStartAgent={agentName => void lifecycle.startAgent(agentName)}
             onResumeAgent={agentName => void lifecycle.resumeAgent(agentName)}
