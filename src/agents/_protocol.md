@@ -158,6 +158,15 @@ Every agent MUST emit a `progress` message with the reserved step name `model` a
 
 `<provider>` is one of `claude`, `codex`, or `opencode`. `<model-id>` is the concrete model identifier the agent recognises itself as. The existing `progress` handler renders this as a system comment `[model] <provider>/<model-id>` in the work item thread.
 
+## Emission Rules
+
+Every `@@YOLIUM:` message MUST be one of the following two forms:
+
+1. **Plain assistant text** — preferred. Just write the `@@YOLIUM:{...}` line directly in your response.
+2. **A single `echo` with literal JSON** — `echo '@@YOLIUM:{"type":"...","field":"..."}'` where the JSON is fully literal in the command string.
+
+Do NOT construct protocol JSON dynamically — for example via `jq`, `printf` of variables, heredocs piped through filters, `awk '{print "@@YOLIUM:"$0}'`, or any pipeline that builds the JSON at runtime from a temp file or shell variables. The parser inspects literal command strings, and dynamically-constructed JSON is silently dropped. Even though the runtime now also scans bash stdout as a defensive backstop, agents must not rely on it: stdout buffering, command failures, and shell error redirection make stdout-based emission unreliable. Always emit the literal JSON directly.
+
 ## Link Protocols
 
 ### yolium-report://

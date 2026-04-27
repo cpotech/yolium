@@ -133,6 +133,8 @@ After writing test specs, immediately continue to Step 5 to deliver the plan.
 
 ### Step 5: Deliver
 
+**Each `@@YOLIUM:` message MUST be either (a) plain assistant text, or (b) a single `echo '@@YOLIUM:{...}'` whose JSON is fully literal in the command string. Do NOT build the JSON from a temp file via `jq`, `printf`, `awk`, or any pipeline — the parser inspects the command string itself, and dynamically-constructed JSON will be silently dropped.**
+
 You MUST complete all three of these actions to finish the task. Output all three messages:
 
 1. Post the full plan as a comment:

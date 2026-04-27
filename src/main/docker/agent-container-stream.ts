@@ -127,6 +127,39 @@ export function parseStreamEvent(event: Record<string, unknown>): ParsedStreamEv
       };
     }
 
+    case 'user': {
+      // Claude tool_result events arrive wrapped in a 'user' message. We don't
+      // surface them in the display channel (the preceding tool_use already
+      // rendered a [Bash] line), but we DO scan for @@YOLIUM:-bearing stdout so
+      // that protocol messages emitted via bash (e.g. `echo '@@YOLIUM:{...}'`,
+      // or dynamically-built JSON) reach extractProtocolMessages.
+      const message = event.message as Record<string, unknown> | undefined;
+      const content = message?.content as Array<Record<string, unknown>> | undefined;
+      if (!Array.isArray(content)) return {};
+
+      let text = '';
+      for (const item of content) {
+        if (item.type !== 'tool_result') continue;
+        const inner = item.content;
+        let resultText = '';
+        if (typeof inner === 'string') {
+          resultText = inner;
+        } else if (Array.isArray(inner)) {
+          for (const block of inner) {
+            if (block && typeof block === 'object' && (block as Record<string, unknown>).type === 'text') {
+              const t = (block as Record<string, unknown>).text;
+              if (typeof t === 'string') resultText += t;
+            }
+          }
+        }
+        if (resultText.includes('@@YOLIUM:')) {
+          text += `${resultText}\n`;
+        }
+      }
+
+      return text ? { text } : {};
+    }
+
     case 'result': {
       const costUsd = event.cost_usd as number | undefined;
       const usage = event.usage as { input_tokens?: number; output_tokens?: number } | undefined;
