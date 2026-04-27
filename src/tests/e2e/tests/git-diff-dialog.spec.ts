@@ -1,31 +1,41 @@
 import { test, expect } from '@playwright/test';
+import { execSync } from 'child_process';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { launchApp, closeApp, createTestRepo, cleanupTestRepo, cleanupYoliumContainers, AppContext } from '../helpers/app';
 import { selectors } from '../helpers/selectors';
-import os from 'os';
 
 test.describe('GitDiffDialog Keyboard Shortcuts', () => {
   let ctx: AppContext;
   let testRepoPath: string;
 
-  test.beforeAll(async () => {
-    testRepoPath = await createTestRepo(os.tmpdir());
-  });
-
-  test.afterAll(async () => {
-    if (testRepoPath) {
-      await cleanupTestRepo(testRepoPath);
-    }
-  });
-
   test.beforeEach(async () => {
+    testRepoPath = await createTestRepo(os.tmpdir());
     await cleanupYoliumContainers();
   });
 
   test.afterEach(async () => {
     if (ctx) {
       await closeApp(ctx);
+      ctx = undefined as unknown as AppContext;
+    }
+    if (testRepoPath) {
+      await cleanupTestRepo(testRepoPath);
+      testRepoPath = '';
     }
   });
+
+  function prepareFeatureBranch(files: Array<{ relativePath: string; content: string }>): void {
+    execSync('git checkout -b feature/test', { cwd: testRepoPath });
+    for (const file of files) {
+      fs.mkdirSync(path.dirname(path.join(testRepoPath, file.relativePath)), { recursive: true });
+      fs.writeFileSync(path.join(testRepoPath, file.relativePath), file.content);
+    }
+    execSync('git add .', { cwd: testRepoPath });
+    execSync('git commit -m "Add diff fixtures"', { cwd: testRepoPath });
+    execSync('git checkout main', { cwd: testRepoPath });
+  }
 
   async function openGitDiffDialog(): Promise<void> {
     ctx = await launchApp();
@@ -42,54 +52,51 @@ test.describe('GitDiffDialog Keyboard Shortcuts', () => {
       { timeout: 30000 }
     );
 
-    await window.click(selectors.addProjectButton);
+    await window.click(selectors.openProjectButton);
     await window.fill(selectors.pathInput, testRepoPath);
     await window.click(selectors.pathNextButton);
     await window.waitForSelector('[data-testid="kanban-view"]', { timeout: 10000 });
 
     const item = await window.evaluate(
-      async (params: { path: string }) => {
-        return window.electronAPI.kanban.addItem(params.path, {
+      async (repoPath: string) => {
+        return window.electronAPI.kanban.addItem(repoPath, {
           title: 'Test Diff Item',
           description: 'Test description',
-          agentProvider: 'claude' as 'claude' | 'codex' | 'opencode',
+          agentProvider: 'claude' as const,
           order: 0,
         });
       },
-      { path: testRepoPath }
+      testRepoPath
     ) as { id: string };
+
+    await window.evaluate(
+      async (params: { path: string; id: string }) => {
+        await window.electronAPI.kanban.updateItem(params.path, params.id, {
+          agentStatus: 'completed',
+          column: 'done',
+          branch: 'feature/test',
+          mergeStatus: 'unmerged',
+          worktreePath: '/tmp/fake-worktree',
+        });
+      },
+      { path: testRepoPath, id: item.id }
+    );
 
     await window.click(selectors.kanbanRefreshButton);
     await expect(
-      window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard)
+      window.locator(selectors.kanbanColumn('done')).locator(selectors.kanbanCard)
     ).toBeVisible({ timeout: 5000 });
 
-    // Open item detail dialog
-    await window.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
+    await window.locator(selectors.kanbanColumn('done')).locator(selectors.kanbanCard).first().click();
     await expect(window.locator(selectors.itemDetailDialog)).toBeVisible();
 
-    // Trigger git diff dialog via IPC
-    await window.evaluate(
-      async (params: { itemId: string }) => {
-        window.electronAPI.kanban.updateItem(params.itemId, {
-          agentStatus: 'completed' as 'completed',
-          branchName: 'feature/test',
-        });
-        window.electronAPI.tab.openGitDiff({
-          itemId: params.itemId,
-          branchName: 'feature/test',
-          baseBranch: 'main',
-          projectPath: testRepoPath,
-        });
-      },
-      { itemId: item.id }
-    );
-
-    // Wait for git diff dialog to open
+    await window.click('[data-testid="compare-changes-button"]');
     await expect(window.locator(selectors.gitDiffDialog)).toBeVisible({ timeout: 5000 });
+    await expect(window.locator('[data-testid^="diff-file-"]')).toHaveCount(1, { timeout: 5000 });
   }
 
   test('should close when pressing lowercase q', async () => {
+    prepareFeatureBranch([{ relativePath: 'src/foo.ts', content: 'export const foo = 1;\n' }]);
     await openGitDiffDialog();
     const { window } = ctx;
 
@@ -99,6 +106,7 @@ test.describe('GitDiffDialog Keyboard Shortcuts', () => {
   });
 
   test('should close when pressing uppercase Q', async () => {
+    prepareFeatureBranch([{ relativePath: 'src/foo.ts', content: 'export const foo = 1;\n' }]);
     await openGitDiffDialog();
     const { window } = ctx;
 
@@ -108,6 +116,7 @@ test.describe('GitDiffDialog Keyboard Shortcuts', () => {
   });
 
   test('should close when pressing Ctrl+Q', async () => {
+    prepareFeatureBranch([{ relativePath: 'src/foo.ts', content: 'export const foo = 1;\n' }]);
     await openGitDiffDialog();
     const { window } = ctx;
 
@@ -117,6 +126,7 @@ test.describe('GitDiffDialog Keyboard Shortcuts', () => {
   });
 
   test('should show q shortcut hint in header', async () => {
+    prepareFeatureBranch([{ relativePath: 'src/foo.ts', content: 'export const foo = 1;\n' }]);
     await openGitDiffDialog();
     const { window } = ctx;
 
@@ -125,6 +135,7 @@ test.describe('GitDiffDialog Keyboard Shortcuts', () => {
   });
 
   test('close button should still work', async () => {
+    prepareFeatureBranch([{ relativePath: 'src/foo.ts', content: 'export const foo = 1;\n' }]);
     await openGitDiffDialog();
     const { window } = ctx;
 

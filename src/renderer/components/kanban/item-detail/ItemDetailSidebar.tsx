@@ -4,9 +4,7 @@ import type { CavemanMode, KanbanColumn, KanbanItem } from '@shared/types/kanban
 import { AgentControls } from '../../agent/AgentControls'
 import { formatTokenCount, formatUsdCost } from '@renderer/utils/formatTokens'
 import { agentProviderLabels, columnOptions, CopyPathButton, formatTimestamp } from './itemDetailViewUtils'
-import { ItemDetailMergeSection } from './ItemDetailMergeSection'
 import type { DraftSaveStatus } from './useItemDetailDraft'
-import type { ConflictCheckResult, RebaseResultState } from './useItemDetailPrWorkflow'
 import type { AgentTokenUsage } from '@shared/types/agent'
 import type { DevServerStatus } from '@renderer/hooks/useDevServer'
 
@@ -32,15 +30,6 @@ interface ItemDetailSidebarProps {
   currentSessionId: string | null
   currentDetail: string | null
   tokenUsage: AgentTokenUsage | null
-  prUrl: string | null
-  conflictCheck: ConflictCheckResult | null
-  rebaseResult: RebaseResultState | null
-  isMerging: boolean
-  isMergingLocally: boolean
-  isCheckingConflicts: boolean
-  isRebasing: boolean
-  isApprovingPr: boolean
-  isMergingPr: boolean
   devServer?: DevServerState
   onSetAgentProvider: (value: KanbanItem['agentProvider']) => void
   onSetModel: (value: string) => void
@@ -51,16 +40,6 @@ interface ItemDetailSidebarProps {
   onStartAgent: (agentName: string) => void
   onResumeAgent: (agentName: string) => void
   onStopAgent: () => void
-  onCompareChanges: () => void
-  onOpenPr: () => void
-  onApprovePr: () => void
-  onMergePr: () => void
-  onCheckConflicts: () => void
-  onRebase: () => void
-  onMergeLocally: () => void
-  onMerge: () => void
-  onFixConflicts: () => void
-  isFixingConflicts: boolean
   onUpdated: () => void
 }
 
@@ -79,15 +58,6 @@ export function ItemDetailSidebar({
   currentSessionId,
   currentDetail,
   tokenUsage,
-  prUrl,
-  conflictCheck,
-  rebaseResult,
-  isMerging,
-  isMergingLocally,
-  isCheckingConflicts,
-  isRebasing,
-  isApprovingPr,
-  isMergingPr,
   devServer,
   onSetAgentProvider,
   onSetModel,
@@ -98,16 +68,6 @@ export function ItemDetailSidebar({
   onStartAgent,
   onResumeAgent,
   onStopAgent,
-  onCompareChanges,
-  onOpenPr,
-  onApprovePr,
-  onMergePr,
-  onCheckConflicts,
-  onRebase,
-  onMergeLocally,
-  onMerge,
-  onFixConflicts,
-  isFixingConflicts,
   onUpdated,
 }: ItemDetailSidebarProps): React.ReactElement {
   return (
@@ -350,34 +310,6 @@ export function ItemDetailSidebar({
             </div>
           </div>
         )}
-      </div>
-
-      {/* Merge Section */}
-      <div className="p-4">
-        <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-disabled)] mb-3">Merge</div>
-        <ItemDetailMergeSection
-          showKbdHints={showKbdHints}
-          item={item}
-          prUrl={prUrl}
-          conflictCheck={conflictCheck}
-          rebaseResult={rebaseResult}
-          isMerging={isMerging}
-          isMergingLocally={isMergingLocally}
-          isCheckingConflicts={isCheckingConflicts}
-          isRebasing={isRebasing}
-          isApprovingPr={isApprovingPr}
-          isMergingPr={isMergingPr}
-          onCompareChanges={onCompareChanges}
-          onOpenPr={onOpenPr}
-          onApprovePr={onApprovePr}
-          onMergePr={onMergePr}
-          onCheckConflicts={onCheckConflicts}
-          onRebase={onRebase}
-          onMergeLocally={onMergeLocally}
-          onMerge={onMerge}
-          onFixConflicts={onFixConflicts}
-          isFixingConflicts={isFixingConflicts}
-        />
       </div>
 
       {/* Footer */}

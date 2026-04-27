@@ -13,6 +13,7 @@ import { useSuspendVimNavigation, useVimModeContext } from '@renderer/context/Vi
 import { AgentLogPanel, type AgentLogPanelHandle } from '../agent/AgentLogPanel'
 import { GitDiffDialog } from '../code-review/GitDiffDialog'
 import { ItemDetailEditorPane } from './item-detail/ItemDetailEditorPane'
+import { ItemDetailMergeBar } from './item-detail/ItemDetailMergeBar'
 import { ItemDetailSidebar } from './item-detail/ItemDetailSidebar'
 import { BrowserPreviewPanel } from './item-detail/BrowserPreviewPanel'
 import { useBrowserPreview } from '@renderer/hooks/useBrowserPreview'
@@ -634,6 +635,34 @@ export function ItemDetailDialog({
           </div>
         )}
 
+        <ItemDetailMergeBar
+          showKbdHints={true}
+          item={item}
+          prUrl={prWorkflow.prUrl}
+          conflictCheck={prWorkflow.conflictCheck}
+          rebaseResult={prWorkflow.rebaseResult}
+          isMerging={prWorkflow.isMerging}
+          isMergingLocally={prWorkflow.isMergingLocally}
+          isCheckingConflicts={prWorkflow.isCheckingConflicts}
+          isRebasing={prWorkflow.isRebasing}
+          isApprovingPr={prWorkflow.isApprovingPr}
+          isMergingPr={prWorkflow.isMergingPr}
+          onCompareChanges={() => setShowDiffViewer(true)}
+          onOpenPr={() => {
+            if (prWorkflow.prUrl) {
+              window.electronAPI.app.openExternal(prWorkflow.prUrl)
+            }
+          }}
+          onApprovePr={() => void prWorkflow.approvePr()}
+          onMergePr={() => void prWorkflow.mergePr()}
+          onCheckConflicts={() => void prWorkflow.checkConflicts()}
+          onRebase={() => void prWorkflow.rebaseOntoDefault()}
+          onMergeLocally={() => void prWorkflow.mergeLocally()}
+          onMerge={() => void prWorkflow.mergeAndPushPr()}
+          onFixConflicts={() => void handleFixConflicts()}
+          isFixingConflicts={prWorkflow.isFixingConflicts}
+        />
+
         <div className="flex flex-1 overflow-hidden">
           <div
             data-testid="editor-zone"
@@ -714,15 +743,6 @@ export function ItemDetailDialog({
             currentSessionId={agentSession.currentSessionId}
             currentDetail={agentSession.currentDetail}
             tokenUsage={agentSession.tokenUsage}
-            prUrl={prWorkflow.prUrl}
-            conflictCheck={prWorkflow.conflictCheck}
-            rebaseResult={prWorkflow.rebaseResult}
-            isMerging={prWorkflow.isMerging}
-            isMergingLocally={prWorkflow.isMergingLocally}
-            isCheckingConflicts={prWorkflow.isCheckingConflicts}
-            isRebasing={prWorkflow.isRebasing}
-            isApprovingPr={prWorkflow.isApprovingPr}
-            isMergingPr={prWorkflow.isMergingPr}
             devServer={devServer}
             onSetAgentProvider={draft.setAgentProvider}
             onSetModel={draft.setModel}
@@ -733,20 +753,6 @@ export function ItemDetailDialog({
             onStartAgent={agentName => void lifecycle.startAgent(agentName)}
             onResumeAgent={agentName => void lifecycle.resumeAgent(agentName)}
             onStopAgent={() => void lifecycle.stopAgent()}
-            onCompareChanges={() => setShowDiffViewer(true)}
-            onOpenPr={() => {
-              if (prWorkflow.prUrl) {
-                window.electronAPI.app.openExternal(prWorkflow.prUrl)
-              }
-            }}
-            onApprovePr={() => void prWorkflow.approvePr()}
-            onMergePr={() => void prWorkflow.mergePr()}
-            onCheckConflicts={() => void prWorkflow.checkConflicts()}
-            onRebase={() => void prWorkflow.rebaseOntoDefault()}
-            onMergeLocally={() => void prWorkflow.mergeLocally()}
-            onMerge={() => void prWorkflow.mergeAndPushPr()}
-            onFixConflicts={() => void handleFixConflicts()}
-            isFixingConflicts={prWorkflow.isFixingConflicts}
             onUpdated={onUpdated}
           />
         </div>
