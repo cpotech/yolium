@@ -53,6 +53,7 @@ describe('agent definitions - model self-reporting', () => {
   it('should discover all *-agent.md files in src/agents/ excluding _protocol.md and README.md', () => {
     expect(agentFiles).toEqual(
       expect.arrayContaining([
+        'architect-agent.md',
         'ba-agent.md',
         'code-agent.md',
         'design-agent.md',
@@ -66,7 +67,7 @@ describe('agent definitions - model self-reporting', () => {
     );
     expect(agentFiles).not.toContain('_protocol.md');
     expect(agentFiles).not.toContain('README.md');
-    expect(agentFiles.length).toBeGreaterThanOrEqual(9);
+    expect(agentFiles.length).toBeGreaterThanOrEqual(10);
   });
 
   for (const fileName of agentFiles) {

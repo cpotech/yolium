@@ -73,8 +73,9 @@ export function parseAgentDefinition(markdown: string): ParsedAgent {
     ? data.timeout
     : undefined;
 
-  // Parse optional order (must be a positive number if present)
-  const order = data.order != null && typeof data.order === 'number' && data.order > 0
+  // Parse optional order (must be a non-negative number if present).
+  // Allowing 0 lets the architect-agent run before plan-agent (order: 1) in the SDLC ordering.
+  const order = data.order != null && typeof data.order === 'number' && data.order >= 0
     ? data.order
     : undefined;
 

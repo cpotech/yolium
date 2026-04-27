@@ -156,6 +156,34 @@ You are a test agent.`;
     })).toThrow('Invalid model');
   });
 
+  it('should persist order: 0 to disk when saving a custom agent', () => {
+    _saveCustomAgentToDir(tempDir, {
+      name: 'order-zero-agent',
+      description: 'Runs first',
+      model: 'opus',
+      tools: ['Read'],
+      order: 0,
+      systemPrompt: 'You are an architect.',
+    });
+
+    const content = fs.readFileSync(path.join(tempDir, 'order-zero-agent.md'), 'utf-8');
+    expect(content).toContain('order: 0');
+  });
+
+  it('should round-trip order: 0 through save and load', () => {
+    _saveCustomAgentToDir(tempDir, {
+      name: 'round-trip-zero',
+      description: 'Test',
+      model: 'opus',
+      tools: ['Read'],
+      order: 0,
+      systemPrompt: 'Prompt',
+    });
+
+    const loaded = _loadCustomAgentFromDir(tempDir, 'round-trip-zero');
+    expect(loaded.order).toBe(0);
+  });
+
   it('should sanitize agent name to filesystem-safe characters', () => {
     expect(sanitizeAgentName('My Agent!')).toBe('my-agent');
     expect(sanitizeAgentName('hello world 123')).toBe('hello-world-123');

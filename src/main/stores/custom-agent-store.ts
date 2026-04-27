@@ -105,7 +105,7 @@ export function _saveCustomAgentToDir(dir: string, def: CustomAgentInput): void 
   if (def.timeout != null && def.timeout > 0) {
     frontmatter.push(`timeout: ${def.timeout}`);
   }
-  if (def.order != null && def.order > 0) {
+  if (def.order != null && def.order >= 0) {
     frontmatter.push(`order: ${def.order}`);
   }
 
