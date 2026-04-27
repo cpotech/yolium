@@ -143,7 +143,7 @@ test.describe('Merge Locally', () => {
 
     // Confirm the dialog
     await expect(page.locator('[data-testid="confirm-dialog"]')).toBeVisible({ timeout: 5000 });
-    await page.click('[data-testid="confirm-button"]');
+    await page.click('[data-testid="confirm-dialog-confirm"]');
 
     // Should now show merged status
     await expect(page.locator('[data-testid="merge-status-merged"]')).toBeVisible({ timeout: 5000 });
@@ -172,7 +172,7 @@ test.describe('Merge Locally', () => {
 
     // Confirm
     await expect(page.locator('[data-testid="confirm-dialog"]')).toBeVisible({ timeout: 5000 });
-    await page.click('[data-testid="confirm-button"]');
+    await page.click('[data-testid="confirm-dialog-confirm"]');
 
     // Should show merged status
     await expect(page.locator('[data-testid="merge-status-merged"]')).toBeVisible({ timeout: 5000 });

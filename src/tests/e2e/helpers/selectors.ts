@@ -103,6 +103,7 @@ export const selectors = {
   sidebarCollapseToggle: '[data-testid="collapse-toggle"]',
   sidebarSchedule: '[data-testid="sidebar-schedule"]',
   openProjectButton: '[data-testid="open-project-button"]',
+  addProjectButton: '[data-testid="open-project-button"]', // Legacy alias
   projectItem: (path: string) => `[data-testid="project-item-${path}"]`,
   removeProjectButton: (path: string) => `[data-testid="remove-project-${path}"]`,
   statusDot: (itemId: string) => `[data-testid="status-dot-${itemId}"]`,

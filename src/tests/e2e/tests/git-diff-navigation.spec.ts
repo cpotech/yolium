@@ -1,15 +1,16 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
+import { execSync } from 'child_process';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { launchApp, closeApp, createTestRepo, cleanupTestRepo, type AppContext } from '../helpers/app';
 import { selectors } from '../helpers/selectors';
-import * as os from 'os';
-import path from 'path';
-import fs from 'fs';
 
 test.describe('Git Diff Dialog Navigation', () => {
   let ctx: AppContext;
   let testRepoPath: string;
 
-  test.beforeAll(async () => {
+  test.beforeEach(async () => {
     testRepoPath = await createTestRepo(os.tmpdir());
   });
 
@@ -18,15 +19,25 @@ test.describe('Git Diff Dialog Navigation', () => {
       await closeApp(ctx);
       ctx = undefined as unknown as AppContext;
     }
-  });
-
-  test.afterAll(async () => {
     if (testRepoPath) {
       await cleanupTestRepo(testRepoPath);
+      testRepoPath = '';
     }
   });
 
-  async function openGitDiffDialog(): Promise<void> {
+  function prepareFeatureBranch(files: Array<{ relativePath: string; content: string }>): void {
+    execSync('git checkout -b feature/test', { cwd: testRepoPath });
+    for (const file of files) {
+      fs.mkdirSync(path.dirname(path.join(testRepoPath, file.relativePath)), { recursive: true });
+      fs.writeFileSync(path.join(testRepoPath, file.relativePath), file.content);
+    }
+    execSync('git add .', { cwd: testRepoPath });
+    execSync('git commit -m "Add diff navigation fixtures"', { cwd: testRepoPath });
+    execSync('git checkout main', { cwd: testRepoPath });
+  }
+
+  async function openGitDiffDialog(): Promise<Page> {
+    ctx = await launchApp();
     const page = ctx.window;
 
     await page.evaluate(() => {
@@ -40,13 +51,13 @@ test.describe('Git Diff Dialog Navigation', () => {
       { timeout: 30000 }
     );
 
-    await page.click(selectors.addProjectButton);
+    await page.click(selectors.openProjectButton);
     await page.fill(selectors.pathInput, testRepoPath);
     await page.click(selectors.pathNextButton);
     await page.waitForSelector('[data-testid="kanban-view"]', { timeout: 10000 });
 
     const item = await page.evaluate(
-      async ({ repoPath }: { repoPath: string }) => {
+      async (repoPath: string) => {
         return window.electronAPI.kanban.addItem(repoPath, {
           title: 'Test Diff Navigation',
           description: 'Testing j/k in git diff dialog',
@@ -54,86 +65,102 @@ test.describe('Git Diff Dialog Navigation', () => {
           order: 0,
         });
       },
-      { repoPath: testRepoPath }
+      testRepoPath
     ) as { id: string };
+
+    await page.evaluate(
+      async (params: { path: string; id: string }) => {
+        await window.electronAPI.kanban.updateItem(params.path, params.id, {
+          agentStatus: 'completed',
+          column: 'done',
+          branch: 'feature/test',
+          mergeStatus: 'unmerged',
+          worktreePath: '/tmp/fake-worktree',
+        });
+      },
+      { path: testRepoPath, id: item.id }
+    );
 
     await page.click(selectors.kanbanRefreshButton);
     await expect(
-      page.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard)
+      page.locator(selectors.kanbanColumn('done')).locator(selectors.kanbanCard)
     ).toBeVisible({ timeout: 5000 });
 
-    await page.locator(selectors.kanbanColumn('backlog')).locator(selectors.kanbanCard).first().click();
+    await page.locator(selectors.kanbanColumn('done')).locator(selectors.kanbanCard).first().click();
     await expect(page.locator(selectors.itemDetailDialog)).toBeVisible();
 
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('f');
-    await expect(page.locator('[data-testid="git-diff-dialog"]')).toBeVisible({ timeout: 5000 });
+    await page.click('[data-testid="compare-changes-button"]');
+    await expect(page.locator(selectors.gitDiffDialog)).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('[data-testid^="diff-file-"]')).toHaveCount(3, { timeout: 5000 });
+
+    return page;
+  }
+
+  async function getFocusedFileId(page: Page): Promise<string | null> {
+    return page.locator('[data-testid^="diff-file-"][class*="ring-1"]').getAttribute('data-testid');
   }
 
   test('j key should navigate to next file in diff dialog', async () => {
-    const barPath = path.join(testRepoPath, 'bar.ts');
-    fs.writeFileSync(barPath, 'export const bar = 2;\n');
+    prepareFeatureBranch([
+      { relativePath: 'alpha.ts', content: 'export const alpha = 1;\n' },
+      { relativePath: 'beta.ts', content: 'export const beta = 2;\n' },
+      { relativePath: 'gamma.ts', content: 'export const gamma = 3;\n' },
+    ]);
 
-    ctx = await launchApp();
-    await openGitDiffDialog();
-    const page = ctx.window;
-
-    const firstFile = page.locator('[data-testid^="diff-file-"]').first();
-    const firstFileName = await firstFile.getAttribute('data-testid');
+    const page = await openGitDiffDialog();
+    const initialFocused = await getFocusedFileId(page);
 
     await page.keyboard.press('j');
 
-    const newFirstFile = page.locator('[data-testid^="diff-file-"]').first();
-    const newFileName = await newFirstFile.getAttribute('data-testid');
-    expect(newFileName).not.toBe(firstFileName);
+    const nextFocused = await getFocusedFileId(page);
+    expect(nextFocused).not.toBe(initialFocused);
   });
 
   test('k key should navigate to previous file in diff dialog', async () => {
-    const barPath = path.join(testRepoPath, 'bar.ts');
-    fs.writeFileSync(barPath, 'export const bar = 2;\n');
+    prepareFeatureBranch([
+      { relativePath: 'alpha.ts', content: 'export const alpha = 1;\n' },
+      { relativePath: 'beta.ts', content: 'export const beta = 2;\n' },
+      { relativePath: 'gamma.ts', content: 'export const gamma = 3;\n' },
+    ]);
 
-    ctx = await launchApp();
-    await openGitDiffDialog();
-    const page = ctx.window;
+    const page = await openGitDiffDialog();
+    const initialFocused = await getFocusedFileId(page);
 
     await page.keyboard.press('j');
-    const afterJFile = page.locator('[data-testid^="diff-file-"]').first();
-    const afterJName = await afterJFile.getAttribute('data-testid');
-
     await page.keyboard.press('k');
-    const afterKFile = page.locator('[data-testid^="diff-file-"]').first();
-    const afterKName = await afterKFile.getAttribute('data-testid');
-    expect(afterKName).toBe(afterJName);
+
+    const focusedAfterReturning = await getFocusedFileId(page);
+    expect(focusedAfterReturning).toBe(initialFocused);
   });
 
   test('Ctrl+Q should close the diff dialog', async () => {
-    ctx = await launchApp();
-    await openGitDiffDialog();
-    const page = ctx.window;
+    prepareFeatureBranch([
+      { relativePath: 'alpha.ts', content: 'export const alpha = 1;\n' },
+      { relativePath: 'beta.ts', content: 'export const beta = 2;\n' },
+      { relativePath: 'gamma.ts', content: 'export const gamma = 3;\n' },
+    ]);
+
+    const page = await openGitDiffDialog();
 
     await page.keyboard.press('Control+q');
-    await expect(page.locator('[data-testid="git-diff-dialog"]')).not.toBeVisible();
+    await expect(page.locator(selectors.gitDiffDialog)).not.toBeVisible();
   });
 
   test('j key should wrap from last file to first file', async () => {
-    const barPath = path.join(testRepoPath, 'bar.ts');
-    const bazPath = path.join(testRepoPath, 'baz.ts');
-    fs.writeFileSync(barPath, 'export const bar = 2;\n');
-    fs.writeFileSync(bazPath, 'export const baz = 3;\n');
+    prepareFeatureBranch([
+      { relativePath: 'alpha.ts', content: 'export const alpha = 1;\n' },
+      { relativePath: 'beta.ts', content: 'export const beta = 2;\n' },
+      { relativePath: 'gamma.ts', content: 'export const gamma = 3;\n' },
+    ]);
 
-    ctx = await launchApp();
-    await openGitDiffDialog();
-    const page = ctx.window;
+    const page = await openGitDiffDialog();
+    const initialFocused = await getFocusedFileId(page);
 
-    const firstFileBefore = page.locator('[data-testid^="diff-file-"]').first();
-    const firstNameBefore = await firstFileBefore.getAttribute('data-testid');
+    await page.keyboard.press('j');
+    await page.keyboard.press('j');
+    await page.keyboard.press('j');
 
-    for (let i = 0; i < 10; i++) {
-      await page.keyboard.press('j');
-    }
-
-    const firstFileAfter = page.locator('[data-testid^="diff-file-"]').first();
-    const firstNameAfter = await firstFileAfter.getAttribute('data-testid');
-    expect(firstNameAfter).toBe(firstNameBefore);
+    const wrappedFocused = await getFocusedFileId(page);
+    expect(wrappedFocused).toBe(initialFocused);
   });
 });
